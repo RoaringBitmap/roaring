@@ -1,4 +1,18 @@
-package Util
+package goroaring
+
+type short uint16
+
+func BitCount(i int64) int {
+	x := uint64(i)
+	// bit population count, see
+	// http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+	x -= (x >> 1) & 0x5555555555555555
+	x = (x>>2)&0x3333333333333333 + x&0x3333333333333333
+	x += x >> 4
+	x &= 0x0f0f0f0f0f0f0f0f
+	x *= 0x0101010101010101
+	return int(x >> 56)
+}
 
 func FillArrayAND(container []short, bitmap1, bitmap2 []int64) {
 	pos := 0
@@ -52,7 +66,7 @@ func Highbits(x int) short {
 	u := uint(x)
 	return short(u >> 16)
 }
-func Lowbits(int x) short {
+func Lowbits(x int) short {
 	return short(x & 0xFFFF)
 }
 
@@ -60,8 +74,8 @@ func MaxLowBit() short {
 	return short(0xFFFF)
 }
 
-func ToIntUnsigned(short x) int {
-	return x & 0xFFFF
+func ToIntUnsigned(x short) int {
+	return int(x & 0xFFFF)
 }
 
 func AdvanceUntil(

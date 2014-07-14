@@ -1,4 +1,4 @@
-package roaring
+package goroaring
 
 import (
 	"testing"
