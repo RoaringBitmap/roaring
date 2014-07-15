@@ -15,10 +15,14 @@ type Container interface {
 	Clone() Container
 	And(Container) Container
 	AndNot(Container) Container
-	Add(short) Container
 	Inot(firstOfRange, lastOfRange int) Container
 	GetCardinality() int
+	Add(short) Container
 	Not(start, final int) Container
+	Xor(r Container) Container
+	//	Or(r Container) Container
+	//	Contains(i int) bool
+	//	ToArray() []int
 }
 
 type ArrayContainer struct {
@@ -116,6 +120,45 @@ func (self *ArrayContainer) And(a Container) Container {
 		return a.And(self)
 	}
 	return nil
+}
+
+func (self *ArrayContainer) Xor(a Container) Container {
+	switch a.(type) {
+	case *ArrayContainer:
+		return self.XorArray(a.(*ArrayContainer))
+	case *BitmapContainer:
+		return a.Xor(self)
+	}
+	return nil
+}
+
+func (self *ArrayContainer) XorArray(value2 *ArrayContainer) Container {
+	value1 := self
+	totalCardinality := value1.GetCardinality() + value2.GetCardinality()
+	if totalCardinality > ARRAY_DEFAULT_MAX_SIZE { // it could be a bitmap!^M
+		bc := NewBitmapContainer()
+		for k := 0; k < value2.cardinality; k++ {
+			i := uint(ToIntUnsigned(value2.content[k])) >> 6
+			bc.bitmap[i] ^= (1 << value2.content[k])
+		}
+		for k := 0; k < self.cardinality; k++ {
+			i := uint(ToIntUnsigned(self.content[k])) >> 6
+			bc.bitmap[i] ^= (1 << self.content[k])
+		}
+		bc.cardinality = 0
+		for _, k := range bc.bitmap {
+			bc.cardinality += BitCount(k)
+		}
+		if bc.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
+			return bc.ToArrayContainer()
+		}
+		return bc
+	}
+	desiredCapacity := totalCardinality
+	answer := NewArrayContainerCapacity(desiredCapacity)
+	answer.cardinality = Unsigned_ExclusiveUnionb2by2(value1.content, value1.GetCardinality(), value2.content, value2.GetCardinality(), answer.content)
+	return answer
+
 }
 
 func (self *ArrayContainer) AndNot(a Container) Container {
@@ -422,6 +465,49 @@ func (self *BitmapContainer) NotBitmap(answer *BitmapContainer, firstOfRange, la
 		return answer.ToArrayContainer()
 	}
 	return answer
+}
+
+func (self *BitmapContainer) Xor(a Container) Container {
+	switch a.(type) {
+	case *ArrayContainer:
+		return self.XorArray(a.(*ArrayContainer))
+	case *BitmapContainer:
+		return self.XorBitmap(a.(*BitmapContainer))
+	}
+	return nil
+}
+
+func (self *BitmapContainer) XorArray(value2 *ArrayContainer) Container {
+	answer := self.Clone().(*BitmapContainer)
+	for k := 0; k < value2.GetCardinality(); k++ {
+		index := uint(ToIntUnsigned(value2.content[k])) >> 6
+		answer.cardinality += 1 - 2*int(uint(answer.bitmap[index]&(1<<value2.content[k]))>>value2.content[k])
+
+		answer.bitmap[index] = answer.bitmap[index] ^ (1 << value2.content[k])
+	}
+	if answer.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
+		return answer.ToArrayContainer()
+	}
+	return answer
+}
+
+func (self *BitmapContainer) XorBitmap(value2 *BitmapContainer) Container {
+	newCardinality := 0
+	for k := 0; k < len(self.bitmap); k++ {
+		newCardinality += BitCount(self.bitmap[k] ^ value2.bitmap[k])
+	}
+	if newCardinality > ARRAY_DEFAULT_MAX_SIZE {
+		answer := NewBitmapContainer()
+		for k := 0; k < len(answer.bitmap); k++ {
+			answer.bitmap[k] = self.bitmap[k] ^ value2.bitmap[k]
+		}
+		answer.cardinality = newCardinality
+		return answer
+	}
+	ac := NewArrayContainerCapacity(newCardinality)
+	FillArrayXOR(ac.content, self.bitmap, value2.bitmap)
+	ac.cardinality = newCardinality
+	return ac
 }
 
 func (self *BitmapContainer) And(a Container) Container {
@@ -814,6 +900,57 @@ main:
 	}
 	return answer
 }
+func Xor(x1, x2 *RoaringBitmap) *RoaringBitmap {
+	answer := NewRoaringBitmap()
+	pos1 := 0
+	pos2 := 0
+	length1 := x1.highlowcontainer.Size()
+	length2 := x2.highlowcontainer.Size()
+
+main:
+	for {
+		if (pos1 < length1) && (pos2 < length2) {
+			s1 := x1.highlowcontainer.GetKeyAtIndex(pos1)
+			s2 := x2.highlowcontainer.GetKeyAtIndex(pos2)
+			if s1 < s2 {
+				answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, x1.highlowcontainer.Size())
+
+				pos1++
+				if pos1 == length1 {
+					break main
+				}
+				s1 = x1.highlowcontainer.GetKeyAtIndex(pos1)
+			} else if s1 > s2 {
+				answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2, x2.highlowcontainer.Size())
+				pos2++
+				if pos2 == length2 {
+					break main
+				}
+				s2 = x2.highlowcontainer.GetKeyAtIndex(pos2)
+			} else {
+				c := x1.highlowcontainer.GetContainerAtIndex(pos1).Xor(x2.highlowcontainer.GetContainerAtIndex(pos2))
+				if c.GetCardinality() > 0 {
+					answer.highlowcontainer.Append(s1, c)
+				}
+				pos1++
+				pos2++
+				if (pos1 == length1) || (pos2 == length2) {
+					break main
+				}
+				s1 = x1.highlowcontainer.GetKeyAtIndex(pos1)
+				s2 = x2.highlowcontainer.GetKeyAtIndex(pos2)
+			}
+		} else {
+			break
+		}
+	}
+	if pos1 == length1 {
+		answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2, length2)
+	} else if pos2 == length2 {
+		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, length1)
+	}
+	return answer
+}
 
 func AndNot(x1, x2 *RoaringBitmap) *RoaringBitmap {
 	answer := NewRoaringBitmap()
@@ -929,6 +1066,7 @@ func RangeOfOnes(start, last int) Container {
 
 	return NewArrayContainerRange(start, last)
 }
+
 func Unsigned_intersect2by2(
 	set1 []short,
 	length1 int,
@@ -1066,6 +1204,21 @@ func Unsigned_binarySearch(array []short, begin, end int, k short) int {
 	return -(low + 1)
 }
 
+func fillArrayXOR(container []short, bitmap1, bitmap2 []uint64) {
+	pos := 0
+	if len(bitmap1) != len(bitmap2) {
+		panic("fillArrayXOR args not the same")
+	}
+	for k := 0; k < len(bitmap1); k++ {
+		bitset := bitmap1[k] ^ bitmap2[k]
+		for bitset != 0 {
+			t := bitset & -bitset
+			container[pos] = short(k*64 + BitCount(int64(t)-1))
+			pos++
+			bitset ^= t
+		}
+	}
+}
 func Unsigned_difference(set1 []short, length1 int, set2 []short, length2 int, buffer []short) int {
 	pos := 0
 	k1 := 0
@@ -1101,6 +1254,65 @@ func Unsigned_difference(set1 []short, length1 int, set2 []short, length2 int, b
 				break
 			}
 		} else { // if (val1>val2)
+			k2++
+			if k2 >= length2 {
+				for ; k1 < length1; k1++ {
+					buffer[pos] = set1[k1]
+					pos++
+				}
+				break
+			}
+		}
+	}
+	return pos
+}
+
+func Unsigned_ExclusiveUnionb2by2(set1 []short, length1 int, set2 []short, length2 int, buffer []short) int {
+	pos := 0
+	k1 := 0
+	k2 := 0
+	if 0 == length2 {
+		//	System.arraycopy(set1, 0, buffer, 0, length1);
+		copy(buffer, set1[:length1])
+		return length1
+	}
+	if 0 == length1 {
+		//	System.arraycopy(set2, 0, buffer, 0, length2);
+		copy(buffer, set2[:length2])
+		return length2
+	}
+	for {
+		if ToIntUnsigned(set1[k1]) < ToIntUnsigned(set2[k2]) {
+			buffer[pos] = set1[k1]
+			pos++
+			k1++
+			if k1 >= length1 {
+				for ; k2 < length2; k2++ {
+					buffer[pos] = set2[k2]
+					pos++
+				}
+				break
+			}
+		} else if ToIntUnsigned(set1[k1]) == ToIntUnsigned(set2[k2]) {
+			k1++
+			k2++
+			if k1 >= length1 {
+				for ; k2 < length2; k2++ {
+					buffer[pos] = set2[k2]
+					pos++
+				}
+				break
+			}
+			if k2 >= length2 {
+				for ; k1 < length1; k1++ {
+					buffer[pos] = set1[k1]
+					pos++
+				}
+				break
+			}
+		} else { // if (val1>val2)
+			buffer[pos] = set2[k2]
+			pos++
 			k2++
 			if k2 >= length2 {
 				for ; k1 < length1; k1++ {
