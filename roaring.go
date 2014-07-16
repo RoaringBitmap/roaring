@@ -20,14 +20,40 @@ type Container interface {
 	Add(short) Container
 	Not(start, final int) Container
 	Xor(r Container) Container
+	GetShortIterator() ShortIterable
+	Contains(i short) bool
+	Equals(i interface{}) bool
 	//	Or(r Container) Container
-	//	Contains(i int) bool
 	//	ToArray() []int
+}
+
+type ShortIterable interface {
+	HasNext() bool
+	Next() short
 }
 
 type ArrayContainer struct {
 	cardinality int
 	content     []short
+}
+
+type ShortIterator struct {
+	slice []short
+	loc   int
+}
+
+func (self *ShortIterator) HasNext() bool {
+	return self.loc < len(self.slice)
+}
+
+func (self *ShortIterator) Next() short {
+	a := self.slice[self.loc]
+	self.loc++
+	return a
+}
+
+func (self *ArrayContainer) GetShortIterator() ShortIterable {
+	return &ShortIterator{self.content, 0}
 }
 
 func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
@@ -80,6 +106,22 @@ func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
 	answer.cardinality = newCardinality
 	return answer
 
+}
+
+func (self *ArrayContainer) Equals(o interface{}) bool {
+	srb := o.(*ArrayContainer)
+	if srb != nil {
+		if srb.cardinality != self.cardinality {
+			return false
+		}
+		for i := 0; i < self.cardinality; i++ {
+			if self.content[i] != srb.content[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func (self *ArrayContainer) ToBitmapContainer() *BitmapContainer {
@@ -291,6 +333,9 @@ func (self *ArrayContainer) Clone() Container {
 	ptr := new(ArrayContainer)
 	return ptr
 }
+func (self *ArrayContainer) Contains(x short) bool {
+	return Unsigned_binarySearch(self.content, 0, self.cardinality, x) >= 0
+}
 
 func (self *ArrayContainer) loadData(bitmapContainer *BitmapContainer) {
 	self.cardinality = bitmapContainer.cardinality
@@ -359,6 +404,49 @@ func NewBitmapContainerwithRange(firstOfRun, lastOfRun int) *BitmapContainer {
 		this.bitmap[lastWord] ^= maskOnLeft
 	}
 	return this
+}
+
+type BitmapContainerShortIterator struct {
+	ptr *BitmapContainer
+	i   short
+}
+
+func (self BitmapContainerShortIterator) Next() short {
+	j := self.i
+	self.i = short(self.ptr.NextSetBit(int(self.i) + 1))
+	return j
+}
+func (self BitmapContainerShortIterator) HasNext() bool {
+	return self.i >= 0
+}
+func NewBitmapContainerShortIterator(a *BitmapContainer) BitmapContainerShortIterator {
+	return BitmapContainerShortIterator{a, short(a.NextSetBit(0))}
+}
+func (self *BitmapContainer) GetShortIterator() ShortIterable {
+	return NewBitmapContainerShortIterator(self)
+}
+
+func BitmapEquals(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (self *BitmapContainer) Equals(o interface{}) bool {
+	srb := o.(*BitmapContainer)
+	if srb != nil {
+		if srb.cardinality != self.cardinality {
+			return false
+		}
+		return BitmapEquals(self.bitmap, srb.bitmap)
+	}
+	return false
 }
 
 func (self *BitmapContainer) Add(i short) Container {
@@ -623,6 +711,58 @@ func (self *BitmapContainer) fillArray(array []short) {
 		}
 	}
 }
+func NumberOfTrailingZeros(i int64) int {
+	if i == 0 {
+		return 64
+	}
+	x := i
+	n := int64(63)
+	y := x << 32
+	if y != 0 {
+		n -= 32
+		x = y
+	}
+	y = x << 16
+	if y != 0 {
+		n -= 16
+		x = y
+	}
+	y = x << 8
+	if y != 0 {
+		n -= 8
+		x = y
+	}
+	y = x << 4
+	if y != 0 {
+		n -= 4
+		x = y
+	}
+	y = x << 2
+	if y != 0 {
+		n -= 2
+		x = y
+	}
+	return int(n - int64(uint64(x<<1)>>63))
+}
+
+func (self *BitmapContainer) NextSetBit(i int) int {
+	x := i / 64
+	if x >= len(self.bitmap) {
+		return -1
+	}
+	w := self.bitmap[x]
+	w = int64(uint(w) >> uint(i))
+	if w != 0 {
+		return i + NumberOfTrailingZeros(w)
+	}
+	x++
+	for ; x < len(self.bitmap); x++ {
+		if self.bitmap[x] != 0 {
+			return x*64 + NumberOfTrailingZeros(self.bitmap[x])
+		}
+	}
+	return -1
+}
 
 type Element struct {
 	key   short
@@ -804,6 +944,23 @@ func (self *RoaringArray) BinarySearch(begin, end int, key short) int {
 	}
 	return -(low + 1)
 }
+func (self *RoaringArray) Equals(o interface{}) bool {
+	srb := o.(*RoaringArray)
+	if srb != nil {
+		if srb.Size() != self.Size() {
+			return false
+		}
+		for i := 0; i < srb.Size(); i++ {
+			oself := self.array[i]
+			other := srb.array[i]
+			if oself.key != other.key || !oself.value.Equals(other.value) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
 
 func (self *RoaringArray) Serialize(out io.Writer) error {
 	enc := gob.NewEncoder(out)
@@ -852,6 +1009,43 @@ func NewRoaringBitmap() *RoaringBitmap {
 func (self *RoaringBitmap) Clone() *RoaringBitmap {
 
 	return &RoaringBitmap{self.highlowcontainer}
+}
+func (self *RoaringBitmap) Contains(x int) bool {
+	hb := Highbits(x)
+	c := self.highlowcontainer.GetContainer(hb)
+	return c != nil && c.Contains(Lowbits(x))
+
+}
+
+func (self *RoaringBitmap) Equals(o interface{}) bool {
+	srb := o.(*RoaringBitmap)
+	if srb != nil {
+		return srb.highlowcontainer.Equals(self.highlowcontainer)
+	}
+	return false
+}
+
+func (self *RoaringBitmap) Add(x int) {
+	hb := Highbits(x)
+	i := self.highlowcontainer.GetIndex(hb)
+	if i >= 0 {
+		self.highlowcontainer.setContainerAtIndex(i, self.highlowcontainer.GetContainerAtIndex(i).Add(Lowbits(x)))
+	} else {
+		newac := NewArrayContainer()
+		self.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.Add(Lowbits(x)))
+	}
+}
+
+func (self *RoaringBitmap) GetCardinality() int {
+	size := 0
+	for i := 0; i < self.highlowcontainer.Size(); i++ {
+		size += self.highlowcontainer.GetContainerAtIndex(i).GetCardinality()
+	}
+	return size
+}
+
+func (self *RoaringBitmap) And(x2 *RoaringBitmap) *RoaringBitmap {
+	return And(self, x2)
 }
 
 func And(x1, x2 *RoaringBitmap) *RoaringBitmap {
@@ -950,6 +1144,10 @@ main:
 		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, length1)
 	}
 	return answer
+}
+
+func (self *RoaringBitmap) AndNot(x2 *RoaringBitmap) *RoaringBitmap {
+	return AndNot(self, x2)
 }
 
 func AndNot(x1, x2 *RoaringBitmap) *RoaringBitmap {

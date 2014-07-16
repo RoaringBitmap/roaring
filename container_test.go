@@ -1,6 +1,7 @@
 package goroaring
 
 import (
+	"log"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -9,22 +10,76 @@ import (
 func makeContainer(ss []short) Container {
 	c := NewArrayContainer()
 	for _, s := range ss {
-		c.add(s)
+		c.Add(s)
 	}
 	return c
 }
+
+func checkContent(c Container, s []short) bool {
+	si := c.GetShortIterator()
+	ctr := 0
+	fail := false
+	for si.HasNext() {
+		if ctr == len(s) {
+			fail = true
+			break
+		}
+		if si.Next() != s[ctr] {
+			fail = true
+			break
+		}
+		ctr++
+	}
+	if ctr != len(s) {
+		fail = true
+	}
+	if fail {
+		log.Println("fail, found ")
+		si = c.GetShortIterator()
+		for si.HasNext() {
+			log.Print(" ", si.Next())
+		}
+		log.Println("expected ")
+		for _, s1 := range s {
+			log.Print(" ", s1)
+		}
+		log.Println()
+	}
+
+	return !fail
+}
+func binarySearch(array []short, k short) int {
+	low := 0
+	high := len(array) - 1
+	ikey := int(k)
+
+	for low <= high {
+		middleIndex := int(uint(low+high) >> 1)
+		middleValue := int(array[middleIndex])
+
+		if middleValue < ikey {
+			low = middleIndex + 1
+		} else if middleValue > ikey {
+			high = middleIndex - 1
+		} else {
+			return middleIndex
+		}
+	}
+	return -(low + 1)
+}
+
 func TestRoaringContainer(t *testing.T) {
 
 	Convey("inotTest1", t, func() {
 		// Array container, range is complete
 		content := []short{1, 3, 5, 7, 9}
 		c := makeContainer(content)
-		c = c.inot(0, 65535)
-		size := 65536 - content.length
+		c = c.Inot(0, 65535)
+		size := 65536 - len(content)
 		s := make([]short, size)
 		pos := 0
-		for i := 0; i < 65536; i++ {
-			if Arrays.binarySearch(content, i) < 0 {
+		for i := short(0); i < short(65535); i++ {
+			if binarySearch(content, i) < 0 {
 				s[pos] = i
 				pos++
 			}
