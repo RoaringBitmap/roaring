@@ -9,6 +9,7 @@ import (
 
 func makeContainer(ss []short) Container {
 	c := NewArrayContainer()
+	//	c := NewBitmapContainer()
 	for _, s := range ss {
 		c.Add(s)
 	}
@@ -21,29 +22,33 @@ func checkContent(c Container, s []short) bool {
 	fail := false
 	for si.HasNext() {
 		if ctr == len(s) {
+			log.Println("HERE")
 			fail = true
 			break
 		}
-		if si.Next() != s[ctr] {
+		i := si.Next()
+		if i != s[ctr] {
+
+			log.Println("THERE", i, s[ctr])
 			fail = true
 			break
 		}
 		ctr++
 	}
 	if ctr != len(s) {
+		log.Println("LAST")
 		fail = true
 	}
 	if fail {
 		log.Println("fail, found ")
 		si = c.GetShortIterator()
+		z := 0
 		for si.HasNext() {
-			log.Print(" ", si.Next())
+			//			log.Println(" ", z, si.Next(), s[z])
+			si.Next()
+			z++
 		}
-		log.Println("expected ")
-		for _, s1 := range s {
-			log.Print(" ", s1)
-		}
-		log.Println()
+		log.Println(z, len(s))
 	}
 
 	return !fail
@@ -69,19 +74,73 @@ func binarySearch(array []short, k short) int {
 }
 
 func TestRoaringContainer(t *testing.T) {
-	a := true
-	if a {
-		return
-	}
+	Convey("NumberOfTrailingZeros", t, func() {
+		x := int64(0)
+		o := NumberOfTrailingZeros(x)
+		So(o, ShouldEqual, 64)
+		x = 1 << 3
+		o = NumberOfTrailingZeros(x)
+		So(o, ShouldEqual, 3)
+	})
+	Convey("ArrayShortIterator", t, func() {
+		content := []short{1, 3, 5, 7, 9}
+		c := makeContainer(content)
+		si := c.GetShortIterator()
+		i := 0
+		for si.HasNext() {
+			si.Next()
+			i++
+		}
+
+		So(i, ShouldEqual, 5)
+	})
+
+	Convey("BinarySearch", t, func() {
+		content := []short{1, 3, 5, 7, 9}
+		res := binarySearch(content, 5)
+		So(res, ShouldEqual, 2)
+		res = binarySearch(content, 4)
+		So(res, ShouldBeLessThan, 0)
+	})
+	Convey("bitmapcontainer", t, func() {
+		content := []short{1, 3, 5, 7, 9}
+		a := NewArrayContainer()
+		b := NewBitmapContainer()
+		for _, v := range content {
+			a.Add(v)
+			b.Add(v)
+		}
+		c := a.ToBitmapContainer()
+
+		So(a.GetCardinality(), ShouldEqual, b.GetCardinality())
+		So(c.GetCardinality(), ShouldEqual, b.GetCardinality())
+
+	})
+	Convey("inottest0", t, func() {
+		content := []short{9}
+		c := makeContainer(content)
+		c = c.Inot(0, 10)
+		si := c.GetShortIterator()
+		i := 0
+		for si.HasNext() {
+			si.Next()
+			i++
+		}
+		So(i, ShouldEqual, 10)
+	})
+
 	Convey("inotTest1", t, func() {
 		// Array container, range is complete
 		content := []short{1, 3, 5, 7, 9}
+		//content := []short{1}
+		edge := 1 << 13
+		//		edge := 30
 		c := makeContainer(content)
-		c = c.Inot(0, 65535)
-		size := 65536 - len(content)
+		c = c.Inot(0, edge)
+		size := (edge + 0) - len(content)
 		s := make([]short, size)
 		pos := 0
-		for i := short(0); i < short(65535); i++ {
+		for i := short(0); i < short(edge+0); i++ {
 			if binarySearch(content, i) < 0 {
 				s[pos] = i
 				pos++
@@ -89,6 +148,7 @@ func TestRoaringContainer(t *testing.T) {
 		}
 		So(checkContent(c, s), ShouldEqual, true)
 	})
+
 	/*
 	   @Test
 	   public void inotTest10() {
