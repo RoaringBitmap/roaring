@@ -2,6 +2,7 @@ package goroaring
 
 type short uint16
 
+// should be replaced with optimized assembly instructions 
 func BitCount(i int64) int {
 	x := uint64(i)
 	// bit population count, see
@@ -13,6 +14,56 @@ func BitCount(i int64) int {
 	x *= 0x0101010101010101
 	return int(x >> 56)
 }
+
+
+// should be replaced with optimized assembly instructions 
+func NumberOfTrailingZeros(i int64) int {
+	if i == 0 {
+		return 64
+	}
+	x := i
+	n := int64(63)
+	y := x << 32
+	if y != 0 {
+		n -= 32
+		x = y
+	}
+	y = x << 16
+	if y != 0 {
+		n -= 16
+		x = y
+	}
+	y = x << 8
+	if y != 0 {
+		n -= 8
+		x = y
+	}
+	y = x << 4
+	if y != 0 {
+		n -= 4
+		x = y
+	}
+	y = x << 2
+	if y != 0 {
+		n -= 2
+		x = y
+	}
+	return int(n - int64(uint64(x<<1)>>63))
+}
+
+
+
+func fill(arr []int64, val int64) {
+	for i := range arr {
+		arr[i] = val
+	}
+}
+func fillRange(arr []int64, start, end int, val int64) {
+	for i := start; i < end; i++ {
+		arr[i] = val
+	}
+}
+
 
 func FillArrayAND(container []short, bitmap1, bitmap2 []int64) {
 	pos := 0
