@@ -21,11 +21,11 @@ func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
 	}
 
 	// determine the span of array indices to be affected^M
-	startIndex := binarySearch(self.content,  short(firstOfRange))
+	startIndex := binarySearch(self.content, short(firstOfRange))
 	if startIndex < 0 {
 		startIndex = -startIndex - 1
 	}
-	lastIndex := binarySearch(self.content,  short(lastOfRange))
+	lastIndex := binarySearch(self.content, short(lastOfRange))
 	if lastIndex < 0 {
 		lastIndex = -lastIndex - 2
 	}
@@ -235,7 +235,7 @@ func CopyOf(array []short, size int) []short {
 
 func (self *ArrayContainer) Inot(firstOfRange, lastOfRange int) Container {
 	// determine the span of array indices to be affected
-	startIndex := binarySearch(self.content,  short(firstOfRange))
+	startIndex := binarySearch(self.content, short(firstOfRange))
 	if startIndex < 0 {
 		startIndex = -startIndex - 1
 	}
