@@ -12,7 +12,6 @@ func NewBitmapContainer() *BitmapContainer {
 	return p
 }
 
-
 func NewBitmapContainerwithRange(firstOfRun, lastOfRun int) *BitmapContainer {
 	this := NewBitmapContainer()
 	this.cardinality = lastOfRun - firstOfRun + 1
@@ -381,7 +380,6 @@ func (self *BitmapContainer) fillArray(array []short) {
 		}
 	}
 }
-
 
 func (self *BitmapContainer) NextSetBit(i int) int {
 	x := i / 64

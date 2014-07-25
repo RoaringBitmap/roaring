@@ -1,19 +1,33 @@
 package goroaring
 
-// TODO: need to resize buffer, not return an int
-func Unsigned_difference(set1 []short, set2 []short,  buffer []short) int {
-	pos := 0
-	k1 := 0
-	k2 := 0
+
+func Equal(a, b []short) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+
+func Difference(set1 []short, set2 []short, buffer []short) int {
 	if 0 == len(set2) {
 		for k := 0; k < len(set1); k++ {
 			buffer[k] = set1[k]
 		}
-		return len(set1)
+		return len(set1) 
 	}
 	if 0 == len(set1) {
 		return 0
 	}
+	pos := 0
+	k1 := 0
+	k2 := 0
+	buffer  = buffer[:cap(buffer)]
 	for {
 		if set1[k1] < set2[k2] {
 			buffer[pos] = set1[k1]
@@ -47,22 +61,24 @@ func Unsigned_difference(set1 []short, set2 []short,  buffer []short) int {
 		}
 	}
 	return pos
+
 }
 
-func Unsigned_ExclusiveUnionb2by2(set1 []short, set2 []short, buffer []short) int {
-	pos := 0
-	k1 := 0
-	k2 := 0
+func ExclusiveUnion2by2(set1 []short, set2 []short, buffer []short) int {
 	if 0 == len(set2) {
-		//	System.arraycopy(set1, 0, buffer, 0, len(set1));
-		copy(buffer, set1[:len(set1)])
+		buffer  = buffer[:len(set1)]
+	    copy(buffer, set1[:len(set1)])
 		return len(set1)
 	}
 	if 0 == len(set1) {
-		//	System.arraycopy(set2, 0, buffer, 0, len(set2));
+	    buffer  = buffer[:len(set2)]
 		copy(buffer, set2[:len(set2)])
-		return len(set2)
+		return len(set2) 
 	}
+	pos := 0
+	k1 := 0
+	k2 := 0
+	buffer  = buffer[:cap(buffer)]
 	for {
 		if ToIntUnsigned(set1[k1]) < ToIntUnsigned(set2[k2]) {
 			buffer[pos] = set1[k1]
@@ -108,18 +124,21 @@ func Unsigned_ExclusiveUnionb2by2(set1 []short, set2 []short, buffer []short) in
 	return pos
 }
 
-func UnsignedUnion2by2(set1 []short, set2 []short, buffer []short) int {
+func Union2by2(set1 []short, set2 []short, buffer []short) int {
 	pos := 0
 	k1 := 0
 	k2 := 0
 	if 0 == len(set2) {
+	    buffer  = buffer[:len(set1)]
 		copy(buffer, set1[:len(set1)])
 		return len(set1)
 	}
 	if 0 == len(set1) {
+	   	buffer  = buffer[:len(set2)]
 		copy(buffer, set2[:len(set2)])
 		return len(set2)
 	}
+	buffer  = buffer[:cap(buffer)]
 	for {
 		if ToIntUnsigned(set1[k1]) < ToIntUnsigned(set2[k2]) {
 			buffer[pos] = set1[k1]
@@ -167,41 +186,42 @@ func UnsignedUnion2by2(set1 []short, set2 []short, buffer []short) int {
 	return pos
 }
 
-
-func Unsigned_intersect2by2(
+func Intersection2by2 (
 	set1 []short,
 	set2 []short,
 	buffer []short) int {
+	  
 	if len(set1)*64 < len(set2) {
-		return Unsigned_onesidedgallopingintersect2by2(set1, set2, buffer)
+	return onesidedgallopingintersect2by2(set1, set2, buffer)
 	} else if len(set2)*64 < len(set1) {
-		return Unsigned_onesidedgallopingintersect2by2(set2, set1, buffer)
+	return 	onesidedgallopingintersect2by2(set2, set1, buffer)
+	} else {
+	return  localintersect2by2(set1, set2, buffer)
 	}
-
-	return Unsigned_localintersect2by2(set1, set2, buffer)
 }
 
-func Unsigned_localintersect2by2(
+func localintersect2by2(
 	set1 []short,
 	set2 []short,
 	buffer []short) int {
 
 	if (0 == len(set1)) || (0 == len(set2)) {
-		return 0
+	   	return 0
 	}
 	k1 := 0
 	k2 := 0
 	pos := 0
-
+	buffer  = buffer[:cap(buffer)]
 mainwhile:
 	for {
+
 		if set2[k2] < set1[k1] {
 			for {
 				k2++
 				if k2 == len(set2) {
 					break mainwhile
 				}
-				if set2[k2] < set1[k1] {
+				if set2[k2] <= set1[k1] {
 					break
 				}
 			}
@@ -212,7 +232,7 @@ mainwhile:
 				if k1 == len(set1) {
 					break mainwhile
 				}
-				if set1[k1] < set2[k2] {
+				if set1[k1] <= set2[k2] {
 					break
 				}
 			}
@@ -234,7 +254,64 @@ mainwhile:
 	return pos
 }
 
-func Unsigned_onesidedgallopingintersect2by2(
+
+func AdvanceUntil(
+	array []short,
+	pos int,
+	length int,
+	min short) int {
+	lower := pos + 1
+
+	if lower >= length || array[lower] >= min {
+		return lower
+	}
+
+	spansize := 1
+
+	for lower+spansize < length && array[lower+spansize] < min {
+		spansize *= 2
+	}
+	var upper int
+	if lower+spansize < length {
+		upper = lower + spansize
+	} else {
+		upper = length - 1
+	}
+
+	if array[upper] == min {
+		return upper
+	}
+
+	if array[upper] < min {
+		// means
+		// array
+		// has no
+		// item
+		// >= min
+		// pos = array.length;
+		return length
+	}
+
+	// we know that the next-smallest span was too small
+	lower += (spansize / 2)
+
+	mid := 0
+	for lower+1 != upper {
+		mid = (lower + upper) / 2
+		if array[mid] == min {
+			return mid
+		} else if array[mid] < min {
+			lower = mid
+		} else {
+			upper = mid
+		}
+	}
+	return upper
+
+}
+
+
+func onesidedgallopingintersect2by2(
 	smallset []short,
 	largeset []short,
 	buffer []short) int {
@@ -242,10 +319,12 @@ func Unsigned_onesidedgallopingintersect2by2(
 	if 0 == len(smallset) {
 		return 0
 	}
+	buffer  = buffer[:cap(buffer)]
 	k1 := 0
 	k2 := 0
 	pos := 0
 mainwhile:
+
 	for {
 		if largeset[k1] < smallset[k2] {
 			k1 = AdvanceUntil(largeset, k1, len(largeset), smallset[k2])
@@ -266,6 +345,7 @@ mainwhile:
 			if k2 == len(smallset) {
 				break
 			}
+	
 			k1 = AdvanceUntil(largeset, k1, len(largeset), smallset[k2])
 			if k1 == len(largeset) {
 				break mainwhile
@@ -276,7 +356,8 @@ mainwhile:
 	return pos
 }
 
-func Unsigned_binarySearch(array []short, begin, end int, k short) int {
+// probably useless
+func binarySearchOverRange(array []short, begin, end int, k short) int {
 	low := begin
 	high := end - 1
 	ikey := int(k)
@@ -295,3 +376,25 @@ func Unsigned_binarySearch(array []short, begin, end int, k short) int {
 	}
 	return -(low + 1)
 }
+
+func binarySearch(array []short, k short) int {
+	low := 0
+	high := len(array) - 1
+	ikey := int(k)
+
+	for low <= high {
+		middleIndex := int(uint(low+high) >> 1)
+		middleValue := int(array[middleIndex])
+
+		if middleValue < ikey {
+			low = middleIndex + 1
+		} else if middleValue > ikey {
+			high = middleIndex - 1
+		} else {
+			return middleIndex
+		}
+	}
+	return -(low + 1)
+}
+
+

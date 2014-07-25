@@ -22,9 +22,6 @@ type Container interface {
 	//	ToArray() []int
 }
 
-
-
-
 type RoaringBitmap struct {
 	highlowcontainer RoaringArray
 }
@@ -372,7 +369,6 @@ func RangeOfOnes(start, last int) Container {
 	return NewArrayContainerRange(start, last)
 }
 
-
 func fillArrayXOR(container []short, bitmap1, bitmap2 []uint64) {
 	pos := 0
 	if len(bitmap1) != len(bitmap2) {
@@ -388,4 +384,3 @@ func fillArrayXOR(container []short, bitmap1, bitmap2 []uint64) {
 		}
 	}
 }
-

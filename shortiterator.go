@@ -1,6 +1,5 @@
 package goroaring
 
-
 type ShortIterable interface {
 	HasNext() bool
 	Next() short

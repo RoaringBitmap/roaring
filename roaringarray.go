@@ -2,10 +2,9 @@ package goroaring
 
 import (
 	"bytes"
-	"io"
 	"encoding/gob"
+	"io"
 	"log"
-
 )
 
 type Element struct {

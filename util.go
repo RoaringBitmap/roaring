@@ -2,7 +2,7 @@ package goroaring
 
 type short uint16
 
-// should be replaced with optimized assembly instructions 
+// should be replaced with optimized assembly instructions
 func BitCount(i int64) int {
 	x := uint64(i)
 	// bit population count, see
@@ -15,8 +15,7 @@ func BitCount(i int64) int {
 	return int(x >> 56)
 }
 
-
-// should be replaced with optimized assembly instructions 
+// should be replaced with optimized assembly instructions
 func NumberOfTrailingZeros(i int64) int {
 	if i == 0 {
 		return 64
@@ -51,8 +50,6 @@ func NumberOfTrailingZeros(i int64) int {
 	return int(n - int64(uint64(x<<1)>>63))
 }
 
-
-
 func fill(arr []int64, val int64) {
 	for i := range arr {
 		arr[i] = val
@@ -63,7 +60,6 @@ func fillRange(arr []int64, start, end int, val int64) {
 		arr[i] = val
 	}
 }
-
 
 func FillArrayAND(container []short, bitmap1, bitmap2 []int64) {
 	pos := 0
@@ -127,59 +123,4 @@ func MaxLowBit() short {
 
 func ToIntUnsigned(x short) int {
 	return int(x & 0xFFFF)
-}
-
-func AdvanceUntil(
-	array []short,
-	pos int,
-	length int,
-	min short) int {
-	lower := pos + 1
-
-	if lower >= length || array[lower] >= min {
-		return lower
-	}
-
-	spansize := 1
-
-	for lower+spansize < length && array[lower+spansize] < min {
-		spansize *= 2
-	}
-	var upper int
-	if lower+spansize < length {
-		upper = lower + spansize
-	} else {
-		upper = length - 1
-	}
-
-	if array[upper] == min {
-		return upper
-	}
-
-	if array[upper] < min {
-		// means
-		// array
-		// has no
-		// item
-		// >= min
-		// pos = array.length;
-		return length
-	}
-
-	// we know that the next-smallest span was too small
-	lower += (spansize / 2)
-
-	mid := 0
-	for lower+1 != upper {
-		mid = (lower + upper) / 2
-		if array[mid] == min {
-			return mid
-		} else if array[mid] < min {
-			lower = mid
-		} else {
-			upper = mid
-		}
-	}
-	return upper
-
 }

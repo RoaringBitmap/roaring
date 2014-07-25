@@ -1,11 +1,9 @@
 package goroaring
 
-
 type ArrayContainer struct {
 	cardinality int // TODO: In Go, we should not need cardinality, to be replaced by len(content)
 	content     []short
 }
-
 
 func (self *ArrayContainer) FillLeastSignificant16bits(x []int, i, mask int) {
 	for k := 0; k < self.cardinality; k++ {
@@ -23,11 +21,11 @@ func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
 	}
 
 	// determine the span of array indices to be affected^M
-	startIndex := Unsigned_binarySearch(self.content, 0, self.cardinality, short(firstOfRange))
+	startIndex := binarySearch(self.content,  short(firstOfRange))
 	if startIndex < 0 {
 		startIndex = -startIndex - 1
 	}
-	lastIndex := Unsigned_binarySearch(self.content, 0, self.cardinality, short(lastOfRange))
+	lastIndex := binarySearch(self.content,  short(lastOfRange))
 	if lastIndex < 0 {
 		lastIndex = -lastIndex - 2
 	}
@@ -102,7 +100,7 @@ func (self *ArrayContainer) Add(x short) Container {
 		self.cardinality++
 		return self
 	}
-	loc := Unsigned_binarySearch(self.content, 0, self.cardinality, x)
+	loc := binarySearch(self.content, x)
 
 	if loc < 0 {
 		s := self.content
@@ -150,7 +148,8 @@ func (self *ArrayContainer) OrArray(value2 *ArrayContainer) Container {
 	}
 	desiredCapacity := totalCardinality
 	answer := NewArrayContainerCapacity(desiredCapacity)
-	answer.cardinality = UnsignedUnion2by2(value1.content, value2.content, answer.content)
+	Union2by2(value1.content, value2.content, answer.content)
+	answer.cardinality = len(answer.content) // TODO: this should not be needed
 	return answer
 }
 
@@ -198,7 +197,8 @@ func (self *ArrayContainer) XorArray(value2 *ArrayContainer) Container {
 	}
 	desiredCapacity := totalCardinality
 	answer := NewArrayContainerCapacity(desiredCapacity)
-	answer.cardinality = Unsigned_ExclusiveUnionb2by2(value1.content, value2.content, answer.content)
+	ExclusiveUnion2by2(value1.content, value2.content, answer.content)
+	answer.cardinality = len(answer.content) // TODO: this should not be needed
 	return answer
 
 }
@@ -217,7 +217,8 @@ func (self *ArrayContainer) AndNotArray(value2 *ArrayContainer) Container {
 	value1 := self
 	desiredcapacity := value1.GetCardinality()
 	answer := NewArrayContainerCapacity(desiredcapacity)
-	answer.cardinality = Unsigned_difference(value1.content, value2.content, answer.content)
+	Difference(value1.content, value2.content, answer.content)
+	answer.cardinality = len(answer.content) // this should not be needed
 	return answer
 }
 
@@ -234,11 +235,11 @@ func CopyOf(array []short, size int) []short {
 
 func (self *ArrayContainer) Inot(firstOfRange, lastOfRange int) Container {
 	// determine the span of array indices to be affected
-	startIndex := Unsigned_binarySearch(self.content, 0, self.cardinality, short(firstOfRange))
+	startIndex := binarySearch(self.content,  short(firstOfRange))
 	if startIndex < 0 {
 		startIndex = -startIndex - 1
 	}
-	lastIndex := Unsigned_binarySearch(self.content, 0, self.cardinality, short(lastOfRange))
+	lastIndex := binarySearch(self.content, short(lastOfRange))
 	if lastIndex < 0 {
 		lastIndex = -lastIndex - 1 - 1
 	}
@@ -317,10 +318,11 @@ func (self *ArrayContainer) AndArray(value2 *ArrayContainer) *ArrayContainer {
 
 	desiredcapacity := Min(self.GetCardinality(), value2.GetCardinality())
 	answer := NewArrayContainerCapacity(desiredcapacity)
-	answer.cardinality = Unsigned_intersect2by2(
-		self.content, 
+	Intersection2by2(
+		self.content,
 		value2.content,
 		answer.content)
+	answer.cardinality = len(answer.content) // TODO: This should not be needed
 	return answer
 
 }
@@ -334,7 +336,7 @@ func (self *ArrayContainer) Clone() Container {
 	return &ptr
 }
 func (self *ArrayContainer) Contains(x short) bool {
-	return Unsigned_binarySearch(self.content, 0, self.cardinality, x) >= 0
+	return binarySearch(self.content, x) >= 0
 }
 
 func (self *ArrayContainer) loadData(bitmapContainer *BitmapContainer) {
