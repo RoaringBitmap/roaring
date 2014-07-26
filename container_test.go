@@ -53,25 +53,6 @@ func checkContent(c Container, s []short) bool {
 
 	return !fail
 }
-func binarySearch(array []short, k short) int {
-	low := 0
-	high := len(array) - 1
-	ikey := int(k)
-
-	for low <= high {
-		middleIndex := int(uint(low+high) >> 1)
-		middleValue := int(array[middleIndex])
-
-		if middleValue < ikey {
-			low = middleIndex + 1
-		} else if middleValue > ikey {
-			high = middleIndex - 1
-		} else {
-			return middleIndex
-		}
-	}
-	return -(low + 1)
-}
 
 func TestRoaringContainer(t *testing.T) {
 	Convey("NumberOfTrailingZeros", t, func() {
