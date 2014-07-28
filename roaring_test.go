@@ -1300,14 +1300,14 @@ func TestRoaringArray(t *testing.T) {
 	Convey("Test ArrayContainer Add", t, func() {
 		ar := NewArrayContainer()
 		ar.Add(1)
-		So(ar.cardinality, ShouldEqual, 1)
+		So(ar.GetCardinality(), ShouldEqual, 1)
 	})
 
 	Convey("Test ArrayContainer Add wacky", t, func() {
 		ar := NewArrayContainer()
 		ar.Add(0)
 		ar.Add(5000)
-		So(ar.cardinality, ShouldEqual, 2)
+		So(ar.GetCardinality(), ShouldEqual, 2)
 	})
 
 	Convey("Test ArrayContainer Add Reverse", t, func() {
@@ -1315,13 +1315,13 @@ func TestRoaringArray(t *testing.T) {
 		ar.Add(5000)
 		ar.Add(2048)
 		ar.Add(0)
-		So(ar.cardinality, ShouldEqual, 3)
+		So(ar.GetCardinality(), ShouldEqual, 3)
 	})
 
 	Convey("Test BitmapContainer Add ", t, func() {
 		bm := NewBitmapContainer()
 		bm.Add(0)
-		So(bm.cardinality, ShouldEqual, 1)
+		So(bm.GetCardinality(), ShouldEqual, 1)
 	})
 
 }
