@@ -110,14 +110,14 @@ main:
 
 			for {
 				if s1 < s2 {
-					answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, x1.highlowcontainer.Size())
+					answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
 					pos1++
 					if pos1 == length1 {
 						break main
 					}
 					s1 = x1.highlowcontainer.GetKeyAtIndex(pos1)
 				} else if s1 > s2 {
-					answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2, x2.highlowcontainer.Size())
+					answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2)
 					pos2++
 					if pos2 == length2 {
 						break main
@@ -139,9 +139,9 @@ main:
 		}
 	}
 	if pos1 == length1 {
-		answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2, length2)
+		answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2)
 	} else if pos2 == length2 {
-		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, length1)
+		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
 	}
 	return answer
 }
@@ -208,7 +208,7 @@ main:
 			s1 := x1.highlowcontainer.GetKeyAtIndex(pos1)
 			s2 := x2.highlowcontainer.GetKeyAtIndex(pos2)
 			if s1 < s2 {
-				answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, x1.highlowcontainer.Size())
+				answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
 
 				pos1++
 				if pos1 == length1 {
@@ -216,7 +216,7 @@ main:
 				}
 				s1 = x1.highlowcontainer.GetKeyAtIndex(pos1)
 			} else if s1 > s2 {
-				answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2, x2.highlowcontainer.Size())
+				answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2)
 				pos2++
 				if pos2 == length2 {
 					break main
@@ -240,9 +240,9 @@ main:
 		}
 	}
 	if pos1 == length1 {
-		answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2, length2)
+		answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2)
 	} else if pos2 == length2 {
-		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, length1)
+		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
 	}
 	return answer
 }
@@ -265,7 +265,7 @@ main:
 			s2 := x2.highlowcontainer.GetKeyAtIndex(pos2)
 			for {
 				if s1 < s2 {
-					answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, x1.highlowcontainer.Size())
+					answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
 					pos1++
 					if pos1 == length1 {
 						break main
@@ -297,7 +297,7 @@ main:
 		}
 	}
 	if pos2 == length2 {
-		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1, length1)
+		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
 	}
 	return answer
 }

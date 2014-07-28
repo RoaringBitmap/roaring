@@ -83,7 +83,6 @@ func TestRoaringBitmap(t *testing.T) {
 		for k := 10 * 65535; k < 10*65535+5000; k++ {
 			rr2.Add(k)
 		}
-		log.Println("ANDNOT", rr.GetCardinality())
 		correct := AndNot(rr, rr2)
 		rr.AndNot(rr2)
 		So(correct.Equals(rr), ShouldEqual, true)
