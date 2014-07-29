@@ -240,6 +240,7 @@ func (self *ArrayContainer) Inot(firstOfRange, lastOfRange int) Container {
 	}
 	currentValuesInRange := lastIndex - startIndex + 1
 	spanToBeFlipped := lastOfRange - firstOfRange + 1
+
 	newValuesInRange := spanToBeFlipped - currentValuesInRange
 	buffer := make([]short, newValuesInRange)
 	cardinalityChange := newValuesInRange - currentValuesInRange
@@ -251,9 +252,8 @@ func (self *ArrayContainer) Inot(firstOfRange, lastOfRange int) Container {
 			}
 			self.content = CopyOf(self.content, newCardinality)
 		}
-		for pos := len(self.content) - 1; pos > lastIndex; pos-- {
-			self.content[pos+cardinalityChange] = self.content[pos]
-		}
+		copy(self.content[lastIndex+1+cardinalityChange:], self.content[lastIndex+1:len(self.content)-1-lastIndex])
+
 		self.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange)
 	} else { // no expansion needed
 		self.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange)

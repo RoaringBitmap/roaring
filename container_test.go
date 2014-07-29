@@ -118,10 +118,10 @@ func TestRoaringContainer(t *testing.T) {
 		//		edge := 30
 		c := makeContainer(content)
 		c = c.Inot(0, edge)
-		size := (edge + 0) - len(content)
-		s := make([]short, size)
+		size := edge - len(content)
+		s := make([]short, size+1)
 		pos := 0
-		for i := short(0); i < short(edge+0); i++ {
+		for i := short(0); i < short(edge+1); i++ {
 			if binarySearch(content, i) < 0 {
 				s[pos] = i
 				pos++
