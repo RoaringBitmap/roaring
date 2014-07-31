@@ -72,6 +72,12 @@ func (self *RoaringArray) AppendCopy(sa RoaringArray, startingindex int) {
 	self.array = append(self.array, NewElement(sa.array[startingindex].key, sa.array[startingindex].value.Clone()))
 }
 
+func (self *RoaringArray) AppendCopyMany(sa RoaringArray, startingindex, end int) {
+	for i := startingindex; i < end; i++ {
+		self.AppendCopy(sa, i)
+	}
+}
+
 func (self *RoaringArray) AppendCopiesUntil(sa RoaringArray, stoppingKey short) {
 	for i := 0; i < sa.Size(); i++ {
 		if sa.array[i].key >= stoppingKey {

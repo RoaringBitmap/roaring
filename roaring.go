@@ -139,9 +139,9 @@ main:
 		}
 	}
 	if pos1 == length1 {
-		answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2)
+		answer.highlowcontainer.AppendCopyMany(x2.highlowcontainer, pos2, length2)
 	} else if pos2 == length2 {
-		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
+		answer.highlowcontainer.AppendCopyMany(x1.highlowcontainer, pos1, length1)
 	}
 	return answer
 }
@@ -240,9 +240,9 @@ main:
 		}
 	}
 	if pos1 == length1 {
-		answer.highlowcontainer.AppendCopy(x2.highlowcontainer, pos2)
+		answer.highlowcontainer.AppendCopyMany(x2.highlowcontainer, pos2, length2)
 	} else if pos2 == length2 {
-		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
+		answer.highlowcontainer.AppendCopyMany(x1.highlowcontainer, pos1, length1)
 	}
 	return answer
 }
@@ -297,7 +297,7 @@ main:
 		}
 	}
 	if pos2 == length2 {
-		answer.highlowcontainer.AppendCopy(x1.highlowcontainer, pos1)
+		answer.highlowcontainer.AppendCopyMany(x1.highlowcontainer, pos1, length1)
 	}
 	return answer
 }
