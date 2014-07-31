@@ -36,9 +36,9 @@ func (self *RoaringBitmap) Clear() {
 
 func (self *RoaringBitmap) ToArray() []int {
 	array := make([]int, self.GetCardinality())
-
 	pos := 0
 	pos2 := 0
+
 	for pos < self.highlowcontainer.Size() {
 		hs := ToIntUnsigned(self.highlowcontainer.GetKeyAtIndex(pos)) << 16
 		c := self.highlowcontainer.GetContainerAtIndex(pos)
@@ -89,11 +89,27 @@ func (self *RoaringBitmap) GetCardinality() int {
 }
 
 func (self *RoaringBitmap) And(x2 *RoaringBitmap) *RoaringBitmap {
-	return And(self, x2)
+	results := And(self, x2)
+	self.highlowcontainer = results.highlowcontainer
+	return self
+}
+
+func (self *RoaringBitmap) Xor(x2 *RoaringBitmap) *RoaringBitmap {
+	results := Xor(self, x2)
+	self.highlowcontainer = results.highlowcontainer
+	return self
 }
 
 func (self *RoaringBitmap) Or(x2 *RoaringBitmap) *RoaringBitmap {
-	return Or(self, x2)
+	results := Or(self, x2)
+	self.highlowcontainer = results.highlowcontainer
+	return self
+}
+
+func (self *RoaringBitmap) AndNot(x2 *RoaringBitmap) *RoaringBitmap {
+	results := AndNot(self, x2)
+	self.highlowcontainer = results.highlowcontainer
+	return self
 }
 
 func Or(x1, x2 *RoaringBitmap) *RoaringBitmap {
@@ -176,14 +192,15 @@ main:
 
 					if C.GetCardinality() > 0 {
 						answer.highlowcontainer.Append(s1, C)
-						pos1++
-						pos2++
-						if (pos1 == length1) || (pos2 == length2) {
-							break main
-						}
-						s1 = x1.highlowcontainer.GetKeyAtIndex(pos1)
-						s2 = x2.highlowcontainer.GetKeyAtIndex(pos2)
 					}
+					pos1++
+					pos2++
+					if (pos1 == length1) || (pos2 == length2) {
+						break main
+					}
+					s1 = x1.highlowcontainer.GetKeyAtIndex(pos1)
+					s2 = x2.highlowcontainer.GetKeyAtIndex(pos2)
+
 				}
 			}
 		} else {
@@ -191,9 +208,6 @@ main:
 		}
 	}
 	return answer
-}
-func (self *RoaringBitmap) Xor(a *RoaringBitmap) *RoaringBitmap {
-	return Xor(self, a)
 }
 func Xor(x1, x2 *RoaringBitmap) *RoaringBitmap {
 	answer := NewRoaringBitmap()
@@ -245,10 +259,6 @@ main:
 		answer.highlowcontainer.AppendCopyMany(x1.highlowcontainer, pos1, length1)
 	}
 	return answer
-}
-
-func (self *RoaringBitmap) AndNot(x2 *RoaringBitmap) *RoaringBitmap {
-	return AndNot(self, x2)
 }
 
 func AndNot(x1, x2 *RoaringBitmap) *RoaringBitmap {

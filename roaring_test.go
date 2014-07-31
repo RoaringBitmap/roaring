@@ -87,9 +87,6 @@ func TestRoaringBitmap(t *testing.T) {
 		rr.AndNot(rr2)
 		So(correct.Equals(rr), ShouldEqual, true)
 	})
-	if a {
-		return
-	}
 
 	Convey("Test ANDNOT4", t, func() {
 		rb := NewRoaringBitmap()
@@ -102,12 +99,10 @@ func TestRoaringBitmap(t *testing.T) {
 			rb2.Add(i)
 		}
 
-		rb2.GetCardinality() //TODO:why is this present?
-
-		andNotresult := AndNot(rb, rb2)
 		off := AndNot(rb2, rb)
+		andNotresult := AndNot(rb, rb2)
 
-		So(rb.Equals(andNotresult), ShouldEqual, andNotresult)
+		So(rb.Equals(andNotresult), ShouldEqual, true)
 		So(rb2.Equals(off), ShouldEqual, true)
 		rb2.AndNot(rb)
 		So(rb2.Equals(off), ShouldEqual, true)
@@ -129,12 +124,17 @@ func TestRoaringBitmap(t *testing.T) {
 		So(len(array), ShouldEqual, 1)
 		So(array[0], ShouldEqual, 13)
 		rr.And(rr2)
+		log.Println("TODD", rrand.GetCardinality())
+		log.Println("TODD", rr.GetCardinality())
 		array = rr.ToArray()
 
 		So(len(array), ShouldEqual, 1)
 		So(array[0], ShouldEqual, 13)
 	})
 
+	if a {
+		return
+	}
 	Convey("Test AND 2", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
