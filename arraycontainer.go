@@ -345,7 +345,7 @@ func NewArrayContainer() *ArrayContainer {
 
 func NewArrayContainerCapacity(size int) *ArrayContainer {
 	p := new(ArrayContainer)
-	p.content = make([]short, size, size)
+	p.content = make([]short, 0, size)
 	return p
 }
 func NewArrayContainerRange(firstOfRun, lastOfRun int) *ArrayContainer {
