@@ -124,17 +124,12 @@ func TestRoaringBitmap(t *testing.T) {
 		So(len(array), ShouldEqual, 1)
 		So(array[0], ShouldEqual, 13)
 		rr.And(rr2)
-		log.Println("TODD", rrand.GetCardinality())
-		log.Println("TODD", rr.GetCardinality())
 		array = rr.ToArray()
 
 		So(len(array), ShouldEqual, 1)
 		So(array[0], ShouldEqual, 13)
 	})
 
-	if a {
-		return
-	}
 	Convey("Test AND 2", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
@@ -198,8 +193,22 @@ func TestRoaringBitmap(t *testing.T) {
 		So(len(array), ShouldEqual, 1)
 		So(array[0], ShouldEqual, 13)
 	})
+	Convey("Test AND 3a", t, func() {
+		rr := NewRoaringBitmap()
+		rr2 := NewRoaringBitmap()
+		for k := 6 * 65536; k < 6*65536+10000; k++ {
+			rr.Add(k)
+		}
+		for k := 6 * 65536; k < 6*65536+1000; k++ {
+			rr2.Add(k)
+		}
+		result := And(rr, rr2)
+		So(result.GetCardinality(), ShouldEqual, 1000)
+	})
 	Convey("Test AND 3", t, func() {
 		var arrayand [11256]int
+		//393,216
+		pos := 0
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr.Add(k)
@@ -219,9 +228,6 @@ func TestRoaringBitmap(t *testing.T) {
 		for k := 4 * 65536; k < 4*65536+7000; k++ {
 			rr.Add(k)
 		}
-		for k := 6 * 65536; k < 6*65536+10000; k++ {
-			rr.Add(k)
-		}
 		for k := 8 * 65536; k < 8*65536+1000; k++ {
 			rr.Add(k)
 		}
@@ -229,7 +235,6 @@ func TestRoaringBitmap(t *testing.T) {
 			rr.Add(k)
 		}
 
-		pos := 0
 		rr2 := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr2.Add(k)
@@ -246,28 +251,39 @@ func TestRoaringBitmap(t *testing.T) {
 			arrayand[pos] = k
 			pos++
 		}
+		for k := 6 * 65536; k < 6*65536+10000; k++ {
+			rr.Add(k)
+		}
 		for k := 6 * 65536; k < 6*65536+1000; k++ {
 			rr2.Add(k)
 			arrayand[pos] = k
 			pos++
 		}
+
 		for k := 7 * 65536; k < 7*65536+1000; k++ {
 			rr2.Add(k)
 		}
 		for k := 10 * 65536; k < 10*65536+5000; k++ {
 			rr2.Add(k)
 		}
-
 		rrand := And(rr, rr2)
-		arrayres := rrand.ToArray()
 
+		arrayres := rrand.ToArray()
+		ok := true
 		for i, _ := range arrayres {
-			if arrayres[i] != arrayand[i] {
-				log.Println(arrayres[i])
+			if i < len(arrayand) {
+				if arrayres[i] != arrayand[i] {
+					log.Println(i, arrayres[i], arrayand[i])
+					ok = false
+				}
+			} else {
+				log.Println('x', arrayres[i])
+				ok = false
 			}
 		}
 
-		So(arrayand, ShouldEqual, arrayres)
+		So(len(arrayand), ShouldEqual, len(arrayres))
+		So(ok, ShouldEqual, true)
 
 	})
 
@@ -335,7 +351,21 @@ func TestRoaringBitmap(t *testing.T) {
 			So(array[1], ShouldEqual, int16(114))
 			So(array[2], ShouldEqual, int16(115))
 		})
+
 	*/
+
+	Convey("or test", t, func() {
+		rr := NewRoaringBitmap()
+		for k := 0; k < 4000; k++ {
+			rr.Add(k)
+		}
+		rr2 := NewRoaringBitmap()
+		for k := 4000; k < 8000; k++ {
+			rr2.Add(k)
+		}
+		result := Or(rr, rr2)
+		So(result.GetCardinality(), ShouldEqual, rr.GetCardinality()+rr2.GetCardinality())
+	})
 	Convey("basic test", t, func() {
 		rr := NewRoaringBitmap()
 		var a [4002]int
@@ -352,12 +382,15 @@ func TestRoaringBitmap(t *testing.T) {
 		a[pos] = 110000
 		pos++
 		array := rr.ToArray()
+		ok := true
 		for i, _ := range a {
 			if array[i] != a[i] {
 				log.Println("rr : ", array[i], " a : ", a[i])
+				ok = false
 			}
 		}
-		So(array, ShouldEqual, a)
+		So(len(array), ShouldEqual, len(a))
+		So(ok, ShouldEqual, true)
 	})
 
 	Convey("BitmapContainerCardinalityTest", t, func() {
@@ -418,8 +451,8 @@ func TestRoaringBitmap(t *testing.T) {
 					So(rb2.GetCardinality(), ShouldEqual, N)
 				}
 				So(And(rb, rb2).GetCardinality(), ShouldEqual, N/offset)
-				So(Or(rb, rb2).GetCardinality(), ShouldEqual, 2*N-N/offset)
 				So(Xor(rb, rb2).GetCardinality(), ShouldEqual, 2*N-2*N/offset)
+				So(Or(rb, rb2).GetCardinality(), ShouldEqual, 2*N-N/offset)
 			}
 		}
 	})
@@ -467,8 +500,14 @@ func TestRoaringBitmap(t *testing.T) {
 
 		arrayrr := rb.ToArray()
 		arrayrr3 := rb3.ToArray()
-
-		So(arrayrr, ShouldEqual, arrayrr3)
+		ok := true
+		for i, _ := range arrayrr {
+			if arrayrr[i] != arrayrr3[i] {
+				ok = false
+			}
+		}
+		So(len(arrayrr), ShouldEqual, len(arrayrr3))
+		So(ok, ShouldEqual, true)
 	})
 
 	Convey("constainer factory ", t, func() {
@@ -506,6 +545,9 @@ func TestRoaringBitmap(t *testing.T) {
 		rbc = ac3.Clone().(*ArrayContainer).ToBitmapContainer()
 		So(validate(rbc, ac3), ShouldEqual, true)
 	})
+	if a {
+		return
+	}
 	Convey("flipTest1 ", t, func() {
 		rb := NewRoaringBitmap()
 		rb.Flip(100000, 200000) // in-place on empty bitmap

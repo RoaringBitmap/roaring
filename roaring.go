@@ -140,6 +140,7 @@ main:
 					}
 					s2 = x2.highlowcontainer.GetKeyAtIndex(pos2)
 				} else {
+
 					answer.highlowcontainer.Append(s1, x1.highlowcontainer.GetContainerAtIndex(pos1).Or(x2.highlowcontainer.GetContainerAtIndex(pos2)))
 					pos1++
 					pos2++

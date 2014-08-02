@@ -127,11 +127,11 @@ func (self *ArrayContainer) OrArray(value2 *ArrayContainer) Container {
 		bc := NewBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
 			i := uint(ToIntUnsigned(value2.content[k])) >> 6
-			bc.bitmap[i] |= (1 << value2.content[k])
+			bc.bitmap[i] |= (1 << (value2.content[k] % 64))
 		}
 		for k := 0; k < len(self.content); k++ {
-			i := int(uint(ToIntUnsigned(self.content[k])) >> 6)
-			bc.bitmap[i] |= (1 << self.content[k])
+			i := uint(ToIntUnsigned(self.content[k])) >> 6
+			bc.bitmap[i] |= (1 << (self.content[k] % 64))
 		}
 		bc.cardinality = 0
 		for _, k := range bc.bitmap {
@@ -144,7 +144,8 @@ func (self *ArrayContainer) OrArray(value2 *ArrayContainer) Container {
 	}
 	desiredCapacity := totalCardinality
 	answer := NewArrayContainerCapacity(desiredCapacity)
-	Union2by2(value1.content, value2.content, answer.content)
+	nl := Union2by2(value1.content, value2.content, answer.content)
+	answer.content = answer.content[:nl] //what is this voodo?
 	return answer
 }
 
