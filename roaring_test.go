@@ -28,7 +28,6 @@ func FlipRange(start, end int, bs *bitset.BitSet) {
 	}
 }
 func TestRoaringBitmap(t *testing.T) {
-	a := true
 
 	Convey("Test Contains", t, func() {
 		rbm1 := NewRoaringBitmap()
@@ -810,9 +809,6 @@ func TestRoaringBitmap(t *testing.T) {
 			}
 		}
 	})
-	if a {
-		return
-	}
 
 	Convey("ortest", t, func() {
 		rr := NewRoaringBitmap()
@@ -918,8 +914,8 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("ortest3", t, func() {
-		var V1 map[int]bool
-		var V2 map[int]bool
+		V1 := make(map[int]bool)
+		V2 := make(map[int]bool)
 
 		rr := NewRoaringBitmap()
 		rr2 := NewRoaringBitmap()
@@ -1109,8 +1105,8 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("xortest1", t, func() {
-		var V1 map[int]bool
-		var V2 map[int]bool
+		V1 := make(map[int]bool)
+		V2 := make(map[int]bool)
 
 		rr := NewRoaringBitmap()
 		rr2 := NewRoaringBitmap()
