@@ -37,7 +37,9 @@ func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
 	if newCardinality >= ARRAY_DEFAULT_MAX_SIZE {
 		return self.ToBitmapContainer().Not(firstOfRange, lastOfRange)
 	}
-	answer := NewArrayContainerCapacity(newCardinality)
+	//answer := NewArrayContainerCapacity(newCardinality)
+	answer := NewArrayContainer()
+	answer.content = make([]short, newCardinality, newCardinality) //a hack for sure
 
 	copy(answer.content, self.content[:startIndex])
 	outPos := startIndex
@@ -253,7 +255,9 @@ func (self *ArrayContainer) Inot(firstOfRange, lastOfRange int) Container {
 			}
 			self.content = CopyOf(self.content, newCardinality)
 		}
-		copy(self.content[lastIndex+1+cardinalityChange:], self.content[lastIndex+1:len(self.content)-1-lastIndex])
+		base := lastIndex + 1
+		//copy(self.content[lastIndex+1+cardinalityChange:], self.content[lastIndex+1:len(self.content)-1-lastIndex])
+		copy(self.content[lastIndex+1+cardinalityChange:], self.content[base:base+len(self.content)-1-lastIndex])
 
 		self.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange)
 	} else { // no expansion needed
@@ -353,7 +357,7 @@ func NewArrayContainerRange(firstOfRun, lastOfRun int) *ArrayContainer {
 	valuesInRange := lastOfRun - firstOfRun + 1
 	this := NewArrayContainerCapacity(valuesInRange)
 	for i := 0; i < valuesInRange; i++ {
-		this.content[i] = short(firstOfRun + i)
+		this.content = append(this.content, short(firstOfRun+i))
 	}
 	return this
 }

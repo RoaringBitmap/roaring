@@ -324,7 +324,9 @@ func BitmapOf(dat ...int) Bitmap {
 */
 
 func (self *RoaringBitmap) Flip(rangeStart, rangeEnd int) *RoaringBitmap {
-	return Flip(self, rangeStart, rangeEnd)
+	results := Flip(self, rangeStart, rangeEnd)
+	self.highlowcontainer = results.highlowcontainer
+	return self
 }
 func Flip(bm *RoaringBitmap, rangeStart, rangeEnd int) *RoaringBitmap {
 	if rangeStart >= rangeEnd {

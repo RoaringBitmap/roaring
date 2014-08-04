@@ -545,9 +545,6 @@ func TestRoaringBitmap(t *testing.T) {
 		rbc = ac3.Clone().(*ArrayContainer).ToBitmapContainer()
 		So(validate(rbc, ac3), ShouldEqual, true)
 	})
-	if a {
-		return
-	}
 	Convey("flipTest1 ", t, func() {
 		rb := NewRoaringBitmap()
 		rb.Flip(100000, 200000) // in-place on empty bitmap
@@ -813,6 +810,9 @@ func TestRoaringBitmap(t *testing.T) {
 			}
 		}
 	})
+	if a {
+		return
+	}
 
 	Convey("ortest", t, func() {
 		rr := NewRoaringBitmap()

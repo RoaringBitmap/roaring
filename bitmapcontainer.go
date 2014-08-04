@@ -142,7 +142,13 @@ func (self *BitmapContainer) NotBitmap(answer *BitmapContainer, firstOfRange, la
 		//System.arraycopy(self.bitmap, 0, answer.bitmap, 0, rangeFirstWord);
 		copy(answer.bitmap, self.bitmap[:rangeFirstWord])
 		//System.arraycopy(self.bitmap, rangeLastWord + 1, answer.bitmap, rangeLastWord + 1, len(self.bitmap) - (rangeLastWord + 1))
-		copy(answer.bitmap[rangeLastWord+1:], self.bitmap[rangeLastWord+1:len(self.bitmap)-(rangeLastWord+1)])
+		base := rangeLastWord + 1
+		sz := len(self.bitmap) - base
+		if sz > 0 {
+			copy(answer.bitmap[base:], self.bitmap[base:base+sz])
+		}
+
+		//	copy(answer.bitmap[rangeLastWord+1:], self.bitmap[rangeLastWord+1:len(self.bitmap)-(rangeLastWord+1)])
 
 	}
 
@@ -261,7 +267,9 @@ func (self *BitmapContainer) XorBitmap(value2 *BitmapContainer) Container {
 		return answer
 	}
 	ac := NewArrayContainerCapacity(newCardinality)
+	ac.content = make([]short, newCardinality)
 	FillArrayXOR(ac.content, self.bitmap, value2.bitmap)
+	ac.content = ac.content[:newCardinality]
 	return ac
 }
 
@@ -299,7 +307,9 @@ func (self *BitmapContainer) AndBitmap(value2 *BitmapContainer) Container {
 		return answer
 	}
 	ac := NewArrayContainerCapacity(newcardinality)
+	ac.content = make([]short, newcardinality)
 	FillArrayAND(ac.content, self.bitmap, value2.bitmap)
+	ac.content = ac.content[:newcardinality] //not sure why i need this
 	return ac
 
 }
@@ -341,6 +351,8 @@ func (self *BitmapContainer) AndNotBitmap(value2 *BitmapContainer) Container {
 	}
 	ac := NewArrayContainerCapacity(newCardinality)
 	FillArrayANDNOT(ac.content, self.bitmap, value2.bitmap)
+	ac.content = ac.content[:len(self.bitmap)]
+
 	return ac
 }
 

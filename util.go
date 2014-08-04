@@ -66,7 +66,7 @@ func FillArrayAND(container []short, bitmap1, bitmap2 []int64) {
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
-	for k := 0; k < len(bitmap1); k++ {
+	for k, _ := range bitmap1 {
 		bitset := bitmap1[k] & bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
@@ -82,7 +82,7 @@ func FillArrayANDNOT(container []short, bitmap1, bitmap2 []int64) {
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
-	for k := 0; k < len(bitmap1); k++ {
+	for k, _ := range bitmap1 {
 		bitset := bitmap1[k] &^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
