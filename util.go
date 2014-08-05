@@ -5,8 +5,6 @@ const (
 	max_capacity           = 1 << 16
 )
 
-
-
 // should be replaced with optimized assembly instructions
 func bitCount(i int64) int {
 	x := uint64(i)
@@ -75,7 +73,7 @@ func fillArrayAND(container []uint16, bitmap1, bitmap2 []int64) {
 		bitset := bitmap1[k] & bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos]=  uint16((k*64 + bitCount(t-1)))
+			container[pos] = uint16((k*64 + bitCount(t-1)))
 			pos = pos + 1
 			bitset ^= t
 		}
@@ -91,7 +89,7 @@ func fillArrayANDNOT(container []uint16, bitmap1, bitmap2 []int64) {
 		bitset := bitmap1[k] &^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos]=  uint16((k*64 + bitCount(t-1)))
+			container[pos] = uint16((k*64 + bitCount(t-1)))
 			pos = pos + 1
 			bitset ^= t
 		}
@@ -107,7 +105,7 @@ func fillArrayXOR(container []uint16, bitmap1, bitmap2 []int64) {
 		bitset := bitmap1[k] ^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos]=  uint16((k*64 + bitCount(t-1)))
+			container[pos] = uint16((k*64 + bitCount(t-1)))
 			pos = pos + 1
 			bitset ^= t
 		}

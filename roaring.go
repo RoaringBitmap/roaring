@@ -1,6 +1,10 @@
 // roaring is an implementation of Roaring Bitmaps in Go. See http://roaringbitmap.org for details.
 package roaring
 
+import (
+	"bytes"
+	"strconv"
+)
 
 type RoaringBitmap struct {
 	highlowcontainer roaringArray
@@ -28,6 +32,67 @@ func (self *RoaringBitmap) ToArray() []int {
 	}
 	return array
 }
+
+type IntIterable interface {
+	HasNext() bool
+	Next() int
+}
+
+type intIterator struct {
+	pos              int
+	hs               int
+	iter             shortIterable
+	highlowcontainer *roaringArray
+}
+
+func (self *intIterator) HasNext() bool {
+	return self.pos < self.highlowcontainer.size()
+}
+
+func (self *intIterator) init() {
+	if self.highlowcontainer.size() > self.pos {
+		self.iter = self.highlowcontainer.getContainerAtIndex(self.pos).getShortIterator()
+		self.hs = toIntUnsigned(self.highlowcontainer.getKeyAtIndex(self.pos)) << 16
+	}
+}
+
+func (self *intIterator) Next() int {
+	x := toIntUnsigned(self.iter.next()) | self.hs
+	if !self.iter.hasNext() {
+		self.pos = self.pos + 1
+		self.init()
+	}
+	return x
+}
+
+func newIntIterator(a *RoaringBitmap) *intIterator {
+	p := new(intIterator)
+	p.pos = 0
+	p.highlowcontainer = &a.highlowcontainer
+	p.init()
+	return p
+}
+
+func (rb *RoaringBitmap) String() string {
+	// inspired by https://github.com/fzandona/goroar/blob/master/roaringbitmap.go
+	var buffer bytes.Buffer
+	start := []byte("{")
+	buffer.Write(start)
+	i := rb.Iterator()
+	for i.HasNext() {
+		buffer.WriteString(strconv.Itoa(int(i.Next())))
+		if i.HasNext() { // todo: optimize
+			buffer.WriteString(",")
+		}
+	}
+	buffer.WriteString("}")
+	return buffer.String()
+}
+
+func (self *RoaringBitmap) Iterator() IntIterable {
+	return newIntIterator(self)
+}
+
 func (self *RoaringBitmap) Clone() *RoaringBitmap {
 	ptr := new(RoaringBitmap)
 	ptr.highlowcontainer = *self.highlowcontainer.clone()
@@ -293,7 +358,6 @@ main:
 	return answer
 }
 
-
 func BitmapOf(dat ...int) *RoaringBitmap {
 	ans := NewRoaringBitmap()
 	for _, i := range dat {
@@ -301,7 +365,6 @@ func BitmapOf(dat ...int) *RoaringBitmap {
 	}
 	return ans
 }
-
 
 func (self *RoaringBitmap) Flip(rangeStart, rangeEnd int) *RoaringBitmap {
 	results := Flip(self, rangeStart, rangeEnd)
@@ -354,4 +417,3 @@ func Flip(bm *RoaringBitmap, rangeStart, rangeEnd int) *RoaringBitmap {
 
 	return answer
 }
-

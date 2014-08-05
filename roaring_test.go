@@ -5,8 +5,8 @@ import (
 	"github.com/willf/bitset"
 	"log"
 	"math/rand"
-	"testing"
 	"strconv"
+	"testing"
 )
 
 // some extra tests

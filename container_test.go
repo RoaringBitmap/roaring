@@ -1,9 +1,9 @@
 package roaring
 
 import (
+	. "github.com/smartystreets/goconvey/convey"
 	"log"
 	"testing"
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func makeContainer(ss []uint16) container {

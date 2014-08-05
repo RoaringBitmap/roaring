@@ -24,14 +24,12 @@ type container interface {
 }
 
 func rangeOfOnes(start, last int) container {
-	if (last-start+1) > array_default_max_size {
+	if (last - start + 1) > array_default_max_size {
 		return newBitmapContainerwithRange(start, last)
 	}
 
 	return newArrayContainerRange(start, last)
 }
-
-
 
 type element struct {
 	key   uint16

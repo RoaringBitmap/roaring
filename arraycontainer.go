@@ -339,7 +339,7 @@ func (self *arrayContainer) contains(x uint16) bool {
 }
 
 func (self *arrayContainer) loadData(bitmapContainer *bitmapContainer) {
-	self.content = make([]uint16, bitmapContainer.cardinality,bitmapContainer.cardinality)
+	self.content = make([]uint16, bitmapContainer.cardinality, bitmapContainer.cardinality)
 	bitmapContainer.fillArray(self.content)
 }
 func newArrayContainer() *arrayContainer {
@@ -354,9 +354,9 @@ func newArrayContainerCapacity(size int) *arrayContainer {
 }
 
 func newArrayContainerSize(size int) *arrayContainer {
-p := new(arrayContainer)
-p.content = make([]uint16, size, size)
-return p
+	p := new(arrayContainer)
+	p.content = make([]uint16, size, size)
+	return p
 }
 
 func newArrayContainerRange(firstOfRun, lastOfRun int) *arrayContainer {

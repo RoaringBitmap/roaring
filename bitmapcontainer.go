@@ -1,6 +1,5 @@
 package roaring
 
-
 type bitmapContainer struct {
 	cardinality int
 	bitmap      []int64
@@ -377,7 +376,7 @@ func (self *bitmapContainer) fillArray(container []uint16) {
 		bitset := self.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos]=  uint16((k*64 + bitCount(t-1)))
+			container[pos] = uint16((k*64 + bitCount(t-1)))
 			pos = pos + 1
 			bitset ^= t
 		}
