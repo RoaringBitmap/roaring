@@ -1,3 +1,4 @@
+// roaring is an implementation of Roaring Bitmaps in Go. See http://roaringbitmap.org for details.
 package roaring
 
 
