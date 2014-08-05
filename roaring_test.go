@@ -1,27 +1,65 @@
 package goroaring
 
 import (
+	. "github.com/smartystreets/goconvey/convey"
+	"github.com/willf/bitset"
 	"log"
 	"math/rand"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/willf/bitset"
+	"strconv"
 )
 
-/*
-interface{
-	Add(i int)
-	Contains(i int) bool
-	AndNot(r Bitmap) Bitmap
-	And(r Bitmap) Bitmap
-	Xor(r Bitmap) Bitmap
-	Or(r Bitmap) Bitmap
-	GetCardinality() int
-        ToArray()[]int
-	Equals(b Bitmap) bool
+// some extra tests
+func TestRoaringBitmapExtra(t *testing.T) {
+	for N := 1; N <= 65536; N *= 2 {
+		Convey("extra tests"+strconv.Itoa(N), t, func() {
+			for gap := 1; gap <= 65536; gap *= 2 {
+				bs1 := bitset.New(0)
+				rb1 := NewRoaringBitmap()
+				for x := 0; x <= N; x += gap {
+					bs1.Set(uint(x))
+					rb1.Add(x)
+				}
+				So(bs1.Count(), ShouldEqual, rb1.GetCardinality())
+				So(equals(bs1, rb1), ShouldEqual, true)
+				for offset := 1; offset <= gap; offset *= 2 {
+					bs2 := bitset.New(0)
+					rb2 := NewRoaringBitmap()
+					for x := 0; x <= N; x += gap {
+						bs2.Set(uint(x + offset))
+						rb2.Add(x + offset)
+					}
+					So(bs2.Count(), ShouldEqual, rb2.GetCardinality())
+					So(equals(bs2, rb2), ShouldEqual, true)
+
+					clonebs1 := bs1.Clone()
+					clonebs1.InPlaceIntersection(bs2)
+					if !equals(clonebs1, And(rb1, rb2)) {
+						t := rb1.Clone()
+						t.And(rb2)
+						So(equals(clonebs1, t), ShouldEqual, true)
+					}
+
+					// testing OR
+					clonebs1 = bs1.Clone()
+					clonebs1.InPlaceUnion(bs2)
+
+					So(equals(clonebs1, Or(rb1, rb2)), ShouldEqual, true)
+					// testing XOR
+					clonebs1 = bs1.Clone()
+					clonebs1.InPlaceSymmetricDifference(bs2)
+					So(equals(clonebs1, Xor(rb1, rb2)), ShouldEqual, true)
+
+					//testing NOTAND
+					clonebs1 = bs1.Clone()
+					clonebs1.Difference(bs2)
+					So(equals(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
+				}
+			}
+		})
+	}
 }
-*/
+
 func FlipRange(start, end int, bs *bitset.BitSet) {
 	for i := start; i < end; i++ {
 		bs.Flip(uint(i))
@@ -825,10 +863,6 @@ func TestRoaringBitmap(t *testing.T) {
 		rror := Or(rr, rr2)
 
 		array := rror.ToArray()
-		//arrayrr := rr.ToArray()
-
-		//Assert.assertTrue(Arrays.equals(array, arrayrr));
-		//So(equals(bs, rb), ShouldEqual, true)
 
 		rr.Or(rr2)
 		arrayirr := rr.ToArray()
@@ -972,11 +1006,6 @@ func TestRoaringBitmap(t *testing.T) {
 
 		rror := Or(rr, rr2)
 		valide := true
-
-		// Si tous les elements de rror sont dans V1 et que tous les
-		// elements de
-		// V1 sont dans rror(V2)
-		// alors V1 == rror
 
 		for _, k := range rror.ToArray() {
 			_, found := V1[k]
@@ -1168,11 +1197,6 @@ func TestRoaringBitmap(t *testing.T) {
 		rrxor := Xor(rr, rr2)
 		valide := true
 
-		// Si tous les elements de rror sont dans V1 et que tous les
-		// elements de
-		// V1 sont dans rror(V2)
-		// alors V1 == rror
-
 		for _, i := range rrxor.ToArray() {
 			_, found := V1[i]
 			if !found {
@@ -1266,11 +1290,10 @@ func rTest(N int) {
 			clonebs1.InPlaceSymmetricDifference(bs2)
 			So(equals(clonebs1, Xor(rb1, rb2)), ShouldEqual, true)
 
-			// testing NOTAND
-			//clonebs1 = bs1.Clone()
-			//clonebs1.AndNot(bs2)
-			//So(equals(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
-
+			//testing NOTAND
+			clonebs1 = bs1.Clone()
+			clonebs1.Difference(bs2)
+			So(equals(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
 		}
 	}
 }

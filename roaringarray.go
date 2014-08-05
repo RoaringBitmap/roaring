@@ -7,6 +7,22 @@ import (
 	"log"
 )
 
+type Container interface {
+	Clone() Container
+	And(Container) Container
+	AndNot(Container) Container
+	Inot(firstOfRange, lastOfRange int) Container
+	GetCardinality() int
+	Add(short) Container
+	Not(start, final int) Container
+	Xor(r Container) Container
+	GetShortIterator() ShortIterable
+	Contains(i short) bool
+	Equals(i interface{}) bool
+	FillLeastSignificant16bits(array []int, i, mask int)
+	Or(r Container) Container
+}
+
 type Element struct {
 	key   short
 	value Container

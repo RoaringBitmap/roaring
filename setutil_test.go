@@ -3,13 +3,10 @@ package goroaring
 // to run just these tests: go test -run TestSetUtil*
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestSetUtilDifference(t *testing.T) {
-	fmt.Println("testing difference") // TODO: remove these printouts eventually
-
 	data1 := []short{0, 1, 2, 3, 4, 9}
 	data2 := []short{2, 3, 4, 5, 8, 9, 11}
 	result := make([]short, 0, len(data1)+len(data2))
@@ -28,7 +25,6 @@ func TestSetUtilDifference(t *testing.T) {
 }
 
 func TestSetUtilUnion(t *testing.T) {
-	fmt.Println("testing union")
 	data1 := []short{0, 1, 2, 3, 4, 9}
 	data2 := []short{2, 3, 4, 5, 8, 9, 11}
 	result := make([]short, 0, len(data1)+len(data2))
@@ -46,7 +42,6 @@ func TestSetUtilUnion(t *testing.T) {
 }
 
 func TestSetUtilExclusiveUnion(t *testing.T) {
-	fmt.Println("testing exclusive union")
 	data1 := []short{0, 1, 2, 3, 4, 9}
 	data2 := []short{2, 3, 4, 5, 8, 9, 11}
 	result := make([]short, 0, len(data1)+len(data2))
@@ -64,7 +59,6 @@ func TestSetUtilExclusiveUnion(t *testing.T) {
 }
 
 func TestSetUtilIntersection(t *testing.T) {
-	fmt.Println("testing intersection")
 	data1 := []short{0, 1, 2, 3, 4, 9}
 	data2 := []short{2, 3, 4, 5, 8, 9, 11}
 	result := make([]short, 0, len(data1)+len(data2))
@@ -104,7 +98,6 @@ func TestSetUtilIntersection(t *testing.T) {
 }
 
 func TestSetUtilBinarySearch(t *testing.T) {
-	fmt.Println("testing binary search")
 	data := make([]short, 256)
 	for i := range data {
 		data[i] = short(2 * i)

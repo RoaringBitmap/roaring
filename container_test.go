@@ -3,13 +3,11 @@ package goroaring
 import (
 	"log"
 	"testing"
-
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func makeContainer(ss []short) Container {
 	c := NewArrayContainer()
-	//	c := NewBitmapContainer()
 	for _, s := range ss {
 		c.Add(s)
 	}

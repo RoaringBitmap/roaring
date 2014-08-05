@@ -1,5 +1,6 @@
 package goroaring
 
+
 type BitmapContainer struct {
 	cardinality int
 	bitmap      []int64
@@ -214,7 +215,6 @@ func (self *BitmapContainer) OrArray(value2 *ArrayContainer) Container {
 	answer := self.Clone().(*BitmapContainer)
 	for k := 0; k < value2.GetCardinality(); k++ {
 		i := uint(ToIntUnsigned(value2.content[k])) >> 6
-		//java	answer.cardinality += ((~answer.bitmap[i]) & (1 << (value2.content[k] %64))) >>> (value2.content[k]%64);
 		answer.cardinality += int(uint(^answer.bitmap[i]&(1<<(value2.content[k]%64))) >> (value2.content[k] % 64))
 		answer.bitmap[i] = answer.bitmap[i] | (1 << (value2.content[k] % 64))
 	}
@@ -266,8 +266,7 @@ func (self *BitmapContainer) XorBitmap(value2 *BitmapContainer) Container {
 		answer.cardinality = newCardinality
 		return answer
 	}
-	ac := NewArrayContainerCapacity(newCardinality)
-	ac.content = make([]short, newCardinality)
+	ac := NewArrayContainerSize(newCardinality)
 	FillArrayXOR(ac.content, self.bitmap, value2.bitmap)
 	ac.content = ac.content[:newCardinality]
 	return ac
@@ -306,8 +305,7 @@ func (self *BitmapContainer) AndBitmap(value2 *BitmapContainer) Container {
 		answer.cardinality = newcardinality
 		return answer
 	}
-	ac := NewArrayContainerCapacity(newcardinality)
-	ac.content = make([]short, newcardinality)
+	ac := NewArrayContainerSize(newcardinality)
 	FillArrayAND(ac.content, self.bitmap, value2.bitmap)
 	ac.content = ac.content[:newcardinality] //not sure why i need this
 	return ac
@@ -349,10 +347,8 @@ func (self *BitmapContainer) AndNotBitmap(value2 *BitmapContainer) Container {
 		answer.cardinality = newCardinality
 		return answer
 	}
-	ac := NewArrayContainerCapacity(newCardinality)
+	ac := NewArrayContainerSize(newCardinality)
 	FillArrayANDNOT(ac.content, self.bitmap, value2.bitmap)
-	ac.content = ac.content[:len(self.bitmap)]
-
 	return ac
 }
 
@@ -375,14 +371,14 @@ func (self *BitmapContainer) ToArrayContainer() *ArrayContainer {
 	ac.loadData(self)
 	return ac
 }
-func (self *BitmapContainer) fillArray(array []short) {
+func (self *BitmapContainer) fillArray(container []short) {
 	pos := 0
 	for k := 0; k < len(self.bitmap); k++ {
 		bitset := self.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			array[pos] = short((k * 64) + BitCount(t-1))
-			pos++
+			container[pos]=  short((k*64 + BitCount(t-1)))
+			pos = pos + 1
 			bitset ^= t
 		}
 	}
@@ -394,7 +390,6 @@ func (self *BitmapContainer) NextSetBit(i int) int {
 		return -1
 	}
 	w := self.bitmap[x]
-	//w = int64(uint64(w) >> uint(i))
 	w = int64(int64(w) >> uint(i%64))
 	if w != 0 {
 		return i + NumberOfTrailingZeros(w)

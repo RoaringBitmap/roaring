@@ -340,7 +340,7 @@ func (self *ArrayContainer) Contains(x short) bool {
 }
 
 func (self *ArrayContainer) loadData(bitmapContainer *BitmapContainer) {
-	self.content = make([]short, bitmapContainer.cardinality)
+	self.content = make([]short, bitmapContainer.cardinality,bitmapContainer.cardinality)
 	bitmapContainer.fillArray(self.content)
 }
 func NewArrayContainer() *ArrayContainer {
@@ -353,6 +353,13 @@ func NewArrayContainerCapacity(size int) *ArrayContainer {
 	p.content = make([]short, 0, size)
 	return p
 }
+
+func NewArrayContainerSize(size int) *ArrayContainer {
+p := new(ArrayContainer)
+p.content = make([]short, size, size)
+return p
+}
+
 func NewArrayContainerRange(firstOfRun, lastOfRun int) *ArrayContainer {
 	valuesInRange := lastOfRun - firstOfRun + 1
 	this := NewArrayContainerCapacity(valuesInRange)

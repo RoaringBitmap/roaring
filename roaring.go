@@ -5,23 +5,6 @@ const (
 	MAX_CAPACITY           = 1 << 16
 )
 
-type Container interface {
-	Clone() Container
-	And(Container) Container
-	AndNot(Container) Container
-	Inot(firstOfRange, lastOfRange int) Container
-	GetCardinality() int
-	Add(short) Container
-	Not(start, final int) Container
-	Xor(r Container) Container
-	GetShortIterator() ShortIterable
-	Contains(i short) bool
-	Equals(i interface{}) bool
-	FillLeastSignificant16bits(array []int, i, mask int)
-	Or(r Container) Container
-	//	ToArray() []int
-}
-
 type RoaringBitmap struct {
 	highlowcontainer RoaringArray
 }
@@ -313,21 +296,22 @@ main:
 	return answer
 }
 
-/*
-func BitmapOf(dat ...int) Bitmap {
+
+func BitmapOf(dat ...int) *RoaringBitmap {
 	ans := NewRoaringBitmap()
 	for _, i := range dat {
 		ans.Add(i)
 	}
 	return ans
 }
-*/
+
 
 func (self *RoaringBitmap) Flip(rangeStart, rangeEnd int) *RoaringBitmap {
 	results := Flip(self, rangeStart, rangeEnd)
 	self.highlowcontainer = results.highlowcontainer
 	return self
 }
+
 func Flip(bm *RoaringBitmap, rangeStart, rangeEnd int) *RoaringBitmap {
 	if rangeStart >= rangeEnd {
 		return bm.Clone()
@@ -375,7 +359,7 @@ func Flip(bm *RoaringBitmap, rangeStart, rangeEnd int) *RoaringBitmap {
 }
 
 func RangeOfOnes(start, last int) Container {
-	if (last - start + 1) > ARRAY_DEFAULT_MAX_SIZE {
+	if (last-start+1) > ARRAY_DEFAULT_MAX_SIZE {
 		return NewBitmapContainerwithRange(start, last)
 	}
 
@@ -391,7 +375,7 @@ func fillArrayXOR(container []short, bitmap1, bitmap2 []uint64) {
 		bitset := bitmap1[k] ^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = short(k*64 + BitCount(int64(t)-1))
+			container[pos] = short(k*64+BitCount(int64(t)-1))
 			pos++
 			bitset ^= t
 		}

@@ -1,5 +1,7 @@
 package goroaring
 
+
+
 type short uint16
 
 // should be replaced with optimized assembly instructions
@@ -62,48 +64,48 @@ func fillRange(arr []int64, start, end int, val int64) {
 }
 
 func FillArrayAND(container []short, bitmap1, bitmap2 []int64) {
-	pos := 0
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	pos := 0
 	for k, _ := range bitmap1 {
 		bitset := bitmap1[k] & bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = short((k*64 + BitCount(t-1)))
-			pos++
+			container[pos]=  short((k*64 + BitCount(t-1)))
+			pos = pos + 1
 			bitset ^= t
 		}
 	}
 }
 
 func FillArrayANDNOT(container []short, bitmap1, bitmap2 []int64) {
-	pos := 0
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	pos := 0
 	for k, _ := range bitmap1 {
 		bitset := bitmap1[k] &^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = short((k*64 + BitCount(t-1)))
-			pos++
+			container[pos]=  short((k*64 + BitCount(t-1)))
+			pos = pos + 1
 			bitset ^= t
 		}
 	}
 }
 
 func FillArrayXOR(container []short, bitmap1, bitmap2 []int64) {
-	pos := 0
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	pos := 0
 	for k := 0; k < len(bitmap1); k++ {
 		bitset := bitmap1[k] ^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = short((k*64 + BitCount(t-1)))
-			pos++
+			container[pos]=  short((k*64 + BitCount(t-1)))
+			pos = pos + 1
 			bitset ^= t
 		}
 	}

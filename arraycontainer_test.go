@@ -3,12 +3,10 @@ package goroaring
 // to run just these tests: go test -run TestArrayContainer*
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestArrayContainerSetAndGet(t *testing.T) {
-	fmt.Println("testing set get") // TODO: remove these printouts eventually
 	v := Container(NewArrayContainer())
 	v = v.Add(100)
 	if v.GetCardinality() != 1 {
@@ -29,7 +27,6 @@ func TestArrayContainerSetAndGet(t *testing.T) {
 }
 
 func TestArrayContainerMassiveSetAndGet(t *testing.T) {
-	fmt.Println("testing massive set get") // TODO: remove these printouts eventually
 	v := Container(NewArrayContainer())
 	for j := 0; j <= ARRAY_DEFAULT_MAX_SIZE; j++ {
 
