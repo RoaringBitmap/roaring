@@ -1,4 +1,4 @@
-package goroaring
+package roaring
 
 const (
 	ARRAY_DEFAULT_MAX_SIZE = 4096

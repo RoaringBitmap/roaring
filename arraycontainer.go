@@ -1,4 +1,4 @@
-package goroaring
+package roaring
 
 type ArrayContainer struct {
 	content []short

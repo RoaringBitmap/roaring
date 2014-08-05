@@ -1,4 +1,4 @@
-package goroaring
+package roaring
 
 import (
 	. "github.com/smartystreets/goconvey/convey"

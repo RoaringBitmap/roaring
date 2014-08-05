@@ -1,4 +1,4 @@
-package goroaring
+package roaring
 
 func Equal(a, b []short) bool {
 	if len(a) != len(b) {
