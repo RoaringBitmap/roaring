@@ -315,7 +315,7 @@ func min(a, b int) int {
 }
 func (self *arrayContainer) andArray(value2 *arrayContainer) *arrayContainer {
 
-	desiredcapacity := Min(self.getCardinality(), value2.getCardinality())
+	desiredcapacity := min(self.getCardinality(), value2.getCardinality())
 	answer := newArrayContainerCapacity(desiredcapacity)
 	length := intersection2by2(
 		self.content,

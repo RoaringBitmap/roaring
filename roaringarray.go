@@ -24,7 +24,7 @@ type container interface {
 }
 
 func rangeOfOnes(start, last int) container {
-	if (last-start+1) > ARRAY_DEFAULT_MAX_SIZE {
+	if (last-start+1) > array_default_max_size {
 		return newBitmapContainerwithRange(start, last)
 	}
 

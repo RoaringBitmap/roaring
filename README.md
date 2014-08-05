@@ -16,4 +16,4 @@ This code is licensed under Apache License, Version 2.0 (ASL2.0).
 
 ### Documentation
 
-Current documentation is available at http://godoc.org/github.com/tgruben/roaring 
+Current documentation is available at http://godoc.org/github.com/tgruben/roaring
