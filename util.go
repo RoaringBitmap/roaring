@@ -1,4 +1,4 @@
-package goroaring
+package roaring
 
 type short uint16
 

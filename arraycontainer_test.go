@@ -1,4 +1,4 @@
-package goroaring
+package roaring
 
 // to run just these tests: go test -run TestArrayContainer*
 
