@@ -5,5 +5,8 @@ This is a go port of Daniel Lemire's bitmap compression algorithm.  The origin j
 
 http://arxiv.org/abs/1402.6407
 
+For an alternative implementation in Go, see https://github.com/fzandona/goroar
+
+
 This code is licensed under Apache License, Version 2.0 (ASL2.0). 
 

@@ -1,6 +1,6 @@
 package roaring
 
-func Equal(a, b []short) bool {
+func equal(a, b []uint16) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -12,7 +12,7 @@ func Equal(a, b []short) bool {
 	return true
 }
 
-func Difference(set1 []short, set2 []short, buffer []short) int {
+func difference(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	if 0 == len(set2) {
 		for k := 0; k < len(set1); k++ {
 			buffer[k] = set1[k]
@@ -62,7 +62,7 @@ func Difference(set1 []short, set2 []short, buffer []short) int {
 
 }
 
-func ExclusiveUnion2by2(set1 []short, set2 []short, buffer []short) int {
+func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	if 0 == len(set2) {
 		buffer = buffer[:len(set1)]
 		copy(buffer, set1[:len(set1)])
@@ -78,7 +78,7 @@ func ExclusiveUnion2by2(set1 []short, set2 []short, buffer []short) int {
 	k2 := 0
 	buffer = buffer[:cap(buffer)]
 	for {
-		if ToIntUnsigned(set1[k1]) < ToIntUnsigned(set2[k2]) {
+		if toIntUnsigned(set1[k1]) < toIntUnsigned(set2[k2]) {
 			buffer[pos] = set1[k1]
 			pos++
 			k1++
@@ -89,7 +89,7 @@ func ExclusiveUnion2by2(set1 []short, set2 []short, buffer []short) int {
 				}
 				break
 			}
-		} else if ToIntUnsigned(set1[k1]) == ToIntUnsigned(set2[k2]) {
+		} else if toIntUnsigned(set1[k1]) == toIntUnsigned(set2[k2]) {
 			k1++
 			k2++
 			if k1 >= len(set1) {
@@ -122,7 +122,7 @@ func ExclusiveUnion2by2(set1 []short, set2 []short, buffer []short) int {
 	return pos
 }
 
-func Union2by2(set1 []short, set2 []short, buffer []short) int {
+func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	pos := 0
 	k1 := 0
 	k2 := 0
@@ -138,7 +138,7 @@ func Union2by2(set1 []short, set2 []short, buffer []short) int {
 	}
 	buffer = buffer[:cap(buffer)]
 	for {
-		if ToIntUnsigned(set1[k1]) < ToIntUnsigned(set2[k2]) {
+		if toIntUnsigned(set1[k1]) < toIntUnsigned(set2[k2]) {
 			buffer[pos] = set1[k1]
 			pos++
 			k1++
@@ -149,7 +149,7 @@ func Union2by2(set1 []short, set2 []short, buffer []short) int {
 				}
 				break
 			}
-		} else if ToIntUnsigned(set1[k1]) == ToIntUnsigned(set2[k2]) {
+		} else if toIntUnsigned(set1[k1]) == toIntUnsigned(set2[k2]) {
 			buffer[pos] = set1[k1]
 			pos++
 			k1++
@@ -184,10 +184,10 @@ func Union2by2(set1 []short, set2 []short, buffer []short) int {
 	return pos
 }
 
-func Intersection2by2(
-	set1 []short,
-	set2 []short,
-	buffer []short) int {
+func intersection2by2(
+	set1 []uint16,
+	set2 []uint16,
+	buffer []uint16) int {
 
 	if len(set1)*64 < len(set2) {
 		return onesidedgallopingintersect2by2(set1, set2, buffer)
@@ -199,9 +199,9 @@ func Intersection2by2(
 }
 
 func localintersect2by2(
-	set1 []short,
-	set2 []short,
-	buffer []short) int {
+	set1 []uint16,
+	set2 []uint16,
+	buffer []uint16) int {
 
 	if (0 == len(set1)) || (0 == len(set2)) {
 		return 0
@@ -252,11 +252,11 @@ mainwhile:
 	return pos
 }
 
-func AdvanceUntil(
-	array []short,
+func advanceUntil(
+	array []uint16,
 	pos int,
 	length int,
-	min short) int {
+	min uint16) int {
 	lower := pos + 1
 
 	if lower >= length || array[lower] >= min {
@@ -308,9 +308,9 @@ func AdvanceUntil(
 }
 
 func onesidedgallopingintersect2by2(
-	smallset []short,
-	largeset []short,
-	buffer []short) int {
+	smallset []uint16,
+	largeset []uint16,
+	buffer []uint16) int {
 
 	if 0 == len(smallset) {
 		return 0
@@ -323,7 +323,7 @@ mainwhile:
 
 	for {
 		if largeset[k1] < smallset[k2] {
-			k1 = AdvanceUntil(largeset, k1, len(largeset), smallset[k2])
+			k1 = advanceUntil(largeset, k1, len(largeset), smallset[k2])
 			if k1 == len(largeset) {
 				break mainwhile
 			}
@@ -342,7 +342,7 @@ mainwhile:
 				break
 			}
 
-			k1 = AdvanceUntil(largeset, k1, len(largeset), smallset[k2])
+			k1 = advanceUntil(largeset, k1, len(largeset), smallset[k2])
 			if k1 == len(largeset) {
 				break mainwhile
 			}
@@ -353,7 +353,7 @@ mainwhile:
 }
 
 // probably useless
-func binarySearchOverRange(array []short, begin, end int, k short) int {
+func binarySearchOverRange(array []uint16, begin, end int, k uint16) int {
 	low := begin
 	high := end - 1
 	ikey := int(k)
@@ -373,7 +373,7 @@ func binarySearchOverRange(array []short, begin, end int, k short) int {
 	return -(low + 1)
 }
 
-func binarySearch(array []short, k short) int {
+func binarySearch(array []uint16, k uint16) int {
 	low := 0
 	high := len(array) - 1
 	ikey := int(k)

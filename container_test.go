@@ -6,25 +6,25 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func makeContainer(ss []short) Container {
-	c := NewArrayContainer()
+func makeContainer(ss []uint16) container {
+	c := newArrayContainer()
 	for _, s := range ss {
-		c.Add(s)
+		c.add(s)
 	}
 	return c
 }
 
-func checkContent(c Container, s []short) bool {
-	si := c.GetShortIterator()
+func checkContent(c container, s []uint16) bool {
+	si := c.getShortIterator()
 	ctr := 0
 	fail := false
-	for si.HasNext() {
+	for si.hasNext() {
 		if ctr == len(s) {
 			log.Println("HERE")
 			fail = true
 			break
 		}
-		i := si.Next()
+		i := si.next()
 		if i != s[ctr] {
 
 			log.Println("THERE", i, s[ctr])
@@ -39,11 +39,10 @@ func checkContent(c Container, s []short) bool {
 	}
 	if fail {
 		log.Println("fail, found ")
-		si = c.GetShortIterator()
+		si = c.getShortIterator()
 		z := 0
-		for si.HasNext() {
-			//			log.Println(" ", z, si.Next(), s[z])
-			si.Next()
+		for si.hasNext() {
+			si.next()
 			z++
 		}
 		log.Println(z, len(s))
@@ -55,19 +54,19 @@ func checkContent(c Container, s []short) bool {
 func TestRoaringContainer(t *testing.T) {
 	Convey("NumberOfTrailingZeros", t, func() {
 		x := int64(0)
-		o := NumberOfTrailingZeros(x)
+		o := numberOfTrailingZeros(x)
 		So(o, ShouldEqual, 64)
 		x = 1 << 3
-		o = NumberOfTrailingZeros(x)
+		o = numberOfTrailingZeros(x)
 		So(o, ShouldEqual, 3)
 	})
 	Convey("ArrayShortIterator", t, func() {
-		content := []short{1, 3, 5, 7, 9}
+		content := []uint16{1, 3, 5, 7, 9}
 		c := makeContainer(content)
-		si := c.GetShortIterator()
+		si := c.getShortIterator()
 		i := 0
-		for si.HasNext() {
-			si.Next()
+		for si.hasNext() {
+			si.next()
 			i++
 		}
 
@@ -75,34 +74,34 @@ func TestRoaringContainer(t *testing.T) {
 	})
 
 	Convey("BinarySearch", t, func() {
-		content := []short{1, 3, 5, 7, 9}
+		content := []uint16{1, 3, 5, 7, 9}
 		res := binarySearch(content, 5)
 		So(res, ShouldEqual, 2)
 		res = binarySearch(content, 4)
 		So(res, ShouldBeLessThan, 0)
 	})
 	Convey("bitmapcontainer", t, func() {
-		content := []short{1, 3, 5, 7, 9}
-		a := NewArrayContainer()
-		b := NewBitmapContainer()
+		content := []uint16{1, 3, 5, 7, 9}
+		a := newArrayContainer()
+		b := newBitmapContainer()
 		for _, v := range content {
-			a.Add(v)
-			b.Add(v)
+			a.add(v)
+			b.add(v)
 		}
-		c := a.ToBitmapContainer()
+		c := a.toBitmapContainer()
 
-		So(a.GetCardinality(), ShouldEqual, b.GetCardinality())
-		So(c.GetCardinality(), ShouldEqual, b.GetCardinality())
+		So(a.getCardinality(), ShouldEqual, b.getCardinality())
+		So(c.getCardinality(), ShouldEqual, b.getCardinality())
 
 	})
 	Convey("inottest0", t, func() {
-		content := []short{9}
+		content := []uint16{9}
 		c := makeContainer(content)
-		c = c.Inot(0, 10)
-		si := c.GetShortIterator()
+		c = c.inot(0, 10)
+		si := c.getShortIterator()
 		i := 0
-		for si.HasNext() {
-			si.Next()
+		for si.hasNext() {
+			si.next()
 			i++
 		}
 		So(i, ShouldEqual, 10)
@@ -110,16 +109,16 @@ func TestRoaringContainer(t *testing.T) {
 
 	Convey("inotTest1", t, func() {
 		// Array container, range is complete
-		content := []short{1, 3, 5, 7, 9}
-		//content := []short{1}
+		content := []uint16{1, 3, 5, 7, 9}
+		//content := []uint16{1}
 		edge := 1 << 13
 		//		edge := 30
 		c := makeContainer(content)
-		c = c.Inot(0, edge)
+		c = c.inot(0, edge)
 		size := edge - len(content)
-		s := make([]short, size+1)
+		s := make([]uint16, size+1)
 		pos := 0
-		for i := short(0); i < short(edge+1); i++ {
+		for i := uint16(0); i < uint16(edge+1); i++ {
 			if binarySearch(content, i) < 0 {
 				s[pos] = i
 				pos++
@@ -133,7 +132,7 @@ func TestRoaringContainer(t *testing.T) {
 	   public void inotTest10() {
 	           System.out.println("inotTest10");
 	           // Array container, inverting a range past any set bit
-	           final short[] content = new short[3];
+	           final uint16[] content = new uint16[3];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
@@ -141,17 +140,17 @@ func TestRoaringContainer(t *testing.T) {
 	           final Container c1 = c.inot(65190, 65200);
 	           assertTrue(c1 instanceof ArrayContainer);
 	           assertEquals(14, c1.getCardinality());
-	           assertTrue(checkContent(c1, new short[] { 0, 2, 4,
-	                   (short) 65190, (short) 65191, (short) 65192,
-	                   (short) 65193, (short) 65194, (short) 65195,
-	                   (short) 65196, (short) 65197, (short) 65198,
-	                   (short) 65199, (short) 65200 }));
+	           assertTrue(checkContent(c1, new uint16[] { 0, 2, 4,
+	                   (uint16) 65190, (uint16) 65191, (uint16) 65192,
+	                   (uint16) 65193, (uint16) 65194, (uint16) 65195,
+	                   (uint16) 65196, (uint16) 65197, (uint16) 65198,
+	                   (uint16) 65199, (uint16) 65200 }));
 	   }
 
 	   @Test
 	   public void inotTest2() {
 	           // Array and then Bitmap container, range is complete
-	           final short[] content = { 1, 3, 5, 7, 9 };
+	           final uint16[] content = { 1, 3, 5, 7, 9 };
 	           Container c = makeContainer(content);
 	           c = c.inot(0, 65535);
 	           c = c.inot(0, 65535);
@@ -164,21 +163,21 @@ func TestRoaringContainer(t *testing.T) {
 
 	           Container c = new ArrayContainer();
 	           for (int i = 0; i < 65536; i += 2)
-	                   c = c.add((short) i);
+	                   c = c.add((uint16) i);
 
 	           c = c.inot(0, 65535);
-	           assertTrue(c.contains((short) 3) && !c.contains((short) 4));
+	           assertTrue(c.contains((uint16) 3) && !c.contains((uint16) 4));
 	           assertEquals(32768, c.getCardinality());
 	           c = c.inot(0, 65535);
 	           for (int i = 0; i < 65536; i += 2)
-	                   assertTrue(c.contains((short) i)
-	                           && !c.contains((short) (i + 1)));
+	                   assertTrue(c.contains((uint16) i)
+	                           && !c.contains((uint16) (i + 1)));
 	   }
 
 	   @Test
 	   public void inotTest4() {
 	           // Array container, range is partial, result stays array
-	           final short[] content = { 1, 3, 5, 7, 9 };
+	           final uint16[] content = { 1, 3, 5, 7, 9 };
 	           Container c = makeContainer(content);
 	           c = c.inot(4, 999);
 	           assertTrue(c instanceof ArrayContainer);
@@ -191,14 +190,14 @@ func TestRoaringContainer(t *testing.T) {
 	   public void inotTest5() {
 	           System.out.println("inotTest5");
 	           // Bitmap container, range is partial, result stays bitmap
-	           final short[] content = new short[32768 - 5];
+	           final uint16[] content = new uint16[32768 - 5];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
 	           content[3] = 6;
 	           content[4] = 8;
 	           for (int i = 10; i <= 32767; ++i)
-	                   content[i - 10 + 5] = (short) i;
+	                   content[i - 10 + 5] = (uint16) i;
 	           Container c = makeContainer(content);
 	           c = c.inot(4, 999);
 	           assertTrue(c instanceof BitmapContainer);
@@ -214,14 +213,14 @@ func TestRoaringContainer(t *testing.T) {
 	           System.out.println("inotTest6");
 	           // Bitmap container, range is partial and in one word, result
 	           // stays bitmap
-	           final short[] content = new short[32768 - 5];
+	           final uint16[] content = new uint16[32768 - 5];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
 	           content[3] = 6;
 	           content[4] = 8;
 	           for (int i = 10; i <= 32767; ++i)
-	                   content[i - 10 + 5] = (short) i;
+	                   content[i - 10 + 5] = (uint16) i;
 	           Container c = makeContainer(content);
 	           c = c.inot(4, 8);
 	           assertTrue(c instanceof BitmapContainer);
@@ -235,14 +234,14 @@ func TestRoaringContainer(t *testing.T) {
 	   public void inotTest7() {
 	           System.out.println("inotTest7");
 	           // Bitmap container, range is partial, result flips to array
-	           final short[] content = new short[32768 - 5];
+	           final uint16[] content = new uint16[32768 - 5];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
 	           content[3] = 6;
 	           content[4] = 8;
 	           for (int i = 10; i <= 32767; ++i)
-	                   content[i - 10 + 5] = (short) i;
+	                   content[i - 10 + 5] = (uint16) i;
 	           Container c = makeContainer(content);
 	           c = c.inot(5, 31000);
 	           if(c.getCardinality() <= ArrayContainer.DEFAULTMAXSIZE)
@@ -263,9 +262,9 @@ func TestRoaringContainer(t *testing.T) {
 	   public void inotTest8() {
 	           System.out.println("inotTest8");
 	           // Array container
-	           final short[] content = new short[21];
+	           final uint16[] content = new uint16[21];
 	           for (int i = 0; i < 18; ++i)
-	                   content[i] = (short) i;
+	                   content[i] = (uint16) i;
 	           content[18] = 21;
 	           content[19] = 22;
 	           content[20] = 23;
@@ -284,14 +283,14 @@ func TestRoaringContainer(t *testing.T) {
 	   @Test
 	   public void notTest1() {
 	           // Array container, range is complete
-	           final short[] content = { 1, 3, 5, 7, 9 };
+	           final uint16[] content = { 1, 3, 5, 7, 9 };
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(0, 65535);
-	           final short[] s = new short[65536 - content.length];
+	           final uint16[] s = new uint16[65536 - content.length];
 	           int pos = 0;
 	           for (int i = 0; i < 65536; ++i)
-	                   if (Arrays.binarySearch(content, (short) i) < 0)
-	                           s[pos++] = (short) i;
+	                   if (Arrays.binarySearch(content, (uint16) i) < 0)
+	                           s[pos++] = (uint16) i;
 	           assertTrue(checkContent(c1, s));
 	           assertTrue(checkContent(c, content));
 	   }
@@ -302,18 +301,18 @@ func TestRoaringContainer(t *testing.T) {
 	           // Array container, inverting a range past any set bit
 	           // attempting to recreate a bug (but bug required extra space
 	           // in the array with just the right junk in it.
-	           final short[] content = new short[40];
+	           final uint16[] content = new uint16[40];
 	           for (int i = 244; i <= 283; ++i)
-	                   content[i - 244] = (short) i;
+	                   content[i - 244] = (uint16) i;
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(51413, 51470);
 	           assertTrue(c1 instanceof ArrayContainer);
 	           assertEquals(40 + 58, c1.getCardinality());
-	           final short[] rightAns = new short[98];
+	           final uint16[] rightAns = new uint16[98];
 	           for (int i = 244; i <= 283; ++i)
-	                   rightAns[i - 244] = (short) i;
+	                   rightAns[i - 244] = (uint16) i;
 	           for (int i = 51413; i <= 51470; ++i)
-	                   rightAns[i - 51413 + 40] = (short) i;
+	                   rightAns[i - 51413 + 40] = (uint16) i;
 
 	           assertTrue(checkContent(c1, rightAns));
 	   }
@@ -324,18 +323,18 @@ func TestRoaringContainer(t *testing.T) {
 	           // Array container, inverting a range before any set bit
 	           // attempting to recreate a bug (but required extra space
 	           // in the array with the right junk in it.
-	           final short[] content = new short[40];
+	           final uint16[] content = new uint16[40];
 	           for (int i = 244; i <= 283; ++i)
-	                   content[i - 244] = (short) i;
+	                   content[i - 244] = (uint16) i;
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(1, 58);
 	           assertTrue(c1 instanceof ArrayContainer);
 	           assertEquals(40 + 58, c1.getCardinality());
-	           final short[] rightAns = new short[98];
+	           final uint16[] rightAns = new uint16[98];
 	           for (int i = 1; i <= 58; ++i)
-	                   rightAns[i - 1] = (short) i;
+	                   rightAns[i - 1] = (uint16) i;
 	           for (int i = 244; i <= 283; ++i)
-	                   rightAns[i - 244 + 58] = (short) i;
+	                   rightAns[i - 244 + 58] = (uint16) i;
 
 	           assertTrue(checkContent(c1, rightAns));
 	   }
@@ -343,7 +342,7 @@ func TestRoaringContainer(t *testing.T) {
 	   @Test
 	   public void notTest2() {
 	           // Array and then Bitmap container, range is complete
-	           final short[] content = { 1, 3, 5, 7, 9 };
+	           final uint16[] content = { 1, 3, 5, 7, 9 };
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(0, 65535);
 	           final Container c2 = c1.not(0, 65535);
@@ -356,22 +355,22 @@ func TestRoaringContainer(t *testing.T) {
 
 	           Container c = new ArrayContainer();
 	           for (int i = 0; i < 65536; i += 2)
-	                   c = c.add((short) i);
+	                   c = c.add((uint16) i);
 
 	           final Container c1 = c.not(0, 65535);
-	           assertTrue(c1.contains((short) 3) && !c1.contains((short) 4));
+	           assertTrue(c1.contains((uint16) 3) && !c1.contains((uint16) 4));
 	           assertEquals(32768, c1.getCardinality());
 	           final Container c2 = c1.not(0, 65535);
 	           for (int i = 0; i < 65536; i += 2)
-	                   assertTrue(c2.contains((short) i)
-	                           && !c2.contains((short) (i + 1)));
+	                   assertTrue(c2.contains((uint16) i)
+	                           && !c2.contains((uint16) (i + 1)));
 	   }
 
 	   @Test
 	   public void notTest4() {
 	           System.out.println("notTest4");
 	           // Array container, range is partial, result stays array
-	           final short[] content = { 1, 3, 5, 7, 9 };
+	           final uint16[] content = { 1, 3, 5, 7, 9 };
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(4, 999);
 	           assertTrue(c1 instanceof ArrayContainer);
@@ -384,14 +383,14 @@ func TestRoaringContainer(t *testing.T) {
 	   public void notTest5() {
 	           System.out.println("notTest5");
 	           // Bitmap container, range is partial, result stays bitmap
-	           final short[] content = new short[32768 - 5];
+	           final uint16[] content = new uint16[32768 - 5];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
 	           content[3] = 6;
 	           content[4] = 8;
 	           for (int i = 10; i <= 32767; ++i)
-	                   content[i - 10 + 5] = (short) i;
+	                   content[i - 10 + 5] = (uint16) i;
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(4, 999);
 	           assertTrue(c1 instanceof BitmapContainer);
@@ -406,14 +405,14 @@ func TestRoaringContainer(t *testing.T) {
 	           System.out.println("notTest6");
 	           // Bitmap container, range is partial and in one word, result
 	           // stays bitmap
-	           final short[] content = new short[32768 - 5];
+	           final uint16[] content = new uint16[32768 - 5];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
 	           content[3] = 6;
 	           content[4] = 8;
 	           for (int i = 10; i <= 32767; ++i)
-	                   content[i - 10 + 5] = (short) i;
+	                   content[i - 10 + 5] = (uint16) i;
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(4, 8);
 	           assertTrue(c1 instanceof BitmapContainer);
@@ -427,14 +426,14 @@ func TestRoaringContainer(t *testing.T) {
 	   public void notTest7() {
 	           System.out.println("notTest7");
 	           // Bitmap container, range is partial, result flips to array
-	           final short[] content = new short[32768 - 5];
+	           final uint16[] content = new uint16[32768 - 5];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
 	           content[3] = 6;
 	           content[4] = 8;
 	           for (int i = 10; i <= 32767; ++i)
-	                   content[i - 10 + 5] = (short) i;
+	                   content[i - 10 + 5] = (uint16) i;
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(5, 31000);
 	           if(c1.getCardinality() <= ArrayContainer.DEFAULTMAXSIZE)
@@ -454,14 +453,14 @@ func TestRoaringContainer(t *testing.T) {
 	   public void notTest8() {
 	           System.out.println("notTest8");
 	           // Bitmap container, range is partial on the lower end
-	           final short[] content = new short[32768 - 5];
+	           final uint16[] content = new uint16[32768 - 5];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
 	           content[3] = 6;
 	           content[4] = 8;
 	           for (int i = 10; i <= 32767; ++i)
-	                   content[i - 10 + 5] = (short) i;
+	                   content[i - 10 + 5] = (uint16) i;
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(4, 65535);
 	           assertTrue(c1 instanceof BitmapContainer);
@@ -476,14 +475,14 @@ func TestRoaringContainer(t *testing.T) {
 	           System.out.println("notTest9");
 	           // Bitmap container, range is partial on the upper end, not
 	           // single word
-	           final short[] content = new short[32768 - 5];
+	           final uint16[] content = new uint16[32768 - 5];
 	           content[0] = 0;
 	           content[1] = 2;
 	           content[2] = 4;
 	           content[3] = 6;
 	           content[4] = 8;
 	           for (int i = 10; i <= 32767; ++i)
-	                   content[i - 10 + 5] = (short) i;
+	                   content[i - 10 + 5] = (uint16) i;
 	           final Container c = makeContainer(content);
 	           final Container c1 = c.not(0, 65200);
 	           assertTrue(c1 instanceof BitmapContainer);
@@ -498,7 +497,7 @@ func TestRoaringContainer(t *testing.T) {
 	           final Container c = Container.rangeOfOnes(4, 10); // sparse
 	           assertTrue(c instanceof ArrayContainer);
 	           assertEquals(10 - 4 + 1, c.getCardinality());
-	           assertTrue(checkContent(c, new short[] { 4, 5, 6, 7, 8, 9, 10 }));
+	           assertTrue(checkContent(c, new uint16[] { 4, 5, 6, 7, 8, 9, 10 }));
 	   }
 
 	   @Test
@@ -511,9 +510,9 @@ func TestRoaringContainer(t *testing.T) {
 	   @Test
 	   public void rangeOfOnesTest2A() {
 	           final Container c = Container.rangeOfOnes(1000, 35000); // dense
-	           final short s[] = new short[35000 - 1000 + 1];
+	           final uint16 s[] = new uint16[35000 - 1000 + 1];
 	           for (int i = 1000; i <= 35000; ++i)
-	                   s[i - 1000] = (short) i;
+	                   s[i - 1000] = (uint16) i;
 	           assertTrue(checkContent(c, s));
 	   }
 
@@ -532,7 +531,7 @@ func TestRoaringContainer(t *testing.T) {
 	           assertTrue(c instanceof BitmapContainer);
 	   }
 
-	   public static boolean checkContent(Container c, short[] s) {
+	   public static boolean checkContent(Container c, uint16[] s) {
 	           ShortIterator si = c.getShortIterator();
 	           int ctr = 0;
 	           boolean fail = false;
@@ -556,7 +555,7 @@ func TestRoaringContainer(t *testing.T) {
 	                   while (si.hasNext())
 	                           System.out.print(" " + si.next());
 	                   System.out.print("\n expected ");
-	                   for (final short s1 : s)
+	                   for (final uint16 s1 : s)
 	                           System.out.print(" " + s1);
 	                   System.out.println();
 	           }

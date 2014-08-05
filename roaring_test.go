@@ -364,19 +364,19 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("ArrayContainerCardinalityTest", t, func() {
-		ac := NewArrayContainer()
-		for k := short(0); k < 100; k++ {
-			ac.Add(k)
-			So(ac.GetCardinality(), ShouldEqual, k+1)
+		ac := newArrayContainer()
+		for k := uint16(0); k < 100; k++ {
+			ac.add(k)
+			So(ac.getCardinality(), ShouldEqual, k+1)
 		}
-		for k := short(0); k < 100; k++ {
-			ac.Add(k)
-			So(ac.GetCardinality(), ShouldEqual, 100)
+		for k := uint16(0); k < 100; k++ {
+			ac.add(k)
+			So(ac.getCardinality(), ShouldEqual, 100)
 		}
 	})
 	/*
 		Convey("ArrayTest", t, func() {
-			rr := NewArrayContainer()
+			rr := newArrayContainer()
 			rr.Add(int16(110))
 			rr.Add(int16(114))
 			rr.Add(int16(115))
@@ -431,32 +431,32 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("BitmapContainerCardinalityTest", t, func() {
-		ac := NewBitmapContainer()
-		for k := short(0); k < 100; k++ {
-			ac.Add(k)
-			So(ac.GetCardinality(), ShouldEqual, k+1)
+		ac := newBitmapContainer()
+		for k := uint16(0); k < 100; k++ {
+			ac.add(k)
+			So(ac.getCardinality(), ShouldEqual, k+1)
 		}
-		for k := short(0); k < 100; k++ {
-			ac.Add(k)
-			So(ac.GetCardinality(), ShouldEqual, 100)
+		for k := uint16(0); k < 100; k++ {
+			ac.add(k)
+			So(ac.getCardinality(), ShouldEqual, 100)
 		}
 	})
 
 	Convey("BitmapContainerTest", t, func() {
-		rr := NewBitmapContainer()
-		rr.Add(short(110))
-		rr.Add(short(114))
-		rr.Add(short(115))
-		var array [3]short
+		rr := newBitmapContainer()
+		rr.add(uint16(110))
+		rr.add(uint16(114))
+		rr.add(uint16(115))
+		var array [3]uint16
 		pos := 0
-		for itr := rr.GetShortIterator(); itr.HasNext(); {
-			array[pos] = itr.Next()
+		for itr := rr.getShortIterator(); itr.hasNext(); {
+			array[pos] = itr.next()
 			pos++
 		}
 
-		So(array[0], ShouldEqual, short(110))
-		So(array[1], ShouldEqual, short(114))
-		So(array[2], ShouldEqual, short(115))
+		So(array[0], ShouldEqual, uint16(110))
+		So(array[1], ShouldEqual, uint16(114))
+		So(array[2], ShouldEqual, uint16(115))
 	})
 	Convey("cardinality test", t, func() {
 		N := 1024
@@ -549,37 +549,37 @@ func TestRoaringBitmap(t *testing.T) {
 
 	Convey("constainer factory ", t, func() {
 
-		bc1 := NewBitmapContainer()
-		bc2 := NewBitmapContainer()
-		bc3 := NewBitmapContainer()
-		ac1 := NewArrayContainer()
-		ac2 := NewArrayContainer()
-		ac3 := NewArrayContainer()
+		bc1 := newBitmapContainer()
+		bc2 := newBitmapContainer()
+		bc3 := newBitmapContainer()
+		ac1 := newArrayContainer()
+		ac2 := newArrayContainer()
+		ac3 := newArrayContainer()
 
 		for i := 0; i < 5000; i++ {
-			bc1.Add(short(i * 70))
+			bc1.add(uint16(i * 70))
 		}
 		for i := 0; i < 5000; i++ {
-			bc2.Add(short(i * 70))
+			bc2.add(uint16(i * 70))
 		}
 		for i := 0; i < 5000; i++ {
-			bc3.Add(short(i * 70))
+			bc3.add(uint16(i * 70))
 		}
 		for i := 0; i < 4000; i++ {
-			ac1.Add(short(i * 50))
+			ac1.add(uint16(i * 50))
 		}
 		for i := 0; i < 4000; i++ {
-			ac2.Add(short(i * 50))
+			ac2.add(uint16(i * 50))
 		}
 		for i := 0; i < 4000; i++ {
-			ac3.Add(short(i * 50))
+			ac3.add(uint16(i * 50))
 		}
 
-		rbc := ac1.Clone().(*ArrayContainer).ToBitmapContainer()
+		rbc := ac1.clone().(*arrayContainer).toBitmapContainer()
 		So(validate(rbc, ac1), ShouldEqual, true)
-		rbc = ac2.Clone().(*ArrayContainer).ToBitmapContainer()
+		rbc = ac2.clone().(*arrayContainer).toBitmapContainer()
 		So(validate(rbc, ac2), ShouldEqual, true)
-		rbc = ac3.Clone().(*ArrayContainer).ToBitmapContainer()
+		rbc = ac3.clone().(*arrayContainer).toBitmapContainer()
 		So(validate(rbc, ac3), ShouldEqual, true)
 	})
 	Convey("flipTest1 ", t, func() {
@@ -1301,10 +1301,10 @@ func equals(a, b interface{}) bool {
 	return true
 }
 
-func validate(bc *BitmapContainer, ac *ArrayContainer) bool {
+func validate(bc *bitmapContainer, ac *arrayContainer) bool {
 	// Checking the cardinalities of each container
 
-	if bc.GetCardinality() != ac.GetCardinality() {
+	if bc.getCardinality() != ac.getCardinality() {
 		log.Println("cardinality differs")
 		return false
 	}
@@ -1313,7 +1313,7 @@ func validate(bc *BitmapContainer, ac *ArrayContainer) bool {
 
 	for i := bc.NextSetBit(0); i >= 0; i = bc.NextSetBit(i + 1) {
 		counter++
-		if !ac.Contains(short(i)) {
+		if !ac.contains(uint16(i)) {
 			log.Println("content differs")
 			log.Println(bc)
 			log.Println(ac)
@@ -1323,7 +1323,7 @@ func validate(bc *BitmapContainer, ac *ArrayContainer) bool {
 	}
 
 	// checking the cardinality of the BitmapContainer
-	return counter == bc.GetCardinality()
+	return counter == bc.getCardinality()
 }
 
 func TestRoaringArray(t *testing.T) {
@@ -1332,56 +1332,56 @@ func TestRoaringArray(t *testing.T) {
 		return
 	}
 
-	a := NewRoaringArray()
+	a := newRoaringArray()
 	Convey("Test Init", t, func() {
-		So(a.Size(), ShouldEqual, 0)
+		So(a.size(), ShouldEqual, 0)
 	})
 
 	Convey("Test Insert", t, func() {
-		a.Append(0, NewArrayContainer())
+		a.append(0, newArrayContainer())
 
-		So(a.Size(), ShouldEqual, 1)
+		So(a.size(), ShouldEqual, 1)
 	})
 
 	Convey("Test Remove", t, func() {
-		a.Remove(0)
-		So(a.Size(), ShouldEqual, 0)
+		a.remove(0)
+		So(a.size(), ShouldEqual, 0)
 	})
 
 	Convey("Test Bitcount Full", t, func() {
-		res := BitCount(-1)
+		res := bitCount(-1)
 		So(res, ShouldEqual, 64)
 	})
 
 	Convey("Test Bitcount Empty", t, func() {
-		res := BitCount(0)
+		res := bitCount(0)
 		So(res, ShouldEqual, 0)
 	})
 	Convey("Test ArrayContainer Add", t, func() {
-		ar := NewArrayContainer()
-		ar.Add(1)
-		So(ar.GetCardinality(), ShouldEqual, 1)
+		ar := newArrayContainer()
+		ar.add(1)
+		So(ar.getCardinality(), ShouldEqual, 1)
 	})
 
 	Convey("Test ArrayContainer Add wacky", t, func() {
-		ar := NewArrayContainer()
-		ar.Add(0)
-		ar.Add(5000)
-		So(ar.GetCardinality(), ShouldEqual, 2)
+		ar := newArrayContainer()
+		ar.add(0)
+		ar.add(5000)
+		So(ar.getCardinality(), ShouldEqual, 2)
 	})
 
 	Convey("Test ArrayContainer Add Reverse", t, func() {
-		ar := NewArrayContainer()
-		ar.Add(5000)
-		ar.Add(2048)
-		ar.Add(0)
-		So(ar.GetCardinality(), ShouldEqual, 3)
+		ar := newArrayContainer()
+		ar.add(5000)
+		ar.add(2048)
+		ar.add(0)
+		So(ar.getCardinality(), ShouldEqual, 3)
 	})
 
 	Convey("Test BitmapContainer Add ", t, func() {
-		bm := NewBitmapContainer()
-		bm.Add(0)
-		So(bm.GetCardinality(), ShouldEqual, 1)
+		bm := newBitmapContainer()
+		bm.add(0)
+		So(bm.getCardinality(), ShouldEqual, 1)
 	})
 
 }

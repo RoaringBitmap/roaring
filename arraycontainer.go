@@ -1,30 +1,30 @@
 package roaring
 
-type ArrayContainer struct {
-	content []short
+type arrayContainer struct {
+	content []uint16
 }
 
-func (self *ArrayContainer) FillLeastSignificant16bits(x []int, i, mask int) {
+func (self *arrayContainer) fillLeastSignificant16bits(x []int, i, mask int) {
 	for k := 0; k < len(self.content); k++ {
-		x[k+i] = ToIntUnsigned(self.content[k]) | mask
+		x[k+i] = toIntUnsigned(self.content[k]) | mask
 	}
 }
 
-func (self *ArrayContainer) GetShortIterator() ShortIterable {
-	return &ShortIterator{self.content, 0}
+func (self *arrayContainer) getShortIterator() shortIterable {
+	return &shortIterator{self.content, 0}
 }
 
-func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
+func (self *arrayContainer) not(firstOfRange, lastOfRange int) container {
 	if firstOfRange > lastOfRange {
-		return self.Clone()
+		return self.clone()
 	}
 
 	// determine the span of array indices to be affected^M
-	startIndex := binarySearch(self.content, short(firstOfRange))
+	startIndex := binarySearch(self.content, uint16(firstOfRange))
 	if startIndex < 0 {
 		startIndex = -startIndex - 1
 	}
-	lastIndex := binarySearch(self.content, short(lastOfRange))
+	lastIndex := binarySearch(self.content, uint16(lastOfRange))
 	if lastIndex < 0 {
 		lastIndex = -lastIndex - 2
 	}
@@ -34,20 +34,19 @@ func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
 	cardinalityChange := newValuesInRange - currentValuesInRange
 	newCardinality := len(self.content) + cardinalityChange
 
-	if newCardinality >= ARRAY_DEFAULT_MAX_SIZE {
-		return self.ToBitmapContainer().Not(firstOfRange, lastOfRange)
+	if newCardinality >= array_default_max_size {
+		return self.toBitmapContainer().not(firstOfRange, lastOfRange)
 	}
-	//answer := NewArrayContainerCapacity(newCardinality)
-	answer := NewArrayContainer()
-	answer.content = make([]short, newCardinality, newCardinality) //a hack for sure
+	answer := newArrayContainer()
+	answer.content = make([]uint16, newCardinality, newCardinality) //a hack for sure
 
 	copy(answer.content, self.content[:startIndex])
 	outPos := startIndex
 	inPos := startIndex
 	valInRange := firstOfRange
 	for ; valInRange <= lastOfRange && inPos <= lastIndex; valInRange++ {
-		if short(valInRange) != self.content[inPos] {
-			answer.content[outPos] = short(valInRange)
+		if uint16(valInRange) != self.content[inPos] {
+			answer.content[outPos] = uint16(valInRange)
 			outPos++
 		} else {
 			inPos++
@@ -55,7 +54,7 @@ func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
 	}
 
 	for ; valInRange <= lastOfRange; valInRange++ {
-		answer.content[outPos] = short(valInRange)
+		answer.content[outPos] = uint16(valInRange)
 		outPos++
 	}
 
@@ -68,8 +67,8 @@ func (self *ArrayContainer) Not(firstOfRange, lastOfRange int) Container {
 
 }
 
-func (self *ArrayContainer) Equals(o interface{}) bool {
-	srb := o.(*ArrayContainer)
+func (self *arrayContainer) equals(o interface{}) bool {
+	srb := o.(*arrayContainer)
 	if srb != nil {
 		if len(srb.content) != len(self.content) {
 			return false
@@ -84,16 +83,16 @@ func (self *ArrayContainer) Equals(o interface{}) bool {
 	return false
 }
 
-func (self *ArrayContainer) ToBitmapContainer() *BitmapContainer {
-	bc := NewBitmapContainer()
+func (self *arrayContainer) toBitmapContainer() *bitmapContainer {
+	bc := newBitmapContainer()
 	bc.loadData(self)
 	return bc
 
 }
-func (self *ArrayContainer) Add(x short) Container {
-	if len(self.content) >= ARRAY_DEFAULT_MAX_SIZE {
-		a := self.ToBitmapContainer()
-		a.Add(x)
+func (self *arrayContainer) add(x uint16) container {
+	if len(self.content) >= array_default_max_size {
+		a := self.toBitmapContainer()
+		a.add(x)
 		return a
 	}
 	if (len(self.content) == 0) || (x > self.content[len(self.content)-1]) {
@@ -112,116 +111,116 @@ func (self *ArrayContainer) Add(x short) Container {
 	return self
 }
 
-func (self *ArrayContainer) Or(a Container) Container {
+func (self *arrayContainer) or(a container) container {
 	switch a.(type) {
-	case *ArrayContainer:
-		return self.OrArray(a.(*ArrayContainer))
-	case *BitmapContainer:
-		return a.Or(self)
+	case *arrayContainer:
+		return self.orArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return a.or(self)
 	}
 	return nil
 }
 
-func (self *ArrayContainer) OrArray(value2 *ArrayContainer) Container {
+func (self *arrayContainer) orArray(value2 *arrayContainer) container {
 	value1 := self
-	totalCardinality := value1.GetCardinality() + value2.GetCardinality()
-	if totalCardinality > ARRAY_DEFAULT_MAX_SIZE { // it could be a bitmap!^M
-		bc := NewBitmapContainer()
+	totalCardinality := value1.getCardinality() + value2.getCardinality()
+	if totalCardinality > array_default_max_size { // it could be a bitmap!^M
+		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
-			i := uint(ToIntUnsigned(value2.content[k])) >> 6
+			i := uint(toIntUnsigned(value2.content[k])) >> 6
 			bc.bitmap[i] |= (1 << (value2.content[k] % 64))
 		}
 		for k := 0; k < len(self.content); k++ {
-			i := uint(ToIntUnsigned(self.content[k])) >> 6
+			i := uint(toIntUnsigned(self.content[k])) >> 6
 			bc.bitmap[i] |= (1 << (self.content[k] % 64))
 		}
 		bc.cardinality = 0
 		for _, k := range bc.bitmap {
-			bc.cardinality += BitCount(k)
+			bc.cardinality += bitCount(k)
 		}
-		if bc.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
-			return bc.ToArrayContainer()
+		if bc.cardinality <= array_default_max_size {
+			return bc.toArrayContainer()
 		}
 		return bc
 	}
 	desiredCapacity := totalCardinality
-	answer := NewArrayContainerCapacity(desiredCapacity)
-	nl := Union2by2(value1.content, value2.content, answer.content)
+	answer := newArrayContainerCapacity(desiredCapacity)
+	nl := union2by2(value1.content, value2.content, answer.content)
 	answer.content = answer.content[:nl] //what is this voodo?
 	return answer
 }
 
-func (self *ArrayContainer) And(a Container) Container {
+func (self *arrayContainer) and(a container) container {
 	switch a.(type) {
-	case *ArrayContainer:
-		return self.AndArray(a.(*ArrayContainer))
-	case *BitmapContainer:
-		return a.And(self)
+	case *arrayContainer:
+		return self.andArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return a.and(self)
 	}
 	return nil
 }
 
-func (self *ArrayContainer) Xor(a Container) Container {
+func (self *arrayContainer) xor(a container) container {
 	switch a.(type) {
-	case *ArrayContainer:
-		return self.XorArray(a.(*ArrayContainer))
-	case *BitmapContainer:
-		return a.Xor(self)
+	case *arrayContainer:
+		return self.xorArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return a.xor(self)
 	}
 	return nil
 }
 
-func (self *ArrayContainer) XorArray(value2 *ArrayContainer) Container {
+func (self *arrayContainer) xorArray(value2 *arrayContainer) container {
 	value1 := self
-	totalCardinality := value1.GetCardinality() + value2.GetCardinality()
-	if totalCardinality > ARRAY_DEFAULT_MAX_SIZE { // it could be a bitmap!^M
-		bc := NewBitmapContainer()
+	totalCardinality := value1.getCardinality() + value2.getCardinality()
+	if totalCardinality > array_default_max_size { // it could be a bitmap!^M
+		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
-			i := uint(ToIntUnsigned(value2.content[k])) >> 6
+			i := uint(toIntUnsigned(value2.content[k])) >> 6
 			bc.bitmap[i] ^= (1 << value2.content[k])
 		}
 		for k := 0; k < len(self.content); k++ {
-			i := uint(ToIntUnsigned(self.content[k])) >> 6
+			i := uint(toIntUnsigned(self.content[k])) >> 6
 			bc.bitmap[i] ^= (1 << self.content[k])
 		}
 		bc.cardinality = 0
 		for _, k := range bc.bitmap {
-			bc.cardinality += BitCount(k)
+			bc.cardinality += bitCount(k)
 		}
-		if bc.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
-			return bc.ToArrayContainer()
+		if bc.cardinality <= array_default_max_size {
+			return bc.toArrayContainer()
 		}
 		return bc
 	}
 	desiredCapacity := totalCardinality
-	answer := NewArrayContainerCapacity(desiredCapacity)
-	length := ExclusiveUnion2by2(value1.content, value2.content, answer.content)
+	answer := newArrayContainerCapacity(desiredCapacity)
+	length := exclusiveUnion2by2(value1.content, value2.content, answer.content)
 	answer.content = answer.content[:length]
 	return answer
 
 }
 
-func (self *ArrayContainer) AndNot(a Container) Container {
+func (self *arrayContainer) andNot(a container) container {
 	switch a.(type) {
-	case *ArrayContainer:
-		return self.AndNotArray(a.(*ArrayContainer))
-	case *BitmapContainer:
-		return a.AndNot(self)
+	case *arrayContainer:
+		return self.andNotArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return a.andNot(self)
 	}
 	return nil
 }
 
-func (self *ArrayContainer) AndNotArray(value2 *ArrayContainer) Container {
+func (self *arrayContainer) andNotArray(value2 *arrayContainer) container {
 	value1 := self
-	desiredcapacity := value1.GetCardinality()
-	answer := NewArrayContainerCapacity(desiredcapacity)
-	length := Difference(value1.content, value2.content, answer.content)
+	desiredcapacity := value1.getCardinality()
+	answer := newArrayContainerCapacity(desiredcapacity)
+	length := difference(value1.content, value2.content, answer.content)
 	answer.content = answer.content[:length]
 	return answer
 }
 
-func CopyOf(array []short, size int) []short {
-	result := make([]short, size)
+func copyOf(array []uint16, size int) []uint16 {
+	result := make([]uint16, size)
 	for i, x := range array {
 		if i == size {
 			break
@@ -231,13 +230,13 @@ func CopyOf(array []short, size int) []short {
 	return result
 }
 
-func (self *ArrayContainer) Inot(firstOfRange, lastOfRange int) Container {
+func (self *arrayContainer) inot(firstOfRange, lastOfRange int) container {
 	// determine the span of array indices to be affected
-	startIndex := binarySearch(self.content, short(firstOfRange))
+	startIndex := binarySearch(self.content, uint16(firstOfRange))
 	if startIndex < 0 {
 		startIndex = -startIndex - 1
 	}
-	lastIndex := binarySearch(self.content, short(lastOfRange))
+	lastIndex := binarySearch(self.content, uint16(lastOfRange))
 	if lastIndex < 0 {
 		lastIndex = -lastIndex - 1 - 1
 	}
@@ -245,15 +244,15 @@ func (self *ArrayContainer) Inot(firstOfRange, lastOfRange int) Container {
 	spanToBeFlipped := lastOfRange - firstOfRange + 1
 
 	newValuesInRange := spanToBeFlipped - currentValuesInRange
-	buffer := make([]short, newValuesInRange)
+	buffer := make([]uint16, newValuesInRange)
 	cardinalityChange := newValuesInRange - currentValuesInRange
 	newCardinality := len(self.content) + cardinalityChange
 	if cardinalityChange > 0 {
 		if newCardinality > len(self.content) {
-			if newCardinality >= ARRAY_DEFAULT_MAX_SIZE {
-				return self.ToBitmapContainer().Inot(firstOfRange, lastOfRange)
+			if newCardinality >= array_default_max_size {
+				return self.toBitmapContainer().inot(firstOfRange, lastOfRange)
 			}
-			self.content = CopyOf(self.content, newCardinality)
+			self.content = copyOf(self.content, newCardinality)
 		}
 		base := lastIndex + 1
 		//copy(self.content[lastIndex+1+cardinalityChange:], self.content[lastIndex+1:len(self.content)-1-lastIndex])
@@ -273,7 +272,7 @@ func (self *ArrayContainer) Inot(firstOfRange, lastOfRange int) Container {
 	return self
 }
 
-func (self *ArrayContainer) negateRange(buffer []short, startIndex, lastIndex, startRange, lastRange int) {
+func (self *arrayContainer) negateRange(buffer []uint16, startIndex, lastIndex, startRange, lastRange int) {
 	// compute the negation into buffer
 
 	outPos := 0
@@ -283,8 +282,8 @@ func (self *ArrayContainer) negateRange(buffer []short, startIndex, lastIndex, s
 
 	valInRange := startRange
 	for ; valInRange <= lastRange && inPos <= lastIndex; valInRange++ {
-		if short(valInRange) != self.content[inPos] {
-			buffer[outPos] = short(valInRange)
+		if uint16(valInRange) != self.content[inPos] {
+			buffer[outPos] = uint16(valInRange)
 			outPos++
 		} else {
 			inPos++
@@ -294,7 +293,7 @@ func (self *ArrayContainer) negateRange(buffer []short, startIndex, lastIndex, s
 	// if there are extra items (greater than the biggest
 	// pre-existing one in range), buffer them
 	for ; valInRange <= lastRange; valInRange++ {
-		buffer[outPos] = short(valInRange)
+		buffer[outPos] = uint16(valInRange)
 		outPos++
 	}
 
@@ -308,17 +307,17 @@ func (self *ArrayContainer) negateRange(buffer []short, startIndex, lastIndex, s
 	}
 }
 
-func Min(a, b int) int {
+func min(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
 }
-func (self *ArrayContainer) AndArray(value2 *ArrayContainer) *ArrayContainer {
+func (self *arrayContainer) andArray(value2 *arrayContainer) *arrayContainer {
 
-	desiredcapacity := Min(self.GetCardinality(), value2.GetCardinality())
-	answer := NewArrayContainerCapacity(desiredcapacity)
-	length := Intersection2by2(
+	desiredcapacity := Min(self.getCardinality(), value2.getCardinality())
+	answer := newArrayContainerCapacity(desiredcapacity)
+	length := intersection2by2(
 		self.content,
 		value2.content,
 		answer.content)
@@ -327,44 +326,44 @@ func (self *ArrayContainer) AndArray(value2 *ArrayContainer) *ArrayContainer {
 
 }
 
-func (self *ArrayContainer) GetCardinality() int {
+func (self *arrayContainer) getCardinality() int {
 	return len(self.content)
 }
-func (self *ArrayContainer) Clone() Container {
-	ptr := ArrayContainer{make([]short, len(self.content))}
+func (self *arrayContainer) clone() container {
+	ptr := arrayContainer{make([]uint16, len(self.content))}
 	copy(ptr.content, self.content[:])
 	return &ptr
 }
-func (self *ArrayContainer) Contains(x short) bool {
+func (self *arrayContainer) contains(x uint16) bool {
 	return binarySearch(self.content, x) >= 0
 }
 
-func (self *ArrayContainer) loadData(bitmapContainer *BitmapContainer) {
-	self.content = make([]short, bitmapContainer.cardinality,bitmapContainer.cardinality)
+func (self *arrayContainer) loadData(bitmapContainer *bitmapContainer) {
+	self.content = make([]uint16, bitmapContainer.cardinality,bitmapContainer.cardinality)
 	bitmapContainer.fillArray(self.content)
 }
-func NewArrayContainer() *ArrayContainer {
-	p := new(ArrayContainer)
+func newArrayContainer() *arrayContainer {
+	p := new(arrayContainer)
 	return p
 }
 
-func NewArrayContainerCapacity(size int) *ArrayContainer {
-	p := new(ArrayContainer)
-	p.content = make([]short, 0, size)
+func newArrayContainerCapacity(size int) *arrayContainer {
+	p := new(arrayContainer)
+	p.content = make([]uint16, 0, size)
 	return p
 }
 
-func NewArrayContainerSize(size int) *ArrayContainer {
-p := new(ArrayContainer)
-p.content = make([]short, size, size)
+func newArrayContainerSize(size int) *arrayContainer {
+p := new(arrayContainer)
+p.content = make([]uint16, size, size)
 return p
 }
 
-func NewArrayContainerRange(firstOfRun, lastOfRun int) *ArrayContainer {
+func newArrayContainerRange(firstOfRun, lastOfRun int) *arrayContainer {
 	valuesInRange := lastOfRun - firstOfRun + 1
-	this := NewArrayContainerCapacity(valuesInRange)
+	this := newArrayContainerCapacity(valuesInRange)
 	for i := 0; i < valuesInRange; i++ {
-		this.content = append(this.content, short(firstOfRun+i))
+		this.content = append(this.content, uint16(firstOfRun+i))
 	}
 	return this
 }
