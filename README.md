@@ -1,4 +1,4 @@
-RoaringBitmap [![Build Status](https://travis-ci.org/tgruben/roaring.png)](https://travis-ci.org/tgruben/roaring) 
+RoaringBitmap [![Build Status](https://travis-ci.org/tgruben/roaring.png)](https://travis-ci.org/tgruben/roaring)[![GoDoc](https://godoc.org/github.com/tgruben/roaring?status.svg)](https://godoc.org/github.com/tgruben/roaring) 
 =============
 
 This is a go port of the Roaring bitmap data structured.  The origin java version can be found at https://github.com/lemire/RoaringBitmap and the supporting paper at
