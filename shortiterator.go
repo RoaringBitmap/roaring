@@ -1,20 +1,20 @@
 package roaring
 
-type ShortIterable interface {
-	HasNext() bool
-	Next() short
+type shortIterable interface {
+	hasNext() bool
+	next() uint16
 }
 
-type ShortIterator struct {
-	slice []short
+type shortIterator struct {
+	slice []uint16
 	loc   int
 }
 
-func (self *ShortIterator) HasNext() bool {
+func (self *shortIterator) hasNext() bool {
 	return self.loc < len(self.slice)
 }
 
-func (self *ShortIterator) Next() short {
+func (self *shortIterator) next() uint16 {
 	a := self.slice[self.loc]
 	self.loc++
 	return a

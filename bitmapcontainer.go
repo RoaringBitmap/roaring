@@ -1,21 +1,21 @@
 package roaring
 
-type BitmapContainer struct {
+type bitmapContainer struct {
 	cardinality int
 	bitmap      []uint64
 }
 
-func NewBitmapContainer() *BitmapContainer {
-	p := new(BitmapContainer)
+func newBitmapContainer() *bitmapContainer {
+	p := new(bitmapContainer)
 	size := (1 << 16) / 64
 	p.bitmap = make([]uint64, size, size)
 	return p
 }
 
-func NewBitmapContainerwithRange(firstOfRun, lastOfRun int) *BitmapContainer {
-	this := NewBitmapContainer()
+func newBitmapContainerwithRange(firstOfRun, lastOfRun int) *bitmapContainer {
+	this := newBitmapContainer()
 	this.cardinality = lastOfRun - firstOfRun + 1
-	if this.cardinality == MAX_CAPACITY {
+	if this.cardinality == max_capacity {
 		fill(this.bitmap, uint64(0xffffffffffffffff))
 	} else {
 		firstWord := firstOfRun / 64
@@ -32,27 +32,27 @@ func NewBitmapContainerwithRange(firstOfRun, lastOfRun int) *BitmapContainer {
 	return this
 }
 
-type BitmapContainerShortIterator struct {
-	ptr *BitmapContainer
+type bitmapContainerShortIterator struct {
+	ptr *bitmapContainer
 	i   int
 }
 
-func (self *BitmapContainerShortIterator) Next() short {
+func (self *bitmapContainerShortIterator) next() uint16 {
 	j := self.i
 	self.i = self.ptr.NextSetBit(self.i + 1)
-	return short(j)
+	return uint16(j)
 }
-func (self *BitmapContainerShortIterator) HasNext() bool {
+func (self *bitmapContainerShortIterator) hasNext() bool {
 	return self.i >= 0
 }
-func NewBitmapContainerShortIterator(a *BitmapContainer) *BitmapContainerShortIterator {
-	return &BitmapContainerShortIterator{a, a.NextSetBit(0)}
+func newBitmapContainerShortIterator(a *bitmapContainer) *bitmapContainerShortIterator {
+	return &bitmapContainerShortIterator{a, a.NextSetBit(0)}
 }
-func (self *BitmapContainer) GetShortIterator() ShortIterable {
-	return NewBitmapContainerShortIterator(self)
+func (self *bitmapContainer) getShortIterator() shortIterable {
+	return newBitmapContainerShortIterator(self)
 }
 
-func BitmapEquals(a, b []uint64) bool {
+func bitmapEquals(a, b []uint64) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -64,31 +64,31 @@ func BitmapEquals(a, b []uint64) bool {
 	return true
 }
 
-func (self *BitmapContainer) FillLeastSignificant16bits(x []int, i, mask int) {
+func (self *bitmapContainer) fillLeastSignificant16bits(x []int, i, mask int) {
 	pos := i
 	for k := 0; k < len(self.bitmap); k++ {
 		bitset := self.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			x[pos] = (k*64 + BitCount(t-1)) | mask
+			x[pos] = (k*64 + bitCount(t-1)) | mask
 			pos++
 			bitset ^= t
 		}
 	}
 }
 
-func (self *BitmapContainer) Equals(o interface{}) bool {
-	srb := o.(*BitmapContainer)
+func (self *bitmapContainer) equals(o interface{}) bool {
+	srb := o.(*bitmapContainer)
 	if srb != nil {
 		if srb.cardinality != self.cardinality {
 			return false
 		}
-		return BitmapEquals(self.bitmap, srb.bitmap)
+		return bitmapEquals(self.bitmap, srb.bitmap)
 	}
 	return false
 }
 
-func (self *BitmapContainer) Add(i short) Container {
+func (self *bitmapContainer) add(i uint16) container {
 	x := int(i)
 	previous := self.bitmap[x/64]
 	self.bitmap[x/64] |= (1 << (uint(x) % 64))
@@ -96,33 +96,33 @@ func (self *BitmapContainer) Add(i short) Container {
 	return self
 }
 
-func (self *BitmapContainer) GetCardinality() int {
+func (self *bitmapContainer) getCardinality() int {
 	return self.cardinality
 }
 
-func (self *BitmapContainer) Clone() Container {
-	ptr := BitmapContainer{self.cardinality, make([]uint64, len(self.bitmap))}
+func (self *bitmapContainer) clone() container {
+	ptr := bitmapContainer{self.cardinality, make([]uint64, len(self.bitmap))}
 	copy(ptr.bitmap, self.bitmap[:])
 	return &ptr
 }
 
-func (self *BitmapContainer) Inot(firstOfRange, lastOfRange int) Container {
+func (self *bitmapContainer) inot(firstOfRange, lastOfRange int) container {
 	return self.NotBitmap(self, firstOfRange, lastOfRange)
 }
 
-func (self *BitmapContainer) Not(firstOfRange, lastOfRange int) Container {
-	return self.NotBitmap(NewBitmapContainer(), firstOfRange, lastOfRange)
+func (self *bitmapContainer) not(firstOfRange, lastOfRange int) container {
+	return self.NotBitmap(newBitmapContainer(), firstOfRange, lastOfRange)
 
 }
-func (self *BitmapContainer) NotBitmap(answer *BitmapContainer, firstOfRange, lastOfRange int) Container {
-	if (lastOfRange - firstOfRange + 1) == MAX_CAPACITY {
-		newCardinality := MAX_CAPACITY - self.cardinality
+func (self *bitmapContainer) NotBitmap(answer *bitmapContainer, firstOfRange, lastOfRange int) container {
+	if (lastOfRange - firstOfRange + 1) == max_capacity {
+		newCardinality := max_capacity - self.cardinality
 		for k := 0; k < len(self.bitmap); k++ {
 			answer.bitmap[k] = ^self.bitmap[k]
 		}
 		answer.cardinality = newCardinality
-		if newCardinality <= ARRAY_DEFAULT_MAX_SIZE {
-			return answer.ToArrayContainer()
+		if newCardinality <= array_default_max_size {
+			return answer.toArrayContainer()
 		}
 		return answer
 	}
@@ -167,93 +167,92 @@ func (self *BitmapContainer) NotBitmap(answer *BitmapContainer, firstOfRange, la
 		// range starts and ends in same word (may have
 		// unchanged bits on both left and right)
 		mask &= maskOnLeft
-		cardinalityChange = -BitCount(self.bitmap[rangeFirstWord])
+		cardinalityChange = -bitCount(self.bitmap[rangeFirstWord])
 		answer.bitmap[rangeFirstWord] = self.bitmap[rangeFirstWord] ^ mask
-		cardinalityChange += BitCount(answer.bitmap[rangeFirstWord])
+		cardinalityChange += bitCount(answer.bitmap[rangeFirstWord])
 		answer.cardinality = self.cardinality + cardinalityChange
 
-		if answer.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
-			return answer.ToArrayContainer()
+		if answer.cardinality <= array_default_max_size {
+			return answer.toArrayContainer()
 		}
 		return answer
 	}
 
 	// range spans words
-	cardinalityChange += -BitCount(self.bitmap[rangeFirstWord])
+	cardinalityChange += -bitCount(self.bitmap[rangeFirstWord])
 	answer.bitmap[rangeFirstWord] = self.bitmap[rangeFirstWord] ^ mask
-	cardinalityChange += BitCount(answer.bitmap[rangeFirstWord])
+	cardinalityChange += bitCount(answer.bitmap[rangeFirstWord])
 
-	cardinalityChange += -BitCount(self.bitmap[rangeLastWord])
+	cardinalityChange += -bitCount(self.bitmap[rangeLastWord])
 	answer.bitmap[rangeLastWord] = self.bitmap[rangeLastWord] ^ maskOnLeft
-	cardinalityChange += BitCount(answer.bitmap[rangeLastWord])
+	cardinalityChange += bitCount(answer.bitmap[rangeLastWord])
 
 	// negate the words, if any, strictly between first and last
 	for i := rangeFirstWord + 1; i < rangeLastWord; i++ {
-		cardinalityChange += (64 - 2*BitCount(self.bitmap[i]))
+		cardinalityChange += (64 - 2*bitCount(self.bitmap[i]))
 		answer.bitmap[i] = ^self.bitmap[i]
 	}
 	answer.cardinality = self.cardinality + cardinalityChange
 
-	if answer.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
-		return answer.ToArrayContainer()
+	if answer.cardinality <= array_default_max_size {
+		return answer.toArrayContainer()
 	}
 	return answer
 }
 
-func (self *BitmapContainer) Or(a Container) Container {
+func (self *bitmapContainer) or(a container) container {
 	switch a.(type) {
-	case *ArrayContainer:
-		return self.OrArray(a.(*ArrayContainer))
-	case *BitmapContainer:
-		return self.OrBitmap(a.(*BitmapContainer))
+	case *arrayContainer:
+		return self.orArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return self.orBitmap(a.(*bitmapContainer))
 	}
 	return nil
 }
 
-func (self *BitmapContainer) OrArray(value2 *ArrayContainer) Container {
-	answer := self.Clone().(*BitmapContainer)
-	for k := 0; k < value2.GetCardinality(); k++ {
-		i := uint(ToIntUnsigned(value2.content[k])) >> 6
-		//java	answer.cardinality += ((~answer.bitmap[i]) & (1 << (value2.content[k] %64))) >>> (value2.content[k]%64);
+func (self *bitmapContainer) orArray(value2 *arrayContainer) container {
+	answer := self.clone().(*bitmapContainer)
+	for k := 0; k < value2.getCardinality(); k++ {
+		i := uint(toIntUnsigned(value2.content[k])) >> 6
 		answer.cardinality += int(uint(^answer.bitmap[i]&(1<<(value2.content[k]%64))) >> (value2.content[k] % 64))
-		answer.bitmap[i] = answer.bitmap[i] | (1 << (value2.content[k] % 64))
+		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (value2.content[k] % 64))
 	}
 	return answer
 }
-func (self *BitmapContainer) OrBitmap(value2 *BitmapContainer) Container {
-	answer := NewBitmapContainer()
+func (self *bitmapContainer) orBitmap(value2 *bitmapContainer) container {
+	answer := newBitmapContainer()
 	for k := 0; k < len(answer.bitmap); k++ {
 		answer.bitmap[k] = self.bitmap[k] | value2.bitmap[k]
-		answer.cardinality += BitCount(answer.bitmap[k])
+		answer.cardinality += bitCount(answer.bitmap[k])
 	}
 	return answer
 }
 
-func (self *BitmapContainer) Xor(a Container) Container {
+func (self *bitmapContainer) xor(a container) container {
 	switch a.(type) {
-	case *ArrayContainer:
-		return self.XorArray(a.(*ArrayContainer))
-	case *BitmapContainer:
-		return self.XorBitmap(a.(*BitmapContainer))
+	case *arrayContainer:
+		return self.xorArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return self.xorBitmap(a.(*bitmapContainer))
 	}
 	return nil
 }
 
-func (self *BitmapContainer) XorArray(value2 *ArrayContainer) Container {
-	answer := self.Clone().(*BitmapContainer)
-	for k := 0; k < value2.GetCardinality(); k++ {
-		index := uint(ToIntUnsigned(value2.content[k])) >> 6
+func (self *bitmapContainer) xorArray(value2 *arrayContainer) container {
+	answer := self.clone().(*bitmapContainer)
+	for k := 0; k < value2.getCardinality(); k++ {
+		index := uint(toIntUnsigned(value2.content[k])) >> 6
 		answer.cardinality += 1 - 2*int(uint(answer.bitmap[index]&(1<<(value2.content[k]%64)))>>(value2.content[k]%64))
 
-		answer.bitmap[index] = answer.bitmap[index] ^ (1 << (value2.content[k] % 64))
+		answer.bitmap[index] = answer.bitmap[index] ^ (uint64(1) << (value2.content[k] % 64))
 	}
-	if answer.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
-		return answer.ToArrayContainer()
+	if answer.cardinality <= array_default_max_size {
+		return answer.toArrayContainer()
 	}
 	return answer
 }
 
-func (self *BitmapContainer) XorBitmap(value2 *BitmapContainer) Container {
+func (self *bitmapContainer) xorBitmap(value2 *bitmapContainer) container {
 	/*
 		for k := 0; k < len(self.bitmap); k++ {
 			newCardinality += BitCount(self.bitmap[k] ^ value2.bitmap[k])
@@ -262,34 +261,33 @@ func (self *BitmapContainer) XorBitmap(value2 *BitmapContainer) Container {
 
 	newCardinality := int(popcntXorSlice(self.bitmap, value2.bitmap))
 
-	if newCardinality > ARRAY_DEFAULT_MAX_SIZE {
-		answer := NewBitmapContainer()
+	if newCardinality > max_capacity {
+		answer := newBitmapContainer()
 		for k := 0; k < len(answer.bitmap); k++ {
 			answer.bitmap[k] = self.bitmap[k] ^ value2.bitmap[k]
 		}
 		answer.cardinality = newCardinality
 		return answer
 	}
-	ac := NewArrayContainerCapacity(newCardinality)
-	ac.content = make([]short, newCardinality)
-	FillArrayXOR(ac.content, self.bitmap, value2.bitmap)
+	ac := newArrayContainerSize(newCardinality)
+	fillArrayXOR(ac.content, self.bitmap, value2.bitmap)
 	ac.content = ac.content[:newCardinality]
 	return ac
 }
 
-func (self *BitmapContainer) And(a Container) Container {
+func (self *bitmapContainer) and(a container) container {
 	switch a.(type) {
-	case *ArrayContainer:
-		return self.AndArray(a.(*ArrayContainer))
-	case *BitmapContainer:
-		return self.AndBitmap(a.(*BitmapContainer))
+	case *arrayContainer:
+		return self.andArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return self.andBitmap(a.(*bitmapContainer))
 	}
 	return nil
 }
-func (self *BitmapContainer) AndArray(value2 *ArrayContainer) *ArrayContainer {
-	answer := NewArrayContainerCapacity(len(value2.content))
-	for k := 0; k < value2.GetCardinality(); k++ {
-		if self.Contains(value2.content[k]) {
+func (self *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
+	answer := newArrayContainerCapacity(len(value2.content))
+	for k := 0; k < value2.getCardinality(); k++ {
+		if self.contains(value2.content[k]) {
 			answer.content = append(answer.content, value2.content[k])
 		}
 	}
@@ -297,47 +295,46 @@ func (self *BitmapContainer) AndArray(value2 *ArrayContainer) *ArrayContainer {
 
 }
 
-func (self *BitmapContainer) AndBitmap(value2 *BitmapContainer) Container {
+func (self *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
 	newcardinality := int(popcntAndSlice(self.bitmap, value2.bitmap))
-	if newcardinality > ARRAY_DEFAULT_MAX_SIZE {
-		answer := NewBitmapContainer()
+	if newcardinality > max_capacity {
+		answer := newBitmapContainer()
 		for k := 0; k < len(answer.bitmap); k++ {
 			answer.bitmap[k] = self.bitmap[k] & value2.bitmap[k]
 		}
 		answer.cardinality = newcardinality
 		return answer
 	}
-	ac := NewArrayContainerCapacity(newcardinality)
-	ac.content = make([]short, newcardinality)
-	FillArrayAND(ac.content, self.bitmap, value2.bitmap)
+	ac := newArrayContainerSize(newcardinality)
+	fillArrayAND(ac.content, self.bitmap, value2.bitmap)
 	ac.content = ac.content[:newcardinality] //not sure why i need this
 	return ac
 
 }
 
-func (self *BitmapContainer) AndNot(a Container) Container {
+func (self *bitmapContainer) andNot(a container) container {
 	switch a.(type) {
-	case *ArrayContainer:
-		return self.AndNotArray(a.(*ArrayContainer))
-	case *BitmapContainer:
-		return self.AndNotBitmap(a.(*BitmapContainer))
+	case *arrayContainer:
+		return self.andNotArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return self.andNotBitmap(a.(*bitmapContainer))
 	}
 	return nil
 }
-func (self *BitmapContainer) AndNotArray(value2 *ArrayContainer) Container {
-	answer := self.Clone().(*BitmapContainer)
-	for k := 0; k < value2.GetCardinality(); k++ {
-		i := uint(ToIntUnsigned(value2.content[k])) >> 6
-		answer.bitmap[i] = answer.bitmap[i] &^ (1 << (value2.content[k] % 64))
+func (self *bitmapContainer) andNotArray(value2 *arrayContainer) container {
+	answer := self.clone().(*bitmapContainer)
+	for k := 0; k < value2.getCardinality(); k++ {
+		i := uint(toIntUnsigned(value2.content[k])) >> 6
+		answer.bitmap[i] = answer.bitmap[i] &^ (uint64(1) << (value2.content[k] % 64))
 		answer.cardinality -= int(uint(answer.bitmap[i]^self.bitmap[i]) >> (value2.content[k] % 64))
 	}
-	if answer.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
-		return answer.ToArrayContainer()
+	if answer.cardinality <= array_default_max_size {
+		return answer.toArrayContainer()
 	}
 	return answer
 }
 
-func (self *BitmapContainer) AndNotBitmap(value2 *BitmapContainer) Container {
+func (self *bitmapContainer) andNotBitmap(value2 *bitmapContainer) container {
 	/*
 		newCardinality := 0
 		for k := 0; k < len(self.bitmap); k++ {
@@ -345,54 +342,52 @@ func (self *BitmapContainer) AndNotBitmap(value2 *BitmapContainer) Container {
 		}
 	*/
 	newCardinality := int(popcntMaskSlice(self.bitmap, value2.bitmap))
-	if newCardinality > ARRAY_DEFAULT_MAX_SIZE {
-		answer := NewBitmapContainer()
+	if newCardinality > max_capacity {
+		answer := newBitmapContainer()
 		for k := 0; k < len(answer.bitmap); k++ {
 			answer.bitmap[k] = self.bitmap[k] &^ value2.bitmap[k]
 		}
 		answer.cardinality = newCardinality
 		return answer
 	}
-	ac := NewArrayContainerCapacity(newCardinality)
-	FillArrayANDNOT(ac.content, self.bitmap, value2.bitmap)
-	ac.content = ac.content[:len(self.bitmap)]
-
+	ac := newArrayContainerSize(newCardinality)
+	fillArrayANDNOT(ac.content, self.bitmap, value2.bitmap)
 	return ac
 }
 
-func (self *BitmapContainer) Contains(i short) bool { //testbit
+func (self *bitmapContainer) contains(i uint16) bool { //testbit
 	x := int(i)
 	return (self.bitmap[x/64] & (1 << uint(x%64))) != 0
 }
-func (self *BitmapContainer) loadData(arrayContainer *ArrayContainer) {
+func (self *bitmapContainer) loadData(arrayContainer *arrayContainer) {
 
-	self.cardinality = arrayContainer.GetCardinality()
-	for k := 0; k < arrayContainer.GetCardinality(); k++ {
+	self.cardinality = arrayContainer.getCardinality()
+	for k := 0; k < arrayContainer.getCardinality(); k++ {
 		x := arrayContainer.content[k]
 		i := int(x) / 64
 		self.bitmap[i] |= (uint64(1) << uint(x%64))
 	}
 }
 
-func (self *BitmapContainer) ToArrayContainer() *ArrayContainer {
-	ac := NewArrayContainerCapacity(self.cardinality)
+func (self *bitmapContainer) toArrayContainer() *arrayContainer {
+	ac := newArrayContainerCapacity(self.cardinality)
 	ac.loadData(self)
 	return ac
 }
-func (self *BitmapContainer) fillArray(array []short) {
+func (self *bitmapContainer) fillArray(container []uint16) {
 	pos := 0
 	for k := 0; k < len(self.bitmap); k++ {
 		bitset := self.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			array[pos] = short((k * 64) + BitCount(t-1))
-			pos++
+			container[pos] = uint16((k*64 + bitCount(t-1)))
+			pos = pos + 1
 			bitset ^= t
 		}
 	}
 }
 
-func (self *BitmapContainer) NextSetBit(i int) int {
+func (self *bitmapContainer) NextSetBit(i int) int {
 	x := i / 64
 	if x >= len(self.bitmap) {
 		return -1
@@ -401,12 +396,12 @@ func (self *BitmapContainer) NextSetBit(i int) int {
 	//w = int64(uint64(w) >> uint(i))
 	w = w >> uint(i%64)
 	if w != 0 {
-		return i + NumberOfTrailingZeros(w)
+		return i + numberOfTrailingZeros(w)
 	}
 	x++
 	for ; x < len(self.bitmap); x++ {
 		if self.bitmap[x] != 0 {
-			return (x * 64) + NumberOfTrailingZeros(self.bitmap[x])
+			return (x * 64) + numberOfTrailingZeros(self.bitmap[x])
 		}
 	}
 	return -1

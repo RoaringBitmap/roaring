@@ -7,22 +7,46 @@ import (
 	"log"
 )
 
-type Element struct {
-	key   short
-	value Container
+type container interface {
+	clone() container
+	and(container) container
+	andNot(container) container
+	inot(firstOfRange, lastOfRange int) container
+	getCardinality() int
+	add(uint16) container
+	not(start, final int) container
+	xor(r container) container
+	getShortIterator() shortIterable
+	contains(i uint16) bool
+	equals(i interface{}) bool
+	fillLeastSignificant16bits(array []int, i, mask int)
+	or(r container) container
 }
 
-func (self *Element) Clone() Element {
-	var c Element
+func rangeOfOnes(start, last int) container {
+	if (last - start + 1) > array_default_max_size {
+		return newBitmapContainerwithRange(start, last)
+	}
+
+	return newArrayContainerRange(start, last)
+}
+
+type element struct {
+	key   uint16
+	value container
+}
+
+func (self *element) clone() element {
+	var c element
 	c.key = self.key
-	c.value = self.value.Clone()
+	c.value = self.value.clone()
 	return c
 }
 
-func (self *Element) GobEncode() (buf []byte, err error) {
+func (self *element) gobEncode() (buf []byte, err error) {
 	w := new(bytes.Buffer)
 	encoder := gob.NewEncoder(w)
-	//gob.Register(self.Container)
+	//gob.Register(self.container)
 	err = encoder.Encode(self.key)
 	if err != nil {
 		return nil, err
@@ -35,7 +59,7 @@ func (self *Element) GobEncode() (buf []byte, err error) {
 	return w.Bytes(), nil
 }
 
-func (self *Element) GobDecode(buf []byte) error {
+func (self *element) gobDecode(buf []byte) error {
 	r := bytes.NewBuffer(buf)
 	decoder := gob.NewDecoder(r)
 	err := decoder.Decode(self.key)
@@ -49,115 +73,115 @@ func (self *Element) GobDecode(buf []byte) error {
 	return nil
 }
 
-func NewElement(key short, value Container) *Element {
-	ptr := new(Element)
+func newelement(key uint16, value container) *element {
+	ptr := new(element)
 	ptr.key = key
 	ptr.value = value
 	return ptr
 }
 
-type RoaringArray struct {
-	array []*Element
+type roaringArray struct {
+	array []*element
 }
 
-func NewRoaringArray() *RoaringArray {
-	return &RoaringArray{make([]*Element, 0, 0)}
+func newRoaringArray() *roaringArray {
+	return &roaringArray{make([]*element, 0, 0)}
 }
 
-func (self *RoaringArray) Append(key short, value Container) {
-	self.array = append(self.array, NewElement(key, value))
+func (self *roaringArray) append(key uint16, value container) {
+	self.array = append(self.array, newelement(key, value))
 }
 
-func (self *RoaringArray) AppendCopy(sa RoaringArray, startingindex int) {
-	self.array = append(self.array, NewElement(sa.array[startingindex].key, sa.array[startingindex].value.Clone()))
+func (self *roaringArray) appendCopy(sa roaringArray, startingindex int) {
+	self.array = append(self.array, newelement(sa.array[startingindex].key, sa.array[startingindex].value.clone()))
 }
 
-func (self *RoaringArray) AppendCopyMany(sa RoaringArray, startingindex, end int) {
+func (self *roaringArray) appendCopyMany(sa roaringArray, startingindex, end int) {
 	for i := startingindex; i < end; i++ {
-		self.AppendCopy(sa, i)
+		self.appendCopy(sa, i)
 	}
 }
 
-func (self *RoaringArray) AppendCopiesUntil(sa RoaringArray, stoppingKey short) {
-	for i := 0; i < sa.Size(); i++ {
+func (self *roaringArray) appendCopiesUntil(sa roaringArray, stoppingKey uint16) {
+	for i := 0; i < sa.size(); i++ {
 		if sa.array[i].key >= stoppingKey {
 			break
 		}
-		self.array = append(self.array, NewElement(sa.array[i].key, sa.array[i].value.Clone()))
+		self.array = append(self.array, newelement(sa.array[i].key, sa.array[i].value.clone()))
 	}
 }
 
-func (self *RoaringArray) AppendCopiesAfter(sa RoaringArray, beforeStart short) {
-	startLocation := sa.GetIndex(beforeStart)
+func (self *roaringArray) appendCopiesAfter(sa roaringArray, beforeStart uint16) {
+	startLocation := sa.getIndex(beforeStart)
 	if startLocation >= 0 {
 		startLocation++
 	} else {
 		startLocation = -startLocation - 1
 	}
 
-	for i := startLocation; i < sa.Size(); i++ {
-		self.array = append(self.array, NewElement(sa.array[i].key, sa.array[i].value.Clone()))
+	for i := startLocation; i < sa.size(); i++ {
+		self.array = append(self.array, newelement(sa.array[i].key, sa.array[i].value.clone()))
 	}
 }
 
-func (self *RoaringArray) Clear() {
-	self.array = make([]*Element, 0, 0)
+func (self *roaringArray) clear() {
+	self.array = make([]*element, 0, 0)
 }
 
-func (self *RoaringArray) Clone() *RoaringArray {
-	sa := new(RoaringArray)
-	sa.array = make([]*Element, len(self.array))
+func (self *roaringArray) clone() *roaringArray {
+	sa := new(roaringArray)
+	sa.array = make([]*element, len(self.array))
 	copy(sa.array, self.array[:])
 	return sa
 }
 
-func (self *RoaringArray) ContainsKey(x short) bool {
-	return (self.BinarySearch(0, len(self.array), x) >= 0)
+func (self *roaringArray) containsKey(x uint16) bool {
+	return (self.binarySearch(0, len(self.array), x) >= 0)
 }
 
-func (self *RoaringArray) GetContainer(x short) Container {
-	i := self.BinarySearch(0, len(self.array), x)
+func (self *roaringArray) getContainer(x uint16) container {
+	i := self.binarySearch(0, len(self.array), x)
 	if i < 0 {
 		return nil
 	}
 	return self.array[i].value
 }
 
-func (self *RoaringArray) GetContainerAtIndex(i int) Container {
+func (self *roaringArray) getContainerAtIndex(i int) container {
 	return self.array[i].value
 }
 
-func (self *RoaringArray) GetIndex(x short) int {
+func (self *roaringArray) getIndex(x uint16) int {
 	// before the binary search, we optimize for frequent cases
 	size := len(self.array)
 	if (size == 0) || (self.array[size-1].key == x) {
 		return size - 1
 	}
-	return self.BinarySearch(0, size, x)
+	return self.binarySearch(0, size, x)
 }
 
-func (self *RoaringArray) GetKeyAtIndex(i int) short {
+func (self *roaringArray) getKeyAtIndex(i int) uint16 {
 	return self.array[i].key
 }
 
-func (self *RoaringArray) insertNewKeyValueAt(i int, key short, value Container) {
+func (self *roaringArray) insertNewKeyValueAt(i int, key uint16, value container) {
 	s := self.array
 	s = append(s, nil)
 	copy(s[i+1:], s[i:])
-	s[i] = NewElement(key, value)
+	s[i] = newelement(key, value)
 	self.array = s
 }
 
-func (self *RoaringArray) Remove(key short) bool {
-	i := self.BinarySearch(0, len(self.array), key)
+func (self *roaringArray) remove(key uint16) bool {
+	i := self.binarySearch(0, len(self.array), key)
 	if i >= 0 { // if a new key
-		self.RemoveAtIndex(i)
+		self.removeAtIndex(i)
 		return true
 	}
 	return false
 }
 
-func (self *RoaringArray) RemoveAtIndex(i int) {
+func (self *roaringArray) removeAtIndex(i int) {
 	a := self.array
 	copy(a[i:], a[i+1:])
 	a[len(a)-1] = nil // or the zero value of T
@@ -165,15 +189,15 @@ func (self *RoaringArray) RemoveAtIndex(i int) {
 	self.array = a //should be the same reference i think
 }
 
-func (self *RoaringArray) setContainerAtIndex(i int, c Container) {
+func (self *roaringArray) setContainerAtIndex(i int, c container) {
 	self.array[i].value = c
 }
 
-func (self *RoaringArray) Size() int {
+func (self *roaringArray) size() int {
 	return len(self.array)
 }
 
-func (self *RoaringArray) BinarySearch(begin, end int, key short) int {
+func (self *roaringArray) binarySearch(begin, end int, key uint16) int {
 	low := begin
 	high := end - 1
 	ikey := int(key)
@@ -192,19 +216,18 @@ func (self *RoaringArray) BinarySearch(begin, end int, key short) int {
 	}
 	return -(low + 1)
 }
-func (self *RoaringArray) Equals(o interface{}) bool {
-	//srb := o.(*RoaringArray)
-	srb, ok := o.(RoaringArray)
+func (self *roaringArray) equals(o interface{}) bool {
+	srb, ok := o.(roaringArray)
 	if ok {
 
-		if srb.Size() != self.Size() {
-			log.Println("NOT SAME SIZE", srb.Size(), self.Size())
+		if srb.size() != self.size() {
+			log.Println("NOT SAME SIZE", srb.size(), self.size())
 			return false
 		}
-		for i := 0; i < srb.Size(); i++ {
+		for i := 0; i < srb.size(); i++ {
 			oself := self.array[i]
 			other := srb.array[i]
-			if oself.key != other.key || !oself.value.Equals(other.value) {
+			if oself.key != other.key || !oself.value.equals(other.value) {
 				return false
 			}
 		}
@@ -214,7 +237,7 @@ func (self *RoaringArray) Equals(o interface{}) bool {
 	return false
 }
 
-func (self *RoaringArray) Serialize(out io.Writer) error {
+func (self *roaringArray) serialize(out io.Writer) error {
 	enc := gob.NewEncoder(out)
 	err := enc.Encode(len(self.array))
 	if err != nil {
@@ -229,16 +252,16 @@ func (self *RoaringArray) Serialize(out io.Writer) error {
 	return nil
 }
 
-func (self *RoaringArray) Deserialize(in io.Reader) error {
+func (self *roaringArray) deserialize(in io.Reader) error {
 	dec := gob.NewDecoder(in)
 	var size int
 	err := dec.Decode(&size)
 	if err != nil {
 		return err
 	}
-	self.array = make([]*Element, size, size)
+	self.array = make([]*element, size, size)
 	for i := 0; i < size; i++ {
-		element := new(Element)
+		element := new(element)
 		err = dec.Decode(&element)
 		if err != nil {
 			return err

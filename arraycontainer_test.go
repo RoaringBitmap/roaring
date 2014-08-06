@@ -3,24 +3,22 @@ package roaring
 // to run just these tests: go test -run TestArrayContainer*
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestArrayContainerSetAndGet(t *testing.T) {
-	fmt.Println("testing set get") // TODO: remove these printouts eventually
-	v := Container(NewArrayContainer())
-	v = v.Add(100)
-	if v.GetCardinality() != 1 {
+	v := container(newArrayContainer())
+	v = v.add(100)
+	if v.getCardinality() != 1 {
 		t.Errorf("Bogus cardinality.")
 	}
-	for i := 0; i <= ARRAY_DEFAULT_MAX_SIZE; i++ {
+	for i := 0; i <= array_default_max_size; i++ {
 		if i == 100 {
-			if v.Contains(short(i)) != true {
+			if v.contains(uint16(i)) != true {
 				t.Errorf("I added a number in vain.")
 			}
 		} else {
-			if v.Contains(short(i)) != false {
+			if v.contains(uint16(i)) != false {
 				t.Errorf("Ghost content")
 				break
 			}
@@ -29,21 +27,20 @@ func TestArrayContainerSetAndGet(t *testing.T) {
 }
 
 func TestArrayContainerMassiveSetAndGet(t *testing.T) {
-	fmt.Println("testing massive set get") // TODO: remove these printouts eventually
-	v := Container(NewArrayContainer())
-	for j := 0; j <= ARRAY_DEFAULT_MAX_SIZE; j++ {
+	v := container(newArrayContainer())
+	for j := 0; j <= array_default_max_size; j++ {
 
-		v = v.Add(short(j))
-		if v.GetCardinality() != 1+j {
-			t.Errorf("Bogus cardinality. ", v.GetCardinality(), j)
+		v = v.add(uint16(j))
+		if v.getCardinality() != 1+j {
+			t.Errorf("Bogus cardinality. ", v.getCardinality(), j)
 		}
-		for i := 0; i <= ARRAY_DEFAULT_MAX_SIZE; i++ {
+		for i := 0; i <= array_default_max_size; i++ {
 			if i <= j {
-				if v.Contains(short(i)) != true {
+				if v.contains(uint16(i)) != true {
 					t.Errorf("I added a number in vain.")
 				}
 			} else {
-				if v.Contains(short(i)) != false {
+				if v.contains(uint16(i)) != false {
 					t.Errorf("Ghost content")
 					break
 				}

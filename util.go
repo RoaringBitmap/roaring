@@ -1,9 +1,12 @@
 package roaring
 
-type short uint16
+const (
+	array_default_max_size = 4096
+	max_capacity           = 1 << 16
+)
 
 // should be replaced with optimized assembly instructions
-func BitCount(x uint64) int {
+func bitCount(x uint64) int {
 	// bit population count, see
 	// http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 	x -= (x >> 1) & 0x5555555555555555
@@ -15,7 +18,7 @@ func BitCount(x uint64) int {
 }
 
 // should be replaced with optimized assembly instructions
-func NumberOfTrailingZeros(i uint64) int {
+func numberOfTrailingZeros(i uint64) int {
 	if i == 0 {
 		return 64
 	}
@@ -60,66 +63,66 @@ func fillRange(arr []uint64, start, end int, val uint64) {
 	}
 }
 
-func FillArrayAND(container []short, bitmap1, bitmap2 []uint64) {
-	pos := 0
+func fillArrayAND(container []uint16, bitmap1, bitmap2 []uint64) {
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	pos := 0
 	for k, _ := range bitmap1 {
 		bitset := bitmap1[k] & bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = short((k*64 + BitCount(t-1)))
-			pos++
+			container[pos] = uint16((k*64 + bitCount(t-1)))
+			pos = pos + 1
 			bitset ^= t
 		}
 	}
 }
 
-func FillArrayANDNOT(container []short, bitmap1, bitmap2 []uint64) {
-	pos := 0
+func fillArrayANDNOT(container []uint16, bitmap1, bitmap2 []uint64) {
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	pos := 0
 	for k, _ := range bitmap1 {
 		bitset := bitmap1[k] &^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = short((k*64 + BitCount(t-1)))
-			pos++
+			container[pos] = uint16((k*64 + bitCount(t-1)))
+			pos = pos + 1
 			bitset ^= t
 		}
 	}
 }
 
-func FillArrayXOR(container []short, bitmap1, bitmap2 []uint64) {
-	pos := 0
+func fillArrayXOR(container []uint16, bitmap1, bitmap2 []uint64) {
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	pos := 0
 	for k := 0; k < len(bitmap1); k++ {
 		bitset := bitmap1[k] ^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = short((k*64 + BitCount(t-1)))
-			pos++
+			container[pos] = uint16((k*64 + bitCount(t-1)))
+			pos = pos + 1
 			bitset ^= t
 		}
 	}
 }
 
-func Highbits(x int) short {
+func highbits(x int) uint16 {
 	u := uint(x)
-	return short(u >> 16)
+	return uint16(u >> 16)
 }
-func Lowbits(x int) short {
-	return short(x & 0xFFFF)
-}
-
-func MaxLowBit() short {
-	return short(0xFFFF)
+func lowbits(x int) uint16 {
+	return uint16(x & 0xFFFF)
 }
 
-func ToIntUnsigned(x short) int {
+func maxLowBit() uint16 {
+	return uint16(0xFFFF)
+}
+
+func toIntUnsigned(x uint16) int {
 	return int(x & 0xFFFF)
 }
