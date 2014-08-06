@@ -1,7 +1,7 @@
-RoaringBitmap 
+RoaringBitmap [![Build Status](https://travis-ci.org/tgruben/roaring.png)](https://travis-ci.org/tgruben/roaring)[![GoDoc](https://godoc.org/github.com/tgruben/roaring?status.svg)](https://godoc.org/github.com/tgruben/roaring) 
 =============
 
-This is a go port of Daniel Lemire's bitmap compression algorithm.  The origin java version can be found at https://github.com/lemire/RoaringBitmap and the supporting paper
+This is a go port of the Roaring bitmap data structured.  The origin java version can be found at https://github.com/lemire/RoaringBitmap and the supporting paper at
 
 http://arxiv.org/abs/1402.6407
 
@@ -10,7 +10,18 @@ The two versions were written independently.
 
 This code is licensed under Apache License, Version 2.0 (ASL2.0). 
 
+### Dependencies
+
+  - go get github.com/smartystreets/goconvey/convey
+  - go get github.com/willf/bitset
+
+Naturally, you also need to grab the roaring code itself:
+  - go get github.com/tgruben/roaring
+
+
 ### Example
+
+
 
 ```go
 package main
