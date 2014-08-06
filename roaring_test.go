@@ -308,7 +308,7 @@ func TestRoaringBitmap(t *testing.T) {
 
 		arrayres := rrand.ToArray()
 		ok := true
-		for i, _ := range arrayres {
+		for i := range arrayres {
 			if i < len(arrayand) {
 				if arrayres[i] != arrayand[i] {
 					log.Println(i, arrayres[i], arrayand[i])
@@ -421,7 +421,7 @@ func TestRoaringBitmap(t *testing.T) {
 		pos++
 		array := rr.ToArray()
 		ok := true
-		for i, _ := range a {
+		for i := range a {
 			if array[i] != a[i] {
 				log.Println("rr : ", array[i], " a : ", a[i])
 				ok = false
@@ -539,7 +539,7 @@ func TestRoaringBitmap(t *testing.T) {
 		arrayrr := rb.ToArray()
 		arrayrr3 := rb3.ToArray()
 		ok := true
-		for i, _ := range arrayrr {
+		for i := range arrayrr {
 			if arrayrr[i] != arrayrr3[i] {
 				ok = false
 			}
@@ -1016,7 +1016,7 @@ func TestRoaringBitmap(t *testing.T) {
 			V2[k] = true
 		}
 
-		for k, _ := range V1 {
+		for k := range V1 {
 			_, found := V2[k]
 			if !found {
 				valide = false
@@ -1205,7 +1205,7 @@ func TestRoaringBitmap(t *testing.T) {
 			}
 			V2[i] = true
 		}
-		for k, _ := range V1 {
+		for k := range V1 {
 			_, found := V2[k]
 			if !found {
 				valide = false

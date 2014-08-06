@@ -34,7 +34,7 @@ func (self *arrayContainer) not(firstOfRange, lastOfRange int) container {
 	cardinalityChange := newValuesInRange - currentValuesInRange
 	newCardinality := len(self.content) + cardinalityChange
 
-	if newCardinality >= array_default_max_size {
+	if newCardinality >= arrayDefaultMaxSize {
 		return self.toBitmapContainer().not(firstOfRange, lastOfRange)
 	}
 	answer := newArrayContainer()
@@ -90,7 +90,7 @@ func (self *arrayContainer) toBitmapContainer() *bitmapContainer {
 
 }
 func (self *arrayContainer) add(x uint16) container {
-	if len(self.content) >= array_default_max_size {
+	if len(self.content) >= arrayDefaultMaxSize {
 		a := self.toBitmapContainer()
 		a.add(x)
 		return a
@@ -124,7 +124,7 @@ func (self *arrayContainer) or(a container) container {
 func (self *arrayContainer) orArray(value2 *arrayContainer) container {
 	value1 := self
 	totalCardinality := value1.getCardinality() + value2.getCardinality()
-	if totalCardinality > array_default_max_size { // it could be a bitmap!^M
+	if totalCardinality > arrayDefaultMaxSize { // it could be a bitmap!^M
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
 			i := uint(toIntUnsigned(value2.content[k])) >> 6
@@ -135,7 +135,7 @@ func (self *arrayContainer) orArray(value2 *arrayContainer) container {
 			bc.bitmap[i] |= (1 << (self.content[k] % 64))
 		}
 		bc.cardinality = int(popcntSlice(bc.bitmap))
-		if bc.cardinality <= max_capacity {
+		if bc.cardinality <= arrayDefaultMaxSize {
 			return bc.toArrayContainer()
 		}
 		return bc
@@ -170,7 +170,7 @@ func (self *arrayContainer) xor(a container) container {
 func (self *arrayContainer) xorArray(value2 *arrayContainer) container {
 	value1 := self
 	totalCardinality := value1.getCardinality() + value2.getCardinality()
-	if totalCardinality > array_default_max_size { // it could be a bitmap!^M
+	if totalCardinality > arrayDefaultMaxSize { // it could be a bitmap!^M
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
 			i := uint(toIntUnsigned(value2.content[k])) >> 6
@@ -182,7 +182,7 @@ func (self *arrayContainer) xorArray(value2 *arrayContainer) container {
 		}
 		bc.cardinality = int(popcntSlice(bc.bitmap))
 
-		if bc.cardinality <= max_capacity {
+		if bc.cardinality <= arrayDefaultMaxSize {
 			return bc.toArrayContainer()
 		}
 		return bc
@@ -244,7 +244,7 @@ func (self *arrayContainer) inot(firstOfRange, lastOfRange int) container {
 	newCardinality := len(self.content) + cardinalityChange
 	if cardinalityChange > 0 {
 		if newCardinality > len(self.content) {
-			if newCardinality >= array_default_max_size {
+			if newCardinality >= arrayDefaultMaxSize {
 				return self.toBitmapContainer().inot(firstOfRange, lastOfRange)
 			}
 			self.content = copyOf(self.content, newCardinality)

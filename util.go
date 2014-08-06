@@ -1,8 +1,8 @@
 package roaring
 
 const (
-	array_default_max_size = 4096
-	max_capacity           = 1 << 16
+	arrayDefaultMaxSize = 4096
+	maxCapacity         = 1 << 16
 )
 
 // should be replaced with optimized assembly instructions
@@ -68,7 +68,7 @@ func fillArrayAND(container []uint16, bitmap1, bitmap2 []uint64) {
 		panic("array lengths don't match")
 	}
 	pos := 0
-	for k, _ := range bitmap1 {
+	for k := range bitmap1 {
 		bitset := bitmap1[k] & bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
@@ -84,7 +84,7 @@ func fillArrayANDNOT(container []uint16, bitmap1, bitmap2 []uint64) {
 		panic("array lengths don't match")
 	}
 	pos := 0
-	for k, _ := range bitmap1 {
+	for k := range bitmap1 {
 		bitset := bitmap1[k] &^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset

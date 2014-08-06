@@ -12,7 +12,7 @@ func TestArrayContainerSetAndGet(t *testing.T) {
 	if v.getCardinality() != 1 {
 		t.Errorf("Bogus cardinality.")
 	}
-	for i := 0; i <= array_default_max_size; i++ {
+	for i := 0; i <= arrayDefaultMaxSize; i++ {
 		if i == 100 {
 			if v.contains(uint16(i)) != true {
 				t.Errorf("I added a number in vain.")
@@ -28,13 +28,13 @@ func TestArrayContainerSetAndGet(t *testing.T) {
 
 func TestArrayContainerMassiveSetAndGet(t *testing.T) {
 	v := container(newArrayContainer())
-	for j := 0; j <= array_default_max_size; j++ {
+	for j := 0; j <= arrayDefaultMaxSize; j++ {
 
 		v = v.add(uint16(j))
 		if v.getCardinality() != 1+j {
 			t.Errorf("Bogus cardinality. ", v.getCardinality(), j)
 		}
-		for i := 0; i <= array_default_max_size; i++ {
+		for i := 0; i <= arrayDefaultMaxSize; i++ {
 			if i <= j {
 				if v.contains(uint16(i)) != true {
 					t.Errorf("I added a number in vain.")

@@ -15,7 +15,7 @@ func newBitmapContainer() *bitmapContainer {
 func newBitmapContainerwithRange(firstOfRun, lastOfRun int) *bitmapContainer {
 	this := newBitmapContainer()
 	this.cardinality = lastOfRun - firstOfRun + 1
-	if this.cardinality == max_capacity {
+	if this.cardinality == maxCapacity {
 		fill(this.bitmap, uint64(0xffffffffffffffff))
 	} else {
 		firstWord := firstOfRun / 64
@@ -115,13 +115,13 @@ func (self *bitmapContainer) not(firstOfRange, lastOfRange int) container {
 
 }
 func (self *bitmapContainer) NotBitmap(answer *bitmapContainer, firstOfRange, lastOfRange int) container {
-	if (lastOfRange - firstOfRange + 1) == max_capacity {
-		newCardinality := max_capacity - self.cardinality
+	if (lastOfRange - firstOfRange + 1) == maxCapacity {
+		newCardinality := maxCapacity - self.cardinality
 		for k := 0; k < len(self.bitmap); k++ {
 			answer.bitmap[k] = ^self.bitmap[k]
 		}
 		answer.cardinality = newCardinality
-		if newCardinality <= array_default_max_size {
+		if newCardinality <= arrayDefaultMaxSize {
 			return answer.toArrayContainer()
 		}
 		return answer
@@ -172,7 +172,7 @@ func (self *bitmapContainer) NotBitmap(answer *bitmapContainer, firstOfRange, la
 		cardinalityChange += bitCount(answer.bitmap[rangeFirstWord])
 		answer.cardinality = self.cardinality + cardinalityChange
 
-		if answer.cardinality <= array_default_max_size {
+		if answer.cardinality <= arrayDefaultMaxSize {
 			return answer.toArrayContainer()
 		}
 		return answer
@@ -194,7 +194,7 @@ func (self *bitmapContainer) NotBitmap(answer *bitmapContainer, firstOfRange, la
 	}
 	answer.cardinality = self.cardinality + cardinalityChange
 
-	if answer.cardinality <= array_default_max_size {
+	if answer.cardinality <= arrayDefaultMaxSize {
 		return answer.toArrayContainer()
 	}
 	return answer
@@ -246,7 +246,7 @@ func (self *bitmapContainer) xorArray(value2 *arrayContainer) container {
 
 		answer.bitmap[index] = answer.bitmap[index] ^ (uint64(1) << (value2.content[k] % 64))
 	}
-	if answer.cardinality <= array_default_max_size {
+	if answer.cardinality <= arrayDefaultMaxSize {
 		return answer.toArrayContainer()
 	}
 	return answer
@@ -261,7 +261,7 @@ func (self *bitmapContainer) xorBitmap(value2 *bitmapContainer) container {
 
 	newCardinality := int(popcntXorSlice(self.bitmap, value2.bitmap))
 
-	if newCardinality > max_capacity {
+	if newCardinality > arrayDefaultMaxSize {
 		answer := newBitmapContainer()
 		for k := 0; k < len(answer.bitmap); k++ {
 			answer.bitmap[k] = self.bitmap[k] ^ value2.bitmap[k]
@@ -297,7 +297,7 @@ func (self *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
 
 func (self *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
 	newcardinality := int(popcntAndSlice(self.bitmap, value2.bitmap))
-	if newcardinality > max_capacity {
+	if newcardinality > arrayDefaultMaxSize {
 		answer := newBitmapContainer()
 		for k := 0; k < len(answer.bitmap); k++ {
 			answer.bitmap[k] = self.bitmap[k] & value2.bitmap[k]
@@ -328,7 +328,7 @@ func (self *bitmapContainer) andNotArray(value2 *arrayContainer) container {
 		answer.bitmap[i] = answer.bitmap[i] &^ (uint64(1) << (value2.content[k] % 64))
 		answer.cardinality -= int(uint(answer.bitmap[i]^self.bitmap[i]) >> (value2.content[k] % 64))
 	}
-	if answer.cardinality <= array_default_max_size {
+	if answer.cardinality <= arrayDefaultMaxSize {
 		return answer.toArrayContainer()
 	}
 	return answer
@@ -342,7 +342,7 @@ func (self *bitmapContainer) andNotBitmap(value2 *bitmapContainer) container {
 		}
 	*/
 	newCardinality := int(popcntMaskSlice(self.bitmap, value2.bitmap))
-	if newCardinality > max_capacity {
+	if newCardinality > arrayDefaultMaxSize {
 		answer := newBitmapContainer()
 		for k := 0; k < len(answer.bitmap); k++ {
 			answer.bitmap[k] = self.bitmap[k] &^ value2.bitmap[k]
