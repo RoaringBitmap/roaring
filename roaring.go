@@ -391,7 +391,7 @@ func fillArrayXOR(container []short, bitmap1, bitmap2 []uint64) {
 		bitset := bitmap1[k] ^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = short(k*64 + BitCount(int64(t)-1))
+			container[pos] = short(k*64 + BitCount(t-1))
 			pos++
 			bitset ^= t
 		}

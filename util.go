@@ -3,8 +3,7 @@ package roaring
 type short uint16
 
 // should be replaced with optimized assembly instructions
-func BitCount(i int64) int {
-	x := uint64(i)
+func BitCount(x uint64) int {
 	// bit population count, see
 	// http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 	x -= (x >> 1) & 0x5555555555555555
@@ -16,7 +15,7 @@ func BitCount(i int64) int {
 }
 
 // should be replaced with optimized assembly instructions
-func NumberOfTrailingZeros(i int64) int {
+func NumberOfTrailingZeros(i uint64) int {
 	if i == 0 {
 		return 64
 	}
@@ -50,18 +49,18 @@ func NumberOfTrailingZeros(i int64) int {
 	return int(n - int64(uint64(x<<1)>>63))
 }
 
-func fill(arr []int64, val int64) {
+func fill(arr []uint64, val uint64) {
 	for i := range arr {
 		arr[i] = val
 	}
 }
-func fillRange(arr []int64, start, end int, val int64) {
+func fillRange(arr []uint64, start, end int, val uint64) {
 	for i := start; i < end; i++ {
 		arr[i] = val
 	}
 }
 
-func FillArrayAND(container []short, bitmap1, bitmap2 []int64) {
+func FillArrayAND(container []short, bitmap1, bitmap2 []uint64) {
 	pos := 0
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
@@ -77,7 +76,7 @@ func FillArrayAND(container []short, bitmap1, bitmap2 []int64) {
 	}
 }
 
-func FillArrayANDNOT(container []short, bitmap1, bitmap2 []int64) {
+func FillArrayANDNOT(container []short, bitmap1, bitmap2 []uint64) {
 	pos := 0
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
@@ -93,7 +92,7 @@ func FillArrayANDNOT(container []short, bitmap1, bitmap2 []int64) {
 	}
 }
 
-func FillArrayXOR(container []short, bitmap1, bitmap2 []int64) {
+func FillArrayXOR(container []short, bitmap1, bitmap2 []uint64) {
 	pos := 0
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")

@@ -135,10 +135,7 @@ func (self *ArrayContainer) OrArray(value2 *ArrayContainer) Container {
 			i := uint(ToIntUnsigned(self.content[k])) >> 6
 			bc.bitmap[i] |= (1 << (self.content[k] % 64))
 		}
-		bc.cardinality = 0
-		for _, k := range bc.bitmap {
-			bc.cardinality += BitCount(k)
-		}
+		bc.cardinality = int(popcntSlice(bc.bitmap))
 		if bc.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
 			return bc.ToArrayContainer()
 		}
@@ -184,10 +181,8 @@ func (self *ArrayContainer) XorArray(value2 *ArrayContainer) Container {
 			i := uint(ToIntUnsigned(self.content[k])) >> 6
 			bc.bitmap[i] ^= (1 << self.content[k])
 		}
-		bc.cardinality = 0
-		for _, k := range bc.bitmap {
-			bc.cardinality += BitCount(k)
-		}
+		bc.cardinality = int(popcntSlice(bc.bitmap))
+
 		if bc.cardinality <= ARRAY_DEFAULT_MAX_SIZE {
 			return bc.ToArrayContainer()
 		}

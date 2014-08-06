@@ -1326,7 +1326,7 @@ func TestRoaringArray(t *testing.T) {
 	})
 
 	Convey("Test Bitcount Full", t, func() {
-		res := BitCount(-1)
+		res := BitCount(uint64(0xffffffffffffffff))
 		So(res, ShouldEqual, 64)
 	})
 

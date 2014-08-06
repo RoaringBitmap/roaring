@@ -56,7 +56,7 @@ func checkContent(c Container, s []short) bool {
 
 func TestRoaringContainer(t *testing.T) {
 	Convey("NumberOfTrailingZeros", t, func() {
-		x := int64(0)
+		x := uint64(0)
 		o := NumberOfTrailingZeros(x)
 		So(o, ShouldEqual, 64)
 		x = 1 << 3
