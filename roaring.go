@@ -14,18 +14,18 @@ func NewRoaringBitmap() *RoaringBitmap {
 	return &RoaringBitmap{*newRoaringArray()}
 }
 
-func (self *RoaringBitmap) Clear() {
-	self.highlowcontainer = *newRoaringArray()
+func (rb *RoaringBitmap) Clear() {
+	rb.highlowcontainer = *newRoaringArray()
 }
 
-func (self *RoaringBitmap) ToArray() []int {
-	array := make([]int, self.GetCardinality())
+func (rb *RoaringBitmap) ToArray() []int {
+	array := make([]int, rb.GetCardinality())
 	pos := 0
 	pos2 := 0
 
-	for pos < self.highlowcontainer.size() {
-		hs := toIntUnsigned(self.highlowcontainer.getKeyAtIndex(pos)) << 16
-		c := self.highlowcontainer.getContainerAtIndex(pos)
+	for pos < rb.highlowcontainer.size() {
+		hs := toIntUnsigned(rb.highlowcontainer.getKeyAtIndex(pos)) << 16
+		c := rb.highlowcontainer.getContainerAtIndex(pos)
 		pos++
 		c.fillLeastSignificant16bits(array, pos2, hs)
 		pos2 += c.getCardinality()
@@ -45,22 +45,22 @@ type intIterator struct {
 	highlowcontainer *roaringArray
 }
 
-func (self *intIterator) HasNext() bool {
-	return self.pos < self.highlowcontainer.size()
+func (ii *intIterator) HasNext() bool {
+	return ii.pos < ii.highlowcontainer.size()
 }
 
-func (self *intIterator) init() {
-	if self.highlowcontainer.size() > self.pos {
-		self.iter = self.highlowcontainer.getContainerAtIndex(self.pos).getShortIterator()
-		self.hs = toIntUnsigned(self.highlowcontainer.getKeyAtIndex(self.pos)) << 16
+func (ii *intIterator) init() {
+	if ii.highlowcontainer.size() > ii.pos {
+		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getShortIterator()
+		ii.hs = toIntUnsigned(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
 	}
 }
 
-func (self *intIterator) Next() int {
-	x := toIntUnsigned(self.iter.next()) | self.hs
-	if !self.iter.hasNext() {
-		self.pos = self.pos + 1
-		self.init()
+func (ii *intIterator) Next() int {
+	x := toIntUnsigned(ii.iter.next()) | ii.hs
+	if !ii.iter.hasNext() {
+		ii.pos = ii.pos + 1
+		ii.init()
 	}
 	return x
 }
@@ -89,72 +89,72 @@ func (rb *RoaringBitmap) String() string {
 	return buffer.String()
 }
 
-func (self *RoaringBitmap) Iterator() IntIterable {
-	return newIntIterator(self)
+func (rb *RoaringBitmap) Iterator() IntIterable {
+	return newIntIterator(rb)
 }
 
-func (self *RoaringBitmap) Clone() *RoaringBitmap {
+func (rb *RoaringBitmap) Clone() *RoaringBitmap {
 	ptr := new(RoaringBitmap)
-	ptr.highlowcontainer = *self.highlowcontainer.clone()
+	ptr.highlowcontainer = *rb.highlowcontainer.clone()
 	return ptr
 }
 
-func (self *RoaringBitmap) Contains(x int) bool {
+func (rb *RoaringBitmap) Contains(x int) bool {
 	hb := highbits(x)
-	c := self.highlowcontainer.getContainer(hb)
+	c := rb.highlowcontainer.getContainer(hb)
 	return c != nil && c.contains(lowbits(x))
 
 }
 
-func (self *RoaringBitmap) Equals(o interface{}) bool {
+func (rb *RoaringBitmap) Equals(o interface{}) bool {
 	srb := o.(*RoaringBitmap)
 	if srb != nil {
-		return srb.highlowcontainer.equals(self.highlowcontainer)
+		return srb.highlowcontainer.equals(rb.highlowcontainer)
 	}
 	return false
 }
 
-func (self *RoaringBitmap) Add(x int) {
+func (rb *RoaringBitmap) Add(x int) {
 	hb := highbits(x)
-	i := self.highlowcontainer.getIndex(hb)
+	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {
-		self.highlowcontainer.setContainerAtIndex(i, self.highlowcontainer.getContainerAtIndex(i).add(lowbits(x)))
+		rb.highlowcontainer.setContainerAtIndex(i, rb.highlowcontainer.getContainerAtIndex(i).add(lowbits(x)))
 	} else {
 		newac := newArrayContainer()
-		self.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.add(lowbits(x)))
+		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.add(lowbits(x)))
 	}
 }
 
-func (self *RoaringBitmap) GetCardinality() int {
+func (rb *RoaringBitmap) GetCardinality() int {
 	size := 0
-	for i := 0; i < self.highlowcontainer.size(); i++ {
-		size += self.highlowcontainer.getContainerAtIndex(i).getCardinality()
+	for i := 0; i < rb.highlowcontainer.size(); i++ {
+		size += rb.highlowcontainer.getContainerAtIndex(i).getCardinality()
 	}
 	return size
 }
 
-func (self *RoaringBitmap) And(x2 *RoaringBitmap) *RoaringBitmap {
-	results := And(self, x2)
-	self.highlowcontainer = results.highlowcontainer
-	return self
+func (rb *RoaringBitmap) And(x2 *RoaringBitmap) *RoaringBitmap {
+	results := And(rb, x2)
+	rb.highlowcontainer = results.highlowcontainer
+	return rb
 }
 
-func (self *RoaringBitmap) Xor(x2 *RoaringBitmap) *RoaringBitmap {
-	results := Xor(self, x2)
-	self.highlowcontainer = results.highlowcontainer
-	return self
+func (rb *RoaringBitmap) Xor(x2 *RoaringBitmap) *RoaringBitmap {
+	results := Xor(rb, x2)
+	rb.highlowcontainer = results.highlowcontainer
+	return rb
 }
 
-func (self *RoaringBitmap) Or(x2 *RoaringBitmap) *RoaringBitmap {
-	results := Or(self, x2)
-	self.highlowcontainer = results.highlowcontainer
-	return self
+func (rb *RoaringBitmap) Or(x2 *RoaringBitmap) *RoaringBitmap {
+	results := Or(rb, x2)
+	rb.highlowcontainer = results.highlowcontainer
+	return rb
 }
 
-func (self *RoaringBitmap) AndNot(x2 *RoaringBitmap) *RoaringBitmap {
-	results := AndNot(self, x2)
-	self.highlowcontainer = results.highlowcontainer
-	return self
+func (rb *RoaringBitmap) AndNot(x2 *RoaringBitmap) *RoaringBitmap {
+	results := AndNot(rb, x2)
+	rb.highlowcontainer = results.highlowcontainer
+	return rb
 }
 
 func Or(x1, x2 *RoaringBitmap) *RoaringBitmap {
@@ -366,10 +366,10 @@ func BitmapOf(dat ...int) *RoaringBitmap {
 	return ans
 }
 
-func (self *RoaringBitmap) Flip(rangeStart, rangeEnd int) *RoaringBitmap {
-	results := Flip(self, rangeStart, rangeEnd)
-	self.highlowcontainer = results.highlowcontainer
-	return self
+func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd int) *RoaringBitmap {
+	results := Flip(rb, rangeStart, rangeEnd)
+	rb.highlowcontainer = results.highlowcontainer
+	return rb
 }
 
 func Flip(bm *RoaringBitmap, rangeStart, rangeEnd int) *RoaringBitmap {

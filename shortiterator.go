@@ -10,12 +10,12 @@ type shortIterator struct {
 	loc   int
 }
 
-func (self *shortIterator) hasNext() bool {
-	return self.loc < len(self.slice)
+func (si *shortIterator) hasNext() bool {
+	return si.loc < len(si.slice)
 }
 
-func (self *shortIterator) next() uint16 {
-	a := self.slice[self.loc]
-	self.loc++
+func (si *shortIterator) next() uint16 {
+	a := si.slice[si.loc]
+	si.loc++
 	return a
 }
