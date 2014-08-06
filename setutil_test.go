@@ -102,7 +102,7 @@ func TestSetUtilBinarySearch(t *testing.T) {
 	for i := range data {
 		data[i] = uint16(2 * i)
 	}
-	for i := 0; i < 2*len(data); i += 1 {
+	for i := 0; i < 2*len(data); i++ {
 		key := uint16(i)
 		loc := binarySearch(data, key)
 		if (key & 1) == 0 {
