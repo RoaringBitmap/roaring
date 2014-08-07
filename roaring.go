@@ -32,6 +32,14 @@ func (rb *RoaringBitmap) ToArray() []int {
 	}
 	return array
 }
+func (rb *RoaringBitmap) getSizeInBytes() int {
+	size := 8
+	for i := 0; i < rb.highlowcontainer.size(); i++ {
+		c := rb.highlowcontainer.getContainerAtIndex(i)
+		size += 2 + c.getSizeInBytes()
+	}
+	return size
+}
 
 type IntIterable interface {
 	HasNext() bool

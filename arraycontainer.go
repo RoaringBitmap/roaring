@@ -13,6 +13,9 @@ func (ac *arrayContainer) fillLeastSignificant16bits(x []int, i, mask int) {
 func (ac *arrayContainer) getShortIterator() shortIterable {
 	return &shortIterator{ac.content, 0}
 }
+func (ac *arrayContainer) getSizeInBytes() int {
+	return ac.getCardinality()*2 + 4
+}
 
 func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
 	if firstOfRange > lastOfRange {

@@ -21,6 +21,7 @@ type container interface {
 	equals(i interface{}) bool
 	fillLeastSignificant16bits(array []int, i, mask int)
 	or(r container) container
+	getSizeInBytes() int
 }
 
 func rangeOfOnes(start, last int) container {
