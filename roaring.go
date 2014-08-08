@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-// Roaring represents a compressed bitmap where you can add integers.
+// RoaringBitmap represents a compressed bitmap where you can add integers.
 type RoaringBitmap struct {
 	highlowcontainer roaringArray
 }

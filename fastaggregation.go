@@ -11,6 +11,7 @@ func (p rblist) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p rblist) Len() int           { return len(p) }
 func (p rblist) Less(i, j int) bool { return p[i].getSizeInBytes() > p[j].getSizeInBytes() }
 
+// FastAnd computes the intersection between many bitmaps quickly
 func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	if len(bitmaps) == 0 {
 		return NewRoaringBitmap()
@@ -27,6 +28,7 @@ func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	}
 	return answer
 }
+// FastOr computes the union between many bitmaps quickly
 func FastOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	if len(bitmaps) == 0 {
 		return NewRoaringBitmap()
@@ -46,6 +48,7 @@ func FastOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	return heap.Pop(&pq).(*Item).value
 }
 
+// FastXor computes the intersection between many bitmaps quickly
 func FastXor(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	if len(bitmaps) == 0 {
 		return NewRoaringBitmap()
