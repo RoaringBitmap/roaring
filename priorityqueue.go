@@ -2,33 +2,33 @@ package roaring
 
 import "container/heap"
 
-type Item struct {
+type item struct {
 	value *RoaringBitmap
 	index int
 }
 
-type PriorityQueue []*Item
+type priorityQueue []*item
 
-func (pq PriorityQueue) Len() int { return len(pq) }
+func (pq priorityQueue) len() int { return len(pq) }
 
-func (pq PriorityQueue) Less(i, j int) bool {
+func (pq priorityQueue) less(i, j int) bool {
 	return pq[i].value.getSizeInBytes() > pq[j].value.getSizeInBytes()
 }
 
-func (pq PriorityQueue) Swap(i, j int) {
+func (pq priorityQueue) swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].index = i
 	pq[j].index = j
 }
 
-func (pq *PriorityQueue) Push(x interface{}) {
+func (pq *priorityQueue) push(x interface{}) {
 	n := len(*pq)
-	item := x.(*Item)
+	item := x.(*item)
 	item.index = n
 	*pq = append(*pq, item)
 }
 
-func (pq *PriorityQueue) Pop() interface{} {
+func (pq *priorityQueue) pop() interface{} {
 	old := *pq
 	n := len(old)
 	item := old[n-1]

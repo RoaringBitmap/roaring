@@ -34,18 +34,18 @@ func FastOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 		return NewRoaringBitmap()
 	}
 
-	pq := make(PriorityQueue, len(bitmaps))
+	pq := make(priorityQueue, len(bitmaps))
 	for i, bm := range bitmaps {
-		pq[i] = &Item{bm, i}
+		pq[i] = &item{bm, i}
 	}
 	heap.Init(&pq)
 
 	for pq.Len() > 1 {
-		x1 := heap.Pop(&pq).(*Item)
-		x2 := heap.Pop(&pq).(*Item)
-		heap.Push(&pq, &Item{Or(x1.value, x2.value), 0})
+		x1 := heap.Pop(&pq).(*item)
+		x2 := heap.Pop(&pq).(*item)
+		heap.Push(&pq, &item{Or(x1.value, x2.value), 0})
 	}
-	return heap.Pop(&pq).(*Item).value
+	return heap.Pop(&pq).(*item).value
 }
 
 // FastXor computes the intersection between many bitmaps quickly
@@ -54,16 +54,16 @@ func FastXor(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 		return NewRoaringBitmap()
 	}
 
-	pq := make(PriorityQueue, len(bitmaps))
+	pq := make(priorityQueue, len(bitmaps))
 	for i, bm := range bitmaps {
-		pq[i] = &Item{bm, i}
+		pq[i] = &item{bm, i}
 	}
 	heap.Init(&pq)
 
 	for pq.Len() > 1 {
-		x1 := heap.Pop(&pq).(*Item)
-		x2 := heap.Pop(&pq).(*Item)
-		heap.Push(&pq, &Item{Xor(x1.value, x2.value), 0})
+		x1 := heap.Pop(&pq).(*item)
+		x2 := heap.Pop(&pq).(*item)
+		heap.Push(&pq, &item{Xor(x1.value, x2.value), 0})
 	}
-	return heap.Pop(&pq).(*Item).value
+	return heap.Pop(&pq).(*item).value
 }
