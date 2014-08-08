@@ -9,7 +9,7 @@ type rblist []*RoaringBitmap
 
 func (p rblist) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p rblist) Len() int           { return len(p) }
-func (p rblist) Less(i, j int) bool { return p[i].getSizeInBytes() > p[j].getSizeInBytes() }
+func (p rblist) Less(i, j int) bool { return p[i].GetSizeInBytes() > p[j].GetSizeInBytes() }
 
 // FastAnd computes the intersection between many bitmaps quickly
 func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {

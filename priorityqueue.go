@@ -9,26 +9,26 @@ type item struct {
 
 type priorityQueue []*item
 
-func (pq priorityQueue) len() int { return len(pq) }
+func (pq priorityQueue) Len() int { return len(pq) }
 
-func (pq priorityQueue) less(i, j int) bool {
-	return pq[i].value.getSizeInBytes() > pq[j].value.getSizeInBytes()
+func (pq priorityQueue) Less(i, j int) bool {
+	return pq[i].value.GetSizeInBytes() > pq[j].value.GetSizeInBytes()
 }
 
-func (pq priorityQueue) swap(i, j int) {
+func (pq priorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].index = i
 	pq[j].index = j
 }
 
-func (pq *priorityQueue) push(x interface{}) {
+func (pq *priorityQueue) Push(x interface{}) {
 	n := len(*pq)
 	item := x.(*item)
 	item.index = n
 	*pq = append(*pq, item)
 }
 
-func (pq *priorityQueue) pop() interface{} {
+func (pq *priorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
 	item := old[n-1]
@@ -37,7 +37,7 @@ func (pq *priorityQueue) pop() interface{} {
 	return item
 }
 
-func (pq *PriorityQueue) update(item *Item, value *RoaringBitmap) {
+func (pq *priorityQueue) update(item *item, value *RoaringBitmap) {
 	item.value = value
 	heap.Fix(pq, item.index)
 }
