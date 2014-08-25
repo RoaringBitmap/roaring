@@ -1,7 +1,7 @@
 RoaringBitmap [![Build Status](https://travis-ci.org/tgruben/roaring.png)](https://travis-ci.org/tgruben/roaring)[![GoDoc](https://godoc.org/github.com/tgruben/roaring?status.svg)](https://godoc.org/github.com/tgruben/roaring) 
 =============
 
-This is a go port of the Roaring bitmap data structured.  The origin java version can be found at https://github.com/lemire/RoaringBitmap and the supporting paper at
+This is a go port of the Roaring bitmap data structure.  The origin java version can be found at https://github.com/lemire/RoaringBitmap and the supporting paper at
 
 http://arxiv.org/abs/1402.6407
 
@@ -70,9 +70,3 @@ func main() {
 
 Current documentation is available at http://godoc.org/github.com/tgruben/roaring
 
-### To do
-
-  - Implement a Remove function
-  - Write performance benchmarks
-  - Important: accelerate operations with assembly instructions (e.g., POPCNT)
-  - Implement fast aggregation techniques (see https://github.com/lemire/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/FastAggregation.java)
