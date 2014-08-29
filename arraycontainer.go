@@ -253,7 +253,6 @@ func (ac *arrayContainer) inot(firstOfRange, lastOfRange int) container {
 			ac.content = copyOf(ac.content, newCardinality)
 		}
 		base := lastIndex + 1
-		//copy(self.content[lastIndex+1+cardinalityChange:], self.content[lastIndex+1:len(self.content)-1-lastIndex])
 		copy(ac.content[lastIndex+1+cardinalityChange:], ac.content[base:base+len(ac.content)-1-lastIndex])
 
 		ac.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange)
@@ -312,7 +311,6 @@ func min(a, b int) int {
 	return b
 }
 func (ac *arrayContainer) andArray(value2 *arrayContainer) *arrayContainer {
-
 	desiredcapacity := min(ac.getCardinality(), value2.getCardinality())
 	answer := newArrayContainerCapacity(desiredcapacity)
 	length := intersection2by2(
@@ -327,6 +325,17 @@ func (ac *arrayContainer) andArray(value2 *arrayContainer) *arrayContainer {
 func (ac *arrayContainer) getCardinality() int {
 	return len(ac.content)
 }
+
+func (ac *arrayContainer) rank(x uint16) int {
+	answer := binarySearch(ac.content, x)
+	if answer >= 0 {
+		return answer+1
+	} else {
+		return -answer-1
+	}
+}
+
+
 func (ac *arrayContainer) clone() container {
 	ptr := arrayContainer{make([]uint16, len(ac.content))}
 	copy(ptr.content, ac.content[:])

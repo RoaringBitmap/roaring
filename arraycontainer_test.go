@@ -25,6 +25,35 @@ func TestArrayContainerSetAndGet(t *testing.T) {
 		}
 	}
 }
+func TestArrayContainerRank(t *testing.T) {
+	v := container(newArrayContainer())
+	v = v.add(10)
+	v = v.add(100)
+	v = v.add(1000)
+	if v.getCardinality() != 3 {
+		t.Errorf("Bogus cardinality.")
+	}
+	for i := 0; i <= arrayDefaultMaxSize; i++ {
+		thisrank := v.rank(uint16(i))
+		if i < 10 {
+			if  thisrank != 0 {
+				t.Errorf("At ",i," should be zero but is ",thisrank)
+			}
+		} else if i < 100 {
+			if  thisrank != 1 {
+				t.Errorf("At ",i," should be one but is ",thisrank)
+			}
+		} else if i < 1000 {
+			if  thisrank != 2 {
+				t.Errorf("At ",i," should be two but is ",thisrank)
+			}
+		} else {
+			if  thisrank != 3 {
+				t.Errorf("At ",i," should be three but is ",thisrank)
+			}
+		}
+	}
+}
 
 func TestArrayContainerMassiveSetAndGet(t *testing.T) {
 	v := container(newArrayContainer())

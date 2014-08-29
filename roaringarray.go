@@ -13,6 +13,7 @@ type container interface {
 	andNot(container) container
 	inot(firstOfRange, lastOfRange int) container
 	getCardinality() int
+	rank(uint16) int
 	add(uint16) container
 	not(start, final int) container
 	xor(r container) container

@@ -162,6 +162,24 @@ func (rb *RoaringBitmap) GetCardinality() int {
 	return size
 }
 
+// Rank returns the number of integers that are smaller or equal to x (Rank(infinity) would be GetCardinality())
+func (rb *RoaringBitmap) Rank(x int) int {
+	size := 0
+	for i := 0; i < rb.highlowcontainer.size(); i++ {
+		key:= rb.highlowcontainer.getKeyAtIndex(i)
+		if key > highbits(x) {
+			return size;
+		}
+		if key < highbits(x) {
+			size += rb.highlowcontainer.getContainerAtIndex(i).getCardinality()
+		} else {
+			return size + rb.highlowcontainer.getContainerAtIndex(i).rank(lowbits(x))
+		}
+	}
+	return size
+}
+
+
 // And computes the intersection between two bitmaps and store the result in the current bitmap
 func (rb *RoaringBitmap) And(x2 *RoaringBitmap) *RoaringBitmap {
 	results := And(rb, x2) // Todo: could be computed in-place for reduced memory usage

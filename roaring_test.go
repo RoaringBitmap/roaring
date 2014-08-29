@@ -5,10 +5,30 @@ import (
 	"math/rand"
 	"strconv"
 	"testing"
-
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/willf/bitset"
 )
+
+
+
+func TestRoaringBitmapRank(t *testing.T) {
+	for N := 1; N <= 1048576; N *= 2 {
+		Convey("rank tests"+strconv.Itoa(N), t, func() {
+				for gap := 1; gap <= 65536; gap *= 2 {
+					rb1 := NewRoaringBitmap()
+					for x := 0; x <= N; x += gap {
+						rb1.Add(x)
+					}
+					for y := 0; y <= N; y += 1 {
+						if rb1.Rank(y) != (y+1+gap-1)/gap {
+							So(rb1.Rank(y), ShouldEqual, (y+1+gap-1)/gap)
+						}
+					}
+				}
+			})
+	}
+}
+
 
 // some extra tests
 func TestRoaringBitmapExtra(t *testing.T) {

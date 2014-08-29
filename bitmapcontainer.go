@@ -1,5 +1,6 @@
 package roaring
 
+
 type bitmapContainer struct {
 	cardinality int
 	bitmap      []uint64
@@ -254,6 +255,15 @@ func (bc *bitmapContainer) xorArray(value2 *arrayContainer) container {
 		return answer.toArrayContainer()
 	}
 	return answer
+}
+
+func (bc *bitmapContainer) rank(x uint16) int {
+	leftover := (uint(x) + 1) & 63
+	if leftover == 0 {
+		return int(popcntSlice(bc.bitmap[:(uint(x) + 1)/64]))
+	} else {
+			return int(popcntSlice(bc.bitmap[:(uint(x) + 1)/64]) + popcount(bc.bitmap[(uint(x) + 1)/64] << (64 - leftover)))
+	}
 }
 
 func (bc *bitmapContainer) xorBitmap(value2 *bitmapContainer) container {
