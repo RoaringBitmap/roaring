@@ -6,7 +6,7 @@ const (
 	serial_cookie       = 12346
 )
 
-func getSizeInBytesFromCardinality(card uint16 ) int {
+func getSizeInBytesFromCardinality(card int ) int {
 	if card > arrayDefaultMaxSize {
 		return maxCapacity/8
 	} else {

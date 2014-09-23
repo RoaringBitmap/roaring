@@ -1,14 +1,17 @@
 RoaringBitmap [![Build Status](https://travis-ci.org/tgruben/roaring.png)](https://travis-ci.org/tgruben/roaring)[![GoDoc](https://godoc.org/github.com/tgruben/roaring?status.svg)](https://godoc.org/github.com/tgruben/roaring) 
 =============
 
-This is a go port of the Roaring bitmap data structure.  The origin java version can be found at https://github.com/lemire/RoaringBitmap and the supporting paper at
+This is a go port of the Roaring bitmap data structure.  The original java version
+can be found at https://github.com/lemire/RoaringBitmap and the supporting paper at
 
 http://arxiv.org/abs/1402.6407
 
-For an alternative implementation in Go, see https://github.com/fzandona/goroar
-The two versions were written independently.
+The Java and Go version are meant to be binary compatible: you can save bitmaps
+from a Java program and load them back in Go, and vice versa.
+
 
 This code is licensed under Apache License, Version 2.0 (ASL2.0). 
+
 
 ### Dependencies
 
@@ -29,6 +32,7 @@ package main
 import (
     "fmt"
     "github.com/tgruben/roaring"
+    "bytes"
 )
 
 
@@ -61,8 +65,33 @@ func main() {
         fmt.Println(i.Next())
     }
     fmt.Println()
+
+    // next we include an example of serialization
+    buf := new(bytes.Buffer)
+    rb1.WriteTo(buf) // we omit error handling
+    newrb:= NewRoaringBitmap()
+    newrb.ReadFrom(buf)
+    if rb1.Equals(newrb) {
+    	fmt.Println("I wrote the content to a byte stream and read it back.")
+    }
 }
 ```
+
+	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
+	buf := new(bytes.Buffer)
+	size,err:=rb.WriteTo(buf)
+	if err != nil {
+		t.Errorf("Failed writing")
+	}
+	newrb:= NewRoaringBitmap()
+	size,err=newrb.ReadFrom(buf)
+	if err != nil {
+		t.Errorf("Failed reading")
+	}
+	if ! rb.Equals(newrb) {
+		t.Errorf("Cannot retrieve serialized version")
+	}
+
 
 
 
@@ -70,3 +99,7 @@ func main() {
 
 Current documentation is available at http://godoc.org/github.com/tgruben/roaring
 
+### Alternative
+
+For an alternative implementation in Go, see https://github.com/fzandona/goroar
+The two versions were written independently.

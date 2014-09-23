@@ -1,8 +1,6 @@
 package roaring
 
 import (
-	"bytes"
-	"encoding/gob"
 	"io"
 	"encoding/binary"
 )
@@ -47,35 +45,6 @@ func (e *element) clone() element {
 	return c
 }
 
-func (e *element) gobEncode() (buf []byte, err error) {
-	w := new(bytes.Buffer)
-	encoder := gob.NewEncoder(w)
-	//gob.Register(self.container)
-	err = encoder.Encode(e.key)
-	if err != nil {
-		return nil, err
-	}
-
-	err = encoder.Encode(e.value)
-	if err != nil {
-		return nil, err
-	}
-	return w.Bytes(), nil
-}
-
-func (e *element) gobDecode(buf []byte) error {
-	r := bytes.NewBuffer(buf)
-	decoder := gob.NewDecoder(r)
-	err := decoder.Decode(e.key)
-	if err != nil {
-		return err
-	}
-	err = decoder.Decode(e.value)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 func newelement(key uint16, value container) *element {
 	ptr := new(element)
@@ -250,12 +219,12 @@ func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	for key, item := range b.array {
-		err = binary.Write(stream, binary.LittleEndian, uint16(key))
+	for _, item := range b.array {
+		err = binary.Write(stream, binary.LittleEndian, uint16(item.key))
 		if err != nil {
 			return 0, err
 		}
-		err = binary.Write(stream, binary.LittleEndian, uint16(item.value.getCardinality()))
+		err = binary.Write(stream, binary.LittleEndian, uint16(item.value.getCardinality()-1))
 		if err != nil {
 			return 0, err
 		}
@@ -266,7 +235,7 @@ func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		startOffset += getSizeInBytesFromCardinality(uint16(item.value.getCardinality()))
+		startOffset += getSizeInBytesFromCardinality(item.value.getCardinality())
 	}
 	for _, item := range b.array {
 		_, err := item.value.writeTo(stream)
@@ -304,11 +273,12 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 	}
 	offset := int(4 + 4 + 8 * size)
 	for i:=uint32(0); i < size; i++ {
-		c := keycard[2*i+1]
+		c := int(keycard[2*i+1])+1
 		offset += int(getSizeInBytesFromCardinality(c))
 		if c > arrayDefaultMaxSize {
 			nb :=  newBitmapContainer()
 			nb.readFrom(stream)
+			nb.cardinality = int(c)
 			b.append(keycard[2*i], nb)
 		} else {
 			nb := newArrayContainerSize(int(c))
@@ -319,37 +289,3 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 	return offset,nil
 }
 
-
-func (ra *roaringArray) serialize(out io.Writer) error {
-	enc := gob.NewEncoder(out)
-	err := enc.Encode(len(ra.array))
-	if err != nil {
-		return err
-	}
-	for _, item := range ra.array {
-		err = enc.Encode(item)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (ra *roaringArray) deserialize(in io.Reader) error {
-	dec := gob.NewDecoder(in)
-	var size int
-	err := dec.Decode(&size)
-	if err != nil {
-		return err
-	}
-	ra.array = make([]*element, size, size)
-	for i := 0; i < size; i++ {
-		element := new(element)
-		err = dec.Decode(&element)
-		if err != nil {
-			return err
-		}
-		ra.array[i] = element
-	}
-	return nil
-}
