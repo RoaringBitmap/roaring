@@ -1,7 +1,31 @@
 package roaring
 
+import (
+	"io"
+	"encoding/binary"
+)
+
 type arrayContainer struct {
 	content []uint16
+}
+
+
+// writes the content (omitting the cardinality)
+func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
+	// Write set
+	err := binary.Write(stream, binary.LittleEndian, b.content)
+	if err != nil {
+		return 0, err
+	}
+	return 2*len(b.content), nil
+}
+
+func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
+	err := binary.Read(stream, binary.LittleEndian, b.content)
+	if err != nil {
+		return 0, err
+	}
+	return 2*len(b.content), nil
 }
 
 func (ac *arrayContainer) fillLeastSignificant16bits(x []int, i, mask int) {

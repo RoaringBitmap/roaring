@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
-	"log"
+	"encoding/binary"
 )
 
 type container interface {
@@ -23,6 +23,8 @@ type container interface {
 	fillLeastSignificant16bits(array []int, i, mask int)
 	or(r container) container
 	getSizeInBytes() int
+    readFrom(io.Reader) (int, error)
+    writeTo(io.Writer) (int, error)
 }
 
 func rangeOfOnes(start, last int) container {
@@ -223,7 +225,6 @@ func (ra *roaringArray) equals(o interface{}) bool {
 	if ok {
 
 		if srb.size() != ra.size() {
-			log.Println("NOT SAME SIZE", srb.size(), ra.size())
 			return false
 		}
 		for i := 0; i < srb.size(); i++ {
@@ -235,9 +236,89 @@ func (ra *roaringArray) equals(o interface{}) bool {
 		}
 		return true
 	}
-	log.Println("NOPE")
 	return false
 }
+
+
+
+func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
+	err := binary.Write(stream, binary.LittleEndian, uint32(serial_cookie))
+	if err != nil {
+		return 0, err
+	}
+	err = binary.Write(stream, binary.LittleEndian, uint32(len(b.array)))
+	if err != nil {
+		return 0, err
+	}
+	for key, item := range b.array {
+		err = binary.Write(stream, binary.LittleEndian, uint16(key))
+		if err != nil {
+			return 0, err
+		}
+		err = binary.Write(stream, binary.LittleEndian, uint16(item.value.getCardinality()))
+		if err != nil {
+			return 0, err
+		}
+	}
+	startOffset := 4 + 4 + 4 * len(b.array) + 4 * len(b.array)
+	for _, item := range b.array {
+		err = binary.Write(stream, binary.LittleEndian, uint32(startOffset))
+		if err != nil {
+			return 0, err
+		}
+		startOffset += getSizeInBytesFromCardinality(uint16(item.value.getCardinality()))
+	}
+	for _, item := range b.array {
+		_, err := item.value.writeTo(stream)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return startOffset, nil
+}
+
+
+func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
+	var cookie uint32
+	err := binary.Read(stream, binary.LittleEndian, &cookie)
+	if err != nil {
+		return 0, err
+	}
+	if(cookie != serial_cookie) {
+		return 0, err
+	}
+	var size uint32
+	err = binary.Read(stream, binary.LittleEndian, &size)
+	if err != nil {
+		return 0, err
+	}
+	keycard := make([]uint16, 2*size, 2*size)
+	err = binary.Read(stream, binary.LittleEndian, keycard)
+	if err != nil {
+		return 0, err
+	}
+	offsets := make([]uint32, size, size)
+	err = binary.Read(stream, binary.LittleEndian, offsets)
+	if err != nil {
+		return 0, err
+	}
+	offset := int(4 + 4 + 8 * size)
+	for i:=uint32(0); i < size; i++ {
+		c := keycard[2*i+1]
+		offset += int(getSizeInBytesFromCardinality(c))
+		if c > arrayDefaultMaxSize {
+			nb :=  newBitmapContainer()
+			nb.readFrom(stream)
+			b.append(keycard[2*i], nb)
+		} else {
+			nb := newArrayContainerSize(int(c))
+			nb.readFrom(stream)
+			b.append(keycard[2*i], nb)
+		}
+	}
+	return offset,nil
+}
+
 
 func (ra *roaringArray) serialize(out io.Writer) error {
 	enc := gob.NewEncoder(out)

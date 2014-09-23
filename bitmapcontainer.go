@@ -1,9 +1,34 @@
 package roaring
 
 
+import (
+	"io"
+	"encoding/binary"
+)
+
+
 type bitmapContainer struct {
 	cardinality int
 	bitmap      []uint64
+}
+
+
+// writes the content
+func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
+	// Write set
+	err := binary.Write(stream, binary.LittleEndian, b.bitmap)
+	if err != nil {
+		return 0, err
+	}
+	return 8*len(b.bitmap), nil
+}
+
+func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
+	err := binary.Read(stream, binary.LittleEndian, b.bitmap)
+	if err != nil {
+		return 0, err
+	}
+	return 8*len(b.bitmap), nil
 }
 
 func newBitmapContainer() *bitmapContainer {

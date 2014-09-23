@@ -3,7 +3,16 @@ package roaring
 const (
 	arrayDefaultMaxSize = 4096
 	maxCapacity         = 1 << 16
+	serial_cookie       = 12346
 )
+
+func getSizeInBytesFromCardinality(card uint16 ) int {
+	if card > arrayDefaultMaxSize {
+		return maxCapacity/8
+	} else {
+		return 2* int(card)
+	}
+}
 
 // should be replaced with optimized assembly instructions
 func bitCount(x uint64) int {
