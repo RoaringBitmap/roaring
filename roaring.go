@@ -8,12 +8,24 @@ package roaring
 import (
 	"bytes"
 	"strconv"
+	"io"
 )
 
 // RoaringBitmap represents a compressed bitmap where you can add integers.
 type RoaringBitmap struct {
 	highlowcontainer roaringArray
 }
+
+// Write out a serialized version of this bitmap to stream
+func (b *RoaringBitmap) WriteTo(stream io.Writer) (int, error) {
+	return b.highlowcontainer.writeTo(stream)
+}
+
+// Read a serialized version of this bitmap from stream
+func (b *RoaringBitmap) ReadFrom(stream io.Reader) (int, error) {
+	return b.highlowcontainer.readFrom(stream)
+}
+
 
 // NewRoaringBitmap creates a new empty RoaringBitmap
 func NewRoaringBitmap() *RoaringBitmap {
