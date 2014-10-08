@@ -37,7 +37,7 @@ func (rb *RoaringBitmap) Clear() {
 	rb.highlowcontainer = *newRoaringArray()
 }
 
-// ToArray creates a new slice containing all of the integers stored in the RoaringBitmap
+// ToArray creates a new slice containing all of the integers stored in the RoaringBitmap in sorted order
 func (rb *RoaringBitmap) ToArray() []int {
 	array := make([]int, rb.GetCardinality())
 	pos := 0
@@ -64,7 +64,7 @@ func (rb *RoaringBitmap) GetSizeInBytes() int {
 	return size
 }
 
-// IntIterable allows you to iterate over the values in a RoaringBitmap
+// IntIterable allows you to iterate over the values in a RoaringBitmap 
 type IntIterable interface {
 	HasNext() bool
 	Next() int
@@ -124,7 +124,7 @@ func (rb *RoaringBitmap) String() string {
 	return buffer.String()
 }
 
-// Iterator creates a new IntIterable to iterate over the integers contained in the bitmap
+// Iterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order
 func (rb *RoaringBitmap) Iterator() IntIterable {
 	return newIntIterator(rb)
 }
