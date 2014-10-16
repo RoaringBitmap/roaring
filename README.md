@@ -24,7 +24,7 @@ Naturally, you also need to grab the roaring code itself:
 
 ### Example
 
-
+Here is a simplified but complete example:
 
 ```go
 package main
@@ -77,6 +77,10 @@ func main() {
 }
 ```
 
+If you wish to use serialization and handle errors, you might want to 
+consider the following sample of code:
+
+```go
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
 	buf := new(bytes.Buffer)
 	size,err:=rb.WriteTo(buf)
@@ -91,6 +95,7 @@ func main() {
 	if ! rb.Equals(newrb) {
 		t.Errorf("Cannot retrieve serialized version")
 	}
+```
 
 
 
