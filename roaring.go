@@ -7,8 +7,8 @@ package roaring
 
 import (
 	"bytes"
-	"strconv"
 	"io"
+	"strconv"
 )
 
 // RoaringBitmap represents a compressed bitmap where you can add integers.
@@ -25,7 +25,6 @@ func (b *RoaringBitmap) WriteTo(stream io.Writer) (int, error) {
 func (b *RoaringBitmap) ReadFrom(stream io.Reader) (int, error) {
 	return b.highlowcontainer.readFrom(stream)
 }
-
 
 // NewRoaringBitmap creates a new empty RoaringBitmap
 func NewRoaringBitmap() *RoaringBitmap {
@@ -64,7 +63,7 @@ func (rb *RoaringBitmap) GetSizeInBytes() int {
 	return size
 }
 
-// IntIterable allows you to iterate over the values in a RoaringBitmap 
+// IntIterable allows you to iterate over the values in a RoaringBitmap
 type IntIterable interface {
 	HasNext() bool
 	Next() int
@@ -165,6 +164,18 @@ func (rb *RoaringBitmap) Add(x int) {
 	}
 }
 
+// Remove the integer x from the bitmap
+func (rb *RoaringBitmap) Remove(x int) {
+	hb := highbits(x)
+	i := rb.highlowcontainer.getIndex(hb)
+	if i >= 0 {
+		rb.highlowcontainer.setContainerAtIndex(i, rb.highlowcontainer.getContainerAtIndex(i).remove(lowbits(x)))
+		if rb.highlowcontainer.getContainerAtIndex(i).getCardinality() == 0 {
+			rb.highlowcontainer.removeAtIndex(i)
+		}
+	}
+}
+
 // GetCardinality returns the number of integers contained in the bitmap
 func (rb *RoaringBitmap) GetCardinality() int {
 	size := 0
@@ -178,9 +189,9 @@ func (rb *RoaringBitmap) GetCardinality() int {
 func (rb *RoaringBitmap) Rank(x int) int {
 	size := 0
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
-		key:= rb.highlowcontainer.getKeyAtIndex(i)
+		key := rb.highlowcontainer.getKeyAtIndex(i)
 		if key > highbits(x) {
-			return size;
+			return size
 		}
 		if key < highbits(x) {
 			size += rb.highlowcontainer.getContainerAtIndex(i).getCardinality()
@@ -191,7 +202,6 @@ func (rb *RoaringBitmap) Rank(x int) int {
 	return size
 }
 
-
 // And computes the intersection between two bitmaps and store the result in the current bitmap
 func (rb *RoaringBitmap) And(x2 *RoaringBitmap) *RoaringBitmap {
 	results := And(rb, x2) // Todo: could be computed in-place for reduced memory usage
@@ -201,7 +211,7 @@ func (rb *RoaringBitmap) And(x2 *RoaringBitmap) *RoaringBitmap {
 
 // Xor computes the symmetric difference between two bitmaps and store the result in the current bitmap
 func (rb *RoaringBitmap) Xor(x2 *RoaringBitmap) *RoaringBitmap {
-	results := Xor(rb, x2)  // Todo: could be computed in-place for reduced memory usage
+	results := Xor(rb, x2) // Todo: could be computed in-place for reduced memory usage
 	rb.highlowcontainer = results.highlowcontainer
 	return rb
 }
@@ -215,7 +225,7 @@ func (rb *RoaringBitmap) Or(x2 *RoaringBitmap) *RoaringBitmap {
 
 // AndNot computes the difference between two bitmaps and store the result in the current bitmap
 func (rb *RoaringBitmap) AndNot(x2 *RoaringBitmap) *RoaringBitmap {
-	results := AndNot(rb, x2)  // Todo: could be computed in-place for reduced memory usage
+	results := AndNot(rb, x2) // Todo: could be computed in-place for reduced memory usage
 	rb.highlowcontainer = results.highlowcontainer
 	return rb
 }

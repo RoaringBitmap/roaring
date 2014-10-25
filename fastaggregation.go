@@ -28,6 +28,7 @@ func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	}
 	return answer
 }
+
 // FastOr computes the union between many bitmaps quickly
 func FastOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	// Todo: we really want a port of horizontal_or (see https://github.com/lemire/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/FastAggregation.java#L84-L126 ) for better speed

@@ -1,8 +1,8 @@
 package roaring
 
 import (
-	"io"
 	"encoding/binary"
+	"io"
 )
 
 type container interface {
@@ -13,6 +13,7 @@ type container interface {
 	getCardinality() int
 	rank(uint16) int
 	add(uint16) container
+	remove(uint16) container
 	not(start, final int) container
 	xor(r container) container
 	getShortIterator() shortIterable
@@ -21,8 +22,8 @@ type container interface {
 	fillLeastSignificant16bits(array []int, i, mask int)
 	or(r container) container
 	getSizeInBytes() int
-    readFrom(io.Reader) (int, error)
-    writeTo(io.Writer) (int, error)
+	readFrom(io.Reader) (int, error)
+	writeTo(io.Writer) (int, error)
 }
 
 func rangeOfOnes(start, last int) container {
@@ -44,7 +45,6 @@ func (e *element) clone() element {
 	c.value = e.value.clone()
 	return c
 }
-
 
 func newelement(key uint16, value container) *element {
 	ptr := new(element)
@@ -208,8 +208,6 @@ func (ra *roaringArray) equals(o interface{}) bool {
 	return false
 }
 
-
-
 func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
 	err := binary.Write(stream, binary.LittleEndian, uint32(serial_cookie))
 	if err != nil {
@@ -229,7 +227,7 @@ func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
 			return 0, err
 		}
 	}
-	startOffset := 4 + 4 + 4 * len(b.array) + 4 * len(b.array)
+	startOffset := 4 + 4 + 4*len(b.array) + 4*len(b.array)
 	for _, item := range b.array {
 		err = binary.Write(stream, binary.LittleEndian, uint32(startOffset))
 		if err != nil {
@@ -246,14 +244,13 @@ func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
 	return startOffset, nil
 }
 
-
 func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 	var cookie uint32
 	err := binary.Read(stream, binary.LittleEndian, &cookie)
 	if err != nil {
 		return 0, err
 	}
-	if(cookie != serial_cookie) {
+	if cookie != serial_cookie {
 		return 0, err
 	}
 	var size uint32
@@ -271,12 +268,12 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	offset := int(4 + 4 + 8 * size)
-	for i:=uint32(0); i < size; i++ {
-		c := int(keycard[2*i+1])+1
+	offset := int(4 + 4 + 8*size)
+	for i := uint32(0); i < size; i++ {
+		c := int(keycard[2*i+1]) + 1
 		offset += int(getSizeInBytesFromCardinality(c))
 		if c > arrayDefaultMaxSize {
-			nb :=  newBitmapContainer()
+			nb := newBitmapContainer()
 			nb.readFrom(stream)
 			nb.cardinality = int(c)
 			b.append(keycard[2*i], nb)
@@ -286,6 +283,5 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 			b.append(keycard[2*i], nb)
 		}
 	}
-	return offset,nil
+	return offset, nil
 }
-

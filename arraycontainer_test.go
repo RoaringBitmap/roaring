@@ -3,8 +3,46 @@ package roaring
 // to run just these tests: go test -run TestArrayContainer*
 
 import (
+	"reflect"
 	"testing"
 )
+
+func TestArrayContainerTransition(t *testing.T) {
+	v := container(newArrayContainer())
+	arraytype := reflect.TypeOf(v)
+	for i := 0; i < arrayDefaultMaxSize; i++ {
+		v = v.add(uint16(i))
+	}
+	if v.getCardinality() != arrayDefaultMaxSize {
+		t.Errorf("Bad cardinality.")
+	}
+	if reflect.TypeOf(v) != arraytype {
+		t.Errorf("Should be an array.")
+	}
+	for i := 0; i < arrayDefaultMaxSize; i++ {
+		v = v.add(uint16(i))
+	}
+	if v.getCardinality() != arrayDefaultMaxSize {
+		t.Errorf("Bad cardinality.")
+	}
+	if reflect.TypeOf(v) != arraytype {
+		t.Errorf("Should be an array.")
+	}
+	v = v.add(uint16(arrayDefaultMaxSize))
+	if v.getCardinality() != arrayDefaultMaxSize+1 {
+		t.Errorf("Bad cardinality.")
+	}
+	if reflect.TypeOf(v) == arraytype {
+		t.Errorf("Should be a bitmap.")
+	}
+	v = v.remove(uint16(arrayDefaultMaxSize))
+	if v.getCardinality() != arrayDefaultMaxSize {
+		t.Errorf("Bad cardinality.")
+	}
+	if reflect.TypeOf(v) != arraytype {
+		t.Errorf("Should be an array.")
+	}
+}
 
 func TestArrayContainerSetAndGet(t *testing.T) {
 	v := container(newArrayContainer())
@@ -36,20 +74,20 @@ func TestArrayContainerRank(t *testing.T) {
 	for i := 0; i <= arrayDefaultMaxSize; i++ {
 		thisrank := v.rank(uint16(i))
 		if i < 10 {
-			if  thisrank != 0 {
-				t.Errorf("At ",i," should be zero but is ",thisrank)
+			if thisrank != 0 {
+				t.Errorf("At ", i, " should be zero but is ", thisrank)
 			}
 		} else if i < 100 {
-			if  thisrank != 1 {
-				t.Errorf("At ",i," should be one but is ",thisrank)
+			if thisrank != 1 {
+				t.Errorf("At ", i, " should be one but is ", thisrank)
 			}
 		} else if i < 1000 {
-			if  thisrank != 2 {
-				t.Errorf("At ",i," should be two but is ",thisrank)
+			if thisrank != 2 {
+				t.Errorf("At ", i, " should be two but is ", thisrank)
 			}
 		} else {
-			if  thisrank != 3 {
-				t.Errorf("At ",i," should be three but is ",thisrank)
+			if thisrank != 3 {
+				t.Errorf("At ", i, " should be three but is ", thisrank)
 			}
 		}
 	}

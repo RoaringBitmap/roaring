@@ -1,17 +1,14 @@
 package roaring
 
-
 import (
-	"io"
 	"encoding/binary"
+	"io"
 )
-
 
 type bitmapContainer struct {
 	cardinality int
 	bitmap      []uint64
 }
-
 
 // writes the content
 func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
@@ -20,7 +17,7 @@ func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return 8*len(b.bitmap), nil
+	return 8 * len(b.bitmap), nil
 }
 
 func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
@@ -28,7 +25,7 @@ func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return 8*len(b.bitmap), nil
+	return 8 * len(b.bitmap), nil
 }
 
 func newBitmapContainer() *bitmapContainer {
@@ -123,6 +120,20 @@ func (bc *bitmapContainer) add(i uint16) container {
 	previous := bc.bitmap[x/64]
 	bc.bitmap[x/64] |= (1 << (uint(x) % 64))
 	bc.cardinality += int(uint(previous^bc.bitmap[x/64]) >> (uint(x) % 64))
+	return bc
+}
+
+func (bc *bitmapContainer) remove(i uint16) container {
+
+	if bc.cardinality == arrayDefaultMaxSize+1 {
+		if bc.contains(i) {
+			bc.cardinality -= 1
+			bc.bitmap[i/64] &^= (uint64(1) << (i % 64))
+			return bc.toArrayContainer()
+		}
+	}
+	bc.cardinality -= int((bc.bitmap[i/64] & (uint64(1) << (i % 64))) >> (i % 64))
+	bc.bitmap[i/64] &^= (uint64(1) << (i % 64))
 	return bc
 }
 
@@ -285,9 +296,9 @@ func (bc *bitmapContainer) xorArray(value2 *arrayContainer) container {
 func (bc *bitmapContainer) rank(x uint16) int {
 	leftover := (uint(x) + 1) & 63
 	if leftover == 0 {
-		return int(popcntSlice(bc.bitmap[:(uint(x) + 1)/64]))
+		return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64]))
 	} else {
-			return int(popcntSlice(bc.bitmap[:(uint(x) + 1)/64]) + popcount(bc.bitmap[(uint(x) + 1)/64] << (64 - leftover)))
+		return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64]) + popcount(bc.bitmap[(uint(x)+1)/64]<<(64-leftover)))
 	}
 }
 

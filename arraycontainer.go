@@ -1,14 +1,13 @@
 package roaring
 
 import (
-	"io"
 	"encoding/binary"
+	"io"
 )
 
 type arrayContainer struct {
 	content []uint16
 }
-
 
 // writes the content (omitting the cardinality)
 func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
@@ -17,7 +16,7 @@ func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return 2*len(b.content), nil
+	return 2 * len(b.content), nil
 }
 
 func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
@@ -25,7 +24,7 @@ func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return 2*len(b.content), nil
+	return 2 * len(b.content), nil
 }
 
 func (ac *arrayContainer) fillLeastSignificant16bits(x []int, i, mask int) {
@@ -117,22 +116,28 @@ func (ac *arrayContainer) toBitmapContainer() *bitmapContainer {
 
 }
 func (ac *arrayContainer) add(x uint16) container {
-	if len(ac.content) >= arrayDefaultMaxSize {
-		a := ac.toBitmapContainer()
-		a.add(x)
-		return a
-	}
-	if (len(ac.content) == 0) || (x > ac.content[len(ac.content)-1]) {
-		ac.content = append(ac.content, x)
-		return ac
-	}
 	loc := binarySearch(ac.content, x)
 	if loc < 0 {
+		if len(ac.content) >= arrayDefaultMaxSize {
+			a := ac.toBitmapContainer()
+			a.add(x)
+			return a
+		}
 		s := ac.content
 		i := -loc - 1
 		s = append(s, 0)
 		copy(s[i+1:], s[i:])
 		s[i] = x
+		ac.content = s
+	}
+	return ac
+}
+
+func (ac *arrayContainer) remove(x uint16) container {
+	loc := binarySearch(ac.content, x)
+	if loc >= 0 {
+		s := ac.content
+		s = append(s[:loc], s[loc+1:]...)
 		ac.content = s
 	}
 	return ac
@@ -353,12 +358,11 @@ func (ac *arrayContainer) getCardinality() int {
 func (ac *arrayContainer) rank(x uint16) int {
 	answer := binarySearch(ac.content, x)
 	if answer >= 0 {
-		return answer+1
+		return answer + 1
 	} else {
-		return -answer-1
+		return -answer - 1
 	}
 }
-
 
 func (ac *arrayContainer) clone() container {
 	ptr := arrayContainer{make([]uint16, len(ac.content))}
