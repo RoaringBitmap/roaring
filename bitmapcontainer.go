@@ -292,10 +292,10 @@ func (bc *bitmapContainer) orBitmap(value2 *bitmapContainer) container {
 }
 
 func (bc *bitmapContainer) computeCardinality()  {
-	bc.cardinality = 0
-	for k := 0; k < len(bc.bitmap); k++ {
-		bc.cardinality += bitCount(bc.bitmap[k])
-	}
+	bc.cardinality = int(popcntSlice(bc.bitmap))
+	//for k := 0; k < len(bc.bitmap); k++ {
+	//	bc.cardinality += bitCount(bc.bitmap[k])
+	//}
 }
 
 func (bc *bitmapContainer) iorArray(value2 *arrayContainer) container {
