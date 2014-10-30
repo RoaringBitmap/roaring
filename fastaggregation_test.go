@@ -116,6 +116,7 @@ func TestFastAggregationsAdvanced(t *testing.T) {
 			bigxor := Xor(Xor(rb1,rb2),rb3)
 			So(FastOr(rb1, rb2, rb3).Equals(bigor), ShouldEqual, true)
 			So(FastHorizontalOr(rb1, rb2, rb3).Equals(bigor), ShouldEqual, true)
+			So(FastHorizontalOr(rb1, rb2, rb3).GetCardinality(), ShouldEqual, bigor.GetCardinality())
 			So(FastXor(rb1, rb2, rb3).Equals(bigxor), ShouldEqual, true)
 			So(FastAnd(rb1, rb2, rb3).Equals(bigand), ShouldEqual, true)
 		})

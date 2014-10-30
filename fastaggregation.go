@@ -53,11 +53,15 @@ func FastHorizontalOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 		for pq.Len() > 0 && pq[0].value.highlowcontainer.getKeyAtIndex(pq[0].keyindex) == thiskey {
 			x2 := heap.Pop(&pq).(*containeritem)
 			thisothercontainer := x2.value.highlowcontainer.getContainerAtIndex(x2.keyindex)
-			thiscontainer = thiscontainer.or(thisothercontainer) // todo: should be an inplace-or
+			thiscontainer = thiscontainer.lazyIOR(thisothercontainer) // todo: should be an inplace-or
 			x2.keyindex++
 			if x2.keyindex < x2.value.highlowcontainer.size() {
 				heap.Push(&pq, x2)
 			}
+		}
+		switch thiscontainer.(type) {
+		case *bitmapContainer:
+			thiscontainer.(*bitmapContainer).computeCardinality()
 		}
 		answer.highlowcontainer.append(thiskey,thiscontainer)
 	}

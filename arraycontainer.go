@@ -153,6 +153,30 @@ func (ac *arrayContainer) or(a container) container {
 	return nil
 }
 
+
+func (ac *arrayContainer) ior(a container) container {
+	switch a.(type) {
+	case *arrayContainer:
+		return ac.orArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return a.ior(ac)
+	}
+	return nil
+}
+
+
+func (ac *arrayContainer) lazyIOR(a container) container {
+	switch a.(type) {
+	case *arrayContainer:
+		return ac.orArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return a.lazyIOR(ac)
+	}
+	return nil
+}
+
+
+
 func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
 	value1 := ac
 	totalCardinality := value1.getCardinality() + value2.getCardinality()

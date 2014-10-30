@@ -251,6 +251,27 @@ func (bc *bitmapContainer) or(a container) container {
 	return nil
 }
 
+
+func (bc *bitmapContainer) ior(a container) container {
+	switch a.(type) {
+	case *arrayContainer:
+		return bc.iorArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return bc.iorBitmap(a.(*bitmapContainer))
+	}
+	return nil
+}
+
+func (bc *bitmapContainer) lazyIOR(a container) container {
+	switch a.(type) {
+	case *arrayContainer:
+		return bc.lazyIORArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return bc.lazyIORBitmap(a.(*bitmapContainer))
+	}
+	return nil
+}
+
 func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
 	for k := 0; k < value2.getCardinality(); k++ {
@@ -260,11 +281,57 @@ func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
 	}
 	return answer
 }
+
 func (bc *bitmapContainer) orBitmap(value2 *bitmapContainer) container {
 	answer := newBitmapContainer()
 	for k := 0; k < len(answer.bitmap); k++ {
 		answer.bitmap[k] = bc.bitmap[k] | value2.bitmap[k]
 		answer.cardinality += bitCount(answer.bitmap[k])
+	}
+	return answer
+}
+
+func (bc *bitmapContainer) computeCardinality()  {
+	bc.cardinality = 0
+	for k := 0; k < len(bc.bitmap); k++ {
+		bc.cardinality += bitCount(bc.bitmap[k])
+	}
+}
+
+func (bc *bitmapContainer) iorArray(value2 *arrayContainer) container {
+	answer := bc
+	for k := 0; k < value2.getCardinality(); k++ {
+		i := uint(toIntUnsigned(value2.content[k])) >> 6
+		answer.cardinality += int(uint(^answer.bitmap[i]&(1<<(value2.content[k]%64))) >> (value2.content[k] % 64))
+		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (value2.content[k] % 64))
+	}
+	return answer
+}
+
+func (bc *bitmapContainer) iorBitmap(value2 *bitmapContainer) container {
+	answer := bc
+	answer.cardinality = 0
+	for k := 0; k < len(answer.bitmap); k++ {
+		answer.bitmap[k] = bc.bitmap[k] | value2.bitmap[k]
+		answer.cardinality += bitCount(answer.bitmap[k])
+	}
+	return answer
+}
+
+
+func (bc *bitmapContainer) lazyIORArray(value2 *arrayContainer) container {
+	answer := bc
+	for k := 0; k < value2.getCardinality(); k++ {
+		i := uint(toIntUnsigned(value2.content[k])) >> 6
+		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (value2.content[k] % 64))
+	}
+	return answer
+}
+
+func (bc *bitmapContainer) lazyIORBitmap(value2 *bitmapContainer) container {
+	answer := bc
+	for k := 0; k < len(answer.bitmap); k++ {
+		answer.bitmap[k] = bc.bitmap[k] | value2.bitmap[k]
 	}
 	return answer
 }
@@ -443,7 +510,6 @@ func (bc *bitmapContainer) NextSetBit(i int) int {
 		return -1
 	}
 	w := bc.bitmap[x]
-	//w = int64(uint64(w) >> uint(i))
 	w = w >> uint(i%64)
 	if w != 0 {
 		return i + numberOfTrailingZeros(w)
