@@ -29,7 +29,43 @@ func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	return answer
 }
 
-// FastOr computes the union between many bitmaps quickly
+ //FastHorizontalOr computes the union between many bitmaps quickly, it can be expected to be faster and use less memory than FastOr
+func FastHorizontalOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
+	answer := NewRoaringBitmap()
+	if len(bitmaps) == 0 {
+		return answer
+	}
+	pq := make(containerPriorityQueue, 0, len(bitmaps))
+	for _, bm := range bitmaps {
+		if bm.GetCardinality() > 0 {
+			pq = append(pq, &containeritem{bm, 0, len(pq)})
+		}
+	}
+	heap.Init(&pq)
+	for pq.Len() > 0 {
+		x1 := heap.Pop(&pq).(*containeritem)
+		thiscontainer := x1.value.highlowcontainer.getContainerAtIndex(x1.keyindex)
+		thiskey := x1.value.highlowcontainer.getKeyAtIndex(x1.keyindex)
+		x1.keyindex++
+		if x1.keyindex < x1.value.highlowcontainer.size() {
+			heap.Push(&pq, x1)
+		}
+		for pq.Len() > 0 && pq[0].value.highlowcontainer.getKeyAtIndex(pq[0].keyindex) == thiskey {
+			x2 := heap.Pop(&pq).(*containeritem)
+			thisothercontainer := x2.value.highlowcontainer.getContainerAtIndex(x2.keyindex)
+			thiscontainer = thiscontainer.or(thisothercontainer) // todo: should be an inplace-or
+			x2.keyindex++
+			if x2.keyindex < x2.value.highlowcontainer.size() {
+				heap.Push(&pq, x2)
+			}
+		}
+		answer.highlowcontainer.append(thiskey,thiscontainer)
+	}
+	return answer
+}
+
+
+// FastOr computes the union between many bitmaps quickly (see also FastHorizontalOr)
 func FastOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	// Todo: we really want a port of horizontal_or (see https://github.com/lemire/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/FastAggregation.java#L84-L126 ) for better speed
 	if len(bitmaps) == 0 {
