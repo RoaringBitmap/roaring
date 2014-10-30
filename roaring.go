@@ -346,7 +346,6 @@ main:
 			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
 			if s1 < s2 {
 				answer.highlowcontainer.appendCopy(x1.highlowcontainer, pos1)
-
 				pos1++
 				if pos1 == length1 {
 					break main

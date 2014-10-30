@@ -251,7 +251,6 @@ func (bc *bitmapContainer) or(a container) container {
 	return nil
 }
 
-
 func (bc *bitmapContainer) ior(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
@@ -291,7 +290,7 @@ func (bc *bitmapContainer) orBitmap(value2 *bitmapContainer) container {
 	return answer
 }
 
-func (bc *bitmapContainer) computeCardinality()  {
+func (bc *bitmapContainer) computeCardinality() {
 	bc.cardinality = int(popcntSlice(bc.bitmap))
 	//for k := 0; k < len(bc.bitmap); k++ {
 	//	bc.cardinality += bitCount(bc.bitmap[k])
@@ -317,7 +316,6 @@ func (bc *bitmapContainer) iorBitmap(value2 *bitmapContainer) container {
 	}
 	return answer
 }
-
 
 func (bc *bitmapContainer) lazyIORArray(value2 *arrayContainer) container {
 	answer := bc
@@ -351,7 +349,6 @@ func (bc *bitmapContainer) xorArray(value2 *arrayContainer) container {
 	for k := 0; k < value2.getCardinality(); k++ {
 		index := uint(toIntUnsigned(value2.content[k])) >> 6
 		answer.cardinality += 1 - 2*int(uint(answer.bitmap[index]&(1<<(value2.content[k]%64)))>>(value2.content[k]%64))
-
 		answer.bitmap[index] = answer.bitmap[index] ^ (uint64(1) << (value2.content[k] % 64))
 	}
 	if answer.cardinality <= arrayDefaultMaxSize {

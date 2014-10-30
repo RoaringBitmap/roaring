@@ -39,7 +39,7 @@ func TestRoaringBitmapExtra(t *testing.T) {
 					rb1.Add(x)
 				}
 				So(bs1.Count(), ShouldEqual, rb1.GetCardinality())
-				So(equals(bs1, rb1), ShouldEqual, true)
+				So(equalsBitSet(bs1, rb1), ShouldEqual, true)
 				for offset := 1; offset <= gap; offset *= 2 {
 					bs2 := bitset.New(0)
 					rb2 := NewRoaringBitmap()
@@ -48,30 +48,30 @@ func TestRoaringBitmapExtra(t *testing.T) {
 						rb2.Add(x + offset)
 					}
 					So(bs2.Count(), ShouldEqual, rb2.GetCardinality())
-					So(equals(bs2, rb2), ShouldEqual, true)
+					So(equalsBitSet(bs2, rb2), ShouldEqual, true)
 
 					clonebs1 := bs1.Clone()
 					clonebs1.InPlaceIntersection(bs2)
-					if !equals(clonebs1, And(rb1, rb2)) {
+					if !equalsBitSet(clonebs1, And(rb1, rb2)) {
 						t := rb1.Clone()
 						t.And(rb2)
-						So(equals(clonebs1, t), ShouldEqual, true)
+						So(equalsBitSet(clonebs1, t), ShouldEqual, true)
 					}
 
 					// testing OR
 					clonebs1 = bs1.Clone()
 					clonebs1.InPlaceUnion(bs2)
 
-					So(equals(clonebs1, Or(rb1, rb2)), ShouldEqual, true)
+					So(equalsBitSet(clonebs1, Or(rb1, rb2)), ShouldEqual, true)
 					// testing XOR
 					clonebs1 = bs1.Clone()
 					clonebs1.InPlaceSymmetricDifference(bs2)
-					So(equals(clonebs1, Xor(rb1, rb2)), ShouldEqual, true)
+					So(equalsBitSet(clonebs1, Xor(rb1, rb2)), ShouldEqual, true)
 
 					//testing NOTAND
 					clonebs1 = bs1.Clone()
 					clonebs1.Difference(bs2)
-					So(equals(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
+					So(equalsBitSet(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
 				}
 			}
 		})
@@ -610,7 +610,7 @@ func TestRoaringBitmap(t *testing.T) {
 		for i := uint(100000); i < 200000; i++ {
 			bs.Set(i)
 		}
-		So(equals(bs, rb), ShouldEqual, true)
+		So(equalsBitSet(bs, rb), ShouldEqual, true)
 	})
 
 	Convey("flipTest1A", t, func() {
@@ -621,12 +621,12 @@ func TestRoaringBitmap(t *testing.T) {
 		So(0, ShouldEqual, rb.GetCardinality())
 
 		bs := bitset.New(0)
-		So(equals(bs, rb), ShouldEqual, true)
+		So(equalsBitSet(bs, rb), ShouldEqual, true)
 
 		for i := uint(100000); i < 200000; i++ {
 			bs.Set(i)
 		}
-		So(equals(bs, rb1), ShouldEqual, true)
+		So(equalsBitSet(bs, rb1), ShouldEqual, true)
 	})
 	Convey("flipTest2", t, func() {
 		rb := NewRoaringBitmap()
@@ -635,7 +635,7 @@ func TestRoaringBitmap(t *testing.T) {
 		So(0, ShouldEqual, rbcard)
 
 		bs := bitset.New(0)
-		So(equals(bs, rb), ShouldEqual, true)
+		So(equalsBitSet(bs, rb), ShouldEqual, true)
 	})
 
 	Convey("flipTest2A", t, func() {
@@ -649,9 +649,9 @@ func TestRoaringBitmap(t *testing.T) {
 		So(1, ShouldEqual, rb.GetCardinality())
 
 		bs := bitset.New(0)
-		So(equals(bs, rb1), ShouldEqual, true)
+		So(equalsBitSet(bs, rb1), ShouldEqual, true)
 		bs.Set(1)
-		So(equals(bs, rb), ShouldEqual, true)
+		So(equalsBitSet(bs, rb), ShouldEqual, true)
 	})
 
 	Convey("flipTest3A", t, func() {
@@ -666,7 +666,7 @@ func TestRoaringBitmap(t *testing.T) {
 			bs.Set(i)
 		}
 
-		So(equals(bs, rb), ShouldEqual, true)
+		So(equalsBitSet(bs, rb), ShouldEqual, true)
 	})
 
 	Convey("flipTest4A", t, func() {
@@ -689,7 +689,7 @@ func TestRoaringBitmap(t *testing.T) {
 			bs.Set(i)
 		}
 
-		So(equals(bs, rb), ShouldEqual, true)
+		So(equalsBitSet(bs, rb), ShouldEqual, true)
 	})
 
 	Convey("flipTest5", t, func() {
@@ -712,7 +712,7 @@ func TestRoaringBitmap(t *testing.T) {
 		for i := uint(120000); i < 132000; i++ {
 			bs.Set(i)
 		}
-		So(equals(bs, rb), ShouldEqual, true)
+		So(equalsBitSet(bs, rb), ShouldEqual, true)
 	})
 
 	Convey("flipTest6", t, func() {
@@ -728,7 +728,7 @@ func TestRoaringBitmap(t *testing.T) {
 		for i := uint(120000); i < 132000; i++ {
 			bs.Set(i)
 		}
-		So(equals(bs, rb2), ShouldEqual, true)
+		So(equalsBitSet(bs, rb2), ShouldEqual, true)
 	})
 
 	Convey("flipTest6A", t, func() {
@@ -746,7 +746,7 @@ func TestRoaringBitmap(t *testing.T) {
 		for i := uint(2 * 65536); i < 132000; i++ {
 			bs.Set(i)
 		}
-		So(equals(bs, rb2), ShouldEqual, true)
+		So(equalsBitSet(bs, rb2), ShouldEqual, true)
 	})
 
 	Convey("flipTest7", t, func() {
@@ -765,7 +765,7 @@ func TestRoaringBitmap(t *testing.T) {
 		for i := uint(651); i < 132000; i++ {
 			bs.Set(i)
 		}
-		So(equals(bs, rb), ShouldEqual, true)
+		So(equalsBitSet(bs, rb), ShouldEqual, true)
 	})
 	Convey("flipTestBig", t, func() {
 		numCases := 1000
@@ -805,7 +805,7 @@ func TestRoaringBitmap(t *testing.T) {
 				irrelevant.Flip(190000, 260000)
 			}
 			if float64(i) > checkTime {
-				So(equals(bs, rb), ShouldEqual, true)
+				So(equalsBitSet(bs, rb), ShouldEqual, true)
 				checkTime *= 1.5
 			}
 		}
@@ -860,7 +860,7 @@ func TestRoaringBitmap(t *testing.T) {
 				} else {
 					rb = rb1
 				}
-				So(equals(bs, rb), ShouldEqual, true)
+				So(equalsBitSet(bs, rb), ShouldEqual, true)
 				checkTime *= 1.5
 			}
 		}
@@ -884,7 +884,7 @@ func TestRoaringBitmap(t *testing.T) {
 
 		rr.Or(rr2)
 		arrayirr := rr.ToArray()
-		So(equals(array, arrayirr), ShouldEqual, true)
+		So(IntsEquals(array, arrayirr), ShouldEqual, true)
 	})
 
 	Convey("ORtest", t, func() {
@@ -932,11 +932,11 @@ func TestRoaringBitmap(t *testing.T) {
 		}
 		correct := Or(rr, rr2)
 		rr.Or(rr2)
-		So(equals(correct, rr), ShouldEqual, true)
+		So(correct.Equals(rr), ShouldEqual, true)
 	})
 
 	Convey("ortest2", t, func() {
-		var arrayrr [4000 + 4000 + 2]int
+		arrayrr := make([]int, 4000+4000+2)
 		pos := 0
 		rr := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
@@ -962,7 +962,7 @@ func TestRoaringBitmap(t *testing.T) {
 
 		arrayor := rror.ToArray()
 
-		So(equals(arrayor, arrayrr), ShouldEqual, true)
+		So(IntsEquals(arrayor, arrayrr), ShouldEqual, true)
 	})
 
 	Convey("ortest3", t, func() {
@@ -1058,7 +1058,7 @@ func TestRoaringBitmap(t *testing.T) {
 		// check or against an empty bitmap
 		orresult := Or(rb, rb2)
 		off := Or(rb2, rb)
-		So(equals(orresult, off), ShouldEqual, true)
+		So(orresult.Equals(off), ShouldEqual, true)
 
 		So(rb2card, ShouldEqual, orresult.GetCardinality())
 
@@ -1074,7 +1074,7 @@ func TestRoaringBitmap(t *testing.T) {
 		So(rb2.GetCardinality()+rb.GetCardinality(), ShouldEqual,
 			orresult2.GetCardinality())
 		rb.Or(rb2)
-		So(equals(rb, orresult2), ShouldEqual, true)
+		So(rb.Equals(orresult2), ShouldEqual, true)
 
 	})
 
@@ -1148,7 +1148,7 @@ func TestRoaringBitmap(t *testing.T) {
 		}
 		correct := Xor(rr, rr2)
 		rr.Xor(rr2)
-		So(equals(correct, rr), ShouldEqual, true)
+		So(correct.Equals(rr), ShouldEqual, true)
 	})
 
 	Convey("xortest1", t, func() {
@@ -1247,7 +1247,7 @@ func TestRoaringBitmap(t *testing.T) {
 		// check or against an empty bitmap
 		xorresult := Xor(rb, rb2)
 		off := Or(rb2, rb)
-		So(equals(xorresult, off), ShouldEqual, true)
+		So(xorresult.Equals(off), ShouldEqual, true)
 
 		So(rb2card, ShouldEqual, xorresult.GetCardinality())
 
@@ -1263,10 +1263,25 @@ func TestRoaringBitmap(t *testing.T) {
 		So(rb2.GetCardinality()+rb.GetCardinality(), ShouldEqual, xorresult2.GetCardinality())
 
 		rb.Xor(rb2)
-		So(equals(xorresult2, rb), ShouldEqual, true)
+		So(xorresult2.Equals(rb), ShouldEqual, true)
 
 	})
 	//need to add the massives
+}
+
+func TestBigRandom(t *testing.T) {
+	Convey("randomTest", t, func() {
+		rTest(15)
+		rTest(100)
+		rTest(512)
+		rTest(1023)
+		rTest(1025)
+		rTest(4095)
+		rTest(4096)
+		rTest(4097)
+		rTest(65536)
+		rTest(65536 * 16)
+	})
 }
 
 func rTest(N int) {
@@ -1279,7 +1294,7 @@ func rTest(N int) {
 			rb1.Add(x)
 		}
 		So(bs1.Count(), ShouldEqual, rb1.GetCardinality())
-		So(equals(bs1, rb1), ShouldEqual, true)
+		So(equalsBitSet(bs1, rb1), ShouldEqual, true)
 		for offset := 1; offset <= gap; offset *= 2 {
 			bs2 := bitset.New(0)
 			rb2 := NewRoaringBitmap()
@@ -1288,34 +1303,70 @@ func rTest(N int) {
 				rb2.Add(x + offset)
 			}
 			So(bs2.Count(), ShouldEqual, rb2.GetCardinality())
-			So(equals(bs2, rb2), ShouldEqual, true)
+			So(equalsBitSet(bs2, rb2), ShouldEqual, true)
 
 			clonebs1 := bs1.Clone()
 			clonebs1.InPlaceIntersection(bs2)
-			if !equals(clonebs1, And(rb1, rb2)) {
+			if !equalsBitSet(clonebs1, And(rb1, rb2)) {
 				t := rb1.Clone()
 				t.And(rb2)
-				So(equals(clonebs1, t), ShouldEqual, true)
+				So(equalsBitSet(clonebs1, t), ShouldEqual, true)
 			}
 
 			// testing OR
 			clonebs1 = bs1.Clone()
 			clonebs1.InPlaceUnion(bs2)
 
-			So(equals(clonebs1, Or(rb1, rb2)), ShouldEqual, true)
+			So(equalsBitSet(clonebs1, Or(rb1, rb2)), ShouldEqual, true)
 			// testing XOR
 			clonebs1 = bs1.Clone()
 			clonebs1.InPlaceSymmetricDifference(bs2)
-			So(equals(clonebs1, Xor(rb1, rb2)), ShouldEqual, true)
+			So(equalsBitSet(clonebs1, Xor(rb1, rb2)), ShouldEqual, true)
 
 			//testing NOTAND
 			clonebs1 = bs1.Clone()
 			clonebs1.Difference(bs2)
-			So(equals(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
+			So(equalsBitSet(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
 		}
 	}
 }
-func equals(a, b interface{}) bool {
+
+func equalsBitSet(a *bitset.BitSet, b *RoaringBitmap) bool {
+	for i, e := a.NextSet(0); e; i, e = a.NextSet(i + 1) {
+		if !b.Contains(int(i)) {
+			return false
+		}
+	}
+	i := b.Iterator()
+	for i.HasNext() {
+		if !a.Test(uint(i.Next())) {
+			return false
+		}
+	}
+	return true
+}
+
+func equalsArray(a []int, b *RoaringBitmap) bool {
+	if len(a) != b.GetCardinality() {
+		return false
+	}
+	for _, x := range a {
+		if !b.Contains(x) {
+			return false
+		}
+	}
+	return true
+}
+
+func IntsEquals(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
 	return true
 }
 

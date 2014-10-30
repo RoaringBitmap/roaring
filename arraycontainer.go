@@ -153,7 +153,6 @@ func (ac *arrayContainer) or(a container) container {
 	return nil
 }
 
-
 func (ac *arrayContainer) ior(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
@@ -164,7 +163,6 @@ func (ac *arrayContainer) ior(a container) container {
 	return nil
 }
 
-
 func (ac *arrayContainer) lazyIOR(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
@@ -174,8 +172,6 @@ func (ac *arrayContainer) lazyIOR(a container) container {
 	}
 	return nil
 }
-
-
 
 func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
 	value1 := ac
@@ -226,18 +222,17 @@ func (ac *arrayContainer) xor(a container) container {
 func (ac *arrayContainer) xorArray(value2 *arrayContainer) container {
 	value1 := ac
 	totalCardinality := value1.getCardinality() + value2.getCardinality()
-	if totalCardinality > arrayDefaultMaxSize { // it could be a bitmap!^M
+	if totalCardinality > arrayDefaultMaxSize { // it could be a bitmap!
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
 			i := uint(toIntUnsigned(value2.content[k])) >> 6
-			bc.bitmap[i] ^= (1 << value2.content[k])
+			bc.bitmap[i] ^= (uint64(1) << (value2.content[k] % 64))
 		}
 		for k := 0; k < len(ac.content); k++ {
 			i := uint(toIntUnsigned(ac.content[k])) >> 6
-			bc.bitmap[i] ^= (1 << ac.content[k])
+			bc.bitmap[i] ^= (uint64(1) << (ac.content[k] % 64))
 		}
-		bc.cardinality = int(popcntSlice(bc.bitmap))
-
+		bc.computeCardinality()
 		if bc.cardinality <= arrayDefaultMaxSize {
 			return bc.toArrayContainer()
 		}

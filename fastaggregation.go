@@ -29,7 +29,7 @@ func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	return answer
 }
 
- //FastHorizontalOr computes the union between many bitmaps quickly, it can be expected to be faster and use less memory than FastOr
+//FastHorizontalOr computes the union between many bitmaps quickly, it can be expected to be faster and use less memory than FastOr
 func FastHorizontalOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	answer := NewRoaringBitmap()
 	if len(bitmaps) == 0 {
@@ -63,11 +63,10 @@ func FastHorizontalOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 		case *bitmapContainer:
 			thiscontainer.(*bitmapContainer).computeCardinality()
 		}
-		answer.highlowcontainer.append(thiskey,thiscontainer)
+		answer.highlowcontainer.append(thiskey, thiscontainer)
 	}
 	return answer
 }
-
 
 // FastOr computes the union between many bitmaps quickly (see also FastHorizontalOr)
 func FastOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {

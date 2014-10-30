@@ -2,7 +2,6 @@ package roaring
 
 import "container/heap"
 
-
 /////////////
 // The priorityQueue is used to keep RoaringBitmaps sorted.
 ////////////
@@ -47,22 +46,19 @@ func (pq *priorityQueue) update(item *item, value *RoaringBitmap) {
 	heap.Fix(pq, item.index)
 }
 
-
-
 /////////////
 // The containerPriorityQueue is used to keep the containers of various RoaringBitmaps sorted.
 ////////////
 
 type containeritem struct {
-	value *RoaringBitmap
+	value    *RoaringBitmap
 	keyindex int
-	index int
+	index    int
 }
 
 type containerPriorityQueue []*containeritem
 
 func (pq containerPriorityQueue) Len() int { return len(pq) }
-
 
 func (pq containerPriorityQueue) Less(i, j int) bool {
 	k1 := pq[i].value.highlowcontainer.getKeyAtIndex(pq[i].keyindex)

@@ -22,7 +22,7 @@ type container interface {
 	fillLeastSignificant16bits(array []int, i, mask int)
 	or(r container) container
 	ior(r container) container
-    lazyIOR(r container) container
+	lazyIOR(r container) container
 	getSizeInBytes() int
 	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)
