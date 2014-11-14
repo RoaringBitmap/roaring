@@ -64,6 +64,7 @@ func fillArrayAND(container []uint16, bitmap1, bitmap2 []uint64) {
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	// TODO: rewrite in assembly
 	pos := 0
 	for k := range bitmap1 {
 		bitset := bitmap1[k] & bitmap2[k]
@@ -80,6 +81,7 @@ func fillArrayANDNOT(container []uint16, bitmap1, bitmap2 []uint64) {
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	// TODO: rewrite in assembly
 	pos := 0
 	for k := range bitmap1 {
 		bitset := bitmap1[k] &^ bitmap2[k]
@@ -96,6 +98,7 @@ func fillArrayXOR(container []uint16, bitmap1, bitmap2 []uint64) {
 	if len(bitmap1) != len(bitmap2) {
 		panic("array lengths don't match")
 	}
+	// TODO: rewrite in assembly
 	pos := 0
 	for k := 0; k < len(bitmap1); k++ {
 		bitset := bitmap1[k] ^ bitmap2[k]
