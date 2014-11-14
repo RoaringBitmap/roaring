@@ -1417,13 +1417,13 @@ func TestRoaringArray(t *testing.T) {
 		So(a.size(), ShouldEqual, 0)
 	})
 
-	Convey("Test Bitcount Full", t, func() {
-		res := bitCount(uint64(0xffffffffffffffff))
+	Convey("Test popcount Full", t, func() {
+		res := popcount(uint64(0xffffffffffffffff))
 		So(res, ShouldEqual, 64)
 	})
 
-	Convey("Test Bitcount Empty", t, func() {
-		res := bitCount(0)
+	Convey("Test popcount Empty", t, func() {
+		res := popcount(0)
 		So(res, ShouldEqual, 0)
 	})
 	Convey("Test ArrayContainer Add", t, func() {

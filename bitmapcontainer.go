@@ -97,7 +97,7 @@ func (bc *bitmapContainer) fillLeastSignificant16bits(x []int, i, mask int) {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			x[pos] = (k*64 + bitCount(t-1)) | mask
+			x[pos] = (k*64 + int(popcount(t-1))) | mask
 			pos++
 			bitset ^= t
 		}
@@ -208,9 +208,9 @@ func (bc *bitmapContainer) NotBitmap(answer *bitmapContainer, firstOfRange, last
 		// range starts and ends in same word (may have
 		// unchanged bits on both left and right)
 		mask &= maskOnLeft
-		cardinalityChange = -bitCount(bc.bitmap[rangeFirstWord])
+		cardinalityChange = -int(popcount(bc.bitmap[rangeFirstWord]))
 		answer.bitmap[rangeFirstWord] = bc.bitmap[rangeFirstWord] ^ mask
-		cardinalityChange += bitCount(answer.bitmap[rangeFirstWord])
+		cardinalityChange += int(popcount(answer.bitmap[rangeFirstWord]))
 		answer.cardinality = bc.cardinality + cardinalityChange
 
 		if answer.cardinality <= arrayDefaultMaxSize {
@@ -220,17 +220,17 @@ func (bc *bitmapContainer) NotBitmap(answer *bitmapContainer, firstOfRange, last
 	}
 
 	// range spans words
-	cardinalityChange += -bitCount(bc.bitmap[rangeFirstWord])
+	cardinalityChange += -int(popcount(bc.bitmap[rangeFirstWord]))
 	answer.bitmap[rangeFirstWord] = bc.bitmap[rangeFirstWord] ^ mask
-	cardinalityChange += bitCount(answer.bitmap[rangeFirstWord])
+	cardinalityChange += int(popcount(answer.bitmap[rangeFirstWord]))
 
-	cardinalityChange += -bitCount(bc.bitmap[rangeLastWord])
+	cardinalityChange += -int(popcount(bc.bitmap[rangeLastWord]))
 	answer.bitmap[rangeLastWord] = bc.bitmap[rangeLastWord] ^ maskOnLeft
-	cardinalityChange += bitCount(answer.bitmap[rangeLastWord])
+	cardinalityChange += int(popcount(answer.bitmap[rangeLastWord]))
 
 	// negate the words, if any, strictly between first and last
 	for i := rangeFirstWord + 1; i < rangeLastWord; i++ {
-		cardinalityChange += (64 - 2*bitCount(bc.bitmap[i]))
+		cardinalityChange += (64 - 2*int(popcount(bc.bitmap[i])))
 		answer.bitmap[i] = ^bc.bitmap[i]
 	}
 	answer.cardinality = bc.cardinality + cardinalityChange
@@ -285,7 +285,7 @@ func (bc *bitmapContainer) orBitmap(value2 *bitmapContainer) container {
 	answer := newBitmapContainer()
 	for k := 0; k < len(answer.bitmap); k++ {
 		answer.bitmap[k] = bc.bitmap[k] | value2.bitmap[k]
-		answer.cardinality += bitCount(answer.bitmap[k])
+		answer.cardinality += int(popcount(answer.bitmap[k]))
 	}
 	return answer
 }
@@ -293,7 +293,7 @@ func (bc *bitmapContainer) orBitmap(value2 *bitmapContainer) container {
 func (bc *bitmapContainer) computeCardinality() {
 	bc.cardinality = int(popcntSlice(bc.bitmap))
 	//for k := 0; k < len(bc.bitmap); k++ {
-	//	bc.cardinality += bitCount(bc.bitmap[k])
+	//	bc.cardinality += popcount(bc.bitmap[k])
 	//}
 }
 
@@ -312,7 +312,7 @@ func (bc *bitmapContainer) iorBitmap(value2 *bitmapContainer) container {
 	answer.cardinality = 0
 	for k := 0; k < len(answer.bitmap); k++ {
 		answer.bitmap[k] = bc.bitmap[k] | value2.bitmap[k]
-		answer.cardinality += bitCount(answer.bitmap[k])
+		answer.cardinality += int(popcount(answer.bitmap[k]))
 	}
 	return answer
 }
@@ -369,7 +369,7 @@ func (bc *bitmapContainer) rank(x uint16) int {
 func (bc *bitmapContainer) xorBitmap(value2 *bitmapContainer) container {
 	/*
 		for k := 0; k < len(bc.bitmap); k++ {
-			newCardinality += BitCount(bc.bitmap[k] ^ value2.bitmap[k])
+			newCardinality += popcount(bc.bitmap[k] ^ value2.bitmap[k])
 		}
 	*/
 
@@ -452,7 +452,7 @@ func (bc *bitmapContainer) andNotBitmap(value2 *bitmapContainer) container {
 	/*
 		newCardinality := 0
 		for k := 0; k < len(bc.bitmap); k++ {
-			newCardinality += BitCount(self.bitmap[k] &^ value2.bitmap[k])
+			newCardinality += int(popcount(self.bitmap[k] &^ value2.bitmap[k]))
 		}
 	*/
 	newCardinality := int(popcntMaskSlice(bc.bitmap, value2.bitmap))
@@ -494,7 +494,7 @@ func (bc *bitmapContainer) fillArray(container []uint16) {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = uint16((k*64 + bitCount(t-1)))
+			container[pos] = uint16((k*64 + int(popcount(t-1))))
 			pos = pos + 1
 			bitset ^= t
 		}
