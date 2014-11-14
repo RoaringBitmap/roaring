@@ -15,18 +15,6 @@ func getSizeInBytesFromCardinality(card int) int {
 }
 
 // should be replaced with optimized assembly instructions
-func bitCount(x uint64) int {
-	// bit population count, see
-	// http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-	x -= (x >> 1) & 0x5555555555555555
-	x = (x>>2)&0x3333333333333333 + x&0x3333333333333333
-	x += x >> 4
-	x &= 0x0f0f0f0f0f0f0f0f
-	x *= 0x0101010101010101
-	return int(x >> 56)
-}
-
-// should be replaced with optimized assembly instructions
 func numberOfTrailingZeros(i uint64) int {
 	if i == 0 {
 		return 64
@@ -81,7 +69,7 @@ func fillArrayAND(container []uint16, bitmap1, bitmap2 []uint64) {
 		bitset := bitmap1[k] & bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = uint16((k*64 + bitCount(t-1)))
+			container[pos] = uint16((k*64 + int(popcount(t-1))))
 			pos = pos + 1
 			bitset ^= t
 		}
@@ -97,7 +85,7 @@ func fillArrayANDNOT(container []uint16, bitmap1, bitmap2 []uint64) {
 		bitset := bitmap1[k] &^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = uint16((k*64 + bitCount(t-1)))
+			container[pos] = uint16((k*64 + int(popcount(t-1))))
 			pos = pos + 1
 			bitset ^= t
 		}
@@ -113,7 +101,7 @@ func fillArrayXOR(container []uint16, bitmap1, bitmap2 []uint64) {
 		bitset := bitmap1[k] ^ bitmap2[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = uint16((k*64 + bitCount(t-1)))
+			container[pos] = uint16((k*64 + int(popcount(t-1))))
 			pos = pos + 1
 			bitset ^= t
 		}
