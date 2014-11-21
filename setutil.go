@@ -78,7 +78,7 @@ func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	k2 := 0
 	buffer = buffer[:cap(buffer)]
 	for {
-		if toIntUnsigned(set1[k1]) < toIntUnsigned(set2[k2]) {
+		if set1[k1] < set2[k2] {
 			buffer[pos] = set1[k1]
 			pos++
 			k1++
@@ -89,7 +89,7 @@ func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
-		} else if toIntUnsigned(set1[k1]) == toIntUnsigned(set2[k2]) {
+		} else if set1[k1] == set2[k2] {
 			k1++
 			k2++
 			if k1 >= len(set1) {
@@ -138,7 +138,7 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	}
 	buffer = buffer[:cap(buffer)]
 	for {
-		if toIntUnsigned(set1[k1]) < toIntUnsigned(set2[k2]) {
+		if set1[k1] < set2[k2] {
 			buffer[pos] = set1[k1]
 			pos++
 			k1++
@@ -149,7 +149,7 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
-		} else if toIntUnsigned(set1[k1]) == toIntUnsigned(set2[k2]) {
+		} else if set1[k1] == set2[k2] {
 			buffer[pos] = set1[k1]
 			pos++
 			k1++
