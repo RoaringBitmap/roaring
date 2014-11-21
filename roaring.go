@@ -178,7 +178,7 @@ func (rb *RoaringBitmap) Remove(x int) {
 
 
 // IsEmpty returns true if the RoaringBitmap is empty (it is faster than doing (GetCardinality() == 0))
-func (rb *RoaringBitmap) GetCardinality() int {
+func (rb *RoaringBitmap) IsEmpty() bool {
 	return rb.highlowcontainer.size() == 0
 }
 
