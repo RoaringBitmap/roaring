@@ -84,7 +84,6 @@ func TestSetUtilIntersection(t *testing.T) {
 	expectedresult = data1
 	nl = intersection2by2(data1, data2, result)
 	result = result[:nl]
-	result = result[:len(expectedresult)]
 
 	if !equal(result, expectedresult) {
 		t.Errorf("Long intersection is broken")
