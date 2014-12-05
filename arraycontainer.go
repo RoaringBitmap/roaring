@@ -3,6 +3,7 @@ package roaring
 import (
 	"encoding/binary"
 	"io"
+	"unsafe"
 )
 
 type arrayContainer struct {
@@ -36,8 +37,18 @@ func (ac *arrayContainer) fillLeastSignificant16bits(x []int, i, mask int) {
 func (ac *arrayContainer) getShortIterator() shortIterable {
 	return &shortIterator{ac.content, 0}
 }
+
 func (ac *arrayContainer) getSizeInBytes() int {
-	return ac.getCardinality()*2 + 4
+	// unsafe.Sizeof calculates the memory used by the top level of the slice
+	// descriptor - not including the size of the memory referenced by the slice.
+	// http://golang.org/pkg/unsafe/#Sizeof
+	return ac.getCardinality()*2 + int(unsafe.Sizeof(ac.content))
+}
+
+func(ac * arrayContainer) serializedSizeInBytes() int {
+	// based on https://golang.org/src/pkg/encoding/binary/binary.go#265
+	// there is no serialization overhead for writing an array of fixed size vals
+	return ac.getCardinality()*2;
 }
 
 func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
