@@ -63,6 +63,15 @@ func (rb *RoaringBitmap) GetSizeInBytes() int {
 	return size
 }
 
+
+// GetSerializedSizeInBytes computes the serialized size in bytes  the RoaringBitmap. It should correspond to the
+// number of bytes written when invoking WriteTo
+func (rb *RoaringBitmap) GetSerializedSizeInBytes() int {
+	return rb.highlowcontainer.serializedSizeInBytes()
+}
+
+
+
 // IntIterable allows you to iterate over the values in a RoaringBitmap
 type IntIterable interface {
 	HasNext() bool

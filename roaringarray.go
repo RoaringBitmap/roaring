@@ -24,6 +24,7 @@ type container interface {
 	ior(r container) container
 	lazyIOR(r container) container
 	getSizeInBytes() int
+    serializedSizeInBytes() int
 	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)
 }
@@ -208,6 +209,15 @@ func (ra *roaringArray) equals(o interface{}) bool {
 		return true
 	}
 	return false
+}
+
+func (b *roaringArray) serializedSizeInBytes() int {
+	count := 4 + 4
+	for _, item := range b.array {
+		count = count + 4 + 4
+		count = count + item.value.serializedSizeInBytes()
+	}
+    return count
 }
 
 func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
