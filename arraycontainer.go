@@ -105,8 +105,8 @@ func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
 }
 
 func (ac *arrayContainer) equals(o interface{}) bool {
-	srb := o.(*arrayContainer)
-	if srb != nil {
+	srb, ok := o.(*arrayContainer)
+	if ok {
 		if len(srb.content) != len(ac.content) {
 			return false
 		}
