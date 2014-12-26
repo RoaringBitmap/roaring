@@ -154,8 +154,8 @@ func (rb *RoaringBitmap) Contains(x int) bool {
 
 // Equals returns true if the two bitmaps contain the same integers
 func (rb *RoaringBitmap) Equals(o interface{}) bool {
-	srb := o.(*RoaringBitmap)
-	if srb != nil {
+	srb, ok := o.(*RoaringBitmap)
+	if ok {
 		return srb.highlowcontainer.equals(rb.highlowcontainer)
 	}
 	return false
