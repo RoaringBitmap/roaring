@@ -69,7 +69,7 @@ func main() {
     // next we include an example of serialization
     buf := new(bytes.Buffer)
     rb1.WriteTo(buf) // we omit error handling
-    newrb:= NewRoaringBitmap()
+    newrb:= roaring.NewRoaringBitmap()
     newrb.ReadFrom(buf)
     if rb1.Equals(newrb) {
     	fmt.Println("I wrote the content to a byte stream and read it back.")
