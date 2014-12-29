@@ -104,6 +104,12 @@ consider the following sample of code:
 
 Current documentation is available at http://godoc.org/github.com/tgruben/roaring
 
+### Benchmark
+
+Type
+
+         go test -bench Benchmark -run -
+
 ### Alternative
 
 For an alternative implementation in Go, see https://github.com/fzandona/goroar
