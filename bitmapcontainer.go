@@ -111,8 +111,8 @@ func (bc *bitmapContainer) fillLeastSignificant16bits(x []int, i, mask int) {
 }
 
 func (bc *bitmapContainer) equals(o interface{}) bool {
-	srb := o.(*bitmapContainer)
-	if srb != nil {
+	srb, ok := o.(*bitmapContainer)
+	if ok {
 		if srb.cardinality != bc.cardinality {
 			return false
 		}
