@@ -44,25 +44,6 @@ func TestArrayContainerTransition(t *testing.T) {
 	}
 }
 
-func TestArrayContainerSetAndGet(t *testing.T) {
-	v := container(newArrayContainer())
-	v = v.add(100)
-	if v.getCardinality() != 1 {
-		t.Errorf("Bogus cardinality.")
-	}
-	for i := 0; i <= arrayDefaultMaxSize; i++ {
-		if i == 100 {
-			if v.contains(uint16(i)) != true {
-				t.Errorf("I added a number in vain.")
-			}
-		} else {
-			if v.contains(uint16(i)) != false {
-				t.Errorf("Ghost content")
-				break
-			}
-		}
-	}
-}
 func TestArrayContainerRank(t *testing.T) {
 	v := container(newArrayContainer())
 	v = v.add(10)
