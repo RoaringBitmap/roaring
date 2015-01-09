@@ -186,8 +186,8 @@ func (ac *arrayContainer) lazyIOR(a container) container {
 
 func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
 	value1 := ac
-	totalCardinality := value1.getCardinality() + value2.getCardinality()
-	if totalCardinality > arrayDefaultMaxSize { // it could be a bitmap!^M
+	maxPossibleCardinality := value1.getCardinality() + value2.getCardinality()
+	if maxPossibleCardinality > arrayDefaultMaxSize { // it could be a bitmap!^M
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
 			i := uint(toIntUnsigned(value2.content[k])) >> 6
@@ -203,10 +203,9 @@ func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
 		}
 		return bc
 	}
-	desiredCapacity := totalCardinality
-	answer := newArrayContainerCapacity(desiredCapacity)
+	answer := newArrayContainerCapacity(maxPossibleCardinality)
 	nl := union2by2(value1.content, value2.content, answer.content)
-	answer.content = answer.content[:nl] //what is this voodo?
+	answer.content = answer.content[:nl] // reslice to match actual used capacity
 	return answer
 }
 
