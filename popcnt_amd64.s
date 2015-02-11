@@ -1,3 +1,4 @@
+// +build !appengine
 TEXT ·hasAsm(SB),4,$0
 MOVQ $1, AX
 CPUID
