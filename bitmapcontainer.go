@@ -130,16 +130,13 @@ func (bc *bitmapContainer) add(i uint16) container {
 }
 
 func (bc *bitmapContainer) remove(i uint16) container {
-
-	if bc.cardinality == arrayDefaultMaxSize+1 {
-		if bc.contains(i) {
-			bc.cardinality -= 1
-			bc.bitmap[i/64] &^= (uint64(1) << (i % 64))
+	if bc.contains(i) {
+		bc.cardinality -= 1
+		bc.bitmap[i/64] &^= (uint64(1) << (i % 64))
+		if bc.cardinality == arrayDefaultMaxSize {
 			return bc.toArrayContainer()
 		}
 	}
-	bc.cardinality -= int((bc.bitmap[i/64] & (uint64(1) << (i % 64))) >> (i % 64))
-	bc.bitmap[i/64] &^= (uint64(1) << (i % 64))
 	return bc
 }
 
