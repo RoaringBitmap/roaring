@@ -2,12 +2,12 @@ RoaringBitmap [![Build Status](https://travis-ci.org/tgruben/roaring.png)](https
 =============
 
 This is a go port of the Roaring bitmap data structure.  The original java version
-can be found at https://github.com/lemire/RoaringBitmap and the supporting paper at
+can be found at https://github.com/lemire/RoaringBitmap and the supporting paper is
 
-http://arxiv.org/abs/1402.6407
+Samy Chambi, Daniel Lemire, Owen Kaser, Robert Godin, Better bitmap performance with Roaring bitmaps, Software: Practice and Experience (to appear) http://arxiv.org/abs/1402.6407
 
 The Java and Go version are meant to be binary compatible: you can save bitmaps
-from a Java program and load them back in Go, and vice versa.
+from a Java program and load them back in Go, and vice versa. 
 
 
 This code is licensed under Apache License, Version 2.0 (ASL2.0). 
