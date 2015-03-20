@@ -96,6 +96,19 @@ func TestSetUtilIntersection(t *testing.T) {
 
 }
 
+func TestSetUtilIntersection2(t *testing.T) {
+	data1 := []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18}
+	data2 := []uint16{0, 3, 6, 9, 12, 15, 18}
+	result := make([]uint16, 0, len(data1)+len(data2))
+	expectedresult := []uint16{0, 6, 12, 18}
+	nl := intersection2by2(data1, data2, result)
+	result = result[:nl]
+	result = result[:len(expectedresult)]
+	if !equal(result, expectedresult) {
+		t.Errorf("Intersection is broken")
+	}
+}
+
 func TestSetUtilBinarySearch(t *testing.T) {
 	data := make([]uint16, 256)
 	for i := range data {

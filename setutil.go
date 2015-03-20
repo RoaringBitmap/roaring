@@ -219,7 +219,7 @@ mainwhile:
 				if k2 == len(set2) {
 					break mainwhile
 				}
-				if set2[k2] <= set1[k1] {
+				if set2[k2] >= set1[k1] {
 					break
 				}
 			}
@@ -230,7 +230,7 @@ mainwhile:
 				if k1 == len(set1) {
 					break mainwhile
 				}
-				if set1[k1] <= set2[k2] {
+				if set1[k1] >= set2[k2] {
 					break
 				}
 			}
