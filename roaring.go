@@ -399,13 +399,7 @@ main:
 						break main
 					}
 					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
-				} else if s1 > s2 {
-					pos2++
-					if pos2 == length2 {
-						break main
-					}
-					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
-				} else {
+				} else if s1 == s2 {
 					C := x1.highlowcontainer.getContainerAtIndex(pos1)
 					C.andNot(x2.highlowcontainer.getContainerAtIndex(pos2))
 					if C.getCardinality() > 0 {
@@ -417,6 +411,12 @@ main:
 						break main
 					}
 					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				} else {//s1 > s2
+					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
+					if pos2 == length2 {
+						break main
+					}
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 				}
 			}
