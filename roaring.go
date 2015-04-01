@@ -63,14 +63,11 @@ func (rb *RoaringBitmap) GetSizeInBytes() int {
 	return size
 }
 
-
 // GetSerializedSizeInBytes computes the serialized size in bytes  the RoaringBitmap. It should correspond to the
 // number of bytes written when invoking WriteTo
 func (rb *RoaringBitmap) GetSerializedSizeInBytes() int {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }
-
-
 
 // IntIterable allows you to iterate over the values in a RoaringBitmap
 type IntIterable interface {
@@ -185,12 +182,10 @@ func (rb *RoaringBitmap) Remove(x int) {
 	}
 }
 
-
 // IsEmpty returns true if the RoaringBitmap is empty (it is faster than doing (GetCardinality() == 0))
 func (rb *RoaringBitmap) IsEmpty() bool {
 	return rb.highlowcontainer.size() == 0
 }
-
 
 // GetCardinality returns the number of integers contained in the bitmap
 func (rb *RoaringBitmap) GetCardinality() int {
@@ -311,19 +306,7 @@ main:
 			s1 := x1.highlowcontainer.getKeyAtIndex(pos1)
 			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
 			for {
-				if s1 < s2 {
-					pos1++
-					if pos1 == length1 {
-						break main
-					}
-					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
-				} else if s1 > s2 {
-					pos2++
-					if pos2 == length2 {
-						break main
-					}
-					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
-				} else {
+				if s1 == s2 {
 					C := x1.highlowcontainer.getContainerAtIndex(pos1)
 					C = C.and(x2.highlowcontainer.getContainerAtIndex(pos2))
 
@@ -337,7 +320,18 @@ main:
 					}
 					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
-
+				} else if s1 < s2 {
+					pos1 = x1.highlowcontainer.advanceUntil(s2, pos1)
+					if pos1 == length1 {
+						break main
+					}
+					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
+				} else { // s1 > s2
+					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
+					if pos2 == length2 {
+						break main
+					}
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 				}
 			}
 		} else {

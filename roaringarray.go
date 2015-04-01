@@ -24,7 +24,7 @@ type container interface {
 	ior(r container) container
 	lazyIOR(r container) container
 	getSizeInBytes() int
-    serializedSizeInBytes() int
+	serializedSizeInBytes() int
 	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)
 }
@@ -217,7 +217,7 @@ func (b *roaringArray) serializedSizeInBytes() int {
 		count = count + 4 + 4
 		count = count + item.value.serializedSizeInBytes()
 	}
-    return count
+	return count
 }
 
 func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
@@ -296,4 +296,56 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 		}
 	}
 	return offset, nil
+}
+
+
+func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
+	lower := pos + 1
+
+	if lower >= len(ra.array) || ra.array[lower].key >= min {
+		return lower
+	}
+
+	spansize := 1
+
+	for lower+spansize < len(ra.array) && ra.array[lower+spansize].key < min {
+		spansize *= 2
+	}
+	var upper int
+	if lower+spansize < len(ra.array) {
+		upper = lower + spansize
+	} else {
+		upper = len(ra.array) - 1
+	}
+
+	if ra.array[upper].key == min {
+		return upper
+	}
+
+	if ra.array[upper].key < min {
+		// means
+		// array
+		// has no
+		// item
+		// >= min
+		// pos = array.length;
+		return len(ra.array)
+	}
+
+	// we know that the next-smallest span was too small
+	lower += (spansize / 2)
+
+	mid := 0
+	for lower+1 != upper {
+		mid = (lower + upper) / 2
+		if ra.array[mid].key == min {
+			return mid
+		} else if ra.array[mid].key < min {
+			lower = mid
+		} else {
+			upper = mid
+		}
+	}
+	return upper
+
 }

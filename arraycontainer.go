@@ -45,10 +45,10 @@ func (ac *arrayContainer) getSizeInBytes() int {
 	return ac.getCardinality()*2 + int(unsafe.Sizeof(ac.content))
 }
 
-func(ac * arrayContainer) serializedSizeInBytes() int {
+func (ac *arrayContainer) serializedSizeInBytes() int {
 	// based on https://golang.org/src/pkg/encoding/binary/binary.go#265
 	// there is no serialization overhead for writing an array of fixed size vals
-	return ac.getCardinality()*2;
+	return ac.getCardinality() * 2
 }
 
 func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {

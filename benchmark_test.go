@@ -1,12 +1,10 @@
 package roaring
 
-import ("testing"
-	"math/rand"
+import (
 	"fmt"
+	"math/rand"
+	"testing"
 )
-
-
-
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
 
@@ -36,7 +34,6 @@ func BenchmarkGetTest(b *testing.B) {
 	}
 }
 
-
 // go test -bench=Count
 func BenchmarkCount(b *testing.B) {
 	b.StopTimer()
@@ -63,7 +60,7 @@ func BenchmarkIterate(b *testing.B) {
 	for i := 0; i < initsize; i++ {
 		s.Add(int(r.Int31n(int32(sz))))
 	}
-	fmt.Print("---Iterating over ", s.GetCardinality()," integers---");
+	fmt.Print("---Iterating over ", s.GetCardinality(), " integers---")
 	b.StartTimer()
 	for j := 0; j < b.N; j++ {
 		c := uint(0)
@@ -85,7 +82,7 @@ func BenchmarkSparseIterate(b *testing.B) {
 	for i := 0; i < initsize; i++ {
 		s.Add(int(r.Int31n(int32(sz))))
 	}
-	fmt.Print("---Iterating over ", s.GetCardinality()," integers---");
+	fmt.Print("---Iterating over ", s.GetCardinality(), " integers---")
 	b.StartTimer()
 	for j := 0; j < b.N; j++ {
 		c := uint(0)

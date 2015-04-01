@@ -79,9 +79,8 @@ func (bc *bitmapContainer) getSizeInBytes() int {
 	return len(bc.bitmap) * 8
 }
 
-
-func(bc * bitmapContainer) serializedSizeInBytes() int {
-	return len(bc.bitmap) * 8;
+func (bc *bitmapContainer) serializedSizeInBytes() int {
+	return len(bc.bitmap) * 8
 }
 
 func bitmapEquals(a, b []uint64) bool {
