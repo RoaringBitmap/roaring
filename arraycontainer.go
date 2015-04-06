@@ -393,6 +393,10 @@ func (ac *arrayContainer) rank(x uint16) int {
 	}
 }
 
+func (ac *arrayContainer) selectInt(x uint16) int {
+	return int(ac.content[x])
+}
+
 func (ac *arrayContainer) clone() container {
 	ptr := arrayContainer{make([]uint16, len(ac.content))}
 	copy(ptr.content, ac.content[:])
