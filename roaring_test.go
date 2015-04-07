@@ -70,7 +70,7 @@ func TestRoaringBitmapExtra(t *testing.T) {
 
 					//testing NOTAND
 					clonebs1 = bs1.Clone()
-					clonebs1.Difference(bs2)
+					clonebs1.InPlaceDifference(bs2)
 					So(equalsBitSet(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
 				}
 			}
@@ -83,6 +83,7 @@ func FlipRange(start, end int, bs *bitset.BitSet) {
 		bs.Flip(uint(i))
 	}
 }
+
 func TestRoaringBitmap(t *testing.T) {
 
 	Convey("Test Contains", t, func() {
@@ -1325,7 +1326,7 @@ func rTest(N int) {
 
 			//testing NOTAND
 			clonebs1 = bs1.Clone()
-			clonebs1.Difference(bs2)
+			clonebs1.InPlaceDifference(bs2)
 			So(equalsBitSet(clonebs1, AndNot(rb1, rb2)), ShouldEqual, true)
 		}
 	}
