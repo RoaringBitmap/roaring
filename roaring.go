@@ -400,10 +400,11 @@ main:
 					}
 					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
 				} else if s1 == s2 {
-					C := x1.highlowcontainer.getContainerAtIndex(pos1)
-					C.andNot(x2.highlowcontainer.getContainerAtIndex(pos2))
-					if C.getCardinality() > 0 {
-						answer.highlowcontainer.append(s1, C)
+					c1 := x1.highlowcontainer.getContainerAtIndex(pos1)
+					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
+					diff := c1.andNot(c2)
+					if diff.getCardinality() > 0 {
+						answer.highlowcontainer.append(s1, diff)
 					}
 					pos1++
 					pos2++
@@ -412,7 +413,7 @@ main:
 					}
 					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
-				} else {//s1 > s2
+				} else { //s1 > s2
 					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
 					if pos2 == length2 {
 						break main
