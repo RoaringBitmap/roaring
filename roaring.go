@@ -462,13 +462,7 @@ func BitmapOf(dat ...int) *RoaringBitmap {
 
 // Flip negates the bits in the given range, any integer present in this range and in the bitmap is removed,
 // and any integer present in the range and not in the bitmap is added
-func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd int) *RoaringBitmap {
-	results := Flip(rb, rangeStart, rangeEnd) //Todo: the computation could be done in-place to reduce memory usage
-	rb.highlowcontainer = results.highlowcontainer
-	return rb
-}
-func (rb *RoaringBitmap) experimentalFlip(rangeStart, rangeEnd int) {
-
+func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd int) {
 
 	if rangeStart >= rangeEnd {
 		return
