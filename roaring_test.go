@@ -96,6 +96,16 @@ func TestRoaringBitmap(t *testing.T) {
 		}
 	})
 
+	Convey("Test Clone", t, func() {
+		rb1 := NewRoaringBitmap()
+		rb1.Add(10)
+
+		rb2 := rb1.Clone()
+		rb2.Remove(10)
+
+		So(rb1.Contains(10), ShouldBeTrue)
+	})
+
 	Convey("Test ANDNOT", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {

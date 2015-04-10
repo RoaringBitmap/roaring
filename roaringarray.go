@@ -107,7 +107,10 @@ func (ra *roaringArray) clear() {
 func (ra *roaringArray) clone() *roaringArray {
 	sa := new(roaringArray)
 	sa.array = make([]*element, len(ra.array))
-	copy(sa.array, ra.array[:])
+	for i := 0; i < len(ra.array); i++ {
+		newElement := ra.array[i].clone()
+		sa.array[i] = &newElement
+	}
 	return sa
 }
 
