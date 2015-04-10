@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"fmt"
 )
 
 // RoaringBitmap represents a compressed bitmap where you can add integers.

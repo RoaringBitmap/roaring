@@ -127,7 +127,6 @@ func toIntUnsigned(x uint16) int {
 	return int(x & 0xFFFF)
 }
 
-<<<<<<< HEAD
 func flipBitmapRange(bitmap []uint64, start int, end int) {
 	if start >= end {
 		return
