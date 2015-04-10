@@ -361,6 +361,18 @@ func (bc *bitmapContainer) rank(x uint16) int {
 	}
 }
 
+func (bc *bitmapContainer) selectInt(x uint16) int {
+	remaining := x
+	for k := 0; k < len(bc.bitmap); k++ {
+		w := popcount(bc.bitmap[k])
+		if uint16(w) > remaining {
+			return int(k*64 + selectBitPosition(bc.bitmap[k], int(remaining)))
+		}
+		remaining -= uint16(w)
+	}
+	return -1
+}
+
 func (bc *bitmapContainer) xorBitmap(value2 *bitmapContainer) container {
 	newCardinality := int(popcntXorSlice(bc.bitmap, value2.bitmap))
 

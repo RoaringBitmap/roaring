@@ -24,6 +24,7 @@ type container interface {
 	ior(r container) container
 	lazyIOR(r container) container
 	getSizeInBytes() int
+	selectInt(uint16) int
 	serializedSizeInBytes() int
 	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)
@@ -300,7 +301,6 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 	}
 	return offset, nil
 }
-
 
 func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 	lower := pos + 1

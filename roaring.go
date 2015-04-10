@@ -7,6 +7,7 @@ package roaring
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strconv"
 )
@@ -211,6 +212,25 @@ func (rb *RoaringBitmap) Rank(x int) int {
 		}
 	}
 	return size
+}
+
+// Select returns the xth integer in the bitmap
+func (rb *RoaringBitmap) Select(x int) (int, error) {
+	if rb.GetCardinality() <= x {
+		return -1, fmt.Errorf("Can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
+	}
+
+	remaining := x
+	for i := 0; i < rb.highlowcontainer.size(); i++ {
+		c := rb.highlowcontainer.getContainerAtIndex(i)
+		if remaining >= c.getCardinality() {
+			remaining -= c.getCardinality()
+		} else {
+			key := rb.highlowcontainer.getKeyAtIndex(i)
+			return int(key)<<16 + c.selectInt(uint16(remaining)), nil
+		}
+	}
+	return -1, fmt.Errorf("Can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
 }
 
 // And computes the intersection between two bitmaps and store the result in the current bitmap

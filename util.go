@@ -126,3 +126,47 @@ func maxLowBit() uint16 {
 func toIntUnsigned(x uint16) int {
 	return int(x & 0xFFFF)
 }
+
+func selectBitPosition(w uint64, j int) int {
+	seen := 0
+
+	// Divide 64bit
+	part := w & 0xFFFFFFFF
+	n := popcount(part)
+	if n <= uint64(j) {
+		part = w >> 32
+		seen += 32
+		j -= int(n)
+	}
+	w = part
+
+	// Divide 32bit
+	part = w & 0xFFFF
+	n = popcount(part)
+	if n <= uint64(j) {
+		part = w >> 16
+		seen += 16
+		j -= int(n)
+	}
+	w = part
+
+	// Divide 16bit
+	part = w & 0xFF
+	n = popcount(part)
+	if n <= uint64(j) {
+		part = w >> 8
+		seen += 8
+		j -= int(n)
+	}
+	w = part
+
+	// Lookup in final byte
+	var counter uint
+	for counter = 0; counter < 8; counter++ {
+		j -= int((w >> counter) & 1)
+		if j < 0 {
+			break
+		}
+	}
+	return seen + int(counter)
+}
