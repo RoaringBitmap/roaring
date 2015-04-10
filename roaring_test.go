@@ -1397,10 +1397,6 @@ func validate(bc *bitmapContainer, ac *arrayContainer) bool {
 }
 
 func TestRoaringArray(t *testing.T) {
-	d := true
-	if d {
-		return
-	}
 
 	a := newRoaringArray()
 	Convey("Test Init", t, func() {
@@ -1421,12 +1417,24 @@ func TestRoaringArray(t *testing.T) {
 	Convey("Test popcount Full", t, func() {
 		res := popcount(uint64(0xffffffffffffffff))
 		So(res, ShouldEqual, 64)
+		res32 := popcount32(uint32(0xffffffff))
+		So(res32, ShouldEqual, 32)
 	})
 
 	Convey("Test popcount Empty", t, func() {
 		res := popcount(0)
 		So(res, ShouldEqual, 0)
+		res32 := popcount32(0)
+		So(res32, ShouldEqual, 0)
 	})
+
+	Convey("Test popcount 16", t, func() {
+		res := popcount(0xff00ff)
+		So(res, ShouldEqual, 16)
+		res32 := popcount32(0xff00ff)
+		So(res32, ShouldEqual, 16)
+	})
+
 	Convey("Test ArrayContainer Add", t, func() {
 		ar := newArrayContainer()
 		ar.add(1)
