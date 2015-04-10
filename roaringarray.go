@@ -28,6 +28,7 @@ type container interface {
 	getSizeInBytes() int
 	removeRange(start, final int) container
 	iremoveRange(start, final int) container // i stands for inplace
+	selectInt(uint16) int
 	serializedSizeInBytes() int
 	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)
@@ -111,7 +112,10 @@ func (ra *roaringArray) clear() {
 func (ra *roaringArray) clone() *roaringArray {
 	sa := new(roaringArray)
 	sa.array = make([]*element, len(ra.array))
-	copy(sa.array, ra.array[:])
+	for i := 0; i < len(ra.array); i++ {
+		newElement := ra.array[i].clone()
+		sa.array[i] = &newElement
+	}
 	return sa
 }
 
@@ -301,7 +305,6 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 	}
 	return offset, nil
 }
-
 
 func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 	lower := pos + 1

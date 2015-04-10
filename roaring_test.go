@@ -1,12 +1,13 @@
 package roaring
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/willf/bitset"
 	"log"
 	"math/rand"
 	"strconv"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
+	"github.com/willf/bitset"
 )
 
 func TestRoaringBitmapRank(t *testing.T) {
@@ -20,6 +21,30 @@ func TestRoaringBitmapRank(t *testing.T) {
 				for y := 0; y <= N; y += 1 {
 					if rb1.Rank(y) != (y+1+gap-1)/gap {
 						So(rb1.Rank(y), ShouldEqual, (y+1+gap-1)/gap)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestRoaringBitmapSelect(t *testing.T) {
+	for N := 1; N <= 1048576; N *= 2 {
+		Convey("rank tests"+strconv.Itoa(N), t, func() {
+			for gap := 1; gap <= 65536; gap *= 2 {
+				rb1 := NewRoaringBitmap()
+				for x := 0; x <= N; x += gap {
+					rb1.Add(x)
+				}
+				for y := 0; y <= N/gap; y += 1 {
+					expectedInt := y * gap
+					i, err := rb1.Select(y)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					if i != expectedInt {
+						So(i, ShouldEqual, expectedInt)
 					}
 				}
 			}
@@ -94,6 +119,16 @@ func TestRoaringBitmap(t *testing.T) {
 		for k := 0; k < 17*1000; k++ {
 			So(rbm1.Contains(k), ShouldEqual, (k/17*17 == k))
 		}
+	})
+
+	Convey("Test Clone", t, func() {
+		rb1 := NewRoaringBitmap()
+		rb1.Add(10)
+
+		rb2 := rb1.Clone()
+		rb2.Remove(10)
+
+		So(rb1.Contains(10), ShouldBeTrue)
 	})
 
 	Convey("Test ANDNOT", t, func() {
