@@ -9,10 +9,12 @@ type container interface {
 	clone() container
 	and(container) container
 	andNot(container) container
-	inot(firstOfRange, lastOfRange int) container
+	inot(firstOfRange, lastOfRange int) container // i stands for inplace
 	getCardinality() int
 	rank(uint16) int
 	add(uint16) container
+	addRange(start, final int) container
+	iaddRange(start, final int) container // i stands for inplace
 	remove(uint16) container
 	not(start, final int) container
 	xor(r container) container
@@ -21,9 +23,11 @@ type container interface {
 	equals(i interface{}) bool
 	fillLeastSignificant16bits(array []int, i, mask int)
 	or(r container) container
-	ior(r container) container
+	ior(r container) container // i stands for inplace
 	lazyIOR(r container) container
 	getSizeInBytes() int
+	removeRange(start, final int) container
+	iremoveRange(start, final int) container // i stands for inplace
 	serializedSizeInBytes() int
 	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)

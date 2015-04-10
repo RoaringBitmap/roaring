@@ -126,3 +126,52 @@ func maxLowBit() uint16 {
 func toIntUnsigned(x uint16) int {
 	return int(x & 0xFFFF)
 }
+
+func flipBitmapRange(bitmap []uint64, start int, end int) {
+	if start >= end {
+		return
+	}
+	firstword := start / 64
+	endword := (end - 1) / 64
+	bitmap[firstword] ^= ^(^uint64(0) << uint(start % 64))
+	for i := firstword; i < endword; i++ {
+		bitmap[i] = ^bitmap[i]
+	}
+	bitmap[endword] ^= ^uint64(0) >> (uint(-end) % 64)
+}
+
+func resetBitmapRange(bitmap []uint64, start int, end int) {
+	if start >= end {
+		return
+	}
+	firstword := start / 64
+	endword := (end - 1) / 64
+	if firstword == endword {
+		bitmap[firstword] &= ^((^uint64(0) << uint(start % 64)) & (^uint64(0) >> (uint(-end) % 64)))
+		return
+	}
+	bitmap[firstword] &= ^(^uint64(0) << uint(start % 64))
+	for i := firstword; i < endword; i++ {
+		bitmap[i] = 0
+	}
+	bitmap[endword] &= ^(^uint64(0) >> (uint(-end) % 64))
+
+}
+
+func setBitmapRange(bitmap []uint64, start int, end int) {
+
+	if start >= end {
+		return
+	}
+	firstword := start / 64
+	endword := (end - 1) / 64
+	if firstword == endword {
+		bitmap[firstword] |= (^uint64(0) << uint(start % 64)) & (^uint64(0) >> (uint(-end) % 64))
+		return
+	}
+	bitmap[firstword] |= ^uint64(0) << uint(start % 64)
+	for i := firstword; i < endword; i++ {
+		bitmap[i] = ^uint64(0)
+	}
+	bitmap[endword] |= ^uint64(0) >> (uint(-end) % 64)
+}

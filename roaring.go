@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"io"
 	"strconv"
+	"fmt"
 )
 
 // RoaringBitmap represents a compressed bitmap where you can add integers.
@@ -446,6 +447,44 @@ func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd int) *RoaringBitmap {
 	results := Flip(rb, rangeStart, rangeEnd) //Todo: the computation could be done in-place to reduce memory usage
 	rb.highlowcontainer = results.highlowcontainer
 	return rb
+}
+func (rb *RoaringBitmap) experimentalFlip(rangeStart, rangeEnd int) {
+
+
+	if rangeStart >= rangeEnd {
+		return
+	}
+
+	hbStart := highbits(rangeStart)
+	lbStart := lowbits(rangeStart)
+	hbLast := highbits(rangeEnd - 1)
+	lbLast := lowbits(rangeEnd - 1)
+
+	max := toIntUnsigned(maxLowBit())
+	for hb := hbStart; hb <= hbLast; hb++ {
+		containerStart := 0
+		if hb == hbStart {
+			containerStart = toIntUnsigned(lbStart)
+		}
+		containerLast := max
+		if hb == hbLast {
+			containerLast = toIntUnsigned(lbLast)
+		}
+
+		i := rb.highlowcontainer.getIndex(hb)
+
+		if i >= 0 {
+			c := rb.highlowcontainer.getContainerAtIndex(i).inot(containerStart, containerLast)
+			if c.getCardinality() > 0 {
+				rb.highlowcontainer.setContainerAtIndex(i, c)
+			} else {
+				rb.highlowcontainer.removeAtIndex(i)
+			}
+		} else { // *think* the range of ones must never be
+			// empty.
+			rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, rangeOfOnes(containerStart, containerLast))
+		}
+	}
 }
 
 // Flip negates the bits in the given range, any integer present in this range and in the bitmap is removed,

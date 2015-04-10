@@ -153,6 +153,41 @@ func (bc *bitmapContainer) inot(firstOfRange, lastOfRange int) container {
 	return bc.NotBitmap(bc, firstOfRange, lastOfRange)
 }
 
+func (bc *bitmapContainer) iaddRange(firstOfRange, lastOfRange int) container {
+	setBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
+	bc.computeCardinality()
+	return bc
+}
+
+func (bc *bitmapContainer) addRange(firstOfRange, lastOfRange int) container {
+	answer := &bitmapContainer{bc.cardinality, make([]uint64, len(bc.bitmap))}
+	copy(answer.bitmap, bc.bitmap[:])
+	setBitmapRange(answer.bitmap, firstOfRange, lastOfRange)
+	answer.computeCardinality()
+	return answer
+
+}
+
+func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container {
+	answer := &bitmapContainer{bc.cardinality, make([]uint64, len(bc.bitmap))}
+	copy(answer.bitmap, bc.bitmap[:])
+	resetBitmapRange(answer.bitmap, firstOfRange, lastOfRange)
+	answer.computeCardinality()
+	if answer.getCardinality() < arrayDefaultMaxSize {
+		return answer.toArrayContainer()
+	}
+	return answer
+}
+
+func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container {
+	resetBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
+	bc.computeCardinality()
+	if bc.getCardinality() < arrayDefaultMaxSize {
+		return bc.toArrayContainer()
+	}
+	return bc
+}
+
 func (bc *bitmapContainer) not(firstOfRange, lastOfRange int) container {
 	return bc.NotBitmap(newBitmapContainer(), firstOfRange, lastOfRange)
 

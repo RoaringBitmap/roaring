@@ -51,6 +51,103 @@ func (ac *arrayContainer) serializedSizeInBytes() int {
 	return ac.getCardinality() * 2
 }
 
+func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
+	indexstart := binarySearch(ac.content, uint16(firstOfRange))
+	if indexstart < 0 {
+		indexstart = -indexstart - 1
+	}
+	indexend := binarySearch(ac.content, uint16(lastOfRange-1))
+	if indexend < 0 {
+		indexend = -indexend - 1
+	} else {
+		indexend++
+	}
+	rangelength := indexend - indexstart
+
+	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
+	if newcardinality >= arrayDefaultMaxSize {
+		a := ac.toBitmapContainer()
+		return a.iaddRange(firstOfRange, lastOfRange)
+	}
+	answer := &arrayContainer{make([]uint16, newcardinality)}
+	copy(answer.content[:indexstart], ac.content[:indexstart])
+	copy(answer.content[indexstart+rangelength:], ac.content[indexend:])
+	for k := 0; k < rangelength; k++ {
+		answer.content[k+indexstart] = uint16(firstOfRange + k)
+	}
+	return answer
+}
+
+func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
+	indexstart := binarySearch(ac.content,  uint16(firstOfRange))
+	if indexstart < 0 {
+		indexstart = -indexstart - 1
+	}
+	indexend := binarySearch(ac.content,  uint16(lastOfRange-1))
+	if indexend < 0 {
+		indexend = -indexend - 1
+	} else {
+		indexend++
+	}
+	rangelength := indexend - indexstart
+	answer := &arrayContainer{make([]uint16, ac.getCardinality() - rangelength)}
+	copy(answer.content[:indexstart], ac.content[:indexstart])
+	copy(answer.content[indexstart:], ac.content[indexstart+rangelength:])
+	return answer
+}
+
+func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
+	indexstart := binarySearch(ac.content, uint16(firstOfRange))
+	if indexstart < 0 {
+		indexstart = -indexstart - 1
+	}
+	indexend := binarySearch(ac.content, uint16(lastOfRange-1))
+	if indexend < 0 {
+		indexend = -indexend - 1
+	} else {
+		indexend++
+	}
+	rangelength := indexend - indexstart
+
+	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
+	if newcardinality >= arrayDefaultMaxSize {
+		a := ac.toBitmapContainer()
+		return a.iaddRange(firstOfRange, lastOfRange)
+	}
+	if cap(ac.content) < newcardinality {
+		tmp := make([]uint16, newcardinality, newcardinality)
+		copy(tmp[:indexstart], ac.content[:indexstart])
+		ac.content = tmp
+	} else {
+		ac.content = ac.content[:newcardinality]
+	}
+	copy(ac.content[indexstart+rangelength:], ac.content[indexend:])
+	for k := 0; k < rangelength; k++ {
+		ac.content[k+indexstart] = uint16(firstOfRange + k)
+	}
+	return ac
+}
+
+func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container {
+	indexstart := binarySearch(ac.content,  uint16(firstOfRange))
+	if indexstart < 0 {
+		indexstart = -indexstart - 1
+	}
+	indexend := binarySearch(ac.content,  uint16(lastOfRange-1))
+	if indexend < 0 {
+		indexend = -indexend - 1
+	} else {
+		indexend++
+	}
+	rangelength := indexend - indexstart
+	answer := ac
+	copy(answer.content[indexstart:], ac.content[indexstart+rangelength:])
+	answer.content = answer.content[:ac.getCardinality() - rangelength]
+	return answer
+}
+
+
+
 func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
 	if firstOfRange > lastOfRange {
 		return ac.clone()
@@ -398,6 +495,7 @@ func (ac *arrayContainer) clone() container {
 	copy(ptr.content, ac.content[:])
 	return &ptr
 }
+
 func (ac *arrayContainer) contains(x uint16) bool {
 	return binarySearch(ac.content, x) >= 0
 }

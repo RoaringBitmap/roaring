@@ -812,61 +812,6 @@ func TestRoaringBitmap(t *testing.T) {
 		}
 	})
 
-	Convey("flipTestBigA", t, func() {
-		numCases := 1000
-		bs := bitset.New(0)
-		checkTime := 2.0
-		rb1 := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
-
-		for i := 0; i < numCases; i++ {
-			start := rand.Intn(65536 * 20)
-			end := rand.Intn(65536 * 20)
-			if rand.Float64() < 0.1 {
-				end = start + rand.Intn(100)
-			}
-
-			if (i & 1) == 0 {
-				rb2 = Flip(rb1, start, end)
-				// tweak the other, catch bad sharing
-				rb1.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
-			} else {
-				rb1 = Flip(rb2, start, end)
-				rb2.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
-			}
-
-			if start < end {
-				FlipRange(start, end, bs) // throws exception
-			}
-			// otherwise
-			// insert some more ANDs to keep things sparser
-			if (rand.Float64() < 0.2) && (i&1) == 0 {
-				mask := NewRoaringBitmap()
-				mask1 := bitset.New(0)
-				startM := rand.Intn(65536 * 20)
-				endM := startM + 100000
-				mask.Flip(startM, endM)
-				FlipRange(startM, endM, mask1)
-				mask.Flip(0, 65536*20+100000)
-				FlipRange(0, 65536*20+100000, mask1)
-				rb2.And(mask)
-				bs.InPlaceIntersection(mask1)
-			}
-
-			if float64(i) > checkTime {
-				var rb *RoaringBitmap
-
-				if (i & 1) == 0 {
-					rb = rb2
-				} else {
-					rb = rb1
-				}
-				So(equalsBitSet(bs, rb), ShouldEqual, true)
-				checkTime *= 1.5
-			}
-		}
-	})
-
 	Convey("ortest", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
@@ -1463,3 +1408,59 @@ func TestRoaringArray(t *testing.T) {
 	})
 
 }
+
+func TestFlipBigA(t *testing.T) {
+	Convey("flipTestBigA ", t, func() {
+	numCases := 1000
+	bs := bitset.New(0)
+	checkTime := 2.0
+	rb1 := NewRoaringBitmap()
+	rb2 := NewRoaringBitmap()
+
+	for i := 0; i < numCases; i++ {
+		start := rand.Intn(65536 * 20)
+		end := rand.Intn(65536 * 20)
+		if rand.Float64() < 0.1 {
+			end = start + rand.Intn(100)
+		}
+
+		if (i & 1) == 0 {
+			rb2 = Flip(rb1, start, end)
+			// tweak the other, catch bad sharing
+			rb1.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
+		} else {
+			rb1 = Flip(rb2, start, end)
+			rb2.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
+		}
+
+		if start < end {
+			FlipRange(start, end, bs) // throws exception
+		}
+		// otherwise
+		// insert some more ANDs to keep things sparser
+		if (rand.Float64() < 0.2) && (i&1) == 0 {
+			mask := NewRoaringBitmap()
+			mask1 := bitset.New(0)
+			startM := rand.Intn(65536 * 20)
+			endM := startM + 100000
+			mask.Flip(startM, endM)
+			FlipRange(startM, endM, mask1)
+			mask.Flip(0, 65536*20+100000)
+			FlipRange(0, 65536*20+100000, mask1)
+			rb2.And(mask)
+			bs.InPlaceIntersection(mask1)
+		}
+
+		if float64(i) > checkTime {
+			var rb *RoaringBitmap
+
+			if (i & 1) == 0 {
+				rb = rb2
+			} else {
+				rb = rb1
+			}
+			So(equalsBitSet(bs, rb), ShouldEqual, true)
+			checkTime *= 1.5
+		}
+	}
+})}
