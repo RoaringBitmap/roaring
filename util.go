@@ -133,7 +133,7 @@ func flipBitmapRange(bitmap []uint64, start int, end int) {
 	}
 	firstword := start / 64
 	endword := (end - 1) / 64
-	bitmap[firstword] ^= ^(^uint64(0) << uint(start % 64))
+	bitmap[firstword] ^= ^(^uint64(0) << uint(start%64))
 	for i := firstword; i < endword; i++ {
 		bitmap[i] = ^bitmap[i]
 	}
@@ -147,11 +147,11 @@ func resetBitmapRange(bitmap []uint64, start int, end int) {
 	firstword := start / 64
 	endword := (end - 1) / 64
 	if firstword == endword {
-		bitmap[firstword] &= ^((^uint64(0) << uint(start % 64)) & (^uint64(0) >> (uint(-end) % 64)))
+		bitmap[firstword] &= ^((^uint64(0) << uint(start%64)) & (^uint64(0) >> (uint(-end) % 64)))
 		return
 	}
-	bitmap[firstword] &= ^(^uint64(0) << uint(start % 64))
-	for i := firstword; i < endword; i++ {
+	bitmap[firstword] &= ^(^uint64(0) << uint(start%64))
+	for i := firstword + 1; i < endword; i++ {
 		bitmap[i] = 0
 	}
 	bitmap[endword] &= ^(^uint64(0) >> (uint(-end) % 64))
@@ -166,11 +166,11 @@ func setBitmapRange(bitmap []uint64, start int, end int) {
 	firstword := start / 64
 	endword := (end - 1) / 64
 	if firstword == endword {
-		bitmap[firstword] |= (^uint64(0) << uint(start % 64)) & (^uint64(0) >> (uint(-end) % 64))
+		bitmap[firstword] |= (^uint64(0) << uint(start%64)) & (^uint64(0) >> (uint(-end) % 64))
 		return
 	}
-	bitmap[firstword] |= ^uint64(0) << uint(start % 64)
-	for i := firstword; i < endword; i++ {
+	bitmap[firstword] |= ^uint64(0) << uint(start%64)
+	for i := firstword + 1; i < endword; i++ {
 		bitmap[i] = ^uint64(0)
 	}
 	bitmap[endword] |= ^uint64(0) >> (uint(-end) % 64)

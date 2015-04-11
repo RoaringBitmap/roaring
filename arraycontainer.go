@@ -62,7 +62,7 @@ func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
 	} else {
 		indexend++
 	}
-	rangelength := indexend - indexstart
+	rangelength := lastOfRange - firstOfRange
 
 	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
 	if newcardinality >= arrayDefaultMaxSize {
@@ -79,18 +79,18 @@ func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
 }
 
 func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
-	indexstart := binarySearch(ac.content,  uint16(firstOfRange))
+	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
 		indexstart = -indexstart - 1
 	}
-	indexend := binarySearch(ac.content,  uint16(lastOfRange-1))
+	indexend := binarySearch(ac.content, uint16(lastOfRange-1))
 	if indexend < 0 {
 		indexend = -indexend - 1
 	} else {
 		indexend++
 	}
 	rangelength := indexend - indexstart
-	answer := &arrayContainer{make([]uint16, ac.getCardinality() - rangelength)}
+	answer := &arrayContainer{make([]uint16, ac.getCardinality()-rangelength)}
 	copy(answer.content[:indexstart], ac.content[:indexstart])
 	copy(answer.content[indexstart:], ac.content[indexstart+rangelength:])
 	return answer
@@ -107,8 +107,7 @@ func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
 	} else {
 		indexend++
 	}
-	rangelength := indexend - indexstart
-
+	rangelength := lastOfRange - firstOfRange
 	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
 	if newcardinality >= arrayDefaultMaxSize {
 		a := ac.toBitmapContainer()
@@ -129,11 +128,11 @@ func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
 }
 
 func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container {
-	indexstart := binarySearch(ac.content,  uint16(firstOfRange))
+	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
 		indexstart = -indexstart - 1
 	}
-	indexend := binarySearch(ac.content,  uint16(lastOfRange-1))
+	indexend := binarySearch(ac.content, uint16(lastOfRange-1))
 	if indexend < 0 {
 		indexend = -indexend - 1
 	} else {
@@ -142,11 +141,9 @@ func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container 
 	rangelength := indexend - indexstart
 	answer := ac
 	copy(answer.content[indexstart:], ac.content[indexstart+rangelength:])
-	answer.content = answer.content[:ac.getCardinality() - rangelength]
+	answer.content = answer.content[:ac.getCardinality()-rangelength]
 	return answer
 }
-
-
 
 func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
 	if firstOfRange > lastOfRange {

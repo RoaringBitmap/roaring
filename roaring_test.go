@@ -1446,56 +1446,138 @@ func TestRoaringArray(t *testing.T) {
 
 func TestFlipBigA(t *testing.T) {
 	Convey("flipTestBigA ", t, func() {
-	numCases := 1000
-	bs := bitset.New(0)
-	checkTime := 2.0
-	rb1 := NewRoaringBitmap()
-	rb2 := NewRoaringBitmap()
+		numCases := 1000
+		bs := bitset.New(0)
+		checkTime := 2.0
+		rb1 := NewRoaringBitmap()
+		rb2 := NewRoaringBitmap()
 
-	for i := 0; i < numCases; i++ {
-		start := rand.Intn(65536 * 20)
-		end := rand.Intn(65536 * 20)
-		if rand.Float64() < 0.1 {
-			end = start + rand.Intn(100)
-		}
-
-		if (i & 1) == 0 {
-			rb2 = Flip(rb1, start, end)
-			// tweak the other, catch bad sharing
-			rb1.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
-		} else {
-			rb1 = Flip(rb2, start, end)
-			rb2.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
-		}
-
-		if start < end {
-			FlipRange(start, end, bs) // throws exception
-		}
-		// otherwise
-		// insert some more ANDs to keep things sparser
-		if (rand.Float64() < 0.2) && (i&1) == 0 {
-			mask := NewRoaringBitmap()
-			mask1 := bitset.New(0)
-			startM := rand.Intn(65536 * 20)
-			endM := startM + 100000
-			mask.Flip(startM, endM)
-			FlipRange(startM, endM, mask1)
-			mask.Flip(0, 65536*20+100000)
-			FlipRange(0, 65536*20+100000, mask1)
-			rb2.And(mask)
-			bs.InPlaceIntersection(mask1)
-		}
-
-		if float64(i) > checkTime {
-			var rb *RoaringBitmap
+		for i := 0; i < numCases; i++ {
+			start := rand.Intn(65536 * 20)
+			end := rand.Intn(65536 * 20)
+			if rand.Float64() < 0.1 {
+				end = start + rand.Intn(100)
+			}
 
 			if (i & 1) == 0 {
-				rb = rb2
+				rb2 = Flip(rb1, start, end)
+				// tweak the other, catch bad sharing
+				rb1.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
 			} else {
-				rb = rb1
+				rb1 = Flip(rb2, start, end)
+				rb2.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
 			}
-			So(equalsBitSet(bs, rb), ShouldEqual, true)
-			checkTime *= 1.5
+
+
+			if start < end {
+				FlipRange(start, end, bs) // throws exception
+			}
+			// otherwise
+			// insert some more ANDs to keep things sparser
+			if (rand.Float64() < 0.2) && (i&1) == 0 {
+				mask := NewRoaringBitmap()
+				mask1 := bitset.New(0)
+				startM := rand.Intn(65536 * 20)
+				endM := startM + 100000
+				mask.Flip(startM, endM)
+				FlipRange(startM, endM, mask1)
+				mask.Flip(0, 65536*20+100000)
+				FlipRange(0, 65536*20+100000, mask1)
+				rb2.And(mask)
+				bs.InPlaceIntersection(mask1)
+			}
+
+			if float64(i) > checkTime {
+				var rb *RoaringBitmap
+
+				if (i & 1) == 0 {
+					rb = rb2
+				} else {
+					rb = rb1
+				}
+				So(equalsBitSet(bs, rb), ShouldEqual, true)
+				checkTime *= 1.5
+			}
 		}
-	}
-})}
+	})
+}
+
+
+func TestDoubleAdd(t *testing.T) {
+	Convey("doubleadd ", t, func() {
+		rb := NewRoaringBitmap()
+		rb.AddRange(65533, 65536);
+		rb.AddRange(65530, 65536);
+		rb2 := NewRoaringBitmap()
+		rb2.AddRange(65530, 65536);
+		So(rb.Equals(rb2), ShouldEqual, true)
+		rb2.RemoveRange(65530, 65536);
+		So(rb2.GetCardinality(), ShouldEqual, 0)
+	})
+}
+
+func TestDoubleAdd2(t *testing.T) {
+	Convey("doubleadd2 ", t, func() {
+		rb := NewRoaringBitmap()
+		rb.AddRange(65533, 65536*20);
+		rb.AddRange(65530, 65536*20);
+		rb2 := NewRoaringBitmap()
+		rb2.AddRange(65530, 65536*20);
+		So(rb.Equals(rb2), ShouldEqual, true)
+		rb2.RemoveRange(65530, 65536*20);
+		So(rb2.GetCardinality(), ShouldEqual, 0)
+	})
+}
+
+func TestDoubleAdd3(t *testing.T) {
+	Convey("doubleadd3 ", t, func() {
+		rb := NewRoaringBitmap()
+		rb.AddRange(65533, 65536*20 + 10);
+		rb.AddRange(65530, 65536*20 + 10);
+		rb2 := NewRoaringBitmap()
+		rb2.AddRange(65530, 65536*20 + 10);
+		So(rb.Equals(rb2), ShouldEqual, true)
+		rb2.RemoveRange(65530, 65536*20 + 1);
+		So(rb2.GetCardinality(), ShouldEqual, 9)
+	})
+}
+
+
+func TestDoubleAdd4(t *testing.T) {
+	Convey("doubleadd4 ", t, func() {
+		rb := NewRoaringBitmap()
+		rb.AddRange(65533, 65536*20 );
+		rb.RemoveRange(65533+5, 65536*20 );
+		So(rb.GetCardinality(), ShouldEqual, 5)
+	})
+}
+
+
+func TestDoubleAdd5(t *testing.T) {
+	Convey("doubleadd5 ", t, func() {
+		rb := NewRoaringBitmap()
+		rb.AddRange(65533, 65536*20 );
+		rb.RemoveRange(65533+5, 65536*20 - 5);
+		So(rb.GetCardinality(), ShouldEqual, 10)
+	})
+}
+
+
+func TestDoubleAdd6(t *testing.T) {
+	Convey("doubleadd6 ", t, func() {
+		rb := NewRoaringBitmap()
+		rb.AddRange(65533, 65536*20 - 5 );
+		rb.RemoveRange(65533+5, 65536*20 - 10);
+		So(rb.GetCardinality(), ShouldEqual, 10)
+	})
+}
+
+
+func TestDoubleAdd7(t *testing.T) {
+	Convey("doubleadd7 ", t, func() {
+		rb := NewRoaringBitmap()
+		rb.AddRange(65533, 65536*20 +1 );
+		rb.RemoveRange(65533+1, 65536*20);
+		So(rb.GetCardinality(), ShouldEqual, 2)
+	})
+}

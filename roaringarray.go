@@ -9,14 +9,14 @@ type container interface {
 	clone() container
 	and(container) container
 	andNot(container) container
-	inot(firstOfRange, lastOfRange int) container // i stands for inplace
+	inot(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange]
 	getCardinality() int
 	rank(uint16) int
 	add(uint16) container
-	addRange(start, final int) container
-	iaddRange(start, final int) container // i stands for inplace
+	addRange(start, final int) container  // range is [firstOfRange,lastOfRange)
+	iaddRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	remove(uint16) container
-	not(start, final int) container
+	not(start, final int) container // range is [firstOfRange,lastOfRange]
 	xor(r container) container
 	getShortIterator() shortIterable
 	contains(i uint16) bool
@@ -26,14 +26,15 @@ type container interface {
 	ior(r container) container // i stands for inplace
 	lazyIOR(r container) container
 	getSizeInBytes() int
-	removeRange(start, final int) container
-	iremoveRange(start, final int) container // i stands for inplace
+	removeRange(start, final int) container  // range is [firstOfRange,lastOfRange)
+	iremoveRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	selectInt(uint16) int
 	serializedSizeInBytes() int
 	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)
 }
 
+// careful: range is [firstOfRange,lastOfRange]
 func rangeOfOnes(start, last int) container {
 	if (last - start + 1) > arrayDefaultMaxSize {
 		return newBitmapContainerwithRange(start, last)
@@ -103,6 +104,18 @@ func (ra *roaringArray) appendCopiesAfter(sa roaringArray, beforeStart uint16) {
 	for i := startLocation; i < sa.size(); i++ {
 		ra.array = append(ra.array, newelement(sa.array[i].key, sa.array[i].value.clone()))
 	}
+}
+
+func (ra *roaringArray) removeIndexRange(begin, end int) {
+	if end <= begin {
+		return
+	}
+	r := end - begin
+	copy(ra.array[begin:], ra.array[end:])
+	for i := 1; i <= r; i++ {
+		ra.array[len(ra.array)-i] = nil
+	}
+	ra.array = ra.array[:len(ra.array)-r]
 }
 
 func (ra *roaringArray) clear() {

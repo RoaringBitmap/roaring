@@ -500,6 +500,97 @@ func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd int) {
 	}
 }
 
+// Add the integers in [rangeStart, rangeEnd) to the bitmap
+func (rb *RoaringBitmap) AddRange(rangeStart, rangeEnd int) {
+	if rangeStart >= rangeEnd {
+		return
+	}
+
+	hbStart := toIntUnsigned(highbits(rangeStart))
+	lbStart := toIntUnsigned(lowbits(rangeStart))
+	hbLast := toIntUnsigned(highbits(rangeEnd - 1))
+	lbLast := toIntUnsigned(lowbits(rangeEnd - 1))
+
+	max := toIntUnsigned(maxLowBit())
+	for hb := uint16(hbStart); hb <= uint16(hbLast); hb++ {
+		containerStart := 0
+		if hb == uint16(hbStart) {
+			containerStart = lbStart
+		}
+		containerLast := max
+		if hb == uint16(hbLast) {
+			containerLast = lbLast
+		}
+
+		i := rb.highlowcontainer.getIndex(hb)
+
+		if i >= 0 {
+			c := rb.highlowcontainer.getContainerAtIndex(i).iaddRange(containerStart, containerLast+1)
+			rb.highlowcontainer.setContainerAtIndex(i, c)
+		} else { // *think* the range of ones must never be
+			// empty.
+			rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, rangeOfOnes(containerStart, containerLast))
+		}
+	}
+}
+
+// Remove the integers in [rangeStart, rangeEnd) from the bitmap
+func (rb *RoaringBitmap) RemoveRange(rangeStart, rangeEnd int) {
+	if rangeStart >= rangeEnd {
+		return
+	}
+
+	hbStart := toIntUnsigned(highbits(rangeStart))
+	lbStart := toIntUnsigned(lowbits(rangeStart))
+	hbLast := toIntUnsigned(highbits(rangeEnd - 1))
+	lbLast := toIntUnsigned(lowbits(rangeEnd - 1))
+
+	max := toIntUnsigned(maxLowBit())
+
+	if hbStart == hbLast {
+		i := rb.highlowcontainer.getIndex(uint16(hbStart))
+		if i < 0 {
+			return
+		}
+		c := rb.highlowcontainer.getContainerAtIndex(i).iremoveRange(lbStart, lbLast+1)
+		if c.getCardinality() > 0 {
+			rb.highlowcontainer.setContainerAtIndex(i, c)
+		} else {
+			rb.highlowcontainer.removeAtIndex(i)
+		}
+		return
+	}
+	ifirst := rb.highlowcontainer.getIndex(uint16(hbStart))
+	ilast := rb.highlowcontainer.getIndex(uint16(hbLast))
+
+	if ifirst >= 0 {
+		if lbStart != 0 {
+			c := rb.highlowcontainer.getContainerAtIndex(ifirst).iremoveRange(lbStart, max+1)
+			if c.getCardinality() > 0 {
+				rb.highlowcontainer.setContainerAtIndex(ifirst, c)
+				ifirst++
+			}
+		}
+	} else {
+		ifirst = -ifirst - 1
+	}
+	if ilast >= 0 {
+		if lbLast != max {
+			c := rb.highlowcontainer.getContainerAtIndex(ilast).iremoveRange(0, lbLast+1)
+			if c.getCardinality() > 0 {
+				rb.highlowcontainer.setContainerAtIndex(ilast, c)
+			} else {
+				ilast++
+			}
+		} else {
+			ilast++
+		}
+	} else {
+		ilast = -ilast - 1
+	}
+	rb.highlowcontainer.removeIndexRange(ifirst, ilast)
+}
+
 // Flip negates the bits in the given range, any integer present in this range and in the bitmap is removed,
 // and any integer present in the range and not in the bitmap is added, a new bitmap is returned leaving
 // the current bitmap unchanged
