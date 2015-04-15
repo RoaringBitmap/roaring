@@ -1581,3 +1581,17 @@ func TestDoubleAdd7(t *testing.T) {
 		So(rb.GetCardinality(), ShouldEqual, 2)
 	})
 }
+
+func TestDoubleAndNotBug01(t *testing.T) {
+	Convey("AndNotBug01 ", t, func() {
+		rb1 := NewRoaringBitmap()
+		rb1.AddRange(0, 60000)
+		rb2 := NewRoaringBitmap()
+		rb2.AddRange(60000 - 10 , 60000 + 10)
+		rb2.AndNot(rb1)
+		rb3 := NewRoaringBitmap()
+		rb3.AddRange(60000 , 60000 + 10)
+
+		So(rb2.Equals(rb3), ShouldBeTrue)
+	})
+}

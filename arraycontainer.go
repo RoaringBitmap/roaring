@@ -355,7 +355,7 @@ func (ac *arrayContainer) andNot(a container) container {
 	case *arrayContainer:
 		return ac.andNotArray(a.(*arrayContainer))
 	case *bitmapContainer:
-		return a.andNot(ac)
+		return ac.andNotBitmap(a.(*bitmapContainer))
 	}
 	return nil
 }
@@ -368,6 +368,35 @@ func (ac *arrayContainer) andNotArray(value2 *arrayContainer) container {
 	answer.content = answer.content[:length]
 	return answer
 }
+
+func (ac *arrayContainer) andNotBitmap(value2 *bitmapContainer) container {
+	desiredcapacity := ac.getCardinality()
+	answer := newArrayContainerCapacity(desiredcapacity)
+	answer.content = answer.content[:desiredcapacity]
+	pos := 0
+	for _,v := range ac.content {
+		if ! value2.contains(v) {
+			answer.content[pos] = v
+			pos++
+		}
+	}
+	answer.content = answer.content[:pos]
+	return answer
+}
+
+//  TODO: fully implement inplace andNots for performance reasons (current function unused)
+func (ac *arrayContainer) iandNotBitmap(value2 *bitmapContainer) container {
+	pos := 0
+	for _,v := range ac.content {
+		if ! value2.contains(v) {
+			ac.content[pos] = v
+			pos++
+		}
+	}
+	ac.content = ac.content[:pos]
+	return ac
+}
+
 
 func copyOf(array []uint16, size int) []uint16 {
 	result := make([]uint16, size)
