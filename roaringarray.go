@@ -8,16 +8,17 @@ import (
 type container interface {
 	clone() container
 	and(container) container
-	iandNot(container) container // i stands for inplace
+	iand(container) container // i stands for inplace
 	andNot(container) container
-	inot(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange]
+	iandNot(container) container // i stands for inplace
 	getCardinality() int
 	rank(uint16) int
 	add(uint16) container
 	addRange(start, final int) container  // range is [firstOfRange,lastOfRange)
 	iaddRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	remove(uint16) container
-	not(start, final int) container // range is [firstOfRange,lastOfRange]
+	not(start, final int) container               // range is [firstOfRange,lastOfRange]
+	inot(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange]
 	xor(r container) container
 	getShortIterator() shortIterable
 	contains(i uint16) bool
@@ -120,12 +121,11 @@ func (ra *roaringArray) removeIndexRange(begin, end int) {
 }
 
 func (ra *roaringArray) resize(newsize int) {
-	for k:= newsize; k < len(ra.array); k++ {
-        ra.array[k] = nil
-    }
+	for k := newsize; k < len(ra.array); k++ {
+		ra.array[k] = nil
+	}
 	ra.array = ra.array[:newsize]
 }
-
 
 func (ra *roaringArray) clear() {
 	ra.array = make([]*element, 0, 0)
@@ -199,10 +199,9 @@ func (ra *roaringArray) setContainerAtIndex(i int, c container) {
 	ra.array[i].value = c
 }
 func (ra *roaringArray) replaceKeyAndContainerAtIndex(i int, key uint16, c container) {
-    ra.array[i].key = key
+	ra.array[i].key = key
 	ra.array[i].value = c
 }
-
 
 func (ra *roaringArray) size() int {
 	return len(ra.array)

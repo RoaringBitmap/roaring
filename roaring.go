@@ -233,28 +233,69 @@ func (rb *RoaringBitmap) Select(x int) (int, error) {
 	return -1, fmt.Errorf("Can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
 }
 
-// And computes the intersection between two bitmaps and store the result in the current bitmap
-func (rb *RoaringBitmap) And(x2 *RoaringBitmap) *RoaringBitmap {
-	results := And(rb, x2) // Todo: could be computed in-place for reduced memory usage
-	rb.highlowcontainer = results.highlowcontainer
-	return rb
+// And computes the intersection between two bitmaps and stores the result in the current bitmap
+func (rb *RoaringBitmap) And(x2 *RoaringBitmap) {
+	pos1 := 0
+	pos2 := 0
+	intersectionsize := 0
+	length1 := rb.highlowcontainer.size()
+	length2 := x2.highlowcontainer.size()
+
+main:
+	for {
+		if pos1 < length1 && pos2 < length2 {
+			s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
+			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
+			for {
+				if s1 == s2 {
+					c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
+					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
+					diff := c1.iand(c2)
+					if diff.getCardinality() > 0 {
+						rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, diff)
+						intersectionsize++
+					}
+					pos1++
+					pos2++
+					if (pos1 == length1) || (pos2 == length2) {
+						break main
+					}
+					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				} else if s1 < s2 {
+					pos1 = rb.highlowcontainer.advanceUntil(s2, pos1)
+					if pos1 == length1 {
+						break main
+					}
+					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
+				} else { //s1 > s2
+					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
+					if pos2 == length2 {
+						break main
+					}
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				}
+			}
+		} else {
+			break
+		}
+	}
+	rb.highlowcontainer.resize(intersectionsize)
 }
 
-// Xor computes the symmetric difference between two bitmaps and store the result in the current bitmap
-func (rb *RoaringBitmap) Xor(x2 *RoaringBitmap) *RoaringBitmap {
+// Xor computes the symmetric difference between two bitmaps and stores the result in the current bitmap
+func (rb *RoaringBitmap) Xor(x2 *RoaringBitmap) {
 	results := Xor(rb, x2) // Todo: could be computed in-place for reduced memory usage
 	rb.highlowcontainer = results.highlowcontainer
-	return rb
 }
 
-// Or computes the union between two bitmaps and store the result in the current bitmap
-func (rb *RoaringBitmap) Or(x2 *RoaringBitmap) *RoaringBitmap {
+// Or computes the union between two bitmaps and stores the result in the current bitmap
+func (rb *RoaringBitmap) Or(x2 *RoaringBitmap) {
 	results := Or(rb, x2) // Todo: could be computed in-place for reduced memory usage
 	rb.highlowcontainer = results.highlowcontainer
-	return rb
 }
 
-// AndNot computes the difference between two bitmaps and store the result in the current bitmap
+// AndNot computes the difference between two bitmaps and stores the result in the current bitmap
 func (rb *RoaringBitmap) AndNot(x2 *RoaringBitmap) {
 	pos1 := 0
 	pos2 := 0
@@ -262,7 +303,7 @@ func (rb *RoaringBitmap) AndNot(x2 *RoaringBitmap) {
 	length1 := rb.highlowcontainer.size()
 	length2 := x2.highlowcontainer.size()
 
-	main:
+main:
 	for {
 		if pos1 < length1 && pos2 < length2 {
 			s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
@@ -304,7 +345,8 @@ func (rb *RoaringBitmap) AndNot(x2 *RoaringBitmap) {
 			break
 		}
 	}
-	for ; pos1 < length1 ; {
+	// TODO:implement as a copy
+	for pos1 < length1 {
 		c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
 		s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
 		rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, c1)

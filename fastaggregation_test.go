@@ -111,12 +111,13 @@ func TestFastAggregationsAdvanced(t *testing.T) {
 		for i := 1000000; i < 2000000; i += 7 {
 			rb3.Add(i)
 		}
-		bigor := rb1.Or(rb2).Or(rb3)
+		rb1.Or(rb2)
+		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
 		bigxor := Xor(Xor(rb1, rb2), rb3)
-		So(FastOr(rb1, rb2, rb3).Equals(bigor), ShouldEqual, true)
-		So(FastHorizontalOr(rb1, rb2, rb3).Equals(bigor), ShouldEqual, true)
-		So(FastHorizontalOr(rb1, rb2, rb3).GetCardinality(), ShouldEqual, bigor.GetCardinality())
+		So(FastOr(rb1, rb2, rb3).Equals(rb1), ShouldEqual, true)
+		So(FastHorizontalOr(rb1, rb2, rb3).Equals(rb1), ShouldEqual, true)
+		So(FastHorizontalOr(rb1, rb2, rb3).GetCardinality(), ShouldEqual, rb1.GetCardinality())
 		So(FastXor(rb1, rb2, rb3).Equals(bigxor), ShouldEqual, true)
 		So(FastAnd(rb1, rb2, rb3).Equals(bigand), ShouldEqual, true)
 	})

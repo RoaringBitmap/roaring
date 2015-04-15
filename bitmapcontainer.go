@@ -434,6 +434,16 @@ func (bc *bitmapContainer) and(a container) container {
 	}
 	return nil
 }
+
+func (bc *bitmapContainer) iand(a container) container {
+	switch a.(type) {
+	case *arrayContainer:
+		return bc.andArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return bc.iandBitmap(a.(*bitmapContainer))
+	}
+	return nil
+}
 func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
 	answer := newArrayContainerCapacity(len(value2.content))
 	for k := 0; k < value2.getCardinality(); k++ {
@@ -462,6 +472,22 @@ func (bc *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
 
 }
 
+func (bc *bitmapContainer) iandBitmap(value2 *bitmapContainer) container {
+	newcardinality := int(popcntAndSlice(bc.bitmap, value2.bitmap))
+	if newcardinality > arrayDefaultMaxSize {
+		for k := 0; k < len(bc.bitmap); k++ {
+			bc.bitmap[k] = bc.bitmap[k] & value2.bitmap[k]
+		}
+		bc.cardinality = newcardinality
+		return bc
+	}
+	ac := newArrayContainerSize(newcardinality)
+	fillArrayAND(ac.content, bc.bitmap, value2.bitmap)
+	ac.content = ac.content[:newcardinality] //not sure why i need this
+	return ac
+
+}
+
 func (bc *bitmapContainer) andNot(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
@@ -472,12 +498,11 @@ func (bc *bitmapContainer) andNot(a container) container {
 	return nil
 }
 
-
 func (bc *bitmapContainer) iandNot(a container) container {
 	switch a.(type) {
-		case *arrayContainer:
-		return bc.iandNotArray(a.(*arrayContainer))
-		case *bitmapContainer:
+	case *arrayContainer:
+		return bc.andNotArray(a.(*arrayContainer))
+	case *bitmapContainer:
 		return bc.iandNotBitmap(a.(*bitmapContainer))
 	}
 	return nil
@@ -511,17 +536,7 @@ func (bc *bitmapContainer) andNotBitmap(value2 *bitmapContainer) container {
 	return ac
 }
 
-func (bc *bitmapContainer) iandNotArray(value2 *arrayContainer) container {
-	for k := 0; k < value2.getCardinality(); k++ {
-		i := uint(toIntUnsigned(value2.content[k])) >> 6
-		bc.bitmap[i] = bc.bitmap[i] &^ (uint64(1) << (value2.content[k] % 64))
-		bc.cardinality -= int(uint(bc.bitmap[i]^bc.bitmap[i]) >> (value2.content[k] % 64))
-	}
-	if bc.cardinality <= arrayDefaultMaxSize {
-		return bc.toArrayContainer()
-	}
-	return bc
-}
+
 
 func (bc *bitmapContainer) iandNotBitmap(value2 *bitmapContainer) container {
 	newCardinality := int(popcntMaskSlice(bc.bitmap, value2.bitmap))
@@ -536,7 +551,6 @@ func (bc *bitmapContainer) iandNotBitmap(value2 *bitmapContainer) container {
 	fillArrayANDNOT(ac.content, bc.bitmap, value2.bitmap)
 	return ac
 }
-
 
 func (bc *bitmapContainer) contains(i uint16) bool { //testbit
 	x := int(i)

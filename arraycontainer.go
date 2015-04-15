@@ -313,6 +313,29 @@ func (ac *arrayContainer) and(a container) container {
 	return nil
 }
 
+func (ac *arrayContainer) iand(a container) container {
+	switch a.(type) {
+	case *arrayContainer:
+		return ac.iandArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return ac.iandBitmap(a.(*bitmapContainer))
+	}
+	return nil
+}
+
+func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) *arrayContainer {
+	pos := 0
+	for k := 0; k < ac.getCardinality(); k++ {
+		if bc.contains(ac.content[k]) {
+			ac.content[pos] = ac.content[k]
+			pos++
+		}
+	}
+	ac.content = ac.content[:pos]
+	return ac
+
+}
+
 func (ac *arrayContainer) xor(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
@@ -362,9 +385,9 @@ func (ac *arrayContainer) andNot(a container) container {
 
 func (ac *arrayContainer) iandNot(a container) container {
 	switch a.(type) {
-		case *arrayContainer:
+	case *arrayContainer:
 		return ac.iandNotArray(a.(*arrayContainer))
-		case *bitmapContainer:
+	case *bitmapContainer:
 		return ac.iandNotBitmap(a.(*bitmapContainer))
 	}
 	return nil
@@ -390,8 +413,8 @@ func (ac *arrayContainer) andNotBitmap(value2 *bitmapContainer) container {
 	answer := newArrayContainerCapacity(desiredcapacity)
 	answer.content = answer.content[:desiredcapacity]
 	pos := 0
-	for _,v := range ac.content {
-		if ! value2.contains(v) {
+	for _, v := range ac.content {
+		if !value2.contains(v) {
 			answer.content[pos] = v
 			pos++
 		}
@@ -400,11 +423,25 @@ func (ac *arrayContainer) andNotBitmap(value2 *bitmapContainer) container {
 	return answer
 }
 
-//  TODO: fully implement inplace andNots for performance reasons (current function unused)
+func (ac *arrayContainer) andBitmap(value2 *bitmapContainer) container {
+	desiredcapacity := ac.getCardinality()
+	answer := newArrayContainerCapacity(desiredcapacity)
+	answer.content = answer.content[:desiredcapacity]
+	pos := 0
+	for _, v := range ac.content {
+		if value2.contains(v) {
+			answer.content[pos] = v
+			pos++
+		}
+	}
+	answer.content = answer.content[:pos]
+	return answer
+}
+
 func (ac *arrayContainer) iandNotBitmap(value2 *bitmapContainer) container {
 	pos := 0
-	for _,v := range ac.content {
-		if ! value2.contains(v) {
+	for _, v := range ac.content {
+		if !value2.contains(v) {
 			ac.content[pos] = v
 			pos++
 		}
@@ -412,7 +449,6 @@ func (ac *arrayContainer) iandNotBitmap(value2 *bitmapContainer) container {
 	ac.content = ac.content[:pos]
 	return ac
 }
-
 
 func copyOf(array []uint16, size int) []uint16 {
 	result := make([]uint16, size)
@@ -516,7 +552,15 @@ func (ac *arrayContainer) andArray(value2 *arrayContainer) *arrayContainer {
 		answer.content)
 	answer.content = answer.content[:length]
 	return answer
+}
 
+func (ac *arrayContainer) iandArray(value2 *arrayContainer) *arrayContainer {
+	length := intersection2by2(
+		ac.content,
+		value2.content,
+		ac.content)
+	ac.content = ac.content[:length]
+	return ac
 }
 
 func (ac *arrayContainer) getCardinality() int {
