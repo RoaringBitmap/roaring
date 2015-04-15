@@ -8,6 +8,7 @@ import (
 type container interface {
 	clone() container
 	and(container) container
+	iandNot(container) container // i stands for inplace
 	andNot(container) container
 	inot(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange]
 	getCardinality() int
@@ -118,6 +119,14 @@ func (ra *roaringArray) removeIndexRange(begin, end int) {
 	ra.array = ra.array[:len(ra.array)-r]
 }
 
+func (ra *roaringArray) resize(newsize int) {
+	for k:= newsize; k < len(ra.array); k++ {
+        ra.array[k] = nil
+    }
+	ra.array = ra.array[:newsize]
+}
+
+
 func (ra *roaringArray) clear() {
 	ra.array = make([]*element, 0, 0)
 }
@@ -189,6 +198,11 @@ func (ra *roaringArray) removeAtIndex(i int) {
 func (ra *roaringArray) setContainerAtIndex(i int, c container) {
 	ra.array[i].value = c
 }
+func (ra *roaringArray) replaceKeyAndContainerAtIndex(i int, key uint16, c container) {
+    ra.array[i].key = key
+	ra.array[i].value = c
+}
+
 
 func (ra *roaringArray) size() int {
 	return len(ra.array)

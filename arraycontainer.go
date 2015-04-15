@@ -360,6 +360,16 @@ func (ac *arrayContainer) andNot(a container) container {
 	return nil
 }
 
+func (ac *arrayContainer) iandNot(a container) container {
+	switch a.(type) {
+		case *arrayContainer:
+		return ac.iandNotArray(a.(*arrayContainer))
+		case *bitmapContainer:
+		return ac.iandNotBitmap(a.(*bitmapContainer))
+	}
+	return nil
+}
+
 func (ac *arrayContainer) andNotArray(value2 *arrayContainer) container {
 	value1 := ac
 	desiredcapacity := value1.getCardinality()
@@ -367,6 +377,12 @@ func (ac *arrayContainer) andNotArray(value2 *arrayContainer) container {
 	length := difference(value1.content, value2.content, answer.content)
 	answer.content = answer.content[:length]
 	return answer
+}
+
+func (ac *arrayContainer) iandNotArray(value2 *arrayContainer) container {
+	length := difference(ac.content, value2.content, ac.content)
+	ac.content = ac.content[:length]
+	return ac
 }
 
 func (ac *arrayContainer) andNotBitmap(value2 *bitmapContainer) container {
