@@ -39,7 +39,7 @@ import (
 
 
 func main() {
-    // example inspired by https://github.com/fzandona/goroa
+    // example inspired by https://github.com/fzandona/goroar
     fmt.Println("==roaring==")
     rb1 := roaring.BitmapOf(1, 2, 3, 4, 5, 100, 1000)
     fmt.Println(rb1.String())
