@@ -111,7 +111,7 @@ func BenchmarkUnionRoaring(b *testing.B) {
 
 
 
-// go test -bench BenchmarkUnion -run -
+// go test -bench BenchmarkSize -run -
 func BenchmarkSizeBitset(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
@@ -131,7 +131,7 @@ func BenchmarkSizeBitset(b *testing.B) {
 
 }
 
-// go test -bench BenchmarkUnion -run -
+// go test -bench BenchmarkSize -run -
 func BenchmarkSizeRoaring(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
