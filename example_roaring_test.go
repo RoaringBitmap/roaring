@@ -44,7 +44,7 @@ func Example_roaring() {
 		fmt.Println("Failed writing")
 		return
 	} else {
-	   fmt.Println("Wrote ",size," bytes")
+		fmt.Println("Wrote ", size, " bytes")
 	}
 	newrb := roaring.NewRoaringBitmap()
 	size, err = newrb.ReadFrom(buf)

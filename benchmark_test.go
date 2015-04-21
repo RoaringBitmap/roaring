@@ -1,15 +1,13 @@
 package roaring
 
 import (
+	"fmt"
+	"github.com/willf/bitset"
 	"math/rand"
 	"testing"
-    "github.com/willf/bitset"
-	"fmt"
 )
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
-
-
 
 // go test -bench BenchmarkIntersection -run -
 func BenchmarkIntersectionBitset(b *testing.B) {
@@ -54,11 +52,10 @@ func BenchmarkIntersectionRoaring(b *testing.B) {
 	b.StartTimer()
 	card := 0
 	for j := 0; j < b.N; j++ {
-		s3:= And(s1,s2)
+		s3 := And(s1, s2)
 		card = card + s3.GetCardinality()
 	}
 }
-
 
 // go test -bench BenchmarkUnion -run -
 func BenchmarkUnionBitset(b *testing.B) {
@@ -103,13 +100,10 @@ func BenchmarkUnionRoaring(b *testing.B) {
 	b.StartTimer()
 	card := 0
 	for j := 0; j < b.N; j++ {
-		s3:= Or(s1,s2)
+		s3 := Or(s1, s2)
 		card = card + s3.GetCardinality()
 	}
 }
-
-
-
 
 // go test -bench BenchmarkSize -run -
 func BenchmarkSizeBitset(b *testing.B) {
@@ -127,7 +121,7 @@ func BenchmarkSizeBitset(b *testing.B) {
 	for i := 0; i < initsize; i++ {
 		s2.Set(uint(r.Int31n(int32(sz))))
 	}
-	fmt.Printf("%.1f MB ",float32(s1.BinaryStorageSize()+s2.BinaryStorageSize())/(1024.0*1024))
+	fmt.Printf("%.1f MB ", float32(s1.BinaryStorageSize()+s2.BinaryStorageSize())/(1024.0*1024))
 
 }
 
@@ -147,13 +141,9 @@ func BenchmarkSizeRoaring(b *testing.B) {
 	for i := 0; i < initsize; i++ {
 		s2.Add(int(r.Int31n(int32(sz))))
 	}
-	fmt.Printf("%.1f MB ",float32(s1.GetSerializedSizeInBytes()+s2.GetSerializedSizeInBytes())/(1024.0*1024))
+	fmt.Printf("%.1f MB ", float32(s1.GetSerializedSizeInBytes()+s2.GetSerializedSizeInBytes())/(1024.0*1024))
 
 }
-
-
-
-
 
 // go test -bench BenchmarkSet -run -
 func BenchmarkSetRoaring(b *testing.B) {
@@ -167,7 +157,6 @@ func BenchmarkSetRoaring(b *testing.B) {
 	}
 }
 
-
 func BenchmarkSetBitset(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
@@ -178,7 +167,6 @@ func BenchmarkSetBitset(b *testing.B) {
 		s.Set(uint(r.Int31n(int32(sz))))
 	}
 }
-
 
 // go test -bench BenchmarkGetTest -run -
 func BenchmarkGetTestRoaring(b *testing.B) {
@@ -196,7 +184,6 @@ func BenchmarkGetTestRoaring(b *testing.B) {
 	}
 }
 
-
 func BenchmarkGetTestBitSet(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
@@ -211,7 +198,6 @@ func BenchmarkGetTestBitSet(b *testing.B) {
 		s.Test(uint(r.Int31n(int32(sz))))
 	}
 }
-
 
 // go test -bench BenchmarkCount -run -
 func BenchmarkCountRoaring(b *testing.B) {
@@ -244,8 +230,6 @@ func BenchmarkCountBitset(b *testing.B) {
 		s.Count()
 	}
 }
-
-
 
 // go test -bench BenchmarkIterate -run -
 func BenchmarkIterateRoaring(b *testing.B) {
@@ -290,7 +274,6 @@ func BenchmarkSparseIterateRoaring(b *testing.B) {
 
 }
 
-
 // go test -bench BenchmarkIterate -run -
 func BenchmarkIterateBitset(b *testing.B) {
 	b.StopTimer()
@@ -328,4 +311,3 @@ func BenchmarkSparseIterateBitset(b *testing.B) {
 		}
 	}
 }
-
