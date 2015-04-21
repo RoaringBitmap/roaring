@@ -306,7 +306,7 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
 	for k := 0; k < value2.getCardinality(); k++ {
-		i := uint(toIntUnsigned(value2.content[k])) >> 6
+		i := uint(value2.content[k]) >> 6
 		answer.cardinality += int(uint(^answer.bitmap[i]&(1<<(value2.content[k]%64))) >> (value2.content[k] % 64))
 		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (value2.content[k] % 64))
 	}
@@ -329,7 +329,7 @@ func (bc *bitmapContainer) computeCardinality() {
 func (bc *bitmapContainer) iorArray(value2 *arrayContainer) container {
 	answer := bc
 	for k := 0; k < value2.getCardinality(); k++ {
-		i := uint(toIntUnsigned(value2.content[k])) >> 6
+		i := uint(value2.content[k]) >> 6
 		answer.cardinality += int(uint(^answer.bitmap[i]&(1<<(value2.content[k]%64))) >> (value2.content[k] % 64))
 		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (value2.content[k] % 64))
 	}
@@ -349,7 +349,7 @@ func (bc *bitmapContainer) iorBitmap(value2 *bitmapContainer) container {
 func (bc *bitmapContainer) lazyIORArray(value2 *arrayContainer) container {
 	answer := bc
 	for k := 0; k < value2.getCardinality(); k++ {
-		i := uint(toIntUnsigned(value2.content[k])) >> 6
+		i := uint(value2.content[k]) >> 6
 		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (value2.content[k] % 64))
 	}
 	return answer
@@ -376,7 +376,7 @@ func (bc *bitmapContainer) xor(a container) container {
 func (bc *bitmapContainer) xorArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
 	for k := 0; k < value2.getCardinality(); k++ {
-		index := uint(toIntUnsigned(value2.content[k])) >> 6
+		index := uint(value2.content[k]) >> 6
 		answer.cardinality += 1 - 2*int(uint(answer.bitmap[index]&(1<<(value2.content[k]%64)))>>(value2.content[k]%64))
 		answer.bitmap[index] = answer.bitmap[index] ^ (uint64(1) << (value2.content[k] % 64))
 	}
@@ -511,7 +511,7 @@ func (bc *bitmapContainer) iandNot(a container) container {
 func (bc *bitmapContainer) andNotArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
 	for k := 0; k < value2.getCardinality(); k++ {
-		i := uint(toIntUnsigned(value2.content[k])) >> 6
+		i := uint(value2.content[k]) >> 6
 		answer.bitmap[i] = answer.bitmap[i] &^ (uint64(1) << (value2.content[k] % 64))
 		answer.cardinality -= int(uint(answer.bitmap[i]^bc.bitmap[i]) >> (value2.content[k] % 64))
 	}

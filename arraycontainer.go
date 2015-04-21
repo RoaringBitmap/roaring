@@ -30,7 +30,7 @@ func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
 
 func (ac *arrayContainer) fillLeastSignificant16bits(x []int, i, mask int) {
 	for k := 0; k < len(ac.content); k++ {
-		x[k+i] = toIntUnsigned(ac.content[k]) | mask
+		x[k+i] = int(ac.content[k]) | mask
 	}
 }
 
@@ -284,11 +284,11 @@ func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
 	if maxPossibleCardinality > arrayDefaultMaxSize { // it could be a bitmap!^M
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
-			i := uint(toIntUnsigned(value2.content[k])) >> 6
+			i := uint(value2.content[k]) >> 6
 			bc.bitmap[i] |= (1 << (value2.content[k] % 64))
 		}
 		for k := 0; k < len(ac.content); k++ {
-			i := uint(toIntUnsigned(ac.content[k])) >> 6
+			i := uint(ac.content[k]) >> 6
 			bc.bitmap[i] |= (1 << (ac.content[k] % 64))
 		}
 		bc.cardinality = int(popcntSlice(bc.bitmap))
@@ -352,11 +352,11 @@ func (ac *arrayContainer) xorArray(value2 *arrayContainer) container {
 	if totalCardinality > arrayDefaultMaxSize { // it could be a bitmap!
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
-			i := uint(toIntUnsigned(value2.content[k])) >> 6
+			i := uint(value2.content[k]) >> 6
 			bc.bitmap[i] ^= (uint64(1) << (value2.content[k] % 64))
 		}
 		for k := 0; k < len(ac.content); k++ {
-			i := uint(toIntUnsigned(ac.content[k])) >> 6
+			i := uint(ac.content[k]) >> 6
 			bc.bitmap[i] ^= (uint64(1) << (ac.content[k] % 64))
 		}
 		bc.computeCardinality()
