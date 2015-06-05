@@ -65,7 +65,7 @@ func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
 	rangelength := lastOfRange - firstOfRange
 
 	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
-	if newcardinality >= arrayDefaultMaxSize {
+	if newcardinality > arrayDefaultMaxSize {
 		a := ac.toBitmapContainer()
 		return a.iaddRange(firstOfRange, lastOfRange)
 	}
@@ -109,7 +109,7 @@ func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
 	}
 	rangelength := lastOfRange - firstOfRange
 	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
-	if newcardinality >= arrayDefaultMaxSize {
+	if newcardinality > arrayDefaultMaxSize {
 		a := ac.toBitmapContainer()
 		return a.iaddRange(firstOfRange, lastOfRange)
 	}
@@ -165,7 +165,7 @@ func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
 	cardinalityChange := newValuesInRange - currentValuesInRange
 	newCardinality := len(ac.content) + cardinalityChange
 
-	if newCardinality >= arrayDefaultMaxSize {
+	if newCardinality > arrayDefaultMaxSize {
 		return ac.toBitmapContainer().not(firstOfRange, lastOfRange)
 	}
 	answer := newArrayContainer()
@@ -480,7 +480,7 @@ func (ac *arrayContainer) inot(firstOfRange, lastOfRange int) container {
 	newCardinality := len(ac.content) + cardinalityChange
 	if cardinalityChange > 0 {
 		if newCardinality > len(ac.content) {
-			if newCardinality >= arrayDefaultMaxSize {
+			if newCardinality > arrayDefaultMaxSize {
 				return ac.toBitmapContainer().inot(firstOfRange, lastOfRange)
 			}
 			ac.content = copyOf(ac.content, newCardinality)

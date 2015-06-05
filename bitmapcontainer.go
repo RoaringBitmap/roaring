@@ -173,7 +173,7 @@ func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container 
 	copy(answer.bitmap, bc.bitmap[:])
 	resetBitmapRange(answer.bitmap, firstOfRange, lastOfRange)
 	answer.computeCardinality()
-	if answer.getCardinality() < arrayDefaultMaxSize {
+	if answer.getCardinality() <= arrayDefaultMaxSize {
 		return answer.toArrayContainer()
 	}
 	return answer
@@ -182,7 +182,7 @@ func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container 
 func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container {
 	resetBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
 	bc.computeCardinality()
-	if bc.getCardinality() < arrayDefaultMaxSize {
+	if bc.getCardinality() <= arrayDefaultMaxSize {
 		return bc.toArrayContainer()
 	}
 	return bc
