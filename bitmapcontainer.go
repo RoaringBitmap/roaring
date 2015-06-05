@@ -388,7 +388,7 @@ func (bc *bitmapContainer) xorArray(value2 *arrayContainer) container {
 }
 
 func (bc *bitmapContainer) rank(x uint16) int {
-	// TODO: rewriten in assembly
+	// TODO: rewrite in assembly
 	leftover := (uint(x) + 1) & 63
 	if leftover == 0 {
 		return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64]))
