@@ -111,11 +111,10 @@ func fillArrayXOR(container []uint16, bitmap1, bitmap2 []uint64) {
 	}
 }
 
-func highbits(x int) uint16 {
-	u := uint(x)
-	return uint16(u >> 16)
+func highbits(x uint32) uint16 {
+	return uint16(x >> 16)
 }
-func lowbits(x int) uint16 {
+func lowbits(x uint32) uint16 {
 	return uint16(x & 0xFFFF)
 }
 
@@ -123,8 +122,8 @@ func maxLowBit() uint16 {
 	return uint16(0xFFFF)
 }
 
-func toIntUnsigned(x uint16) int {
-	return int(x & 0xFFFF)
+func toIntUnsigned(x uint16) uint32 {
+	return uint32(x)
 }
 
 func flipBitmapRange(bitmap []uint64, start int, end int) {

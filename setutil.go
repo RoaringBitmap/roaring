@@ -379,7 +379,7 @@ func binarySearch(array []uint16, k uint16) int {
 	ikey := int(k)
 
 	for low <= high {
-		middleIndex := int(uint(low+high) >> 1)
+		middleIndex := int(uint32(low+high) >> 1)
 		middleValue := int(array[middleIndex])
 
 		if middleValue < ikey {

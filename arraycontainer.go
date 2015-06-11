@@ -28,9 +28,9 @@ func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
 	return 2 * len(b.content), nil
 }
 
-func (ac *arrayContainer) fillLeastSignificant16bits(x []int, i, mask int) {
+func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
 	for k := 0; k < len(ac.content); k++ {
-		x[k+i] = int(ac.content[k]) | mask
+		x[k+i] = uint32(ac.content[k]) | mask
 	}
 }
 

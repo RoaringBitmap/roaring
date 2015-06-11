@@ -11,14 +11,14 @@ import (
 )
 
 func TestRoaringBitmapRank(t *testing.T) {
-	for N := 1; N <= 1048576; N *= 2 {
-		Convey("rank tests"+strconv.Itoa(N), t, func() {
-			for gap := 1; gap <= 65536; gap *= 2 {
+	for N := uint32(1); N <= 1048576; N *= 2 {
+		Convey("rank tests"+strconv.Itoa(int(N)), t, func() {
+			for gap := uint32(1); gap <= 65536; gap *= 2 {
 				rb1 := NewRoaringBitmap()
-				for x := 0; x <= N; x += gap {
+				for x := uint32(0); x <= N; x += gap {
 					rb1.Add(x)
 				}
-				for y := 0; y <= N; y += 1 {
+				for y := uint32(0); y <= N; y += 1 {
 					if rb1.Rank(y) != (y+1+gap-1)/gap {
 						So(rb1.Rank(y), ShouldEqual, (y+1+gap-1)/gap)
 					}
@@ -29,14 +29,14 @@ func TestRoaringBitmapRank(t *testing.T) {
 }
 
 func TestRoaringBitmapSelect(t *testing.T) {
-	for N := 1; N <= 1048576; N *= 2 {
-		Convey("rank tests"+strconv.Itoa(N), t, func() {
-			for gap := 1; gap <= 65536; gap *= 2 {
+	for N := uint32(1); N <= 1048576; N *= 2 {
+		Convey("rank tests"+strconv.Itoa(int(N)), t, func() {
+			for gap := uint32(1); gap <= 65536; gap *= 2 {
 				rb1 := NewRoaringBitmap()
-				for x := 0; x <= N; x += gap {
+				for x := uint32(0); x <= N; x += gap {
 					rb1.Add(x)
 				}
-				for y := 0; y <= N/gap; y += 1 {
+				for y := uint32(0); y <= N/gap; y += 1 {
 					expectedInt := y * gap
 					i, err := rb1.Select(y)
 					if err != nil {
@@ -54,21 +54,21 @@ func TestRoaringBitmapSelect(t *testing.T) {
 
 // some extra tests
 func TestRoaringBitmapExtra(t *testing.T) {
-	for N := 1; N <= 65536; N *= 2 {
-		Convey("extra tests"+strconv.Itoa(N), t, func() {
-			for gap := 1; gap <= 65536; gap *= 2 {
+	for N := uint32(1); N <= 65536; N *= 2 {
+		Convey("extra tests"+strconv.Itoa(int(N)), t, func() {
+			for gap := uint32(1); gap <= 65536; gap *= 2 {
 				bs1 := bitset.New(0)
 				rb1 := NewRoaringBitmap()
-				for x := 0; x <= N; x += gap {
+				for x := uint32(0); x <= N; x += gap {
 					bs1.Set(uint(x))
 					rb1.Add(x)
 				}
 				So(bs1.Count(), ShouldEqual, rb1.GetCardinality())
 				So(equalsBitSet(bs1, rb1), ShouldEqual, true)
-				for offset := 1; offset <= gap; offset *= 2 {
+				for offset := uint32(1); offset <= gap; offset *= 2 {
 					bs2 := bitset.New(0)
 					rb2 := NewRoaringBitmap()
-					for x := 0; x <= N; x += gap {
+					for x := uint32(0); x <= N; x += gap {
 						bs2.Set(uint(x + offset))
 						rb2.Add(x + offset)
 					}
@@ -114,10 +114,10 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("Test Contains", t, func() {
 		rbm1 := NewRoaringBitmap()
 		for k := 0; k < 1000; k++ {
-			rbm1.Add(17 * k)
+			rbm1.AddInt(17 * k)
 		}
 		for k := 0; k < 17*1000; k++ {
-			So(rbm1.Contains(k), ShouldEqual, (k/17*17 == k))
+			So(rbm1.ContainsInt(k), ShouldEqual, (k/17*17 == k))
 		}
 	})
 
@@ -136,10 +136,10 @@ func TestRoaringBitmap(t *testing.T) {
 		rb2 := NewRoaringBitmap()
 
 		for i := 0; i < 200000; i += 4 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 14 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 
 		off := AndNot(rb2, rb)
@@ -155,7 +155,7 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("Test AND", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		rr.Add(100000)
 		rr.Add(110000)
@@ -176,45 +176,45 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("Test AND 2", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 3 * 65536; k < 3*65536+9000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 4 * 65535; k < 4*65535+7000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 6 * 65535; k < 6*65535+10000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 8 * 65535; k < 8*65535+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 9 * 65535; k < 9*65535+30000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 
 		rr2 := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 3*65536 + 2000; k < 3*65536+6000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 6 * 65535; k < 6*65535+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 7 * 65535; k < 7*65535+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 10 * 65535; k < 10*65535+5000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		correct := And(rr, rr2)
 		rr.And(rr2)
@@ -224,12 +224,12 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("Test AND 2", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
-		rr.Add(100000)
-		rr.Add(110000)
+		rr.AddInt(100000)
+		rr.AddInt(110000)
 		rr2 := NewRoaringBitmap()
-		rr2.Add(13)
+		rr2.AddInt(13)
 
 		rrand := And(rr, rr2)
 		array := rrand.ToArray()
@@ -240,74 +240,74 @@ func TestRoaringBitmap(t *testing.T) {
 		rr := NewRoaringBitmap()
 		rr2 := NewRoaringBitmap()
 		for k := 6 * 65536; k < 6*65536+10000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 6 * 65536; k < 6*65536+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		result := And(rr, rr2)
 		So(result.GetCardinality(), ShouldEqual, 1000)
 	})
 	Convey("Test AND 3", t, func() {
-		var arrayand [11256]int
+		var arrayand [11256]uint32
 		//393,216
 		pos := 0
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 3 * 65536; k < 3*65536+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 3*65536 + 1000; k < 3*65536+7000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 3*65536 + 7000; k < 3*65536+9000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 4 * 65536; k < 4*65536+7000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 8 * 65536; k < 8*65536+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 9 * 65536; k < 9*65536+30000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 
 		rr2 := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr2.Add(k)
-			arrayand[pos] = k
+			rr2.AddInt(k)
+			arrayand[pos] = uint32(k)
 			pos++
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr2.Add(k)
-			arrayand[pos] = k
+			rr2.AddInt(k)
+			arrayand[pos] = uint32(k)
 			pos++
 		}
 		for k := 3*65536 + 1000; k < 3*65536+7000; k++ {
-			rr2.Add(k)
-			arrayand[pos] = k
+			rr2.AddInt(k)
+			arrayand[pos] = uint32(k)
 			pos++
 		}
 		for k := 6 * 65536; k < 6*65536+10000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 6 * 65536; k < 6*65536+1000; k++ {
-			rr2.Add(k)
-			arrayand[pos] = k
+			rr2.AddInt(k)
+			arrayand[pos] = uint32(k)
 			pos++
 		}
 
 		for k := 7 * 65536; k < 7*65536+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 10 * 65536; k < 10*65536+5000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		rrand := And(rr, rr2)
 
@@ -335,10 +335,10 @@ func TestRoaringBitmap(t *testing.T) {
 		rb2 := NewRoaringBitmap()
 
 		for i := 0; i < 200000; i += 4 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 14 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		//TODO: RoaringBitmap.And(bm,bm2)
 		andresult := And(rb, rb2)
@@ -347,20 +347,20 @@ func TestRoaringBitmap(t *testing.T) {
 		So(andresult.GetCardinality(), ShouldEqual, 0)
 
 		for i := 500000; i < 600000; i += 14 {
-			rb.Add(i)
+			rb.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 3 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		andresult2 := And(rb, rb2)
 		So(andresult.GetCardinality(), ShouldEqual, 0)
 		So(andresult2.GetCardinality(), ShouldEqual, 0)
 
 		for i := 0; i < 200000; i += 4 {
-			rb.Add(i)
+			rb.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 14 {
-			rb.Add(i)
+			rb.AddInt(i)
 		}
 		So(andresult.GetCardinality(), ShouldEqual, 0)
 		rc := And(rb, rb2)
@@ -380,48 +380,33 @@ func TestRoaringBitmap(t *testing.T) {
 			So(ac.getCardinality(), ShouldEqual, 100)
 		}
 	})
-	/*
-		Convey("ArrayTest", t, func() {
-			rr := newArrayContainer()
-			rr.Add(int16(110))
-			rr.Add(int16(114))
-			rr.Add(int16(115))
-			var array [3]int16
-			for pos:=0; pos<rr.Size();pos++ {
-				array[pos++] = rr.Get(pos)?
-			}
-			So(array[0], ShouldEqual, int16(110))
-			So(array[1], ShouldEqual, int16(114))
-			So(array[2], ShouldEqual, int16(115))
-		})
 
-	*/
 
 	Convey("or test", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		rr2 := NewRoaringBitmap()
 		for k := 4000; k < 8000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		result := Or(rr, rr2)
 		So(result.GetCardinality(), ShouldEqual, rr.GetCardinality()+rr2.GetCardinality())
 	})
 	Convey("basic test", t, func() {
 		rr := NewRoaringBitmap()
-		var a [4002]int
+		var a [4002]uint32
 		pos := 0
 		for k := 0; k < 4000; k++ {
-			rr.Add(k)
-			a[pos] = k
+			rr.AddInt(k)
+			a[pos] = uint32(k)
 			pos++
 		}
-		rr.Add(100000)
+		rr.AddInt(100000)
 		a[pos] = 100000
 		pos++
-		rr.Add(110000)
+		rr.AddInt(110000)
 		a[pos] = 110000
 		pos++
 		array := rr.ToArray()
@@ -470,27 +455,27 @@ func TestRoaringBitmap(t *testing.T) {
 			for offset := 2; offset <= 1024; offset *= 2 {
 				rb := NewRoaringBitmap()
 				for k := 0; k < N; k++ {
-					rb.Add(k * gap)
+					rb.AddInt(k * gap)
 					So(rb.GetCardinality(), ShouldEqual, k+1)
 				}
 				So(rb.GetCardinality(), ShouldEqual, N)
 				// check the add of existing values
 				for k := 0; k < N; k++ {
-					rb.Add(k * gap)
+					rb.AddInt(k * gap)
 					So(rb.GetCardinality(), ShouldEqual, N)
 				}
 
 				rb2 := NewRoaringBitmap()
 
 				for k := 0; k < N; k++ {
-					rb2.Add(k * gap * offset)
+					rb2.AddInt(k * gap * offset)
 					So(rb2.GetCardinality(), ShouldEqual, k+1)
 				}
 
 				So(rb2.GetCardinality(), ShouldEqual, N)
 
 				for k := 0; k < N; k++ {
-					rb2.Add(k * gap * offset)
+					rb2.AddInt(k * gap * offset)
 					So(rb2.GetCardinality(), ShouldEqual, N)
 				}
 				So(And(rb, rb2).GetCardinality(), ShouldEqual, N/offset)
@@ -504,28 +489,28 @@ func TestRoaringBitmap(t *testing.T) {
 		rb := NewRoaringBitmap()
 		for i := 0; i < 200000; i += 7 {
 			// dense
-			rb.Add(i)
+			rb.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 177 {
 			// sparse
-			rb.Add(i)
+			rb.AddInt(i)
 		}
 
 		rb2 := NewRoaringBitmap()
 		rb3 := NewRoaringBitmap()
 		for i := 0; i < 200000; i += 4 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 14 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 
 		rb.Clear()
 		So(rb.GetCardinality(), ShouldEqual, 0)
 		So(rb2.GetCardinality(), ShouldNotEqual, 0)
 
-		rb.Add(4)
-		rb3.Add(4)
+		rb.AddInt(4)
+		rb3.AddInt(4)
 		andresult := And(rb, rb2)
 		orresult := Or(rb, rb2)
 
@@ -533,12 +518,12 @@ func TestRoaringBitmap(t *testing.T) {
 		So(orresult.GetCardinality(), ShouldEqual, rb2.GetCardinality())
 
 		for i := 0; i < 200000; i += 4 {
-			rb.Add(i)
-			rb3.Add(i)
+			rb.AddInt(i)
+			rb3.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 114 {
-			rb.Add(i)
-			rb3.Add(i)
+			rb.AddInt(i)
+			rb3.AddInt(i)
 		}
 
 		arrayrr := rb.ToArray()
@@ -630,7 +615,7 @@ func TestRoaringBitmap(t *testing.T) {
 		rb := NewRoaringBitmap()
 		rb1 := Flip(rb, 100000, 100000)
 
-		rb.Add(1)
+		rb.AddInt(1)
 		rbcard := rb1.GetCardinality()
 
 		So(0, ShouldEqual, rbcard)
@@ -768,7 +753,7 @@ func TestRoaringBitmap(t *testing.T) {
 			if rand.Float64() < float64(0.1) {
 				end = start + rand.Intn(100)
 			}
-			rb.Flip(start, end)
+			rb.Flip(uint32(start), uint32(end))
 			if start < end {
 				FlipRange(start, end, bs) // throws exception
 			}
@@ -779,7 +764,7 @@ func TestRoaringBitmap(t *testing.T) {
 				mask1 := bitset.New(0)
 				startM := rand.Intn(65536 * 20)
 				endM := startM + 100000
-				mask.Flip(startM, endM)
+				mask.Flip(uint32(startM), uint32(endM))
 				FlipRange(startM, endM, mask1)
 				mask.Flip(0, 65536*20+100000)
 				FlipRange(0, 65536*20+100000, mask1)
@@ -802,13 +787,13 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("ortest", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
-		rr.Add(100000)
-		rr.Add(110000)
+		rr.AddInt(100000)
+		rr.AddInt(110000)
 		rr2 := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 
 		rror := Or(rr, rr2)
@@ -823,45 +808,45 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("ORtest", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 3 * 65536; k < 3*65536+9000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 4 * 65535; k < 4*65535+7000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 6 * 65535; k < 6*65535+10000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 8 * 65535; k < 8*65535+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 9 * 65535; k < 9*65535+30000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 
 		rr2 := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 3*65536 + 2000; k < 3*65536+6000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 6 * 65535; k < 6*65535+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 7 * 65535; k < 7*65535+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 10 * 65535; k < 10*65535+5000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		correct := Or(rr, rr2)
 		rr.Or(rr2)
@@ -869,20 +854,20 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("ortest2", t, func() {
-		arrayrr := make([]int, 4000+4000+2)
+		arrayrr := make([]uint32, 4000+4000+2)
 		pos := 0
 		rr := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
-			rr.Add(k)
-			arrayrr[pos] = k
+			rr.AddInt(k)
+			arrayrr[pos] = uint32(k)
 			pos++
 		}
-		rr.Add(100000)
-		rr.Add(110000)
+		rr.AddInt(100000)
+		rr.AddInt(110000)
 		rr2 := NewRoaringBitmap()
 		for k := 4000; k < 8000; k++ {
-			rr2.Add(k)
-			arrayrr[pos] = k
+			rr2.AddInt(k)
+			arrayrr[pos] = uint32(k)
 			pos++
 		}
 
@@ -905,15 +890,15 @@ func TestRoaringBitmap(t *testing.T) {
 		rr := NewRoaringBitmap()
 		rr2 := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			V1[k] = true
 		}
 		for k := 3500; k < 4500; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 			V1[k] = true
 		}
 		for k := 4000; k < 65000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			V1[k] = true
 		}
 
@@ -921,12 +906,12 @@ func TestRoaringBitmap(t *testing.T) {
 		// containers.
 		// So, we will check the union between two BitmapContainers
 		for k := 65536; k < 65536+10000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 			V1[k] = true
 		}
 
 		for k := 65536; k < 65536+14000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			V1[k] = true
 		}
 
@@ -934,24 +919,24 @@ func TestRoaringBitmap(t *testing.T) {
 		// ArrayContainer, so, we will try the union between two
 		// ArrayContainers.
 		for k := 4 * 65535; k < 4*65535+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 			V1[k] = true
 		}
 
 		for k := 4 * 65535; k < 4*65535+800; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			V1[k] = true
 		}
 
 		// For the rest, we will check if the union will take them in
 		// the result
 		for k := 6 * 65535; k < 6*65535+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 			V1[k] = true
 		}
 
 		for k := 7 * 65535; k < 7*65535+2000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			V1[k] = true
 		}
 
@@ -959,11 +944,11 @@ func TestRoaringBitmap(t *testing.T) {
 		valide := true
 
 		for _, k := range rror.ToArray() {
-			_, found := V1[k]
+			_, found := V1[int(k)]
 			if !found {
 				valide = false
 			}
-			V2[k] = true
+			V2[int(k)] = true
 		}
 
 		for k := range V1 {
@@ -981,10 +966,10 @@ func TestRoaringBitmap(t *testing.T) {
 		rb2 := NewRoaringBitmap()
 
 		for i := 0; i < 200000; i += 4 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 14 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		rb2card := rb2.GetCardinality()
 
@@ -996,10 +981,10 @@ func TestRoaringBitmap(t *testing.T) {
 		So(rb2card, ShouldEqual, orresult.GetCardinality())
 
 		for i := 500000; i < 600000; i += 14 {
-			rb.Add(i)
+			rb.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 3 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		// check or against an empty bitmap
 		orresult2 := Or(rb, rb2)
@@ -1025,12 +1010,12 @@ func TestRoaringBitmap(t *testing.T) {
 
 		rb := NewRoaringBitmap()
 		for k := 0; k < N; k++ {
-			rb.Add(k * gap)
+			rb.AddInt(k * gap)
 			So(rb.GetCardinality(), ShouldEqual, k+1)
 		}
 		So(rb.GetCardinality(), ShouldEqual, N)
 		for k := 0; k < N; k++ {
-			rb.Add(k * gap)
+			rb.AddInt(k * gap)
 			So(rb.GetCardinality(), ShouldEqual, N)
 		}
 
@@ -1039,45 +1024,45 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("XORtest", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 3 * 65536; k < 3*65536+9000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 4 * 65535; k < 4*65535+7000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 6 * 65535; k < 6*65535+10000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 8 * 65535; k < 8*65535+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 9 * 65535; k < 9*65535+30000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 
 		rr2 := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 3*65536 + 2000; k < 3*65536+6000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 6 * 65535; k < 6*65535+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 7 * 65535; k < 7*65535+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 10 * 65535; k < 10*65535+5000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		correct := Xor(rr, rr2)
 		rr.Xor(rr2)
@@ -1095,27 +1080,27 @@ func TestRoaringBitmap(t *testing.T) {
 		// We will check the union between a BitmapCintainer and an
 		// arrayContainer
 		for k := 0; k < 4000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			if k < 3500 {
 				V1[k] = true
 			}
 		}
 		for k := 3500; k < 4500; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 4000; k < 65000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			if k >= 4500 {
 				V1[k] = true
 			}
 		}
 
 		for k := 65536; k < 65536+30000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 
 		for k := 65536; k < 65536+50000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			if k >= 65536+30000 {
 				V1[k] = true
 			}
@@ -1125,23 +1110,23 @@ func TestRoaringBitmap(t *testing.T) {
 		// ArrayContainer. So, we will try the union between two
 		// ArrayContainers.
 		for k := 4 * 65535; k < 4*65535+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 			if k >= (4*65535 + 800) {
 				V1[k] = true
 			}
 		}
 
 		for k := 4 * 65535; k < 4*65535+800; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 
 		for k := 6 * 65535; k < 6*65535+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 			V1[k] = true
 		}
 
 		for k := 7 * 65535; k < 7*65535+2000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 			V1[k] = true
 		}
 
@@ -1149,11 +1134,11 @@ func TestRoaringBitmap(t *testing.T) {
 		valide := true
 
 		for _, i := range rrxor.ToArray() {
-			_, found := V1[i]
+			_, found := V1[int(i)]
 			if !found {
 				valide = false
 			}
-			V2[i] = true
+			V2[int(i)] = true
 		}
 		for k := range V1 {
 			_, found := V2[k]
@@ -1170,10 +1155,10 @@ func TestRoaringBitmap(t *testing.T) {
 		rb2 := NewRoaringBitmap()
 
 		for i := 0; i < 200000; i += 4 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 14 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		rb2card := rb2.GetCardinality()
 
@@ -1185,10 +1170,10 @@ func TestRoaringBitmap(t *testing.T) {
 		So(rb2card, ShouldEqual, xorresult.GetCardinality())
 
 		for i := 500000; i < 600000; i += 14 {
-			rb.Add(i)
+			rb.AddInt(i)
 		}
 		for i := 200000; i < 400000; i += 3 {
-			rb2.Add(i)
+			rb2.AddInt(i)
 		}
 		// check or against an empty bitmap
 		xorresult2 := Xor(rb, rb2)
@@ -1224,7 +1209,7 @@ func rTest(N int) {
 		rb1 := NewRoaringBitmap()
 		for x := 0; x <= N; x += gap {
 			bs1.Set(uint(x))
-			rb1.Add(x)
+			rb1.AddInt(x)
 		}
 		So(bs1.Count(), ShouldEqual, rb1.GetCardinality())
 		So(equalsBitSet(bs1, rb1), ShouldEqual, true)
@@ -1233,7 +1218,7 @@ func rTest(N int) {
 			rb2 := NewRoaringBitmap()
 			for x := 0; x <= N; x += gap {
 				bs2.Set(uint(x + offset))
-				rb2.Add(x + offset)
+				rb2.AddInt(x + offset)
 			}
 			So(bs2.Count(), ShouldEqual, rb2.GetCardinality())
 			So(equalsBitSet(bs2, rb2), ShouldEqual, true)
@@ -1266,7 +1251,7 @@ func rTest(N int) {
 
 func equalsBitSet(a *bitset.BitSet, b *RoaringBitmap) bool {
 	for i, e := a.NextSet(0); e; i, e = a.NextSet(i + 1) {
-		if !b.Contains(int(i)) {
+		if !b.ContainsInt(int(i)) {
 			return false
 		}
 	}
@@ -1280,18 +1265,18 @@ func equalsBitSet(a *bitset.BitSet, b *RoaringBitmap) bool {
 }
 
 func equalsArray(a []int, b *RoaringBitmap) bool {
-	if len(a) != b.GetCardinality() {
+	if uint64(len(a)) != b.GetCardinality() {
 		return false
 	}
 	for _, x := range a {
-		if !b.Contains(x) {
+		if !b.ContainsInt(x) {
 			return false
 		}
 	}
 	return true
 }
 
-func IntsEquals(a, b []int) bool {
+func IntsEquals(a, b []uint32) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -1412,12 +1397,12 @@ func TestFlipBigA(t *testing.T) {
 			}
 
 			if (i & 1) == 0 {
-				rb2 = Flip(rb1, start, end)
+				rb2 = FlipInt(rb1, start, end)
 				// tweak the other, catch bad sharing
-				rb1.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
+				rb1.FlipInt(rand.Intn(65536*20), rand.Intn(65536*20))
 			} else {
-				rb1 = Flip(rb2, start, end)
-				rb2.Flip(rand.Intn(65536*20), rand.Intn(65536*20))
+				rb1 = FlipInt(rb2, start, end)
+				rb2.FlipInt(rand.Intn(65536*20), rand.Intn(65536*20))
 			}
 
 			if start < end {
@@ -1430,9 +1415,9 @@ func TestFlipBigA(t *testing.T) {
 				mask1 := bitset.New(0)
 				startM := rand.Intn(65536 * 20)
 				endM := startM + 100000
-				mask.Flip(startM, endM)
+				mask.FlipInt(startM, endM)
 				FlipRange(startM, endM, mask1)
-				mask.Flip(0, 65536*20+100000)
+				mask.FlipInt(0, 65536*20+100000)
 				FlipRange(0, 65536*20+100000, mask1)
 				rb2.And(mask)
 				bs.InPlaceIntersection(mask1)
@@ -1547,45 +1532,45 @@ func TestAndNot(t *testing.T) {
 	Convey("Test ANDNOT", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 3 * 65536; k < 3*65536+9000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 4 * 65535; k < 4*65535+7000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 6 * 65535; k < 6*65535+10000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 8 * 65535; k < 8*65535+1000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 		for k := 9 * 65535; k < 9*65535+30000; k++ {
-			rr.Add(k)
+			rr.AddInt(k)
 		}
 
 		rr2 := NewRoaringBitmap()
 		for k := 4000; k < 4256; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 65536; k < 65536+4000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 3*65536 + 2000; k < 3*65536+6000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 6 * 65535; k < 6*65535+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 7 * 65535; k < 7*65535+1000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		for k := 10 * 65535; k < 10*65535+5000; k++ {
-			rr2.Add(k)
+			rr2.AddInt(k)
 		}
 		correct := AndNot(rr, rr2)
 		rr.AndNot(rr2)

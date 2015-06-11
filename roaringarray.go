@@ -23,7 +23,7 @@ type container interface {
 	getShortIterator() shortIterable
 	contains(i uint16) bool
 	equals(i interface{}) bool
-	fillLeastSignificant16bits(array []int, i, mask int)
+	fillLeastSignificant16bits(array []uint32, i int, mask uint32)
 	or(r container) container
 	ior(r container) container // i stands for inplace
 	lazyIOR(r container) container
@@ -245,11 +245,11 @@ func (ra *roaringArray) equals(o interface{}) bool {
 	return false
 }
 
-func (b *roaringArray) serializedSizeInBytes() int {
-	count := 4 + 4
+func (b *roaringArray) serializedSizeInBytes() uint64 {
+	count := uint64(4 + 4)
 	for _, item := range b.array {
 		count = count + 4 + 4
-		count = count + item.value.serializedSizeInBytes()
+		count = count + uint64(item.value.serializedSizeInBytes())
 	}
 	return count
 }

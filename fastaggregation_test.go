@@ -26,13 +26,13 @@ func TestFastAggregationsSize(t *testing.T) {
 		rb1 := NewRoaringBitmap()
 		rb2 := NewRoaringBitmap()
 		rb3 := NewRoaringBitmap()
-		for i := 0; i < 1000000; i += 3 {
+		for i := uint32(0); i < 1000000; i += 3 {
 			rb1.Add(i)
 		}
-		for i := 0; i < 1000000; i += 7 {
+		for i := uint32(0); i < 1000000; i += 7 {
 			rb2.Add(i)
 		}
-		for i := 0; i < 1000000; i += 1001 {
+		for i := uint32(0); i < 1000000; i += 1001 {
 			rb3.Add(i)
 		}
 		pq := make(priorityQueue, 3)
@@ -51,22 +51,22 @@ func TestFastAggregationsCont(t *testing.T) {
 		rb1 := NewRoaringBitmap()
 		rb2 := NewRoaringBitmap()
 		rb3 := NewRoaringBitmap()
-		for i := 0; i < 10; i += 3 {
+		for i := uint32(0); i < 10; i += 3 {
 			rb1.Add(i)
 		}
-		for i := 0; i < 10; i += 7 {
+		for i := uint32(0); i < 10; i += 7 {
 			rb2.Add(i)
 		}
-		for i := 0; i < 10; i += 1001 {
+		for i := uint32(0); i < 10; i += 1001 {
 			rb3.Add(i)
 		}
-		for i := 1000000; i < 1000000+10; i += 1001 {
+		for i := uint32(1000000); i < 1000000+10; i += 1001 {
 			rb1.Add(i)
 		}
-		for i := 1000000; i < 1000000+10; i += 7 {
+		for i := uint32(1000000); i < 1000000+10; i += 7 {
 			rb2.Add(i)
 		}
-		for i := 1000000; i < 1000000+10; i += 3 {
+		for i := uint32(1000000); i < 1000000+10; i += 3 {
 			rb3.Add(i)
 		}
 		rb1.Add(500000)
@@ -93,22 +93,22 @@ func TestFastAggregationsAdvanced(t *testing.T) {
 		rb1 := NewRoaringBitmap()
 		rb2 := NewRoaringBitmap()
 		rb3 := NewRoaringBitmap()
-		for i := 0; i < 1000000; i += 3 {
+		for i := uint32(0); i < 1000000; i += 3 {
 			rb1.Add(i)
 		}
-		for i := 0; i < 1000000; i += 7 {
+		for i := uint32(0); i < 1000000; i += 7 {
 			rb2.Add(i)
 		}
-		for i := 0; i < 1000000; i += 1001 {
+		for i := uint32(0); i < 1000000; i += 1001 {
 			rb3.Add(i)
 		}
-		for i := 1000000; i < 2000000; i += 1001 {
+		for i := uint32(1000000); i < 2000000; i += 1001 {
 			rb1.Add(i)
 		}
-		for i := 1000000; i < 2000000; i += 3 {
+		for i := uint32(1000000); i < 2000000; i += 3 {
 			rb2.Add(i)
 		}
-		for i := 1000000; i < 2000000; i += 7 {
+		for i := uint32(1000000); i < 2000000; i += 7 {
 			rb3.Add(i)
 		}
 		rb1.Or(rb2)
@@ -131,13 +131,13 @@ func TestFastAggregationsXOR(t *testing.T) {
 		rb2 := NewRoaringBitmap()
 		rb3 := NewRoaringBitmap()
 
-		for i := 0; i < 40000; i += 1 {
+		for i := uint32(0); i < 40000; i += 1 {
 			rb1.Add(i)
 		}
-		for i := 0; i < 40000; i += 4000 {
+		for i := uint32(0); i < 40000; i += 4000 {
 			rb2.Add(i)
 		}
-		for i := 0; i < 40000; i += 5000 {
+		for i := uint32(0); i < 40000; i += 5000 {
 			rb3.Add(i)
 		}
 		So(rb1.GetCardinality() == 40000, ShouldEqual, true)

@@ -95,14 +95,14 @@ func bitmapEquals(a, b []uint64) bool {
 	return true
 }
 
-func (bc *bitmapContainer) fillLeastSignificant16bits(x []int, i, mask int) {
+func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
 	// TODO: should be written as optimized assembly
 	pos := i
 	for k := 0; k < len(bc.bitmap); k++ {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			x[pos] = (k*64 + int(popcount(t-1))) | mask
+			x[pos] = (uint32(k)*64 + uint32(popcount(t-1))) | mask
 			pos++
 			bitset ^= t
 		}
