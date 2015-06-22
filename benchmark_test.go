@@ -5,9 +5,35 @@ import (
 	"github.com/willf/bitset"
 	"math/rand"
 	"testing"
+        "runtime"
 )
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
+
+// go test -bench BenchmarkMemoryUsage -run -
+func BenchmarkMemoryUsage(b *testing.B) {
+	b.StopTimer()
+	bitmaps := make([]*RoaringBitmap, 0, 10)
+
+	incr := uint32(1 << 16)
+	max := uint32(1<<32 - 1)
+	for x := 0; x < 10; x++ {
+		rb := NewRoaringBitmap()
+
+		var i uint32
+		for i = 0; i <= max-incr; i += incr {
+			rb.Add(i)
+		}
+
+		bitmaps = append(bitmaps, rb)
+	}
+
+	var stats runtime.MemStats
+	runtime.ReadMemStats(&stats)
+	fmt.Printf("\nHeapInUse %d\n", stats.HeapInuse)
+	fmt.Printf("HeapObjects %d\n", stats.HeapObjects)
+	b.StartTimer()
+}
 
 // go test -bench BenchmarkIntersection -run -
 func BenchmarkIntersectionBitset(b *testing.B) {
