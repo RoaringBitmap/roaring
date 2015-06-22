@@ -45,39 +45,25 @@ func rangeOfOnes(start, last int) container {
 	return newArrayContainerRange(start, last)
 }
 
-type element struct {
-	key   uint16
-	value container
-}
-
-func (e *element) clone() element {
-	var c element
-	c.key = e.key
-	c.value = e.value.clone()
-	return c
-}
-
-func newelement(key uint16, value container) *element {
-	ptr := new(element)
-	ptr.key = key
-	ptr.value = value
-	return ptr
-}
-
 type roaringArray struct {
-	array []*element
+	keys       []uint16
+	containers []container
 }
 
 func newRoaringArray() *roaringArray {
-	return &roaringArray{make([]*element, 0, 0)}
+	return &roaringArray{
+		keys:       make([]uint16, 0, 0),
+		containers: make([]container, 0, 0),
+	}
 }
 
-func (ra *roaringArray) append(key uint16, value container) {
-	ra.array = append(ra.array, newelement(key, value))
+func (ra *roaringArray) appendContainer(key uint16, value container) {
+	ra.keys = append(ra.keys, key)
+	ra.containers = append(ra.containers, value)
 }
 
 func (ra *roaringArray) appendCopy(sa roaringArray, startingindex int) {
-	ra.array = append(ra.array, newelement(sa.array[startingindex].key, sa.array[startingindex].value.clone()))
+	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex].clone())
 }
 
 func (ra *roaringArray) appendCopyMany(sa roaringArray, startingindex, end int) {
@@ -88,10 +74,10 @@ func (ra *roaringArray) appendCopyMany(sa roaringArray, startingindex, end int) 
 
 func (ra *roaringArray) appendCopiesUntil(sa roaringArray, stoppingKey uint16) {
 	for i := 0; i < sa.size(); i++ {
-		if sa.array[i].key >= stoppingKey {
+		if sa.keys[i] >= stoppingKey {
 			break
 		}
-		ra.array = append(ra.array, newelement(sa.array[i].key, sa.array[i].value.clone()))
+		ra.appendContainer(sa.keys[i], sa.containers[i].clone())
 	}
 }
 
@@ -104,7 +90,7 @@ func (ra *roaringArray) appendCopiesAfter(sa roaringArray, beforeStart uint16) {
 	}
 
 	for i := startLocation; i < sa.size(); i++ {
-		ra.array = append(ra.array, newelement(sa.array[i].key, sa.array[i].value.clone()))
+		ra.appendContainer(sa.keys[i], sa.containers[i].clone())
 	}
 }
 
@@ -113,73 +99,82 @@ func (ra *roaringArray) removeIndexRange(begin, end int) {
 		return
 	}
 	r := end - begin
-	copy(ra.array[begin:], ra.array[end:])
+	copy(ra.keys[begin:], ra.keys[end:])
+	copy(ra.containers[begin:], ra.containers[end:])
 	for i := 1; i <= r; i++ {
-		ra.array[len(ra.array)-i] = nil
+		ra.containers[len(ra.containers)-i] = nil
 	}
-	ra.array = ra.array[:len(ra.array)-r]
+
+	ra.keys = ra.keys[:len(ra.keys)-r]
+	ra.containers = ra.containers[:len(ra.containers)-r]
 }
 
 func (ra *roaringArray) resize(newsize int) {
-	for k := newsize; k < len(ra.array); k++ {
-		ra.array[k] = nil
+	for k := newsize; k < len(ra.containers); k++ {
+		ra.containers[k] = nil
 	}
-	ra.array = ra.array[:newsize]
+	ra.keys = ra.keys[:newsize]
+	ra.containers = ra.containers[:newsize]
 }
 
 func (ra *roaringArray) clear() {
-	ra.array = make([]*element, 0, 0)
+	ra.keys = make([]uint16, 0, 0)
+	ra.containers = make([]container, 0, 0)
 }
 
 func (ra *roaringArray) clone() *roaringArray {
 	sa := new(roaringArray)
-	sa.array = make([]*element, len(ra.array))
-	for i := 0; i < len(ra.array); i++ {
-		newElement := ra.array[i].clone()
-		sa.array[i] = &newElement
+	sa.keys = make([]uint16, len(ra.keys))
+	sa.containers = make([]container, len(ra.containers))
+	for i := 0; i < len(ra.containers); i++ {
+		sa.containers[i] = ra.containers[i].clone()
+		sa.keys[i] = ra.keys[i]
 	}
 	return sa
 }
 
 func (ra *roaringArray) containsKey(x uint16) bool {
-	return (ra.binarySearch(0, len(ra.array), x) >= 0)
+	return (ra.binarySearch(0, len(ra.keys), x) >= 0)
 }
 
 func (ra *roaringArray) getContainer(x uint16) container {
-	i := ra.binarySearch(0, len(ra.array), x)
+	i := ra.binarySearch(0, len(ra.keys), x)
 	if i < 0 {
 		return nil
 	}
-	return ra.array[i].value
+	return ra.containers[i]
 }
 
 func (ra *roaringArray) getContainerAtIndex(i int) container {
-	return ra.array[i].value
+	return ra.containers[i]
 }
 
 func (ra *roaringArray) getIndex(x uint16) int {
 	// before the binary search, we optimize for frequent cases
-	size := len(ra.array)
-	if (size == 0) || (ra.array[size-1].key == x) {
+	size := len(ra.keys)
+	if (size == 0) || (ra.keys[size-1] == x) {
 		return size - 1
 	}
 	return ra.binarySearch(0, size, x)
 }
 
 func (ra *roaringArray) getKeyAtIndex(i int) uint16 {
-	return ra.array[i].key
+	return ra.keys[i]
 }
 
 func (ra *roaringArray) insertNewKeyValueAt(i int, key uint16, value container) {
-	s := ra.array
-	s = append(s, nil)
-	copy(s[i+1:], s[i:])
-	s[i] = newelement(key, value)
-	ra.array = s
+	ra.keys = append(ra.keys, 0)
+	ra.containers = append(ra.containers, nil)
+
+	copy(ra.keys[i+1:], ra.keys[i:])
+	copy(ra.containers[i+1:], ra.containers[i:])
+
+	ra.keys[i] = key
+	ra.containers[i] = value
 }
 
 func (ra *roaringArray) remove(key uint16) bool {
-	i := ra.binarySearch(0, len(ra.array), key)
+	i := ra.binarySearch(0, len(ra.keys), key)
 	if i >= 0 { // if a new key
 		ra.removeAtIndex(i)
 		return true
@@ -188,23 +183,26 @@ func (ra *roaringArray) remove(key uint16) bool {
 }
 
 func (ra *roaringArray) removeAtIndex(i int) {
-	a := ra.array
-	copy(a[i:], a[i+1:])
-	a[len(a)-1] = nil // or the zero value of T
-	a = a[:len(a)-1]
-	ra.array = a //should be the same reference i think
+
+	copy(ra.keys[i:], ra.keys[i+1:])
+	copy(ra.containers[i:], ra.containers[i+1:])
+
+	ra.containers[len(ra.containers)-1] = nil
+
+	ra.keys = ra.keys[:len(ra.keys)-1]
+	ra.containers = ra.containers[:len(ra.containers)-1]
 }
 
 func (ra *roaringArray) setContainerAtIndex(i int, c container) {
-	ra.array[i].value = c
+	ra.containers[i] = c
 }
 func (ra *roaringArray) replaceKeyAndContainerAtIndex(i int, key uint16, c container) {
-	ra.array[i].key = key
-	ra.array[i].value = c
+	ra.keys[i] = key
+	ra.containers[i] = c
 }
 
 func (ra *roaringArray) size() int {
-	return len(ra.array)
+	return len(ra.keys)
 }
 
 func (ra *roaringArray) binarySearch(begin, end int, key uint16) int {
@@ -214,7 +212,7 @@ func (ra *roaringArray) binarySearch(begin, end int, key uint16) int {
 
 	for low <= high {
 		middleIndex := int(uint((low + high)) >> 1)
-		middleValue := int(ra.array[middleIndex].key)
+		middleValue := int(ra.keys[middleIndex])
 
 		if middleValue < ikey {
 			low = middleIndex + 1
@@ -234,9 +232,7 @@ func (ra *roaringArray) equals(o interface{}) bool {
 			return false
 		}
 		for i := 0; i < srb.size(); i++ {
-			oself := ra.array[i]
-			other := srb.array[i]
-			if oself.key != other.key || !oself.value.equals(other.value) {
+			if ra.keys[i] != srb.keys[i] || !ra.containers[i].equals(srb.containers[i]) {
 				return false
 			}
 		}
@@ -247,9 +243,9 @@ func (ra *roaringArray) equals(o interface{}) bool {
 
 func (b *roaringArray) serializedSizeInBytes() uint64 {
 	count := uint64(4 + 4)
-	for _, item := range b.array {
+	for _, c := range b.containers {
 		count = count + 4 + 4
-		count = count + uint64(item.value.serializedSizeInBytes())
+		count = count + uint64(c.serializedSizeInBytes())
 	}
 	return count
 }
@@ -259,30 +255,32 @@ func (b *roaringArray) writeTo(stream io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	err = binary.Write(stream, binary.LittleEndian, uint32(len(b.array)))
+	err = binary.Write(stream, binary.LittleEndian, uint32(len(b.keys)))
 	if err != nil {
 		return 0, err
 	}
-	for _, item := range b.array {
-		err = binary.Write(stream, binary.LittleEndian, uint16(item.key))
+	for i, key := range b.keys {
+		err = binary.Write(stream, binary.LittleEndian, uint16(key))
 		if err != nil {
 			return 0, err
 		}
-		err = binary.Write(stream, binary.LittleEndian, uint16(item.value.getCardinality()-1))
+
+		c := b.containers[i]
+		err = binary.Write(stream, binary.LittleEndian, uint16(c.getCardinality()-1))
 		if err != nil {
 			return 0, err
 		}
 	}
-	startOffset := 4 + 4 + 4*len(b.array) + 4*len(b.array)
-	for _, item := range b.array {
+	startOffset := 4 + 4 + 4*len(b.keys) + 4*len(b.keys)
+	for _, c := range b.containers {
 		err = binary.Write(stream, binary.LittleEndian, uint32(startOffset))
 		if err != nil {
 			return 0, err
 		}
-		startOffset += getSizeInBytesFromCardinality(item.value.getCardinality())
+		startOffset += getSizeInBytesFromCardinality(c.getCardinality())
 	}
-	for _, item := range b.array {
-		_, err := item.value.writeTo(stream)
+	for _, c := range b.containers {
+		_, err := c.writeTo(stream)
 		if err != nil {
 			return 0, err
 		}
@@ -322,11 +320,11 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 			nb := newBitmapContainer()
 			nb.readFrom(stream)
 			nb.cardinality = int(c)
-			b.append(keycard[2*i], nb)
+			b.appendContainer(keycard[2*i], nb)
 		} else {
 			nb := newArrayContainerSize(int(c))
 			nb.readFrom(stream)
-			b.append(keycard[2*i], nb)
+			b.appendContainer(keycard[2*i], nb)
 		}
 	}
 	return offset, nil
@@ -335,34 +333,34 @@ func (b *roaringArray) readFrom(stream io.Reader) (int, error) {
 func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 	lower := pos + 1
 
-	if lower >= len(ra.array) || ra.array[lower].key >= min {
+	if lower >= len(ra.keys) || ra.keys[lower] >= min {
 		return lower
 	}
 
 	spansize := 1
 
-	for lower+spansize < len(ra.array) && ra.array[lower+spansize].key < min {
+	for lower+spansize < len(ra.keys) && ra.keys[lower+spansize] < min {
 		spansize *= 2
 	}
 	var upper int
-	if lower+spansize < len(ra.array) {
+	if lower+spansize < len(ra.keys) {
 		upper = lower + spansize
 	} else {
-		upper = len(ra.array) - 1
+		upper = len(ra.keys) - 1
 	}
 
-	if ra.array[upper].key == min {
+	if ra.keys[upper] == min {
 		return upper
 	}
 
-	if ra.array[upper].key < min {
+	if ra.keys[upper] < min {
 		// means
 		// array
 		// has no
 		// item
 		// >= min
 		// pos = array.length;
-		return len(ra.array)
+		return len(ra.keys)
 	}
 
 	// we know that the next-smallest span was too small
@@ -371,9 +369,9 @@ func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 	mid := 0
 	for lower+1 != upper {
 		mid = (lower + upper) / 2
-		if ra.array[mid].key == min {
+		if ra.keys[mid] == min {
 			return mid
-		} else if ra.array[mid].key < min {
+		} else if ra.keys[mid] < min {
 			lower = mid
 		} else {
 			upper = mid

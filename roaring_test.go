@@ -381,7 +381,6 @@ func TestRoaringBitmap(t *testing.T) {
 		}
 	})
 
-
 	Convey("or test", t, func() {
 		rr := NewRoaringBitmap()
 		for k := 0; k < 4000; k++ {
@@ -1321,7 +1320,7 @@ func TestRoaringArray(t *testing.T) {
 	})
 
 	Convey("Test Insert", t, func() {
-		a.append(0, newArrayContainer())
+		a.appendContainer(0, newArrayContainer())
 
 		So(a.size(), ShouldEqual, 1)
 	})
