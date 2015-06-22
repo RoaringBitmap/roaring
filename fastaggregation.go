@@ -63,7 +63,7 @@ func FastHorizontalOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 		case *bitmapContainer:
 			thiscontainer.(*bitmapContainer).computeCardinality()
 		}
-		answer.highlowcontainer.append(thiskey, thiscontainer)
+		answer.highlowcontainer.appendContainer(thiskey, thiscontainer)
 	}
 	return answer
 }

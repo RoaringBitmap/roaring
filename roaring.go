@@ -174,10 +174,12 @@ func (rb *RoaringBitmap) Add(x uint32) {
 		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.add(lowbits(x)))
 	}
 }
+
 // Add the integer x to the bitmap (convenience method: the parameter is casted to uint32 and we call Add)
 func (rb *RoaringBitmap) AddInt(x int) {
 	rb.Add(uint32(x))
 }
+
 // Remove the integer x from the bitmap
 func (rb *RoaringBitmap) Remove(x uint32) {
 	hb := highbits(x)
@@ -393,7 +395,7 @@ main:
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 				} else {
 
-					answer.highlowcontainer.append(s1, x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)))
+					answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)))
 					pos1++
 					pos2++
 					if (pos1 == length1) || (pos2 == length2) {
@@ -433,7 +435,7 @@ main:
 					C = C.and(x2.highlowcontainer.getContainerAtIndex(pos2))
 
 					if C.getCardinality() > 0 {
-						answer.highlowcontainer.append(s1, C)
+						answer.highlowcontainer.appendContainer(s1, C)
 					}
 					pos1++
 					pos2++
@@ -483,7 +485,7 @@ func Xor(x1, x2 *RoaringBitmap) *RoaringBitmap {
 			} else {
 				c := x1.highlowcontainer.getContainerAtIndex(pos1).xor(x2.highlowcontainer.getContainerAtIndex(pos2))
 				if c.getCardinality() > 0 {
-					answer.highlowcontainer.append(s1, c)
+					answer.highlowcontainer.appendContainer(s1, c)
 				}
 				pos1++
 				pos2++
@@ -526,7 +528,7 @@ main:
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
 					diff := c1.andNot(c2)
 					if diff.getCardinality() > 0 {
-						answer.highlowcontainer.append(s1, diff)
+						answer.highlowcontainer.appendContainer(s1, diff)
 					}
 					pos1++
 					pos2++
@@ -604,9 +606,8 @@ func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd uint32) {
 
 // FlipInt calls Flip after casting the parameters to uint32 (convenience method)
 func (rb *RoaringBitmap) FlipInt(rangeStart, rangeEnd int) {
-	rb.Flip(uint32(rangeStart),uint32(rangeEnd))
+	rb.Flip(uint32(rangeStart), uint32(rangeEnd))
 }
-
 
 // Add the integers in [rangeStart, rangeEnd) to the bitmap
 func (rb *RoaringBitmap) AddRange(rangeStart, rangeEnd uint32) {
@@ -699,7 +700,6 @@ func (rb *RoaringBitmap) RemoveRange(rangeStart, rangeEnd uint32) {
 	rb.highlowcontainer.removeIndexRange(ifirst, ilast)
 }
 
-
 // Flip negates the bits in the given range, any integer present in this range and in the bitmap is removed,
 // and any integer present in the range and not in the bitmap is added, a new bitmap is returned leaving
 // the current bitmap unchanged
@@ -751,5 +751,5 @@ func Flip(bm *RoaringBitmap, rangeStart, rangeEnd uint32) *RoaringBitmap {
 
 // FlipInt calls Flip after casting the parameters to uint32 (convenience method)
 func FlipInt(bm *RoaringBitmap, rangeStart, rangeEnd int) *RoaringBitmap {
-	return Flip(bm,uint32(rangeStart),uint32(rangeEnd))
+	return Flip(bm, uint32(rangeStart), uint32(rangeEnd))
 }
