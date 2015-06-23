@@ -175,6 +175,25 @@ func (rb *RoaringBitmap) Add(x uint32) {
 	}
 }
 
+
+// Add the integer x to the bitmap and return true  if it was added (false if the integer was already present)
+func (rb *RoaringBitmap) CheckedAdd(x uint32) bool {
+	// TODO: add unit tests for this method
+	hb := highbits(x)
+	i := rb.highlowcontainer.getIndex(hb)
+	if i >= 0 {
+		C := rb.highlowcontainer.getContainerAtIndex(i)
+		oldcard := C.getCardinality()
+		C = C.add(lowbits(x))
+		rb.highlowcontainer.setContainerAtIndex(i, C)
+		return C.getCardinality() > oldcard
+	} else {
+		newac := newArrayContainer()
+		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.add(lowbits(x)))
+		return true
+	}
+}
+
 // Add the integer x to the bitmap (convenience method: the parameter is casted to uint32 and we call Add)
 func (rb *RoaringBitmap) AddInt(x int) {
 	rb.Add(uint32(x))
@@ -191,6 +210,27 @@ func (rb *RoaringBitmap) Remove(x uint32) {
 		}
 	}
 }
+
+// Remove the integer x from the bitmap and return true if the integer was effectively remove (and false if the integer was not present)
+func (rb *RoaringBitmap) CheckedRemove(x uint32) bool {
+	// TODO: add unit tests for this method
+	hb := highbits(x)
+	i := rb.highlowcontainer.getIndex(hb)
+	if i >= 0 {
+		C := rb.highlowcontainer.getContainerAtIndex(i)
+		oldcard := C.getCardinality()
+		C = C.remove(lowbits(x))
+		rb.highlowcontainer.setContainerAtIndex(i, C)
+		if rb.highlowcontainer.getContainerAtIndex(i).getCardinality() == 0 {
+			rb.highlowcontainer.removeAtIndex(i)
+			return true
+		}
+		return C.getCardinality() > oldcard
+	} else {
+		return false
+	}
+}
+
 
 // IsEmpty returns true if the RoaringBitmap is empty (it is faster than doing (GetCardinality() == 0))
 func (rb *RoaringBitmap) IsEmpty() bool {
