@@ -48,18 +48,22 @@ func rangeOfOnes(start, last int) container {
 type roaringArray struct {
 	keys       []uint16
 	containers []container
+	dirty      []bool
 }
 
 func newRoaringArray() *roaringArray {
-	return &roaringArray{
-		keys:       make([]uint16, 0, 0),
-		containers: make([]container, 0, 0),
-	}
+	ra := &roaringArray{}
+	ra.clear()
+
+	return ra
 }
 
 func (ra *roaringArray) appendContainer(key uint16, value container) {
 	ra.keys = append(ra.keys, key)
 	ra.containers = append(ra.containers, value)
+	if ra.hasDirty() {
+		ra.dirty = append(ra.dirty, false)
+	}
 }
 
 func (ra *roaringArray) appendCopy(sa roaringArray, startingindex int) {
@@ -98,38 +102,48 @@ func (ra *roaringArray) removeIndexRange(begin, end int) {
 	if end <= begin {
 		return
 	}
+
 	r := end - begin
+
 	copy(ra.keys[begin:], ra.keys[end:])
 	copy(ra.containers[begin:], ra.containers[end:])
-	for i := 1; i <= r; i++ {
-		ra.containers[len(ra.containers)-i] = nil
+	if ra.hasDirty() {
+		copy(ra.dirty[begin:], ra.dirty[end:])
 	}
 
-	ra.keys = ra.keys[:len(ra.keys)-r]
-	ra.containers = ra.containers[:len(ra.containers)-r]
+	ra.resize(len(ra.keys) - r)
 }
 
 func (ra *roaringArray) resize(newsize int) {
 	for k := newsize; k < len(ra.containers); k++ {
 		ra.containers[k] = nil
 	}
+
 	ra.keys = ra.keys[:newsize]
 	ra.containers = ra.containers[:newsize]
+	if ra.hasDirty() {
+		ra.dirty = ra.dirty[:newsize]
+	}
 }
 
 func (ra *roaringArray) clear() {
-	ra.keys = make([]uint16, 0, 0)
-	ra.containers = make([]container, 0, 0)
+	ra.keys = make([]uint16, 0)
+	ra.containers = make([]container, 0)
+	ra.dirty = make([]bool, 0)
 }
 
 func (ra *roaringArray) clone() *roaringArray {
 	sa := new(roaringArray)
 	sa.keys = make([]uint16, len(ra.keys))
 	sa.containers = make([]container, len(ra.containers))
-	for i := 0; i < len(ra.containers); i++ {
-		sa.containers[i] = ra.containers[i].clone()
-		sa.keys[i] = ra.keys[i]
-	}
+	sa.dirty = make([]bool, len(ra.keys))
+
+	copy(sa.keys, ra.keys)
+	copy(sa.containers, ra.containers)
+
+	sa.markAllDirty()
+	ra.markAllDirty()
+
 	return sa
 }
 
@@ -146,6 +160,14 @@ func (ra *roaringArray) getContainer(x uint16) container {
 }
 
 func (ra *roaringArray) getContainerAtIndex(i int) container {
+	return ra.containers[i]
+}
+
+func (ra *roaringArray) getWritableContainerAtIndex(i int) container {
+	if len(ra.dirty) > 0 && ra.dirty[i] {
+		ra.containers[i] = ra.containers[i].clone()
+		ra.dirty[i] = false
+	}
 	return ra.containers[i]
 }
 
@@ -171,6 +193,12 @@ func (ra *roaringArray) insertNewKeyValueAt(i int, key uint16, value container) 
 
 	ra.keys[i] = key
 	ra.containers[i] = value
+
+	if ra.hasDirty() {
+		ra.dirty = append(ra.dirty, false)
+		copy(ra.dirty[i+1:], ra.dirty[i:])
+		ra.dirty[i] = false
+	}
 }
 
 func (ra *roaringArray) remove(key uint16) bool {
@@ -183,22 +211,27 @@ func (ra *roaringArray) remove(key uint16) bool {
 }
 
 func (ra *roaringArray) removeAtIndex(i int) {
-
 	copy(ra.keys[i:], ra.keys[i+1:])
 	copy(ra.containers[i:], ra.containers[i+1:])
 
-	ra.containers[len(ra.containers)-1] = nil
+	if ra.hasDirty() {
+		copy(ra.dirty[i:], ra.dirty[i+1:])
+	}
 
-	ra.keys = ra.keys[:len(ra.keys)-1]
-	ra.containers = ra.containers[:len(ra.containers)-1]
+	ra.resize(len(ra.keys) - 1)
 }
 
 func (ra *roaringArray) setContainerAtIndex(i int, c container) {
 	ra.containers[i] = c
 }
+
 func (ra *roaringArray) replaceKeyAndContainerAtIndex(i int, key uint16, c container) {
 	ra.keys[i] = key
 	ra.containers[i] = c
+
+	if ra.hasDirty() {
+		ra.dirty[i] = false
+	}
 }
 
 func (ra *roaringArray) size() int {
@@ -378,5 +411,20 @@ func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 		}
 	}
 	return upper
+}
 
+func (ra *roaringArray) markAllDirty() {
+	dirty := make([]bool, len(ra.keys))
+	for i := range dirty {
+		dirty[i] = true
+	}
+	ra.dirty = dirty
+}
+
+func (ra *roaringArray) hasDirty() bool {
+	return len(ra.dirty) > 0
+}
+
+func (ra *roaringArray) isDirty(i int) bool {
+	return ra.hasDirty() && ra.dirty[i]
 }
