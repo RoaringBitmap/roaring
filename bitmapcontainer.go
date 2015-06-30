@@ -13,11 +13,19 @@ type bitmapContainer struct {
 // writes the content
 func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
 	// Write set
-	err := binary.Write(stream, binary.LittleEndian, b.bitmap)
-	if err != nil {
-		return 0, err
+	buf := make([]byte, 8*len(b.bitmap))
+	for i, v := range b.bitmap {
+		base := i * 8
+		buf[base] = byte(v)
+		buf[base+1] = byte(v >> 8)
+		buf[base+2] = byte(v >> 16)
+		buf[base+3] = byte(v >> 24)
+		buf[base+4] = byte(v >> 32)
+		buf[base+5] = byte(v >> 40)
+		buf[base+6] = byte(v >> 48)
+		buf[base+7] = byte(v >> 56)
 	}
-	return 8 * len(b.bitmap), nil
+	return stream.Write(buf)
 }
 
 func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
@@ -325,7 +333,6 @@ func (bc *bitmapContainer) orBitmap(value2 *bitmapContainer) container {
 func (bc *bitmapContainer) computeCardinality() {
 	bc.cardinality = int(popcntSlice(bc.bitmap))
 }
-
 
 func (bc *bitmapContainer) iorArray(value2 *arrayContainer) container {
 	answer := bc

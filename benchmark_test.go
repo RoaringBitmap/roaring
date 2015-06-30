@@ -1,11 +1,13 @@
 package roaring
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/willf/bitset"
 	"math/rand"
+	"runtime"
 	"testing"
-        "runtime"
+
+	"github.com/willf/bitset"
 )
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
@@ -335,5 +337,59 @@ func BenchmarkSparseIterateBitset(b *testing.B) {
 		for i, e := s.NextSet(0); e; i, e = s.NextSet(i + 1) {
 			c++
 		}
+	}
+}
+
+func BenchmarkSerializationSparse(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	s := NewRoaringBitmap()
+	sz := 100000000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(r.Int31n(int32(sz))))
+	}
+	buf := make([]byte, 0, s.GetSerializedSizeInBytes())
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		w := bytes.NewBuffer(buf[:0])
+		s.WriteTo(w)
+	}
+}
+
+func BenchmarkSerializationMid(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	s := NewRoaringBitmap()
+	sz := 10000000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(r.Int31n(int32(sz))))
+	}
+	buf := make([]byte, 0, s.GetSerializedSizeInBytes())
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		w := bytes.NewBuffer(buf[:0])
+		s.WriteTo(w)
+	}
+}
+
+func BenchmarkSerializationDense(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	s := NewRoaringBitmap()
+	sz := 150000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(r.Int31n(int32(sz))))
+	}
+	buf := make([]byte, 0, s.GetSerializedSizeInBytes())
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		w := bytes.NewBuffer(buf[:0])
+		s.WriteTo(w)
 	}
 }
