@@ -51,10 +51,10 @@ type roaringArray struct {
 }
 
 func newRoaringArray() *roaringArray {
-	return &roaringArray{
-		keys:       make([]uint16, 0, 0),
-		containers: make([]container, 0, 0),
-	}
+	ra := &roaringArray{}
+	ra.clear()
+
+	return ra
 }
 
 func (ra *roaringArray) appendContainer(key uint16, value container) {
@@ -98,15 +98,12 @@ func (ra *roaringArray) removeIndexRange(begin, end int) {
 	if end <= begin {
 		return
 	}
+
 	r := end - begin
 	copy(ra.keys[begin:], ra.keys[end:])
 	copy(ra.containers[begin:], ra.containers[end:])
-	for i := 1; i <= r; i++ {
-		ra.containers[len(ra.containers)-i] = nil
-	}
 
-	ra.keys = ra.keys[:len(ra.keys)-r]
-	ra.containers = ra.containers[:len(ra.containers)-r]
+	ra.resize(len(ra.keys) - r)
 }
 
 func (ra *roaringArray) resize(newsize int) {
@@ -118,8 +115,8 @@ func (ra *roaringArray) resize(newsize int) {
 }
 
 func (ra *roaringArray) clear() {
-	ra.keys = make([]uint16, 0, 0)
-	ra.containers = make([]container, 0, 0)
+	ra.keys = make([]uint16, 0)
+	ra.containers = make([]container, 0)
 }
 
 func (ra *roaringArray) clone() *roaringArray {
@@ -183,14 +180,10 @@ func (ra *roaringArray) remove(key uint16) bool {
 }
 
 func (ra *roaringArray) removeAtIndex(i int) {
-
 	copy(ra.keys[i:], ra.keys[i+1:])
 	copy(ra.containers[i:], ra.containers[i+1:])
 
-	ra.containers[len(ra.containers)-1] = nil
-
-	ra.keys = ra.keys[:len(ra.keys)-1]
-	ra.containers = ra.containers[:len(ra.containers)-1]
+	ra.resize(len(ra.keys) - 1)
 }
 
 func (ra *roaringArray) setContainerAtIndex(i int, c container) {
@@ -224,6 +217,7 @@ func (ra *roaringArray) binarySearch(begin, end int, key uint16) int {
 	}
 	return -(low + 1)
 }
+
 func (ra *roaringArray) equals(o interface{}) bool {
 	srb, ok := o.(roaringArray)
 	if ok {
