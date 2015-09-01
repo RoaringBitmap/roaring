@@ -233,7 +233,7 @@ func (rb *RoaringBitmap) CheckedRemove(x uint32) bool {
 			rb.highlowcontainer.removeAtIndex(i)
 			return true
 		}
-		return C.getCardinality() > oldcard
+		return C.getCardinality() < oldcard
 	} else {
 		return false
 	}
