@@ -166,15 +166,22 @@ func (rb *RoaringBitmap) Equals(o interface{}) bool {
 // Add the integer x to the bitmap
 func (rb *RoaringBitmap) Add(x uint32) {
 	hb := highbits(x)
-	i := rb.highlowcontainer.getIndex(hb)
+	ra := rb.highlowcontainer
+	i := ra.getIndex(hb)
 	if i >= 0 {
-		rb.highlowcontainer.setContainerAtIndex(i, rb.highlowcontainer.getContainerAtIndex(i).add(lowbits(x)))
+		var c container
+		if ra.hasDirty() {
+			c = ra.getWritableContainerAtIndex(i)
+		} else {
+			c = ra.getContainerAtIndex(i)
+		}
+		c = c.add(lowbits(x))
+		rb.highlowcontainer.setContainerAtIndex(i, c)
 	} else {
 		newac := newArrayContainer()
 		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.add(lowbits(x)))
 	}
 }
-
 
 // Add the integer x to the bitmap and return true  if it was added (false if the integer was already present)
 func (rb *RoaringBitmap) CheckedAdd(x uint32) bool {
@@ -204,7 +211,8 @@ func (rb *RoaringBitmap) Remove(x uint32) {
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {
-		rb.highlowcontainer.setContainerAtIndex(i, rb.highlowcontainer.getContainerAtIndex(i).remove(lowbits(x)))
+		c := rb.highlowcontainer.getWritableContainerAtIndex(i).remove(lowbits(x))
+		rb.highlowcontainer.setContainerAtIndex(i, c.remove(lowbits(x)))
 		if rb.highlowcontainer.getContainerAtIndex(i).getCardinality() == 0 {
 			rb.highlowcontainer.removeAtIndex(i)
 		}
@@ -230,7 +238,6 @@ func (rb *RoaringBitmap) CheckedRemove(x uint32) bool {
 		return false
 	}
 }
-
 
 // IsEmpty returns true if the RoaringBitmap is empty (it is faster than doing (GetCardinality() == 0))
 func (rb *RoaringBitmap) IsEmpty() bool {
@@ -297,7 +304,7 @@ main:
 			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
 			for {
 				if s1 == s2 {
-					c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
+					c1 := rb.highlowcontainer.getWritableContainerAtIndex(pos1)
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
 					diff := c1.iand(c2)
 					if diff.getCardinality() > 0 {
@@ -359,7 +366,7 @@ main:
 			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
 			for {
 				if s1 == s2 {
-					c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
+					c1 := rb.highlowcontainer.getWritableContainerAtIndex(pos1)
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
 					diff := c1.iandNot(c2)
 					if diff.getCardinality() > 0 {
@@ -374,7 +381,7 @@ main:
 					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 				} else if s1 < s2 {
-					c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
+					c1 := rb.highlowcontainer.getWritableContainerAtIndex(pos1)
 					rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, c1)
 					intersectionsize++
 					pos1++
@@ -631,7 +638,7 @@ func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd uint32) {
 		i := rb.highlowcontainer.getIndex(hb)
 
 		if i >= 0 {
-			c := rb.highlowcontainer.getContainerAtIndex(i).inot(int(containerStart), int(containerLast))
+			c := rb.highlowcontainer.getWritableContainerAtIndex(i).inot(int(containerStart), int(containerLast))
 			if c.getCardinality() > 0 {
 				rb.highlowcontainer.setContainerAtIndex(i, c)
 			} else {
