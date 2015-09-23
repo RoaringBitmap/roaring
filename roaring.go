@@ -7,6 +7,7 @@ package roaring
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"strconv"
@@ -15,6 +16,25 @@ import (
 // RoaringBitmap represents a compressed bitmap where you can add integers.
 type RoaringBitmap struct {
 	highlowcontainer roaringArray
+}
+
+func (b *RoaringBitmap) ToBase64() (string, error) {
+	buf := new(bytes.Buffer)
+	_, err := b.WriteTo(buf)
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), err
+
+}
+
+func (b *RoaringBitmap) FromBase64(str string) (int, error) {
+
+	data, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return 0, err
+	}
+	buf := bytes.NewBuffer(data)
+
+	return b.ReadFrom(buf)
+
 }
 
 // Write out a serialized version of this bitmap to stream
