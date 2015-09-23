@@ -7,6 +7,29 @@ import (
 	"testing"
 )
 
+func TestBase64(t *testing.T) {
+	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
+
+	bstr, _ := rb.ToBase64()
+
+	if bstr == "" {
+		t.Errorf("ToBase64 failed returned empty string")
+	}
+
+	newrb := NewRoaringBitmap()
+
+	_, err := newrb.FromBase64(bstr)
+
+	if err != nil {
+		t.Errorf("Failed reading from base64 string")
+	}
+
+	if !rb.Equals(newrb) {
+		t.Errorf("comparing the base64 to and from failed cannot retrieve serialized version")
+	}
+
+}
+
 func TestSerializationBasic(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
 	l := int(rb.GetSerializedSizeInBytes())
