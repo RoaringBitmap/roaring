@@ -1,32 +1,9 @@
 package roaring
 
-import (
-	"encoding/binary"
-	"io"
-	"unsafe"
-)
+import "unsafe"
 
 type arrayContainer struct {
 	content []uint16
-}
-
-// writes the content (omitting the cardinality)
-func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
-	buf := make([]byte, 2*len(b.content))
-	for i, v := range b.content {
-		base := i * 2
-		buf[base] = byte(v)
-		buf[base+1] = byte(v >> 8)
-	}
-	return stream.Write(buf)
-}
-
-func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
-	err := binary.Read(stream, binary.LittleEndian, b.content)
-	if err != nil {
-		return 0, err
-	}
-	return 2 * len(b.content), nil
 }
 
 func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
