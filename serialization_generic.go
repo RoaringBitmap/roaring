@@ -2,7 +2,10 @@
 
 package roaring
 
-import "io"
+import (
+	"encoding/binary"
+	"io"
+)
 
 func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
 	buf := make([]byte, 2*len(b.content))
@@ -12,6 +15,14 @@ func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
 		buf[base+1] = byte(v >> 8)
 	}
 	return stream.Write(buf)
+}
+
+func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
+	err := binary.Read(stream, binary.LittleEndian, b.content)
+	if err != nil {
+		return 0, err
+	}
+	return 2 * len(b.content), nil
 }
 
 func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
@@ -29,4 +40,12 @@ func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
 		buf[base+7] = byte(v >> 56)
 	}
 	return stream.Write(buf)
+}
+
+func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
+	err := binary.Read(stream, binary.LittleEndian, b.bitmap)
+	if err != nil {
+		return 0, err
+	}
+	return 8 * len(b.bitmap), nil
 }

@@ -18,6 +18,16 @@ func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
 	return stream.Write(buf)
 }
 
+func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
+	buf := uint16SliceAsByteSlice(b.content)
+	return io.ReadFull(stream, buf)
+}
+
+func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
+	buf := uint64SliceAsByteSlice(b.bitmap)
+	return io.ReadFull(stream, buf)
+}
+
 func uint64SliceAsByteSlice(slice []uint64) []byte {
 	// make a new slice header
 	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))

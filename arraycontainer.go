@@ -1,21 +1,9 @@
 package roaring
 
-import (
-	"encoding/binary"
-	"io"
-	"unsafe"
-)
+import "unsafe"
 
 type arrayContainer struct {
 	content []uint16
-}
-
-func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
-	err := binary.Read(stream, binary.LittleEndian, b.content)
-	if err != nil {
-		return 0, err
-	}
-	return 2 * len(b.content), nil
 }
 
 func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
