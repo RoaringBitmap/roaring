@@ -12,7 +12,7 @@ from a Java program and load them back in Go, and vice versa.
 
 This code is licensed under Apache License, Version 2.0 (ASL2.0). 
 
-Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@statik), Bob Potter (@bpot), Tyson Maly (@tvmaly) 
+Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@statik), Bob Potter (@bpot), Tyson Maly (@tvmaly), Will Glynn (@willglynn) 
 
 
 ### Dependencies
