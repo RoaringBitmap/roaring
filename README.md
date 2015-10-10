@@ -1,10 +1,13 @@
 RoaringBitmap [![Build Status](https://travis-ci.org/tgruben/roaring.png)](https://travis-ci.org/tgruben/roaring)[![GoDoc](https://godoc.org/github.com/tgruben/roaring?status.svg)](https://godoc.org/github.com/tgruben/roaring) 
 =============
 
-This is a go port of the Roaring bitmap data structure.  The original java version
-can be found at https://github.com/lemire/RoaringBitmap and the supporting paper is
+This is a go port of the Roaring bitmap data structure. 
 
-Samy Chambi, Daniel Lemire, Owen Kaser, Robert Godin, Better bitmap performance with Roaring bitmaps, Software: Practice and Experience (to appear) http://arxiv.org/abs/1402.6407
+Roaring is  used by Apache Spark (https://spark.apache.org/), Apache Kylin (http://kylin.io),
+Druid.io (http://druid.io/) and  Apache Lucene (http://lucene.apache.org/) (as well as supporting systems
+such as Solr and Elastic). 
+
+The original java version can be found at https://github.com/lemire/RoaringBitmap
 
 The Java and Go version are meant to be binary compatible: you can save bitmaps
 from a Java program and load them back in Go, and vice versa. 
@@ -14,6 +17,9 @@ This code is licensed under Apache License, Version 2.0 (ASL2.0).
 
 Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@statik), Bob Potter (@bpot), Tyson Maly (@tvmaly), Will Glynn (@willglynn) 
 
+### Reference
+
+Samy Chambi, Daniel Lemire, Owen Kaser, Robert Godin, Better bitmap performance with Roaring bitmaps, Software: Practice and Experience (to appear) http://arxiv.org/abs/1402.6407
 
 ### Dependencies
 
