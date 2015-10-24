@@ -242,8 +242,7 @@ func (ra *roaringArray) binarySearch(begin, end int, key uint16) int {
 	low := begin
 	high := end - 1
 	ikey := int(key)
-	// the 32 in the next corresponds to a cache line
-	for low+32 <= high {
+	for low <= high {
 		middleIndex := int(uint((low + high)) >> 1)
 		middleValue := int(ra.keys[middleIndex])
 
@@ -253,16 +252,6 @@ func (ra *roaringArray) binarySearch(begin, end int, key uint16) int {
 			high = middleIndex - 1
 		} else {
 			return middleIndex
-		}
-	}
-	// we finish the job with a sequential search
-	for ; low <= high; low++ {
-		val := int(ra.keys[low])
-		if val >= ikey {
-			if val == ikey {
-				return low
-			}
-			break
 		}
 	}
 	return -(low + 1)

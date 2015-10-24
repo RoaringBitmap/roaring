@@ -123,8 +123,6 @@ func TestFastAggregationsAdvanced(t *testing.T) {
 	})
 }
 
-
-
 func TestFastAggregationsXOR(t *testing.T) {
 	Convey("Fast", t, func() {
 		rb1 := NewRoaringBitmap()
@@ -143,7 +141,7 @@ func TestFastAggregationsXOR(t *testing.T) {
 		So(rb1.GetCardinality() == 40000, ShouldEqual, true)
 
 		xor1 := Xor(rb1, rb2)
-		xor1alt := Xor(rb2,rb1)
+		xor1alt := Xor(rb2, rb1)
 		So(xor1alt.Equals(xor1), ShouldEqual, true)
 		So(FastXor(rb1, rb2).Equals(xor1), ShouldEqual, true)
 
@@ -153,16 +151,15 @@ func TestFastAggregationsXOR(t *testing.T) {
 		So(FastXor(rb2, rb3).Equals(xor2), ShouldEqual, true)
 
 		bigxor := Xor(Xor(rb1, rb2), rb3)
-		bigxoralt1 := Xor(rb1,Xor(rb2, rb3))
-		bigxoralt2 := Xor(rb1,Xor(rb3, rb2))
-		bigxoralt3 := Xor(rb3,Xor(rb1, rb2))
-		bigxoralt4 := Xor(Xor(rb1, rb2),rb3)
+		bigxoralt1 := Xor(rb1, Xor(rb2, rb3))
+		bigxoralt2 := Xor(rb1, Xor(rb3, rb2))
+		bigxoralt3 := Xor(rb3, Xor(rb1, rb2))
+		bigxoralt4 := Xor(Xor(rb1, rb2), rb3)
 
 		So(bigxoralt2.Equals(bigxor), ShouldEqual, true)
 		So(bigxoralt1.Equals(bigxor), ShouldEqual, true)
 		So(bigxoralt3.Equals(bigxor), ShouldEqual, true)
 		So(bigxoralt4.Equals(bigxor), ShouldEqual, true)
-
 
 		So(FastXor(rb1, rb2, rb3).Equals(bigxor), ShouldEqual, true)
 	})

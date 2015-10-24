@@ -128,6 +128,4 @@ func TestRoaringContainer(t *testing.T) {
 		So(checkContent(c, s), ShouldEqual, true)
 	})
 
-
-
 }
