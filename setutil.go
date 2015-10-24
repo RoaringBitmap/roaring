@@ -356,8 +356,8 @@ func binarySearch(array []uint16, k uint16) int {
 	low := 0
 	high := len(array) - 1
 	ikey := int(k)
-
-	for low <= high {
+	// the 32 in the next corresponds to a cache line
+	for low+32 <= high {
 		middleIndex := int(uint32(low+high) >> 1)
 		middleValue := int(array[middleIndex])
 
@@ -367,6 +367,16 @@ func binarySearch(array []uint16, k uint16) int {
 			high = middleIndex - 1
 		} else {
 			return middleIndex
+		}
+	}
+	// we finish the job with a sequential search
+	for ; low <= high; low++ {
+		val := int(array[low])
+		if val >= ikey {
+			if val == ikey {
+				return low
+			}
+			break
 		}
 	}
 	return -(low + 1)
