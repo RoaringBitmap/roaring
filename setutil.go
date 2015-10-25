@@ -352,13 +352,12 @@ mainwhile:
 	return pos
 }
 
-func binarySearch(array []uint16, k uint16) int {
+func binarySearch(array []uint16, ikey uint16) int {
 	low := 0
 	high := len(array) - 1
-	ikey := int(k)
-	for low+32 <= high {
+	for low + 16 <= high {
 		middleIndex := int(uint32(low+high) >> 1)
-		middleValue := int(array[middleIndex])
+		middleValue := array[middleIndex]
 		if middleValue < ikey {
 			low = middleIndex + 1
 		} else if middleValue > ikey {
@@ -368,7 +367,7 @@ func binarySearch(array []uint16, k uint16) int {
 		}
 	}
 	for ; low <= high; low++ {
-		val := int(array[low])
+		val := array[low]
 		if val >= ikey {
 			if val == ikey {
 				return low
