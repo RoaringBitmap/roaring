@@ -263,11 +263,13 @@ func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
 			i := uint(value2.content[k]) >> 6
-			bc.bitmap[i] |= (1 << (value2.content[k] % 64))
+			mask := uint64(1) << (value2.content[k] % 64)
+			bc.bitmap[i] |= mask
 		}
 		for k := 0; k < len(ac.content); k++ {
 			i := uint(ac.content[k]) >> 6
-			bc.bitmap[i] |= (1 << (ac.content[k] % 64))
+			mask := uint64(1) << (ac.content[k] % 64)
+			bc.bitmap[i] |= mask
 		}
 		bc.cardinality = int(popcntSlice(bc.bitmap))
 		if bc.cardinality <= arrayDefaultMaxSize {
