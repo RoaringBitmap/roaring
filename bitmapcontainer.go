@@ -284,8 +284,10 @@ func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
 	for k := 0; k < value2.getCardinality(); k++ {
 		i := uint(value2.content[k]) >> 6
-		answer.cardinality += int(uint64(^answer.bitmap[i]&(1<<(value2.content[k]%64))) >> (value2.content[k] % 64))
-		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (value2.content[k] % 64))
+		bef := answer.bitmap[i]
+		aft := bef | (uint64(1) << (value2.content[k] % 64))
+		answer.bitmap[i] = aft
+		answer.cardinality += int((bef - aft) >> 63)
 	}
 	return answer
 }
@@ -307,8 +309,10 @@ func (bc *bitmapContainer) iorArray(value2 *arrayContainer) container {
 	answer := bc
 	for k := 0; k < value2.getCardinality(); k++ {
 		i := uint(value2.content[k]) >> 6
-		answer.cardinality += int(uint64(^answer.bitmap[i]&(1<<(value2.content[k]%64))) >> (value2.content[k] % 64))
-		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (value2.content[k] % 64))
+		bef := answer.bitmap[i]
+		aft := bef | (uint64(1) << (value2.content[k] % 64))
+		answer.bitmap[i] = aft
+		answer.cardinality += int((bef - aft) >> 63)
 	}
 	return answer
 }
