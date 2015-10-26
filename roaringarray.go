@@ -238,13 +238,12 @@ func (ra *roaringArray) size() int {
 	return len(ra.keys)
 }
 
-func (ra *roaringArray) binarySearch(begin, end int, key uint16) int {
+func (ra *roaringArray) binarySearch(begin, end int, ikey uint16) int {
 	low := begin
 	high := end - 1
-	ikey := int(key)
 	for low <= high {
 		middleIndex := int(uint((low + high)) >> 1)
-		middleValue := int(ra.keys[middleIndex])
+		middleValue := ra.keys[middleIndex]
 
 		if middleValue < ikey {
 			low = middleIndex + 1
@@ -254,6 +253,15 @@ func (ra *roaringArray) binarySearch(begin, end int, key uint16) int {
 			return middleIndex
 		}
 	}
+        for ; low <= high; low++ {
+                val := ra.keys[low]
+                if val >= ikey {
+                        if val == ikey {
+                                return low
+                        }
+                        break
+                }
+        }
 	return -(low + 1)
 }
 

@@ -327,21 +327,21 @@ func BenchmarkIterateBitset(b *testing.B) {
 func BenchmarkSparseContains(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := bitset.New(0)
-	sz := 100000000
+	s := NewRoaringBitmap()
+	sz := 10000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
-		s.Set(uint(r.Int31n(int32(sz))))
+		s.Add(uint32(r.Int31n(int32(sz))))
 	}
-	var a [1024]uint
+	var a [1024]uint32;
 	for i := 0; i < 1024; i++ {
-		a[i] = uint(r.Int31n(int32(sz)))
+		a[i] = uint32(r.Int31n(int32(sz)))
 	}
 	b.StartTimer()
 	for j := 0; j < b.N; j++ {
 		c = uint(0)
 		for i := 0; i < 1024; i++ {
-			if s.Test(a[i]) {
+			if s.Contains(a[i]) {
 				c++
 			}
 
