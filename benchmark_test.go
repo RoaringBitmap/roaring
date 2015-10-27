@@ -333,7 +333,7 @@ func BenchmarkSparseContains(b *testing.B) {
 	for i := 0; i < initsize; i++ {
 		s.Add(uint32(r.Int31n(int32(sz))))
 	}
-	var a [1024]uint32;
+	var a [1024]uint32
 	for i := 0; i < 1024; i++ {
 		a[i] = uint32(r.Int31n(int32(sz)))
 	}

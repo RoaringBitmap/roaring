@@ -355,7 +355,7 @@ mainwhile:
 func binarySearch(array []uint16, ikey uint16) int {
 	low := 0
 	high := len(array) - 1
-	for low + 16 <= high {
+	for low+16 <= high {
 		middleIndex := int(uint32(low+high) >> 1)
 		middleValue := array[middleIndex]
 		if middleValue < ikey {

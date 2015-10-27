@@ -109,7 +109,7 @@ func (bc *bitmapContainer) add(i uint16) container {
 
 func (bc *bitmapContainer) remove(i uint16) container {
 	if bc.contains(i) {
-		bc.cardinality -= 1
+		bc.cardinality--
 		bc.bitmap[i/64] &^= (uint64(1) << (i % 64))
 		if bc.cardinality == arrayDefaultMaxSize {
 			return bc.toArrayContainer()
@@ -285,10 +285,12 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 
 func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
-	for k := 0; k < value2.getCardinality(); k++ {
-		i := uint(value2.content[k]) >> 6
+	c := value2.getCardinality()
+	for k := 0; k < c; k++ {
+		v := value2.content[k]
+		i := uint(v) >> 6
 		bef := answer.bitmap[i]
-		aft := bef | (uint64(1) << (value2.content[k] % 64))
+		aft := bef | (uint64(1) << (v % 64))
 		answer.bitmap[i] = aft
 		answer.cardinality += int((bef - aft) >> 63)
 	}
@@ -310,7 +312,8 @@ func (bc *bitmapContainer) computeCardinality() {
 
 func (bc *bitmapContainer) iorArray(value2 *arrayContainer) container {
 	answer := bc
-	for k := 0; k < value2.getCardinality(); k++ {
+	c := value2.getCardinality()
+	for k := 0; k < c; k++ {
 		vc := value2.content[k]
 		i := uint(vc) >> 6
 		bef := answer.bitmap[i]
@@ -333,7 +336,8 @@ func (bc *bitmapContainer) iorBitmap(value2 *bitmapContainer) container {
 
 func (bc *bitmapContainer) lazyIORArray(value2 *arrayContainer) container {
 	answer := bc
-	for k := 0; k < value2.getCardinality(); k++ {
+	c := value2.getCardinality()
+	for k := 0; k < c; k++ {
 		vc := value2.content[k]
 		i := uint(vc) >> 6
 		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (vc % 64))
@@ -361,7 +365,8 @@ func (bc *bitmapContainer) xor(a container) container {
 
 func (bc *bitmapContainer) xorArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
-	for k := 0; k < value2.getCardinality(); k++ {
+	c := value2.getCardinality()
+	for k := 0; k < c; k++ {
 		vc := value2.content[k]
 		index := uint(vc) >> 6
 		abi := answer.bitmap[index]
@@ -435,9 +440,11 @@ func (bc *bitmapContainer) iand(a container) container {
 }
 func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
 	answer := newArrayContainerCapacity(len(value2.content))
-	for k := 0; k < value2.getCardinality(); k++ {
-		if bc.contains(value2.content[k]) {
-			answer.content = append(answer.content, value2.content[k])
+	c := value2.getCardinality()
+	for k := 0; k < c; k++ {
+		v := value2.content[k]
+		if bc.contains(v) {
+			answer.content = append(answer.content, v)
 		}
 	}
 	return answer
@@ -499,11 +506,14 @@ func (bc *bitmapContainer) iandNot(a container) container {
 
 func (bc *bitmapContainer) andNotArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
-	for k := 0; k < value2.getCardinality(); k++ {
+	c := value2.getCardinality()
+	for k := 0; k < c; k++ {
 		vc := value2.content[k]
 		i := uint(vc) >> 6
-		answer.bitmap[i] = answer.bitmap[i] &^ (uint64(1) << (vc % 64))
-		answer.cardinality -= int(uint64(answer.bitmap[i]^bc.bitmap[i]) >> (vc % 64))
+		oldv := answer.bitmap[i]
+		newv := oldv &^ (uint64(1) << (vc % 64))
+		answer.bitmap[i] = newv
+		answer.cardinality -= int(uint64(oldv^newv) >> (vc % 64))
 	}
 	if answer.cardinality <= arrayDefaultMaxSize {
 		return answer.toArrayContainer()
@@ -548,7 +558,8 @@ func (bc *bitmapContainer) contains(i uint16) bool { //testbit
 func (bc *bitmapContainer) loadData(arrayContainer *arrayContainer) {
 
 	bc.cardinality = arrayContainer.getCardinality()
-	for k := 0; k < arrayContainer.getCardinality(); k++ {
+	c := arrayContainer.getCardinality()
+	for k := 0; k < c; k++ {
 		x := arrayContainer.content[k]
 		i := int(x) / 64
 		bc.bitmap[i] |= (uint64(1) << uint(x%64))

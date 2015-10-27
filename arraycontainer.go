@@ -262,13 +262,15 @@ func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
 	if maxPossibleCardinality > arrayDefaultMaxSize { // it could be a bitmap!^M
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
-			i := uint(value2.content[k]) >> 6
-			mask := uint64(1) << (value2.content[k] % 64)
+			v := value2.content[k]
+			i := uint(v) >> 6
+			mask := uint64(1) << (v % 64)
 			bc.bitmap[i] |= mask
 		}
 		for k := 0; k < len(ac.content); k++ {
-			i := uint(ac.content[k]) >> 6
-			mask := uint64(1) << (ac.content[k] % 64)
+			v := ac.content[k]
+			i := uint(v) >> 6
+			mask := uint64(1) << (v % 64)
 			bc.bitmap[i] |= mask
 		}
 		bc.cardinality = int(popcntSlice(bc.bitmap))
@@ -305,7 +307,8 @@ func (ac *arrayContainer) iand(a container) container {
 
 func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) *arrayContainer {
 	pos := 0
-	for k := 0; k < ac.getCardinality(); k++ {
+	c := ac.getCardinality()
+	for k := 0; k < c; k++ {
 		if bc.contains(ac.content[k]) {
 			ac.content[pos] = ac.content[k]
 			pos++
@@ -332,12 +335,14 @@ func (ac *arrayContainer) xorArray(value2 *arrayContainer) container {
 	if totalCardinality > arrayDefaultMaxSize { // it could be a bitmap!
 		bc := newBitmapContainer()
 		for k := 0; k < len(value2.content); k++ {
-			i := uint(value2.content[k]) >> 6
-			bc.bitmap[i] ^= (uint64(1) << (value2.content[k] % 64))
+			v := value2.content[k]
+			i := uint(v) >> 6
+			bc.bitmap[i] ^= (uint64(1) << (v % 64))
 		}
 		for k := 0; k < len(ac.content); k++ {
-			i := uint(ac.content[k]) >> 6
-			bc.bitmap[i] ^= (uint64(1) << (ac.content[k] % 64))
+			v := ac.content[k]
+			i := uint(v) >> 6
+			bc.bitmap[i] ^= (uint64(1) << (v % 64))
 		}
 		bc.computeCardinality()
 		if bc.cardinality <= arrayDefaultMaxSize {
