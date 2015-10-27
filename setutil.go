@@ -26,20 +26,24 @@ func difference(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	k1 := 0
 	k2 := 0
 	buffer = buffer[:cap(buffer)]
+	s1 := set1[k1]
+	s2 := set2[k2]
 	for {
-		if set1[k1] < set2[k2] {
-			buffer[pos] = set1[k1]
+		if s1 < s2 {
+			buffer[pos] = s1
 			pos++
 			k1++
 			if k1 >= len(set1) {
 				break
 			}
-		} else if set1[k1] == set2[k2] {
+			s1 = set1[k1]
+		} else if s1 == s2 {
 			k1++
 			k2++
 			if k1 >= len(set1) {
 				break
 			}
+			s1 = set1[k1]
 			if k2 >= len(set2) {
 				for ; k1 < len(set1); k1++ {
 					buffer[pos] = set1[k1]
@@ -47,6 +51,7 @@ func difference(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
+			s2 = set2[k2]
 		} else { // if (val1>val2)
 			k2++
 			if k2 >= len(set2) {
@@ -56,6 +61,7 @@ func difference(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
+			s2 = set2[k2]
 		}
 	}
 	return pos
@@ -76,10 +82,12 @@ func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	pos := 0
 	k1 := 0
 	k2 := 0
+	s1 := set1[k1]
+	s2 := set2[k2]
 	buffer = buffer[:cap(buffer)]
 	for {
-		if set1[k1] < set2[k2] {
-			buffer[pos] = set1[k1]
+		if s1 < s2 {
+			buffer[pos] = s1
 			pos++
 			k1++
 			if k1 >= len(set1) {
@@ -89,7 +97,8 @@ func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
-		} else if set1[k1] == set2[k2] {
+			s1 = set1[k1]
+		} else if s1 == s2 {
 			k1++
 			k2++
 			if k1 >= len(set1) {
@@ -106,8 +115,10 @@ func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
+			s1 = set1[k1]
+			s2 = set2[k2]
 		} else { // if (val1>val2)
-			buffer[pos] = set2[k2]
+			buffer[pos] = s2
 			pos++
 			k2++
 			if k2 >= len(set2) {
@@ -117,6 +128,7 @@ func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
+			s2 = set2[k2]
 		}
 	}
 	return pos
@@ -136,10 +148,12 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 		copy(buffer, set2[:len(set2)])
 		return len(set2)
 	}
+	s1 := set1[k1]
+	s2 := set2[k2]
 	buffer = buffer[:cap(buffer)]
 	for {
-		if set1[k1] < set2[k2] {
-			buffer[pos] = set1[k1]
+		if s1 < s2 {
+			buffer[pos] = s1
 			pos++
 			k1++
 			if k1 >= len(set1) {
@@ -149,8 +163,9 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
-		} else if set1[k1] == set2[k2] {
-			buffer[pos] = set1[k1]
+			s1 = set1[k1]
+		} else if s1 == s2 {
+			buffer[pos] = s1
 			pos++
 			k1++
 			k2++
@@ -168,8 +183,10 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
+			s1 = set1[k1]
+			s2 = set2[k2]
 		} else { // if (set1[k1]>set2[k2])
-			buffer[pos] = set2[k2]
+			buffer[pos] = s2
 			pos++
 			k2++
 			if k2 >= len(set2) {
@@ -179,6 +196,7 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 				}
 				break
 			}
+			s2 = set2[k2]
 		}
 	}
 	return pos
@@ -210,43 +228,49 @@ func localintersect2by2(
 	k2 := 0
 	pos := 0
 	buffer = buffer[:cap(buffer)]
+	s1 := set1[k1]
+	s2 := set2[k2]
 mainwhile:
 	for {
 
-		if set2[k2] < set1[k1] {
+		if s2 < s1 {
 			for {
 				k2++
 				if k2 == len(set2) {
 					break mainwhile
 				}
-				if set2[k2] >= set1[k1] {
+				s2 = set2[k2]
+				if s2 >= s1 {
 					break
 				}
 			}
 		}
-		if set1[k1] < set2[k2] {
+		if s1 < s2 {
 			for {
 				k1++
 				if k1 == len(set1) {
 					break mainwhile
 				}
-				if set1[k1] >= set2[k2] {
+				s1 = set1[k1]
+				if s1 >= s2 {
 					break
 				}
 			}
 
 		} else {
 			// (set2[k2] == set1[k1])
-			buffer[pos] = set1[k1]
+			buffer[pos] = s1
 			pos++
 			k1++
 			if k1 == len(set1) {
 				break
 			}
+			s1 = set1[k1]
 			k2++
 			if k2 == len(set2) {
 				break
 			}
+			s2 = set2[k2]
 		}
 	}
 	return pos
@@ -319,33 +343,38 @@ func onesidedgallopingintersect2by2(
 	k1 := 0
 	k2 := 0
 	pos := 0
+	s1 := largeset[k1]
+	s2 := smallset[k2]
 mainwhile:
 
 	for {
-		if largeset[k1] < smallset[k2] {
-			k1 = advanceUntil(largeset, k1, len(largeset), smallset[k2])
+		if s1 < s2 {
+			k1 = advanceUntil(largeset, k1, len(largeset), s2)
 			if k1 == len(largeset) {
 				break mainwhile
 			}
+			s1 = largeset[k1]
 		}
-		if smallset[k2] < largeset[k1] {
+		if s2 < s1 {
 			k2++
 			if k2 == len(smallset) {
 				break mainwhile
 			}
+			s2 = smallset[k2]
 		} else {
 
-			buffer[pos] = smallset[k2]
+			buffer[pos] = s2
 			pos++
 			k2++
 			if k2 == len(smallset) {
 				break
 			}
-
-			k1 = advanceUntil(largeset, k1, len(largeset), smallset[k2])
+			s2 = smallset[k2]
+			k1 = advanceUntil(largeset, k1, len(largeset), s2)
 			if k1 == len(largeset) {
 				break mainwhile
 			}
+			s1 = largeset[k1]
 		}
 
 	}
