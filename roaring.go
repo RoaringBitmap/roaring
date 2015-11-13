@@ -77,8 +77,7 @@ func (rb *RoaringBitmap) ToArray() []uint32 {
 // might differ slightly from the amount of bytes required for persistent storage
 func (rb *RoaringBitmap) GetSizeInBytes() uint64 {
 	size := uint64(8)
-	for i := 0; i < rb.highlowcontainer.size(); i++ {
-		c := rb.highlowcontainer.getContainerAtIndex(i)
+	for _, c := range rb.highlowcontainer.containers {
 		size += uint64(2) + uint64(c.getSizeInBytes())
 	}
 	return size
@@ -267,8 +266,8 @@ func (rb *RoaringBitmap) IsEmpty() bool {
 // GetCardinality returns the number of integers contained in the bitmap
 func (rb *RoaringBitmap) GetCardinality() uint64 {
 	size := uint64(0)
-	for i := 0; i < rb.highlowcontainer.size(); i++ {
-		size += uint64(rb.highlowcontainer.getContainerAtIndex(i).getCardinality())
+	for _, c := range rb.highlowcontainer.containers {
+		size += uint64(c.getCardinality())
 	}
 	return size
 }
