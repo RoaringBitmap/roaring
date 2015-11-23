@@ -272,8 +272,14 @@ func (ra *roaringArray) equals(o interface{}) bool {
 		if srb.size() != ra.size() {
 			return false
 		}
-		for i := 0; i < srb.size(); i++ {
-			if ra.keys[i] != srb.keys[i] || !ra.containers[i].equals(srb.containers[i]) {
+		for i, k := range ra.keys {
+			if k != srb.keys[i] {
+				return false
+			}
+		}
+
+		for i, c := range ra.containers {
+			if !c.equals(srb.containers[i]) {
 				return false
 			}
 		}
