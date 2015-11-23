@@ -421,3 +421,39 @@ func BenchmarkSerializationDense(b *testing.B) {
 		s.WriteTo(w)
 	}
 }
+
+func BenchmarkEqualsSparse(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	s := NewRoaringBitmap()
+	t := NewRoaringBitmap()
+	sz := 100000000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		n := uint32(r.Int31n(int32(sz)))
+		s.Add(n)
+		t.Add(n)
+	}
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		s.Equals(t)
+	}
+}
+
+func BenchmarkEqualsClone(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	s := NewRoaringBitmap()
+	sz := 100000000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(r.Int31n(int32(sz))))
+	}
+	t := s.Clone()
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		s.Equals(t)
+	}
+}
