@@ -179,11 +179,17 @@ func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
 func (ac *arrayContainer) equals(o interface{}) bool {
 	srb, ok := o.(*arrayContainer)
 	if ok {
+		// Check if the containers are the same object.
+		if ac == srb {
+			return true
+		}
+
 		if len(srb.content) != len(ac.content) {
 			return false
 		}
-		for i := 0; i < len(ac.content); i++ {
-			if ac.content[i] != srb.content[i] {
+
+		for i, v := range ac.content {
+			if v != srb.content[i] {
 				return false
 			}
 		}
