@@ -457,3 +457,12 @@ func BenchmarkEqualsClone(b *testing.B) {
 		s.Equals(t)
 	}
 }
+
+func BenchmarkSequentialAdd(b *testing.B) {
+	for j := 0; j < b.N; j++ {
+		s := NewRoaringBitmap()
+		for i := 0; i < 10000000; i += 16 {
+			s.Add(uint32(i))
+		}
+	}
+}
