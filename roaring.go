@@ -185,7 +185,7 @@ func (rb *RoaringBitmap) Equals(o interface{}) bool {
 // Add the integer x to the bitmap
 func (rb *RoaringBitmap) Add(x uint32) {
 	hb := highbits(x)
-	ra := rb.highlowcontainer
+	ra := &rb.highlowcontainer
 	i := ra.getIndex(hb)
 	if i >= 0 {
 		var c container
