@@ -205,7 +205,15 @@ func (ac *arrayContainer) toBitmapContainer() *bitmapContainer {
 
 }
 func (ac *arrayContainer) add(x uint16) container {
+	// Special case adding to the end of the container.
+	l := len(ac.content)
+	if l > 0 && l < arrayDefaultMaxSize && ac.content[l-1] < x {
+		ac.content = append(ac.content, x)
+		return ac
+	}
+
 	loc := binarySearch(ac.content, x)
+
 	if loc < 0 {
 		if len(ac.content) >= arrayDefaultMaxSize {
 			a := ac.toBitmapContainer()
