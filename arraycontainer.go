@@ -309,6 +309,16 @@ func (ac *arrayContainer) and(a container) container {
 	return nil
 }
 
+func (ac *arrayContainer) intersects(a container) bool {
+	switch a.(type) {
+	case *arrayContainer:
+		return ac.intersectsArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return a.intersects(ac)
+	}
+	return false // should not happen
+}
+
 func (ac *arrayContainer) iand(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
@@ -551,6 +561,12 @@ func (ac *arrayContainer) andArray(value2 *arrayContainer) *arrayContainer {
 		answer.content)
 	answer.content = answer.content[:length]
 	return answer
+}
+
+func (ac *arrayContainer) intersectsArray(value2 *arrayContainer) bool {
+	return intersects2by2(
+		ac.content,
+		value2.content)
 }
 
 func (ac *arrayContainer) iandArray(value2 *arrayContainer) *arrayContainer {

@@ -429,6 +429,16 @@ func (bc *bitmapContainer) and(a container) container {
 	return nil
 }
 
+func (bc *bitmapContainer) intersects(a container) bool {
+	switch a.(type) {
+	case *arrayContainer:
+		return bc.intersectsArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return bc.intersectsBitmap(a.(*bitmapContainer))
+	}
+	return nil
+}
+
 func (bc *bitmapContainer) iand(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
@@ -448,7 +458,6 @@ func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
 		}
 	}
 	return answer
-
 }
 
 func (bc *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
@@ -465,6 +474,27 @@ func (bc *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
 	fillArrayAND(ac.content, bc.bitmap, value2.bitmap)
 	ac.content = ac.content[:newcardinality] //not sure why i need this
 	return ac
+
+}
+
+func (bc *bitmapContainer) intersectsArray(value2 *arrayContainer) bool {
+	c := value2.getCardinality()
+	for k := 0; k < c; k++ {
+		v := value2.content[k]
+		if bc.contains(v) {
+			return true
+		}
+	}
+	return false
+}
+
+func (bc *bitmapContainer) intersectsBitmap(value2 *bitmapContainer) bool {
+	for k := 0; k < len(bc.bitmap); k++ {
+		if (bc.bitmap[k] & value2.bitmap[k]) != 0 {
+			return true
+		}
+	}
+	return false
 
 }
 

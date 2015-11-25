@@ -25,7 +25,8 @@ type container interface {
 	equals(i interface{}) bool
 	fillLeastSignificant16bits(array []uint32, i int, mask uint32)
 	or(r container) container
-	ior(r container) container // i stands for inplace
+	ior(r container) container   // i stands for inplace
+	intersects(r container) bool // whether the two containers intersect
 	lazyIOR(r container) container
 	getSizeInBytes() int
 	removeRange(start, final int) container  // range is [firstOfRange,lastOfRange)

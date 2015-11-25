@@ -358,6 +358,153 @@ main:
 	rb.highlowcontainer.resize(intersectionsize)
 }
 
+// OrCardinality  returns the cardinality of the union between two bitmaps, bitmaps are not modified
+func (x1 *RoaringBitmap) OrCardinality(x2 *RoaringBitmap) uint64 {
+	pos1 := 0
+	pos2 := 0
+	length1 := x1.highlowcontainer.size()
+	length2 := x2.highlowcontainer.size()
+	answer := uint64(0)
+main:
+	for {
+		if (pos1 < length1) && (pos2 < length2) {
+			s1 := x1.highlowcontainer.getKeyAtIndex(pos1)
+			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
+
+			for {
+				if s1 < s2 {
+					answer += x1.highlowcontainer.getContainerAtIndex(pos1).getCardinality()
+					pos1++
+					if pos1 == length1 {
+						break main
+					}
+					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
+				} else if s1 > s2 {
+					answer += x2.highlowcontainer.getContainerAtIndex(pos2).getCardinality()
+					pos2++
+					if pos2 == length2 {
+						break main
+					}
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				} else {
+					// TODO: could be faster if we did not have to materialize the container
+					answer += x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)).getCardinality()
+					pos1++
+					pos2++
+					if (pos1 == length1) || (pos2 == length2) {
+						break main
+					}
+					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				}
+			}
+		} else {
+			break
+		}
+	}
+	for ; pos1 < length1; pos1++ {
+		answer += x1.highlowcontainer.getContainerAtIndex(pos1).getCardinality()
+	}
+	for ; pos2 < length2; pos2++ {
+		answer += x2.highlowcontainer.getContainerAtIndex(pos2).getCardinality()
+	}
+	return answer
+}
+
+// AndCardinality returns the cardinality of the intersection between two bitmaps, bitmaps are not modified
+func (rb *RoaringBitmap) AndCardinality(x2 *RoaringBitmap) {
+	pos1 := 0
+	pos2 := 0
+	answer := uint64(0)
+	length1 := rb.highlowcontainer.size()
+	length2 := x2.highlowcontainer.size()
+
+main:
+	for {
+		if pos1 < length1 && pos2 < length2 {
+			s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
+			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
+			for {
+				if s1 == s2 {
+					c1 := rb.highlowcontainer.getWritableContainerAtIndex(pos1)
+					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
+					diff := c1.and(c2)
+					answer += diff.getCardinality() // TODO: could be faster if we did not have to compute diff
+					pos1++
+					pos2++
+					if (pos1 == length1) || (pos2 == length2) {
+						break main
+					}
+					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				} else if s1 < s2 {
+					pos1 = rb.highlowcontainer.advanceUntil(s2, pos1)
+					if pos1 == length1 {
+						break main
+					}
+					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
+				} else { //s1 > s2
+					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
+					if pos2 == length2 {
+						break main
+					}
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				}
+			}
+		} else {
+			break
+		}
+	}
+	return answer
+}
+
+// Intersects checks whether two bitmap intersects, bitmaps are not modified
+func (rb *RoaringBitmap) Intersects(x2 *RoaringBitmap) bool {
+	pos1 := 0
+	pos2 := 0
+	length1 := rb.highlowcontainer.size()
+	length2 := x2.highlowcontainer.size()
+
+main:
+	for {
+		if pos1 < length1 && pos2 < length2 {
+			s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
+			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
+			for {
+				if s1 == s2 {
+					c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
+					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
+					if c1.intersects(c2) {
+						return true
+					}
+					pos1++
+					pos2++
+					if (pos1 == length1) || (pos2 == length2) {
+						break main
+					}
+					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				} else if s1 < s2 {
+					pos1 = rb.highlowcontainer.advanceUntil(s2, pos1)
+					if pos1 == length1 {
+						break main
+					}
+					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
+				} else { //s1 > s2
+					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
+					if pos2 == length2 {
+						break main
+					}
+					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				}
+			}
+		} else {
+			break
+		}
+	}
+	return false
+}
+
 // Xor computes the symmetric difference between two bitmaps and stores the result in the current bitmap
 func (rb *RoaringBitmap) Xor(x2 *RoaringBitmap) {
 	results := Xor(rb, x2) // Todo: could be computed in-place for reduced memory usage
