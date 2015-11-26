@@ -373,14 +373,14 @@ main:
 
 			for {
 				if s1 < s2 {
-					answer += x1.highlowcontainer.getContainerAtIndex(pos1).getCardinality()
+					answer += uint64(x1.highlowcontainer.getContainerAtIndex(pos1).getCardinality())
 					pos1++
 					if pos1 == length1 {
 						break main
 					}
 					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
 				} else if s1 > s2 {
-					answer += x2.highlowcontainer.getContainerAtIndex(pos2).getCardinality()
+					answer += uint64(x2.highlowcontainer.getContainerAtIndex(pos2).getCardinality())
 					pos2++
 					if pos2 == length2 {
 						break main
@@ -388,7 +388,7 @@ main:
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 				} else {
 					// TODO: could be faster if we did not have to materialize the container
-					answer += x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)).getCardinality()
+					answer += uint64(x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)).getCardinality())
 					pos1++
 					pos2++
 					if (pos1 == length1) || (pos2 == length2) {
@@ -403,16 +403,16 @@ main:
 		}
 	}
 	for ; pos1 < length1; pos1++ {
-		answer += x1.highlowcontainer.getContainerAtIndex(pos1).getCardinality()
+		answer += uint64(x1.highlowcontainer.getContainerAtIndex(pos1).getCardinality())
 	}
 	for ; pos2 < length2; pos2++ {
-		answer += x2.highlowcontainer.getContainerAtIndex(pos2).getCardinality()
+		answer += uint64(x2.highlowcontainer.getContainerAtIndex(pos2).getCardinality())
 	}
 	return answer
 }
 
 // AndCardinality returns the cardinality of the intersection between two bitmaps, bitmaps are not modified
-func (rb *RoaringBitmap) AndCardinality(x2 *RoaringBitmap) {
+func (rb *RoaringBitmap) AndCardinality(x2 *RoaringBitmap) uint64 {
 	pos1 := 0
 	pos2 := 0
 	answer := uint64(0)
@@ -429,7 +429,7 @@ main:
 					c1 := rb.highlowcontainer.getWritableContainerAtIndex(pos1)
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
 					diff := c1.and(c2)
-					answer += diff.getCardinality() // TODO: could be faster if we did not have to compute diff
+					answer += uint64(diff.getCardinality()) // TODO: could be faster if we did not have to compute diff
 					pos1++
 					pos2++
 					if (pos1 == length1) || (pos2 == length2) {

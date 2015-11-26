@@ -260,7 +260,7 @@ func (bc *bitmapContainer) or(a container) container {
 	case *bitmapContainer:
 		return bc.orBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (bc *bitmapContainer) ior(a container) container {
@@ -270,7 +270,7 @@ func (bc *bitmapContainer) ior(a container) container {
 	case *bitmapContainer:
 		return bc.iorBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (bc *bitmapContainer) lazyIOR(a container) container {
@@ -280,7 +280,7 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 	case *bitmapContainer:
 		return bc.lazyIORBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
@@ -360,7 +360,7 @@ func (bc *bitmapContainer) xor(a container) container {
 	case *bitmapContainer:
 		return bc.xorBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (bc *bitmapContainer) xorArray(value2 *arrayContainer) container {
@@ -426,7 +426,7 @@ func (bc *bitmapContainer) and(a container) container {
 	case *bitmapContainer:
 		return bc.andBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (bc *bitmapContainer) intersects(a container) bool {
@@ -436,7 +436,7 @@ func (bc *bitmapContainer) intersects(a container) bool {
 	case *bitmapContainer:
 		return bc.intersectsBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (bc *bitmapContainer) iand(a container) container {
@@ -446,8 +446,9 @@ func (bc *bitmapContainer) iand(a container) container {
 	case *bitmapContainer:
 		return bc.iandBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
+
 func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
 	answer := newArrayContainerCapacity(len(value2.content))
 	c := value2.getCardinality()
@@ -521,7 +522,7 @@ func (bc *bitmapContainer) andNot(a container) container {
 	case *bitmapContainer:
 		return bc.andNotBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (bc *bitmapContainer) iandNot(a container) container {
@@ -531,7 +532,7 @@ func (bc *bitmapContainer) iandNot(a container) container {
 	case *bitmapContainer:
 		return bc.iandNotBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (bc *bitmapContainer) andNotArray(value2 *arrayContainer) container {

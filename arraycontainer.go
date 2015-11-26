@@ -247,7 +247,7 @@ func (ac *arrayContainer) or(a container) container {
 	case *bitmapContainer:
 		return a.or(ac)
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (ac *arrayContainer) ior(a container) container {
@@ -257,7 +257,7 @@ func (ac *arrayContainer) ior(a container) container {
 	case *bitmapContainer:
 		return a.ior(ac)
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (ac *arrayContainer) lazyIOR(a container) container {
@@ -267,7 +267,7 @@ func (ac *arrayContainer) lazyIOR(a container) container {
 	case *bitmapContainer:
 		return a.lazyIOR(ac)
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
@@ -306,7 +306,7 @@ func (ac *arrayContainer) and(a container) container {
 	case *bitmapContainer:
 		return a.and(ac)
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (ac *arrayContainer) intersects(a container) bool {
@@ -326,7 +326,7 @@ func (ac *arrayContainer) iand(a container) container {
 	case *bitmapContainer:
 		return ac.iandBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) *arrayContainer {
@@ -350,7 +350,7 @@ func (ac *arrayContainer) xor(a container) container {
 	case *bitmapContainer:
 		return a.xor(ac)
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (ac *arrayContainer) xorArray(value2 *arrayContainer) container {
@@ -389,7 +389,7 @@ func (ac *arrayContainer) andNot(a container) container {
 	case *bitmapContainer:
 		return ac.andNotBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (ac *arrayContainer) iandNot(a container) container {
@@ -399,7 +399,7 @@ func (ac *arrayContainer) iandNot(a container) container {
 	case *bitmapContainer:
 		return ac.iandNotBitmap(a.(*bitmapContainer))
 	}
-	return nil
+	panic("should never happen")
 }
 
 func (ac *arrayContainer) andNotArray(value2 *arrayContainer) container {
