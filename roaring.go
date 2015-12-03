@@ -360,8 +360,44 @@ main:
 
 // Xor computes the symmetric difference between two bitmaps and stores the result in the current bitmap
 func (rb *RoaringBitmap) Xor(x2 *RoaringBitmap) {
-	results := Xor(rb, x2) // Todo: could be computed in-place for reduced memory usage
-	rb.highlowcontainer = results.highlowcontainer
+	pos1 := 0
+	pos2 := 0
+	length1 := rb.highlowcontainer.size()
+	length2 := x2.highlowcontainer.size()
+	for {
+		if (pos1 < length1) && (pos2 < length2) {
+			s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
+			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
+			if s1 < s2 {
+				pos1 = rb.highlowcontainer.advanceUntil(s2, pos1)
+				if pos1 == length1 {
+					break
+				}
+			} else if s1 > s2 {
+				c := x2.highlowcontainer.getWritableContainerAtIndex(pos2)
+				rb.highlowcontainer.insertNewKeyValueAt(pos1, x2.highlowcontainer.getKeyAtIndex(pos2), c)
+				length1++
+				pos1++
+				pos2++
+			} else {
+				// TODO: couple be computed in-place for reduced memory usage
+				c := rb.highlowcontainer.getContainerAtIndex(pos1).xor(x2.highlowcontainer.getContainerAtIndex(pos2))
+				if c.getCardinality() > 0 {
+					rb.highlowcontainer.setContainerAtIndex(pos1, c)
+					pos1++
+				} else {
+					rb.highlowcontainer.removeAtIndex(pos1)
+					length1--
+				}
+				pos2++
+			}
+		} else {
+			break
+		}
+	}
+	if pos1 == length1 {
+		rb.highlowcontainer.appendCopyMany(x2.highlowcontainer, pos2, length2)
+	}
 }
 
 // Or computes the union between two bitmaps and stores the result in the current bitmap
