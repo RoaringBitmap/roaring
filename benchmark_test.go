@@ -466,3 +466,47 @@ func BenchmarkSequentialAdd(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkXor(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	s := NewRoaringBitmap()
+	sz := 100000000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		n := uint32(r.Int31n(int32(sz)))
+		s.Add(n)
+	}
+	x2 := NewRoaringBitmap()
+	for i := 0; i < initsize; i++ {
+		n := uint32(r.Int31n(int32(sz)))
+		x2.Add(n)
+	}
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		s.Clone().Xor(x2)
+	}
+}
+
+func BenchmarkXorLopsided(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	s := NewRoaringBitmap()
+	sz := 100000000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		n := uint32(r.Int31n(int32(sz)))
+		s.Add(n)
+	}
+	x2 := NewRoaringBitmap()
+	for i := 0; i < 32; i++ {
+		n := uint32(r.Int31n(int32(sz)))
+		x2.Add(n)
+	}
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		s.Clone().Xor(x2)
+	}
+}
