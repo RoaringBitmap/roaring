@@ -622,40 +622,36 @@ func Or(x1, x2 *RoaringBitmap) *RoaringBitmap {
 	length1 := x1.highlowcontainer.size()
 	length2 := x2.highlowcontainer.size()
 main:
-	for {
-		if (pos1 < length1) && (pos2 < length2) {
-			s1 := x1.highlowcontainer.getKeyAtIndex(pos1)
-			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
+	for (pos1 < length1) && (pos2 < length2) {
+		s1 := x1.highlowcontainer.getKeyAtIndex(pos1)
+		s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
 
-			for {
-				if s1 < s2 {
-					answer.highlowcontainer.appendCopy(x1.highlowcontainer, pos1)
-					pos1++
-					if pos1 == length1 {
-						break main
-					}
-					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
-				} else if s1 > s2 {
-					answer.highlowcontainer.appendCopy(x2.highlowcontainer, pos2)
-					pos2++
-					if pos2 == length2 {
-						break main
-					}
-					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
-				} else {
-
-					answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)))
-					pos1++
-					pos2++
-					if (pos1 == length1) || (pos2 == length2) {
-						break main
-					}
-					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
-					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+		for {
+			if s1 < s2 {
+				answer.highlowcontainer.appendCopy(x1.highlowcontainer, pos1)
+				pos1++
+				if pos1 == length1 {
+					break main
 				}
+				s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
+			} else if s1 > s2 {
+				answer.highlowcontainer.appendCopy(x2.highlowcontainer, pos2)
+				pos2++
+				if pos2 == length2 {
+					break main
+				}
+				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+			} else {
+
+				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)))
+				pos1++
+				pos2++
+				if (pos1 == length1) || (pos2 == length2) {
+					break main
+				}
+				s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
+				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			}
-		} else {
-			break
 		}
 	}
 	if pos1 == length1 {
@@ -674,41 +670,37 @@ func And(x1, x2 *RoaringBitmap) *RoaringBitmap {
 	length1 := x1.highlowcontainer.size()
 	length2 := x2.highlowcontainer.size()
 main:
-	for {
-		if pos1 < length1 && pos2 < length2 {
-			s1 := x1.highlowcontainer.getKeyAtIndex(pos1)
-			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
-			for {
-				if s1 == s2 {
-					C := x1.highlowcontainer.getContainerAtIndex(pos1)
-					C = C.and(x2.highlowcontainer.getContainerAtIndex(pos2))
+	for pos1 < length1 && pos2 < length2 {
+		s1 := x1.highlowcontainer.getKeyAtIndex(pos1)
+		s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
+		for {
+			if s1 == s2 {
+				C := x1.highlowcontainer.getContainerAtIndex(pos1)
+				C = C.and(x2.highlowcontainer.getContainerAtIndex(pos2))
 
-					if C.getCardinality() > 0 {
-						answer.highlowcontainer.appendContainer(s1, C)
-					}
-					pos1++
-					pos2++
-					if (pos1 == length1) || (pos2 == length2) {
-						break main
-					}
-					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
-					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
-				} else if s1 < s2 {
-					pos1 = x1.highlowcontainer.advanceUntil(s2, pos1)
-					if pos1 == length1 {
-						break main
-					}
-					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
-				} else { // s1 > s2
-					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
-					if pos2 == length2 {
-						break main
-					}
-					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				if C.getCardinality() > 0 {
+					answer.highlowcontainer.appendContainer(s1, C)
 				}
+				pos1++
+				pos2++
+				if (pos1 == length1) || (pos2 == length2) {
+					break main
+				}
+				s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
+				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+			} else if s1 < s2 {
+				pos1 = x1.highlowcontainer.advanceUntil(s2, pos1)
+				if pos1 == length1 {
+					break main
+				}
+				s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
+			} else { // s1 > s2
+				pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
+				if pos2 == length2 {
+					break main
+				}
+				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			}
-		} else {
-			break
 		}
 	}
 	return answer

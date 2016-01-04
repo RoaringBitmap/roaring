@@ -18,12 +18,10 @@ func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 	} else if len(bitmaps) == 1 {
 		return bitmaps[0].Clone()
 	}
-	array := make(rblist, len(bitmaps), len(bitmaps))
-	copy(array, bitmaps)
-	sort.Sort(array)
-	answer := And(array[0], array[1])
+	sort.Sort(rblist(bitmaps))
+	answer := And(bitmaps[0], bitmaps[1])
 
-	for _, bm := range array[2:] {
+	for _, bm := range bitmaps[2:] {
 		answer.And(bm)
 	}
 	return answer
