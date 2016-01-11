@@ -1,4 +1,4 @@
-RoaringBitmap [![Build Status](https://travis-ci.org/tgruben/roaring.png)](https://travis-ci.org/tgruben/roaring)[![GoDoc](https://godoc.org/github.com/tgruben/roaring?status.svg)](https://godoc.org/github.com/tgruben/roaring) 
+RoaringBitmap [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https://travis-ci.org/RoaringBitmap/roaring)[![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring) 
 =============
 
 This is a go port of the Roaring bitmap data structure. 
@@ -28,7 +28,7 @@ Samy Chambi, Daniel Lemire, Owen Kaser, Robert Godin, Better bitmap performance 
   - go get github.com/willf/bitset
 
 Naturally, you also need to grab the roaring code itself:
-  - go get github.com/tgruben/roaring
+  - go get github.com/RoaringBitmap/roaring
 
 
 ### Example
@@ -40,7 +40,7 @@ package main
 
 import (
     "fmt"
-    "github.com/tgruben/roaring"
+    "github.com/RoaringBitmap/roaring"
     "bytes"
 )
 
@@ -111,7 +111,7 @@ consider the following sample of code:
 
 ### Documentation
 
-Current documentation is available at http://godoc.org/github.com/tgruben/roaring
+Current documentation is available at http://godoc.org/github.com/RoaringBitmap/roaring
 
 ### Benchmark
 
