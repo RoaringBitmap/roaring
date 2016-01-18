@@ -10,6 +10,24 @@ import (
 	"github.com/willf/bitset"
 )
 
+
+func TestFlipOnEmpty(t *testing.T) {
+
+	Convey("TestFlipOnEmpty in-place", t, func() {
+		bm := NewRoaringBitmap()
+		bm.Flip(0, 10)
+		c := bm.GetCardinality()
+		So(c, ShouldEqual, 10)
+	})
+	Convey("TestFlipOnEmpty, generating new result", t, func() {
+		bm := NewRoaringBitmap()
+		bm = Flip(bm, 0, 10)
+		c := bm.GetCardinality()
+		So(c, ShouldEqual, 10)
+	})
+
+}
+
 func TestRoaringBitmapRank(t *testing.T) {
 	for N := uint32(1); N <= 1048576; N *= 2 {
 		Convey("rank tests"+strconv.Itoa(int(N)), t, func() {
