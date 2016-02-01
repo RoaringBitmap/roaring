@@ -10,7 +10,6 @@ import (
 	"github.com/willf/bitset"
 )
 
-
 func TestFlipOnEmpty(t *testing.T) {
 
 	Convey("TestFlipOnEmpty in-place", t, func() {

@@ -27,6 +27,7 @@ type container interface {
 	or(r container) container
 	ior(r container) container   // i stands for inplace
 	intersects(r container) bool // whether the two containers intersect
+	lazyOR(r container) container
 	lazyIOR(r container) container
 	getSizeInBytes() int
 	removeRange(start, final int) container  // range is [firstOfRange,lastOfRange)
@@ -67,8 +68,18 @@ func (ra *roaringArray) appendContainer(key uint16, value container) {
 	}
 }
 
+func (ra *roaringArray) appendWithoutCopy(sa roaringArray, startingindex int) {
+	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex])
+}
+
 func (ra *roaringArray) appendCopy(sa roaringArray, startingindex int) {
 	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex].clone())
+}
+
+func (ra *roaringArray) appendWithoutCopyMany(sa roaringArray, startingindex, end int) {
+	for i := startingindex; i < end; i++ {
+		ra.appendWithoutCopy(sa, i)
+	}
 }
 
 func (ra *roaringArray) appendCopyMany(sa roaringArray, startingindex, end int) {

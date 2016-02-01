@@ -283,6 +283,16 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 	panic("should never happen")
 }
 
+func (bc *bitmapContainer) lazyOR(a container) container {
+	switch a.(type) {
+	case *arrayContainer:
+		return bc.lazyORArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return bc.lazyORBitmap(a.(*bitmapContainer))
+	}
+	panic("should never happen")
+}
+
 func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
 	answer := bc.clone().(*bitmapContainer)
 	c := value2.getCardinality()
@@ -345,12 +355,22 @@ func (bc *bitmapContainer) lazyIORArray(value2 *arrayContainer) container {
 	return answer
 }
 
+func (bc *bitmapContainer) lazyORArray(value2 *arrayContainer) container {
+	answer := bc.clone().(*bitmapContainer)
+	return answer.lazyIORArray(value2)
+}
+
 func (bc *bitmapContainer) lazyIORBitmap(value2 *bitmapContainer) container {
 	answer := bc
 	for k := 0; k < len(answer.bitmap); k++ {
 		answer.bitmap[k] = bc.bitmap[k] | value2.bitmap[k]
 	}
 	return answer
+}
+
+func (bc *bitmapContainer) lazyORBitmap(value2 *bitmapContainer) container {
+	answer := bc.clone().(*bitmapContainer)
+	return answer.lazyIORBitmap(value2)
 }
 
 func (bc *bitmapContainer) xor(a container) container {

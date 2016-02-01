@@ -157,8 +157,8 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 			pos++
 			k1++
 			if k1 >= len(set1) {
-                                copy(buffer[pos:],set2[k2:])
-                                pos += len(set2) - k2;
+				copy(buffer[pos:], set2[k2:])
+				pos += len(set2) - k2
 				break
 			}
 			s1 = set1[k1]
@@ -168,13 +168,13 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 			k1++
 			k2++
 			if k1 >= len(set1) {
-                                copy(buffer[pos:],set2[k2:])
-                                pos += len(set2) - k2;
+				copy(buffer[pos:], set2[k2:])
+				pos += len(set2) - k2
 				break
 			}
 			if k2 >= len(set2) {
-                                copy(buffer[pos:],set1[k1:])
-                                pos += len(set1) - k1;
+				copy(buffer[pos:], set1[k1:])
+				pos += len(set1) - k1
 				break
 			}
 			s1 = set1[k1]
@@ -184,8 +184,8 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 			pos++
 			k2++
 			if k2 >= len(set2) {
-				copy(buffer[pos:],set1[k1:])
-                                pos += len(set1) - k1;
+				copy(buffer[pos:], set1[k1:])
+				pos += len(set1) - k1
 				break
 			}
 			s2 = set2[k2]

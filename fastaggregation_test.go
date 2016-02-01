@@ -17,7 +17,7 @@ func TestFastAggregations(t *testing.T) {
 
 		So(FastAnd(rb1, rb2).GetCardinality(), ShouldEqual, 0)
 		So(FastOr(rb1, rb2).GetCardinality(), ShouldEqual, 2)
-		So(FastXor(rb1, rb2).GetCardinality(), ShouldEqual, 2)
+		So(HeapXor(rb1, rb2).GetCardinality(), ShouldEqual, 2)
 	})
 }
 
@@ -116,9 +116,9 @@ func TestFastAggregationsAdvanced(t *testing.T) {
 		bigand := And(And(rb1, rb2), rb3)
 		bigxor := Xor(Xor(rb1, rb2), rb3)
 		So(FastOr(rb1, rb2, rb3).Equals(rb1), ShouldEqual, true)
-		So(FastHorizontalOr(rb1, rb2, rb3).Equals(rb1), ShouldEqual, true)
-		So(FastHorizontalOr(rb1, rb2, rb3).GetCardinality(), ShouldEqual, rb1.GetCardinality())
-		So(FastXor(rb1, rb2, rb3).Equals(bigxor), ShouldEqual, true)
+		So(HeapOr(rb1, rb2, rb3).Equals(rb1), ShouldEqual, true)
+		So(HeapOr(rb1, rb2, rb3).GetCardinality(), ShouldEqual, rb1.GetCardinality())
+		So(HeapXor(rb1, rb2, rb3).Equals(bigxor), ShouldEqual, true)
 		So(FastAnd(rb1, rb2, rb3).Equals(bigand), ShouldEqual, true)
 	})
 }
@@ -143,12 +143,12 @@ func TestFastAggregationsXOR(t *testing.T) {
 		xor1 := Xor(rb1, rb2)
 		xor1alt := Xor(rb2, rb1)
 		So(xor1alt.Equals(xor1), ShouldEqual, true)
-		So(FastXor(rb1, rb2).Equals(xor1), ShouldEqual, true)
+		So(HeapXor(rb1, rb2).Equals(xor1), ShouldEqual, true)
 
 		xor2 := Xor(rb2, rb3)
 		xor2alt := Xor(rb3, rb2)
 		So(xor2alt.Equals(xor2), ShouldEqual, true)
-		So(FastXor(rb2, rb3).Equals(xor2), ShouldEqual, true)
+		So(HeapXor(rb2, rb3).Equals(xor2), ShouldEqual, true)
 
 		bigxor := Xor(Xor(rb1, rb2), rb3)
 		bigxoralt1 := Xor(rb1, Xor(rb2, rb3))
@@ -161,6 +161,6 @@ func TestFastAggregationsXOR(t *testing.T) {
 		So(bigxoralt3.Equals(bigxor), ShouldEqual, true)
 		So(bigxoralt4.Equals(bigxor), ShouldEqual, true)
 
-		So(FastXor(rb1, rb2, rb3).Equals(bigxor), ShouldEqual, true)
+		So(HeapXor(rb1, rb2, rb3).Equals(bigxor), ShouldEqual, true)
 	})
 }

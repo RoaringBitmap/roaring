@@ -265,7 +265,17 @@ func (ac *arrayContainer) lazyIOR(a container) container {
 	case *arrayContainer:
 		return ac.orArray(a.(*arrayContainer))
 	case *bitmapContainer:
-		return a.lazyIOR(ac)
+		return a.lazyOR(ac)
+	}
+	panic("should never happen")
+}
+
+func (ac *arrayContainer) lazyOR(a container) container {
+	switch a.(type) {
+	case *arrayContainer:
+		return ac.orArray(a.(*arrayContainer))
+	case *bitmapContainer:
+		return a.lazyOR(ac)
 	}
 	panic("should never happen")
 }
