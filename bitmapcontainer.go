@@ -75,14 +75,16 @@ func bitmapEquals(a, b []uint64) bool {
 func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
 	// TODO: should be written as optimized assembly
 	pos := i
+  base := mask
 	for k := 0; k < len(bc.bitmap); k++ {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			x[pos] = (uint32(k)*64 + uint32(popcount(t-1))) | mask
+			x[pos] = base + uint32(popcount(t-1))
 			pos++
 			bitset ^= t
 		}
+    base += 64
 	}
 }
 
@@ -606,8 +608,8 @@ func (bc *bitmapContainer) contains(i uint16) bool { //testbit
 	mask := uint64(1) << uint(x%64)
 	return (bc.bitmap[x/64] & mask) != 0
 }
-func (bc *bitmapContainer) loadData(arrayContainer *arrayContainer) {
 
+func (bc *bitmapContainer) loadData(arrayContainer *arrayContainer) {
 	bc.cardinality = arrayContainer.getCardinality()
 	c := arrayContainer.getCardinality()
 	for k := 0; k < c; k++ {
@@ -622,17 +624,20 @@ func (bc *bitmapContainer) toArrayContainer() *arrayContainer {
 	ac.loadData(bc)
 	return ac
 }
+
 func (bc *bitmapContainer) fillArray(container []uint16) {
 	//TODO: rewrite in assembly
 	pos := 0
+  base := 0
 	for k := 0; k < len(bc.bitmap); k++ {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = uint16((k*64 + int(popcount(t-1))))
+			container[pos] = uint16((base + int(popcount(t-1))))
 			pos = pos + 1
 			bitset ^= t
 		}
+    base += 64
 	}
 }
 
