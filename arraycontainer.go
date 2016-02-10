@@ -1,6 +1,8 @@
 package roaring
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 type arrayContainer struct {
 	content []uint16
@@ -75,6 +77,7 @@ func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
 }
 
 func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
+
 	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
 		indexstart = -indexstart - 1
@@ -94,11 +97,14 @@ func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
 	if cap(ac.content) < newcardinality {
 		tmp := make([]uint16, newcardinality, newcardinality)
 		copy(tmp[:indexstart], ac.content[:indexstart])
+		copy(tmp[indexstart+rangelength:], ac.content[indexend:])
+
 		ac.content = tmp
 	} else {
 		ac.content = ac.content[:newcardinality]
+		copy(ac.content[indexstart+rangelength:], ac.content[indexend:])
+
 	}
-	copy(ac.content[indexstart+rangelength:], ac.content[indexend:])
 	for k := 0; k < rangelength; k++ {
 		ac.content[k+indexstart] = uint16(firstOfRange + k)
 	}

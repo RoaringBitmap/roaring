@@ -10,6 +10,25 @@ import (
 	"github.com/willf/bitset"
 )
 
+func TestRangePanic(t *testing.T) {
+	Convey("TestRangePanic", t, func() {
+		bm := NewRoaringBitmap()
+		bm.AddRange(21, 26)
+		bm.AddRange(9, 14)
+		bm.AddRange(11, 16)
+	})
+}
+
+func TestRangeRemoval(t *testing.T) {
+	Convey("TestRangeRemovalPanic", t, func() {
+		bm := NewRoaringBitmap()
+		bm.AddRange(21, 26)
+		bm.AddRange(9, 14)
+		bm.RemoveRange(11, 16)
+	})
+}
+
+
 func TestFlipOnEmpty(t *testing.T) {
 
 	Convey("TestFlipOnEmpty in-place", t, func() {

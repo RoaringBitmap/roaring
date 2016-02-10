@@ -75,7 +75,7 @@ func bitmapEquals(a, b []uint64) bool {
 func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
 	// TODO: should be written as optimized assembly
 	pos := i
-  base := mask
+	base := mask
 	for k := 0; k < len(bc.bitmap); k++ {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
@@ -84,7 +84,7 @@ func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask ui
 			pos++
 			bitset ^= t
 		}
-    base += 64
+		base += 64
 	}
 }
 
@@ -628,7 +628,7 @@ func (bc *bitmapContainer) toArrayContainer() *arrayContainer {
 func (bc *bitmapContainer) fillArray(container []uint16) {
 	//TODO: rewrite in assembly
 	pos := 0
-  base := 0
+	base := 0
 	for k := 0; k < len(bc.bitmap); k++ {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
@@ -637,7 +637,7 @@ func (bc *bitmapContainer) fillArray(container []uint16) {
 			pos = pos + 1
 			bitset ^= t
 		}
-    base += 64
+		base += 64
 	}
 }
 
