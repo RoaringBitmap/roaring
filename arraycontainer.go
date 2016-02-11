@@ -602,9 +602,9 @@ func (ac *arrayContainer) rank(x uint16) int {
 	answer := binarySearch(ac.content, x)
 	if answer >= 0 {
 		return answer + 1
-	} else {
-		return -answer - 1
 	}
+	return -answer - 1
+
 }
 
 func (ac *arrayContainer) selectInt(x uint16) int {

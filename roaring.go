@@ -18,6 +18,7 @@ type RoaringBitmap struct {
 	highlowcontainer roaringArray
 }
 
+// ToBase64 serializes a bitmap as Base64
 func (b *RoaringBitmap) ToBase64() (string, error) {
 	buf := new(bytes.Buffer)
 	_, err := b.WriteTo(buf)
@@ -25,8 +26,8 @@ func (b *RoaringBitmap) ToBase64() (string, error) {
 
 }
 
-func (b *RoaringBitmap) FromBase64(str string) (int, error) {
-
+// FromBase64 deserializes a bitmap from Base64
+func (b *RoaringBitmap) FromBase64(str string) (int64, error) {
 	data, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
 		return 0, err
@@ -34,15 +35,14 @@ func (b *RoaringBitmap) FromBase64(str string) (int, error) {
 	buf := bytes.NewBuffer(data)
 
 	return b.ReadFrom(buf)
-
 }
 
-// Write out a serialized version of this bitmap to stream
+// WriteTo writes a serialized version of this bitmap to stream
 func (b *RoaringBitmap) WriteTo(stream io.Writer) (int64, error) {
 	return b.highlowcontainer.writeTo(stream)
 }
 
-// Read a serialized version of this bitmap from stream
+// ReadFrom reads a serialized version of this bitmap from stream
 func (b *RoaringBitmap) ReadFrom(stream io.Reader) (int64, error) {
 	return b.highlowcontainer.readFrom(stream)
 }

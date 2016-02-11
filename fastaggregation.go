@@ -107,9 +107,9 @@ main:
 }
 
 // to be called after lazy aggregates
-func (x *RoaringBitmap) repairAfterLazy() {
-	for pos := 0; pos < x.highlowcontainer.size(); pos++ {
-		c := x.highlowcontainer.getContainerAtIndex(pos)
+func (x1 *RoaringBitmap) repairAfterLazy() {
+	for pos := 0; pos < x1.highlowcontainer.size(); pos++ {
+		c := x1.highlowcontainer.getContainerAtIndex(pos)
 		switch c.(type) {
 		case *bitmapContainer:
 			c.(*bitmapContainer).computeCardinality()

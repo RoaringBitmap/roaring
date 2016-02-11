@@ -407,9 +407,8 @@ func (bc *bitmapContainer) rank(x uint16) int {
 	leftover := (uint(x) + 1) & 63
 	if leftover == 0 {
 		return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64]))
-	} else {
-		return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64]) + popcount(bc.bitmap[(uint(x)+1)/64]<<(64-leftover)))
 	}
+	return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64]) + popcount(bc.bitmap[(uint(x)+1)/64]<<(64-leftover)))
 }
 
 func (bc *bitmapContainer) selectInt(x uint16) int {

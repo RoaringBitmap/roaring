@@ -309,7 +309,7 @@ func (ra *roaringArray) serializedSizeInBytes() uint64 {
 	return count
 }
 
-func (ra *roaringArray) writeTo(stream io.Writer) (int, error) {
+func (ra *roaringArray) writeTo(stream io.Writer) (int64, error) {
 	preambleSize := 4 + 4 + 4*len(ra.keys)
 	buf := make([]byte, preambleSize+4*len(ra.keys))
 	binary.LittleEndian.PutUint32(buf[0:], uint32(serial_cookie))
@@ -323,10 +323,10 @@ func (ra *roaringArray) writeTo(stream io.Writer) (int, error) {
 		binary.LittleEndian.PutUint16(buf[off+2:], uint16(c.getCardinality()-1))
 	}
 
-	startOffset := preambleSize + 4*len(ra.keys)
+	startOffset := int64(preambleSize + 4*len(ra.keys))
 	for i, c := range ra.containers {
 		binary.LittleEndian.PutUint32(buf[preambleSize+i*4:], uint32(startOffset))
-		startOffset += getSizeInBytesFromCardinality(c.getCardinality())
+		startOffset += int64(getSizeInBytesFromCardinality(c.getCardinality()))
 	}
 
 	_, err := stream.Write(buf)
@@ -343,7 +343,7 @@ func (ra *roaringArray) writeTo(stream io.Writer) (int, error) {
 	return startOffset, nil
 }
 
-func (ra *roaringArray) readFrom(stream io.Reader) (int, error) {
+func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	var cookie uint32
 	err := binary.Read(stream, binary.LittleEndian, &cookie)
 	if err != nil {
@@ -367,10 +367,10 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	offset := int(4 + 4 + 8*size)
+	offset := int64(4 + 4 + 8*size)
 	for i := uint32(0); i < size; i++ {
 		c := int(keycard[2*i+1]) + 1
-		offset += int(getSizeInBytesFromCardinality(c))
+		offset += int64(getSizeInBytesFromCardinality(c))
 		if c > arrayDefaultMaxSize {
 			nb := newBitmapContainer()
 			nb.readFrom(stream)

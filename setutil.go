@@ -217,7 +217,6 @@ func intersects2by2(
 	}
 	k1 := 0
 	k2 := 0
-	pos := 0
 	s1 := set1[k1]
 	s2 := set2[k2]
 mainwhile:
