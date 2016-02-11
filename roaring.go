@@ -13,13 +13,13 @@ import (
 	"strconv"
 )
 
-// RoaringBitmap represents a compressed bitmap where you can add integers.
-type RoaringBitmap struct {
+// Bitmap represents a compressed bitmap where you can add integers.
+type Bitmap struct {
 	highlowcontainer roaringArray
 }
 
 // ToBase64 serializes a bitmap as Base64
-func (rb *RoaringBitmap) ToBase64() (string, error) {
+func (rb *Bitmap) ToBase64() (string, error) {
 	buf := new(bytes.Buffer)
 	_, err := rb.WriteTo(buf)
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), err
@@ -27,7 +27,7 @@ func (rb *RoaringBitmap) ToBase64() (string, error) {
 }
 
 // FromBase64 deserializes a bitmap from Base64
-func (rb *RoaringBitmap) FromBase64(str string) (int64, error) {
+func (rb *Bitmap) FromBase64(str string) (int64, error) {
 	data, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
 		return 0, err
@@ -38,27 +38,27 @@ func (rb *RoaringBitmap) FromBase64(str string) (int64, error) {
 }
 
 // WriteTo writes a serialized version of this bitmap to stream
-func (rb *RoaringBitmap) WriteTo(stream io.Writer) (int64, error) {
+func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 	return rb.highlowcontainer.writeTo(stream)
 }
 
 // ReadFrom reads a serialized version of this bitmap from stream
-func (rb *RoaringBitmap) ReadFrom(stream io.Reader) (int64, error) {
+func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 	return rb.highlowcontainer.readFrom(stream)
 }
 
-// NewRoaringBitmap creates a new empty RoaringBitmap
-func NewRoaringBitmap() *RoaringBitmap {
-	return &RoaringBitmap{*newRoaringArray()}
+// NewBitmap creates a new empty Bitmap
+func NewBitmap() *Bitmap {
+	return &Bitmap{*newRoaringArray()}
 }
 
-// Clear removes all content from the RoaringBitmap and frees the memory
-func (rb *RoaringBitmap) Clear() {
+// Clear removes all content from the Bitmap and frees the memory
+func (rb *Bitmap) Clear() {
 	rb.highlowcontainer = *newRoaringArray()
 }
 
-// ToArray creates a new slice containing all of the integers stored in the RoaringBitmap in sorted order
-func (rb *RoaringBitmap) ToArray() []uint32 {
+// ToArray creates a new slice containing all of the integers stored in the Bitmap in sorted order
+func (rb *Bitmap) ToArray() []uint32 {
 	array := make([]uint32, rb.GetCardinality())
 	pos := 0
 	pos2 := 0
@@ -73,9 +73,9 @@ func (rb *RoaringBitmap) ToArray() []uint32 {
 	return array
 }
 
-// GetSizeInBytes estimates the memory usage of the RoaringBitmap. Note that this
+// GetSizeInBytes estimates the memory usage of the Bitmap. Note that this
 // might differ slightly from the amount of bytes required for persistent storage
-func (rb *RoaringBitmap) GetSizeInBytes() uint64 {
+func (rb *Bitmap) GetSizeInBytes() uint64 {
 	size := uint64(8)
 	for _, c := range rb.highlowcontainer.containers {
 		size += uint64(2) + uint64(c.getSizeInBytes())
@@ -83,13 +83,13 @@ func (rb *RoaringBitmap) GetSizeInBytes() uint64 {
 	return size
 }
 
-// GetSerializedSizeInBytes computes the serialized size in bytes  the RoaringBitmap. It should correspond to the
+// GetSerializedSizeInBytes computes the serialized size in bytes  the Bitmap. It should correspond to the
 // number of bytes written when invoking WriteTo
-func (rb *RoaringBitmap) GetSerializedSizeInBytes() uint64 {
+func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }
 
-// IntIterable allows you to iterate over the values in a RoaringBitmap
+// IntIterable allows you to iterate over the values in a Bitmap
 type IntIterable interface {
 	HasNext() bool
 	Next() uint32
@@ -124,7 +124,7 @@ func (ii *intIterator) Next() uint32 {
 	return x
 }
 
-func newIntIterator(a *RoaringBitmap) *intIterator {
+func newIntIterator(a *Bitmap) *intIterator {
 	p := new(intIterator)
 	p.pos = 0
 	p.highlowcontainer = &a.highlowcontainer
@@ -132,9 +132,9 @@ func newIntIterator(a *RoaringBitmap) *intIterator {
 	return p
 }
 
-// String creates a string representation of the RoaringBitmap
-func (rb *RoaringBitmap) String() string {
-	// inspired by https://github.com/fzandona/goroar/blob/master/roaringbitmap.go
+// String creates a string representation of the Bitmap
+func (rb *Bitmap) String() string {
+	// inspired by https://github.com/fzandona/goroar/
 	var buffer bytes.Buffer
 	start := []byte("{")
 	buffer.Write(start)
@@ -150,32 +150,32 @@ func (rb *RoaringBitmap) String() string {
 }
 
 // Iterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order
-func (rb *RoaringBitmap) Iterator() IntIterable {
+func (rb *Bitmap) Iterator() IntIterable {
 	return newIntIterator(rb)
 }
 
-// Clone creates a copy of the RoaringBitmap
-func (rb *RoaringBitmap) Clone() *RoaringBitmap {
-	ptr := new(RoaringBitmap)
+// Clone creates a copy of the Bitmap
+func (rb *Bitmap) Clone() *Bitmap {
+	ptr := new(Bitmap)
 	ptr.highlowcontainer = *rb.highlowcontainer.clone()
 	return ptr
 }
 
 // Contains returns true if the integer is contained in the bitmap
-func (rb *RoaringBitmap) Contains(x uint32) bool {
+func (rb *Bitmap) Contains(x uint32) bool {
 	hb := highbits(x)
 	c := rb.highlowcontainer.getContainer(hb)
 	return c != nil && c.contains(lowbits(x))
 }
 
 // ContainsInt returns true if the integer is contained in the bitmap (this is a convenience method, the parameter is casted to uint32 and Contains is called)
-func (rb *RoaringBitmap) ContainsInt(x int) bool {
+func (rb *Bitmap) ContainsInt(x int) bool {
 	return rb.Contains(uint32(x))
 }
 
 // Equals returns true if the two bitmaps contain the same integers
-func (rb *RoaringBitmap) Equals(o interface{}) bool {
-	srb, ok := o.(*RoaringBitmap)
+func (rb *Bitmap) Equals(o interface{}) bool {
+	srb, ok := o.(*Bitmap)
 	if ok {
 		return srb.highlowcontainer.equals(rb.highlowcontainer)
 	}
@@ -183,7 +183,7 @@ func (rb *RoaringBitmap) Equals(o interface{}) bool {
 }
 
 // Add the integer x to the bitmap
-func (rb *RoaringBitmap) Add(x uint32) {
+func (rb *Bitmap) Add(x uint32) {
 	hb := highbits(x)
 	ra := &rb.highlowcontainer
 	i := ra.getIndex(hb)
@@ -203,7 +203,7 @@ func (rb *RoaringBitmap) Add(x uint32) {
 }
 
 // CheckedAdd adds the integer x to the bitmap and return true  if it was added (false if the integer was already present)
-func (rb *RoaringBitmap) CheckedAdd(x uint32) bool {
+func (rb *Bitmap) CheckedAdd(x uint32) bool {
 	// TODO: add unit tests for this method
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
@@ -221,12 +221,12 @@ func (rb *RoaringBitmap) CheckedAdd(x uint32) bool {
 }
 
 // AddInt adds the integer x to the bitmap (convenience method: the parameter is casted to uint32 and we call Add)
-func (rb *RoaringBitmap) AddInt(x int) {
+func (rb *Bitmap) AddInt(x int) {
 	rb.Add(uint32(x))
 }
 
 // Remove the integer x from the bitmap
-func (rb *RoaringBitmap) Remove(x uint32) {
+func (rb *Bitmap) Remove(x uint32) {
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {
@@ -239,7 +239,7 @@ func (rb *RoaringBitmap) Remove(x uint32) {
 }
 
 // CheckedRemove removes the integer x from the bitmap and return true if the integer was effectively remove (and false if the integer was not present)
-func (rb *RoaringBitmap) CheckedRemove(x uint32) bool {
+func (rb *Bitmap) CheckedRemove(x uint32) bool {
 	// TODO: add unit tests for this method
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
@@ -258,13 +258,13 @@ func (rb *RoaringBitmap) CheckedRemove(x uint32) bool {
 
 }
 
-// IsEmpty returns true if the RoaringBitmap is empty (it is faster than doing (GetCardinality() == 0))
-func (rb *RoaringBitmap) IsEmpty() bool {
+// IsEmpty returns true if the Bitmap is empty (it is faster than doing (GetCardinality() == 0))
+func (rb *Bitmap) IsEmpty() bool {
 	return rb.highlowcontainer.size() == 0
 }
 
 // GetCardinality returns the number of integers contained in the bitmap
-func (rb *RoaringBitmap) GetCardinality() uint64 {
+func (rb *Bitmap) GetCardinality() uint64 {
 	size := uint64(0)
 	for _, c := range rb.highlowcontainer.containers {
 		size += uint64(c.getCardinality())
@@ -273,7 +273,7 @@ func (rb *RoaringBitmap) GetCardinality() uint64 {
 }
 
 // Rank returns the number of integers that are smaller or equal to x (Rank(infinity) would be GetCardinality())
-func (rb *RoaringBitmap) Rank(x uint32) uint32 {
+func (rb *Bitmap) Rank(x uint32) uint32 {
 	size := uint32(0)
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
 		key := rb.highlowcontainer.getKeyAtIndex(i)
@@ -290,7 +290,7 @@ func (rb *RoaringBitmap) Rank(x uint32) uint32 {
 }
 
 // Select returns the xth integer in the bitmap
-func (rb *RoaringBitmap) Select(x uint32) (uint32, error) {
+func (rb *Bitmap) Select(x uint32) (uint32, error) {
 	if rb.GetCardinality() <= uint64(x) {
 		return 0, fmt.Errorf("Can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
 	}
@@ -309,7 +309,7 @@ func (rb *RoaringBitmap) Select(x uint32) (uint32, error) {
 }
 
 // And computes the intersection between two bitmaps and stores the result in the current bitmap
-func (rb *RoaringBitmap) And(x2 *RoaringBitmap) {
+func (rb *Bitmap) And(x2 *Bitmap) {
 	pos1 := 0
 	pos2 := 0
 	intersectionsize := 0
@@ -359,7 +359,7 @@ main:
 }
 
 // OrCardinality  returns the cardinality of the union between two bitmaps, bitmaps are not modified
-func (rb *RoaringBitmap) OrCardinality(x2 *RoaringBitmap) uint64 {
+func (rb *Bitmap) OrCardinality(x2 *Bitmap) uint64 {
 	pos1 := 0
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
@@ -412,7 +412,7 @@ main:
 }
 
 // AndCardinality returns the cardinality of the intersection between two bitmaps, bitmaps are not modified
-func (rb *RoaringBitmap) AndCardinality(x2 *RoaringBitmap) uint64 {
+func (rb *Bitmap) AndCardinality(x2 *Bitmap) uint64 {
 	pos1 := 0
 	pos2 := 0
 	answer := uint64(0)
@@ -459,7 +459,7 @@ main:
 }
 
 // Intersects checks whether two bitmap intersects, bitmaps are not modified
-func (rb *RoaringBitmap) Intersects(x2 *RoaringBitmap) bool {
+func (rb *Bitmap) Intersects(x2 *Bitmap) bool {
 	pos1 := 0
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
@@ -506,7 +506,7 @@ main:
 }
 
 // Xor computes the symmetric difference between two bitmaps and stores the result in the current bitmap
-func (rb *RoaringBitmap) Xor(x2 *RoaringBitmap) {
+func (rb *Bitmap) Xor(x2 *Bitmap) {
 	pos1 := 0
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
@@ -548,13 +548,13 @@ func (rb *RoaringBitmap) Xor(x2 *RoaringBitmap) {
 }
 
 // Or computes the union between two bitmaps and stores the result in the current bitmap
-func (rb *RoaringBitmap) Or(x2 *RoaringBitmap) {
+func (rb *Bitmap) Or(x2 *Bitmap) {
 	results := Or(rb, x2) // Todo: could be computed in-place for reduced memory usage
 	rb.highlowcontainer = results.highlowcontainer
 }
 
 // AndNot computes the difference between two bitmaps and stores the result in the current bitmap
-func (rb *RoaringBitmap) AndNot(x2 *RoaringBitmap) {
+func (rb *Bitmap) AndNot(x2 *Bitmap) {
 	pos1 := 0
 	pos2 := 0
 	intersectionsize := 0
@@ -615,8 +615,8 @@ main:
 }
 
 // Or computes the union between two bitmaps and returns the result
-func Or(x1, x2 *RoaringBitmap) *RoaringBitmap {
-	answer := NewRoaringBitmap()
+func Or(x1, x2 *Bitmap) *Bitmap {
+	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
 	length1 := x1.highlowcontainer.size()
@@ -663,8 +663,8 @@ main:
 }
 
 // And computes the intersection between two bitmaps and returns the result
-func And(x1, x2 *RoaringBitmap) *RoaringBitmap {
-	answer := NewRoaringBitmap()
+func And(x1, x2 *Bitmap) *Bitmap {
+	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
 	length1 := x1.highlowcontainer.size()
@@ -707,8 +707,8 @@ main:
 }
 
 // Xor computes the symmetric difference between two bitmaps and returns the result
-func Xor(x1, x2 *RoaringBitmap) *RoaringBitmap {
-	answer := NewRoaringBitmap()
+func Xor(x1, x2 *Bitmap) *Bitmap {
+	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
 	length1 := x1.highlowcontainer.size()
@@ -744,8 +744,8 @@ func Xor(x1, x2 *RoaringBitmap) *RoaringBitmap {
 }
 
 // AndNot computes the difference between two bitmaps and returns the result
-func AndNot(x1, x2 *RoaringBitmap) *RoaringBitmap {
-	answer := NewRoaringBitmap()
+func AndNot(x1, x2 *Bitmap) *Bitmap {
+	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
 	length1 := x1.highlowcontainer.size()
@@ -797,8 +797,8 @@ main:
 }
 
 // BitmapOf generates a new bitmap filled with the specified integer
-func BitmapOf(dat ...uint32) *RoaringBitmap {
-	ans := NewRoaringBitmap()
+func BitmapOf(dat ...uint32) *Bitmap {
+	ans := NewBitmap()
 	for _, i := range dat {
 		ans.Add(i)
 	}
@@ -807,7 +807,7 @@ func BitmapOf(dat ...uint32) *RoaringBitmap {
 
 // Flip negates the bits in the given range, any integer present in this range and in the bitmap is removed,
 // and any integer present in the range and not in the bitmap is added
-func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd uint32) {
+func (rb *Bitmap) Flip(rangeStart, rangeEnd uint32) {
 
 	if rangeStart >= rangeEnd {
 		return
@@ -846,12 +846,12 @@ func (rb *RoaringBitmap) Flip(rangeStart, rangeEnd uint32) {
 }
 
 // FlipInt calls Flip after casting the parameters to uint32 (convenience method)
-func (rb *RoaringBitmap) FlipInt(rangeStart, rangeEnd int) {
+func (rb *Bitmap) FlipInt(rangeStart, rangeEnd int) {
 	rb.Flip(uint32(rangeStart), uint32(rangeEnd))
 }
 
 // AddRange adds the integers in [rangeStart, rangeEnd) to the bitmap
-func (rb *RoaringBitmap) AddRange(rangeStart, rangeEnd uint32) {
+func (rb *Bitmap) AddRange(rangeStart, rangeEnd uint32) {
 	if rangeStart >= rangeEnd {
 		return
 	}
@@ -885,7 +885,7 @@ func (rb *RoaringBitmap) AddRange(rangeStart, rangeEnd uint32) {
 }
 
 // RemoveRange removes the integers in [rangeStart, rangeEnd) from the bitmap
-func (rb *RoaringBitmap) RemoveRange(rangeStart, rangeEnd uint32) {
+func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint32) {
 	if rangeStart >= rangeEnd {
 		return
 	}
@@ -944,12 +944,12 @@ func (rb *RoaringBitmap) RemoveRange(rangeStart, rangeEnd uint32) {
 // Flip negates the bits in the given range, any integer present in this range and in the bitmap is removed,
 // and any integer present in the range and not in the bitmap is added, a new bitmap is returned leaving
 // the current bitmap unchanged
-func Flip(bm *RoaringBitmap, rangeStart, rangeEnd uint32) *RoaringBitmap {
+func Flip(bm *Bitmap, rangeStart, rangeEnd uint32) *Bitmap {
 	if rangeStart >= rangeEnd {
 		return bm.Clone()
 	}
 
-	answer := NewRoaringBitmap()
+	answer := NewBitmap()
 	hbStart := highbits(rangeStart)
 	lbStart := lowbits(rangeStart)
 	hbLast := highbits(rangeEnd - 1)
@@ -991,6 +991,6 @@ func Flip(bm *RoaringBitmap, rangeStart, rangeEnd uint32) *RoaringBitmap {
 }
 
 // FlipInt calls Flip after casting the parameters to uint32 (convenience method)
-func FlipInt(bm *RoaringBitmap, rangeStart, rangeEnd int) *RoaringBitmap {
+func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
 	return Flip(bm, uint32(rangeStart), uint32(rangeEnd))
 }

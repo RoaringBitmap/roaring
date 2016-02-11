@@ -16,7 +16,7 @@ func TestBase64(t *testing.T) {
 		t.Errorf("ToBase64 failed returned empty string")
 	}
 
-	newrb := NewRoaringBitmap()
+	newrb := NewBitmap()
 
 	_, err := newrb.FromBase64(bstr)
 
@@ -41,7 +41,7 @@ func TestSerializationBasic(t *testing.T) {
 	if l != buf.Len() {
 		t.Errorf("Bad GetSerializedSizeInBytes")
 	}
-	newrb := NewRoaringBitmap()
+	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 	if err != nil {
 		t.Errorf("Failed reading")
@@ -62,7 +62,7 @@ func TestSerializationBasic2(t *testing.T) {
 	if l != buf.Len() {
 		t.Errorf("Bad GetSerializedSizeInBytes")
 	}
-	newrb := NewRoaringBitmap()
+	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 	if err != nil {
 		t.Errorf("Failed reading")
@@ -86,7 +86,7 @@ func TestSerializationBasic3(t *testing.T) {
 	if l != buf.Len() {
 		t.Errorf("Bad GetSerializedSizeInBytes")
 	}
-	newrb := NewRoaringBitmap()
+	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 	if err != nil {
 		t.Errorf("Failed reading")

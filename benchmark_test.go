@@ -17,12 +17,12 @@ var c uint
 // go test -bench BenchmarkMemoryUsage -run -
 func BenchmarkMemoryUsage(b *testing.B) {
 	b.StopTimer()
-	bitmaps := make([]*RoaringBitmap, 0, 10)
+	bitmaps := make([]*Bitmap, 0, 10)
 
 	incr := uint32(1 << 16)
 	max := uint32(1<<32 - 1)
 	for x := 0; x < 10; x++ {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 
 		var i uint32
 		for i = 0; i <= max-incr; i += incr {
@@ -67,13 +67,13 @@ func BenchmarkIntersectionBitset(b *testing.B) {
 func BenchmarkIntersectionRoaring(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s1 := NewRoaringBitmap()
+	s1 := NewBitmap()
 	sz := 150000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
 		s1.Add(uint32(r.Int31n(int32(sz))))
 	}
-	s2 := NewRoaringBitmap()
+	s2 := NewBitmap()
 	sz = 100000000
 	initsize = 65000
 	for i := 0; i < initsize; i++ {
@@ -115,13 +115,13 @@ func BenchmarkUnionBitset(b *testing.B) {
 func BenchmarkUnionRoaring(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s1 := NewRoaringBitmap()
+	s1 := NewBitmap()
 	sz := 150000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
 		s1.Add(uint32(r.Int31n(int32(sz))))
 	}
-	s2 := NewRoaringBitmap()
+	s2 := NewBitmap()
 	sz = 100000000
 	initsize = 65000
 	for i := 0; i < initsize; i++ {
@@ -159,13 +159,13 @@ func BenchmarkSizeBitset(b *testing.B) {
 func BenchmarkSizeRoaring(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s1 := NewRoaringBitmap()
+	s1 := NewBitmap()
 	sz := 150000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
 		s1.Add(uint32(r.Int31n(int32(sz))))
 	}
-	s2 := NewRoaringBitmap()
+	s2 := NewBitmap()
 	sz = 100000000
 	initsize = 65000
 	for i := 0; i < initsize; i++ {
@@ -180,7 +180,7 @@ func BenchmarkSetRoaring(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
 	sz := 1000000
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		s.Add(uint32(r.Int31n(int32(sz))))
@@ -204,7 +204,7 @@ func BenchmarkGetTestRoaring(b *testing.B) {
 	r := rand.New(rand.NewSource(0))
 	sz := 1000000
 	initsize := 50000
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	for i := 0; i < initsize; i++ {
 		s.Add(uint32(r.Int31n(int32(sz))))
 	}
@@ -233,7 +233,7 @@ func BenchmarkGetTestBitSet(b *testing.B) {
 func BenchmarkCountRoaring(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 1000000
 	initsize := 50000
 	for i := 0; i < initsize; i++ {
@@ -265,7 +265,7 @@ func BenchmarkCountBitset(b *testing.B) {
 func BenchmarkIterateRoaring(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 150000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
@@ -286,7 +286,7 @@ func BenchmarkIterateRoaring(b *testing.B) {
 func BenchmarkSparseIterateRoaring(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 100000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
@@ -327,7 +327,7 @@ func BenchmarkIterateBitset(b *testing.B) {
 func BenchmarkSparseContains(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 10000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
@@ -371,7 +371,7 @@ func BenchmarkSparseIterateBitset(b *testing.B) {
 func BenchmarkSerializationSparse(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 100000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
@@ -389,7 +389,7 @@ func BenchmarkSerializationSparse(b *testing.B) {
 func BenchmarkSerializationMid(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 10000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
@@ -407,7 +407,7 @@ func BenchmarkSerializationMid(b *testing.B) {
 func BenchmarkSerializationDense(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 150000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
@@ -425,8 +425,8 @@ func BenchmarkSerializationDense(b *testing.B) {
 func BenchmarkEqualsSparse(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
-	t := NewRoaringBitmap()
+	s := NewBitmap()
+	t := NewBitmap()
 	sz := 100000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
@@ -444,7 +444,7 @@ func BenchmarkEqualsSparse(b *testing.B) {
 func BenchmarkEqualsClone(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 100000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
@@ -460,7 +460,7 @@ func BenchmarkEqualsClone(b *testing.B) {
 
 func BenchmarkSequentialAdd(b *testing.B) {
 	for j := 0; j < b.N; j++ {
-		s := NewRoaringBitmap()
+		s := NewBitmap()
 		for i := 0; i < 10000000; i += 16 {
 			s.Add(uint32(i))
 		}
@@ -470,14 +470,14 @@ func BenchmarkSequentialAdd(b *testing.B) {
 func BenchmarkXor(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 100000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
 		n := uint32(r.Int31n(int32(sz)))
 		s.Add(n)
 	}
-	x2 := NewRoaringBitmap()
+	x2 := NewBitmap()
 	for i := 0; i < initsize; i++ {
 		n := uint32(r.Int31n(int32(sz)))
 		x2.Add(n)
@@ -492,14 +492,14 @@ func BenchmarkXor(b *testing.B) {
 func BenchmarkXorLopsided(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
-	s := NewRoaringBitmap()
+	s := NewBitmap()
 	sz := 100000000
 	initsize := 65000
 	for i := 0; i < initsize; i++ {
 		n := uint32(r.Int31n(int32(sz)))
 		s.Add(n)
 	}
-	x2 := NewRoaringBitmap()
+	x2 := NewBitmap()
 	for i := 0; i < 32; i++ {
 		n := uint32(r.Int31n(int32(sz)))
 		x2.Add(n)

@@ -10,8 +10,8 @@ import (
 
 func TestFastAggregations(t *testing.T) {
 	Convey("Fast", t, func() {
-		rb1 := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
 		rb1.Add(1)
 		rb2.Add(2)
 
@@ -23,9 +23,9 @@ func TestFastAggregations(t *testing.T) {
 
 func TestFastAggregationsSize(t *testing.T) {
 	Convey("Fast", t, func() {
-		rb1 := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
-		rb3 := NewRoaringBitmap()
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+		rb3 := NewBitmap()
 		for i := uint32(0); i < 1000000; i += 3 {
 			rb1.Add(i)
 		}
@@ -48,9 +48,9 @@ func TestFastAggregationsSize(t *testing.T) {
 
 func TestFastAggregationsCont(t *testing.T) {
 	Convey("Fast", t, func() {
-		rb1 := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
-		rb3 := NewRoaringBitmap()
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+		rb3 := NewBitmap()
 		for i := uint32(0); i < 10; i += 3 {
 			rb1.Add(i)
 		}
@@ -90,9 +90,9 @@ func TestFastAggregationsCont(t *testing.T) {
 }
 func TestFastAggregationsAdvanced(t *testing.T) {
 	Convey("Fast", t, func() {
-		rb1 := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
-		rb3 := NewRoaringBitmap()
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+		rb3 := NewBitmap()
 		for i := uint32(0); i < 1000000; i += 3 {
 			rb1.Add(i)
 		}
@@ -125,9 +125,9 @@ func TestFastAggregationsAdvanced(t *testing.T) {
 
 func TestFastAggregationsXOR(t *testing.T) {
 	Convey("Fast", t, func() {
-		rb1 := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
-		rb3 := NewRoaringBitmap()
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+		rb3 := NewBitmap()
 
 		for i := uint32(0); i < 40000; i++ {
 			rb1.Add(i)

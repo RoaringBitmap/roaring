@@ -1,4 +1,4 @@
-RoaringBitmap [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https://travis-ci.org/RoaringBitmap/roaring)[![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring) 
+roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https://travis-ci.org/RoaringBitmap/roaring)[![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring)
 =============
 
 This is a go port of the Roaring bitmap data structure. 
@@ -8,7 +8,7 @@ Druid.io (http://druid.io/), Whoosh (https://pypi.python.org/pypi/Whoosh/)
 and  Apache Lucene (http://lucene.apache.org/) (as well as supporting systems
 such as Solr and Elastic). 
 
-The original java version can be found at https://github.com/lemire/RoaringBitmap
+The original java version can be found at https://github.com/RoaringBitmap/RoaringBitmap
 
 The Java and Go version are meant to be binary compatible: you can save bitmaps
 from a Java program and load them back in Go, and vice versa. 
@@ -54,7 +54,7 @@ func main() {
     rb2 := roaring.BitmapOf(3, 4, 1000)
     fmt.Println(rb2.String())
 
-    rb3 := roaring.NewRoaringBitmap()
+    rb3 := roaring.NewBitmap()
     fmt.Println(rb3.String())
 
     fmt.Println("Cardinality: ", rb1.GetCardinality())
@@ -78,7 +78,7 @@ func main() {
     // next we include an example of serialization
     buf := new(bytes.Buffer)
     rb1.WriteTo(buf) // we omit error handling
-    newrb:= roaring.NewRoaringBitmap()
+    newrb:= roaring.NewBitmap()
     newrb.ReadFrom(buf)
     if rb1.Equals(newrb) {
     	fmt.Println("I wrote the content to a byte stream and read it back.")
@@ -96,7 +96,7 @@ consider the following sample of code:
 	if err != nil {
 		t.Errorf("Failed writing")
 	}
-	newrb:= NewRoaringBitmap()
+	newrb:= NewBitmap()
 	size,err=newrb.ReadFrom(buf)
 	if err != nil {
 		t.Errorf("Failed reading")

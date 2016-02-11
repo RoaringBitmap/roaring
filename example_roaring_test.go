@@ -16,7 +16,7 @@ func Example_roaring() {
 	rb2 := roaring.BitmapOf(3, 4, 1000)
 	fmt.Println(rb2.String())
 
-	rb3 := roaring.NewRoaringBitmap()
+	rb3 := roaring.NewBitmap()
 	fmt.Println(rb3.String())
 
 	fmt.Println("Cardinality: ", rb1.GetCardinality())
@@ -46,7 +46,7 @@ func Example_roaring() {
 	} else {
 		fmt.Println("Wrote ", size, " bytes")
 	}
-	newrb := roaring.NewRoaringBitmap()
+	newrb := roaring.NewBitmap()
 	size, err = newrb.ReadFrom(buf)
 	if err != nil {
 		fmt.Println("Failed reading")

@@ -4,15 +4,15 @@ import (
 	"container/heap"
 )
 
-type rblist []*RoaringBitmap
+type rblist []*Bitmap
 
 func (p rblist) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p rblist) Len() int           { return len(p) }
 func (p rblist) Less(i, j int) bool { return p[i].GetSizeInBytes() > p[j].GetSizeInBytes() }
 
 // Or function that requires repairAfterLazy
-func lazyOR(x1, x2 *RoaringBitmap) *RoaringBitmap {
-	answer := NewRoaringBitmap()
+func lazyOR(x1, x2 *Bitmap) *Bitmap {
+	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
 	length1 := x1.highlowcontainer.size()
@@ -59,8 +59,8 @@ main:
 }
 
 // In-place Or function that requires repairAfterLazy
-func (x1 *RoaringBitmap) lazyOR(x2 *RoaringBitmap) *RoaringBitmap {
-	answer := NewRoaringBitmap() // TODO: we return a new bitmap... could be optimized
+func (x1 *Bitmap) lazyOR(x2 *Bitmap) *Bitmap {
+	answer := NewBitmap() // TODO: we return a new bitmap... could be optimized
 	pos1 := 0
 	pos2 := 0
 	length1 := x1.highlowcontainer.size()
@@ -107,7 +107,7 @@ main:
 }
 
 // to be called after lazy aggregates
-func (x1 *RoaringBitmap) repairAfterLazy() {
+func (x1 *Bitmap) repairAfterLazy() {
 	for pos := 0; pos < x1.highlowcontainer.size(); pos++ {
 		c := x1.highlowcontainer.getContainerAtIndex(pos)
 		switch c.(type) {
@@ -120,9 +120,9 @@ func (x1 *RoaringBitmap) repairAfterLazy() {
 // FastAnd computes the intersection between many bitmaps quickly
 // Compared to the And function, it can take many bitmaps as input, thus saving the trouble
 // of manually calling "And" many times.
-func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {
+func FastAnd(bitmaps ...*Bitmap) *Bitmap {
 	if len(bitmaps) == 0 {
-		return NewRoaringBitmap()
+		return NewBitmap()
 	} else if len(bitmaps) == 1 {
 		return bitmaps[0].Clone()
 	}
@@ -135,9 +135,9 @@ func FastAnd(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 
 // FastOr computes the union between many bitmaps quickly, as opposed to having to call Or repeatedly.
 // It might also be faster than calling Or repeatedly.
-func FastOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
+func FastOr(bitmaps ...*Bitmap) *Bitmap {
 	if len(bitmaps) == 0 {
-		return NewRoaringBitmap()
+		return NewBitmap()
 	} else if len(bitmaps) == 1 {
 		return bitmaps[0].Clone()
 	}
@@ -152,9 +152,9 @@ func FastOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 
 // HeapOr computes the union between many bitmaps quickly using a heap.
 // It might be faster than calling Or repeatedly.
-func HeapOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
+func HeapOr(bitmaps ...*Bitmap) *Bitmap {
 	if len(bitmaps) == 0 {
-		return NewRoaringBitmap()
+		return NewBitmap()
 	}
 	// TODO:  for better speed, we could do the operation lazily, see Java implementation
 	pq := make(priorityQueue, len(bitmaps))
@@ -174,9 +174,9 @@ func HeapOr(bitmaps ...*RoaringBitmap) *RoaringBitmap {
 // HeapXor computes the symmetric difference between many bitmaps quickly (as opposed to calling Xor repeated).
 // Internally, this function uses a heap.
 // It might be faster than calling Xor repeatedly.
-func HeapXor(bitmaps ...*RoaringBitmap) *RoaringBitmap {
+func HeapXor(bitmaps ...*Bitmap) *Bitmap {
 	if len(bitmaps) == 0 {
-		return NewRoaringBitmap()
+		return NewBitmap()
 	}
 
 	pq := make(priorityQueue, len(bitmaps))

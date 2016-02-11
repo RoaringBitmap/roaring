@@ -3,11 +3,11 @@ package roaring
 import "container/heap"
 
 /////////////
-// The priorityQueue is used to keep RoaringBitmaps sorted.
+// The priorityQueue is used to keep Bitmaps sorted.
 ////////////
 
 type item struct {
-	value *RoaringBitmap
+	value *Bitmap
 	index int
 }
 
@@ -41,17 +41,17 @@ func (pq *priorityQueue) Pop() interface{} {
 	return item
 }
 
-func (pq *priorityQueue) update(item *item, value *RoaringBitmap) {
+func (pq *priorityQueue) update(item *item, value *Bitmap) {
 	item.value = value
 	heap.Fix(pq, item.index)
 }
 
 /////////////
-// The containerPriorityQueue is used to keep the containers of various RoaringBitmaps sorted.
+// The containerPriorityQueue is used to keep the containers of various Bitmaps sorted.
 ////////////
 
 type containeritem struct {
-	value    *RoaringBitmap
+	value    *Bitmap
 	keyindex int
 	index    int
 }
@@ -94,7 +94,7 @@ func (pq *containerPriorityQueue) Pop() interface{} {
 	return item
 }
 
-func (pq *containerPriorityQueue) update(item *containeritem, value *RoaringBitmap, keyindex int) {
+func (pq *containerPriorityQueue) update(item *containeritem, value *Bitmap, keyindex int) {
 	item.value = value
 	item.keyindex = keyindex
 	heap.Fix(pq, item.index)

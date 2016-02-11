@@ -12,7 +12,7 @@ import (
 
 func TestRangePanic(t *testing.T) {
 	Convey("TestRangePanic", t, func() {
-		bm := NewRoaringBitmap()
+		bm := NewBitmap()
 		bm.AddRange(21, 26)
 		bm.AddRange(9, 14)
 		bm.AddRange(11, 16)
@@ -21,7 +21,7 @@ func TestRangePanic(t *testing.T) {
 
 func TestRangeRemoval(t *testing.T) {
 	Convey("TestRangeRemovalPanic", t, func() {
-		bm := NewRoaringBitmap()
+		bm := NewBitmap()
 		bm.AddRange(21, 26)
 		bm.AddRange(9, 14)
 		bm.RemoveRange(11, 16)
@@ -31,13 +31,13 @@ func TestRangeRemoval(t *testing.T) {
 func TestFlipOnEmpty(t *testing.T) {
 
 	Convey("TestFlipOnEmpty in-place", t, func() {
-		bm := NewRoaringBitmap()
+		bm := NewBitmap()
 		bm.Flip(0, 10)
 		c := bm.GetCardinality()
 		So(c, ShouldEqual, 10)
 	})
 	Convey("TestFlipOnEmpty, generating new result", t, func() {
-		bm := NewRoaringBitmap()
+		bm := NewBitmap()
 		bm = Flip(bm, 0, 10)
 		c := bm.GetCardinality()
 		So(c, ShouldEqual, 10)
@@ -45,11 +45,11 @@ func TestFlipOnEmpty(t *testing.T) {
 
 }
 
-func TestRoaringBitmapRank(t *testing.T) {
+func TestBitmapRank(t *testing.T) {
 	for N := uint32(1); N <= 1048576; N *= 2 {
 		Convey("rank tests"+strconv.Itoa(int(N)), t, func() {
 			for gap := uint32(1); gap <= 65536; gap *= 2 {
-				rb1 := NewRoaringBitmap()
+				rb1 := NewBitmap()
 				for x := uint32(0); x <= N; x += gap {
 					rb1.Add(x)
 				}
@@ -63,11 +63,11 @@ func TestRoaringBitmapRank(t *testing.T) {
 	}
 }
 
-func TestRoaringBitmapSelect(t *testing.T) {
+func TestBitmapSelect(t *testing.T) {
 	for N := uint32(1); N <= 1048576; N *= 2 {
 		Convey("rank tests"+strconv.Itoa(int(N)), t, func() {
 			for gap := uint32(1); gap <= 65536; gap *= 2 {
-				rb1 := NewRoaringBitmap()
+				rb1 := NewBitmap()
 				for x := uint32(0); x <= N; x += gap {
 					rb1.Add(x)
 				}
@@ -88,12 +88,12 @@ func TestRoaringBitmapSelect(t *testing.T) {
 }
 
 // some extra tests
-func TestRoaringBitmapExtra(t *testing.T) {
+func TestBitmapExtra(t *testing.T) {
 	for N := uint32(1); N <= 65536; N *= 2 {
 		Convey("extra tests"+strconv.Itoa(int(N)), t, func() {
 			for gap := uint32(1); gap <= 65536; gap *= 2 {
 				bs1 := bitset.New(0)
-				rb1 := NewRoaringBitmap()
+				rb1 := NewBitmap()
 				for x := uint32(0); x <= N; x += gap {
 					bs1.Set(uint(x))
 					rb1.Add(x)
@@ -102,7 +102,7 @@ func TestRoaringBitmapExtra(t *testing.T) {
 				So(equalsBitSet(bs1, rb1), ShouldEqual, true)
 				for offset := uint32(1); offset <= gap; offset *= 2 {
 					bs2 := bitset.New(0)
-					rb2 := NewRoaringBitmap()
+					rb2 := NewBitmap()
 					for x := uint32(0); x <= N; x += gap {
 						bs2.Set(uint(x + offset))
 						rb2.Add(x + offset)
@@ -144,10 +144,10 @@ func FlipRange(start, end int, bs *bitset.BitSet) {
 	}
 }
 
-func TestRoaringBitmap(t *testing.T) {
+func TestBitmap(t *testing.T) {
 
 	Convey("Test Contains", t, func() {
-		rbm1 := NewRoaringBitmap()
+		rbm1 := NewBitmap()
 		for k := 0; k < 1000; k++ {
 			rbm1.AddInt(17 * k)
 		}
@@ -157,7 +157,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("Test Clone", t, func() {
-		rb1 := NewRoaringBitmap()
+		rb1 := NewBitmap()
 		rb1.Add(10)
 
 		rb2 := rb1.Clone()
@@ -167,8 +167,8 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("Test ANDNOT4", t, func() {
-		rb := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
+		rb := NewBitmap()
+		rb2 := NewBitmap()
 
 		for i := 0; i < 200000; i += 4 {
 			rb2.AddInt(i)
@@ -188,13 +188,13 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("Test AND", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 0; k < 4000; k++ {
 			rr.AddInt(k)
 		}
 		rr.Add(100000)
 		rr.Add(110000)
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		rr2.Add(13)
 		rrand := And(rr, rr2)
 		array := rrand.ToArray()
@@ -209,7 +209,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("Test AND 2", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr.AddInt(k)
 		}
@@ -232,7 +232,7 @@ func TestRoaringBitmap(t *testing.T) {
 			rr.AddInt(k)
 		}
 
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr2.AddInt(k)
 		}
@@ -257,13 +257,13 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("Test AND 2", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 0; k < 4000; k++ {
 			rr.AddInt(k)
 		}
 		rr.AddInt(100000)
 		rr.AddInt(110000)
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		rr2.AddInt(13)
 
 		rrand := And(rr, rr2)
@@ -272,8 +272,8 @@ func TestRoaringBitmap(t *testing.T) {
 		So(array[0], ShouldEqual, 13)
 	})
 	Convey("Test AND 3a", t, func() {
-		rr := NewRoaringBitmap()
-		rr2 := NewRoaringBitmap()
+		rr := NewBitmap()
+		rr2 := NewBitmap()
 		for k := 6 * 65536; k < 6*65536+10000; k++ {
 			rr.AddInt(k)
 		}
@@ -287,7 +287,7 @@ func TestRoaringBitmap(t *testing.T) {
 		var arrayand [11256]uint32
 		//393,216
 		pos := 0
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr.AddInt(k)
 		}
@@ -313,7 +313,7 @@ func TestRoaringBitmap(t *testing.T) {
 			rr.AddInt(k)
 		}
 
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr2.AddInt(k)
 			arrayand[pos] = uint32(k)
@@ -366,8 +366,8 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("Test AND 4", t, func() {
-		rb := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
+		rb := NewBitmap()
+		rb2 := NewBitmap()
 
 		for i := 0; i < 200000; i += 4 {
 			rb2.AddInt(i)
@@ -375,7 +375,7 @@ func TestRoaringBitmap(t *testing.T) {
 		for i := 200000; i < 400000; i += 14 {
 			rb2.AddInt(i)
 		}
-		//TODO: RoaringBitmap.And(bm,bm2)
+		//TODO: Bitmap.And(bm,bm2)
 		andresult := And(rb, rb2)
 		off := And(rb2, rb)
 		So(andresult.Equals(off), ShouldEqual, true)
@@ -417,11 +417,11 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("or test", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 0; k < 4000; k++ {
 			rr.AddInt(k)
 		}
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		for k := 4000; k < 8000; k++ {
 			rr2.AddInt(k)
 		}
@@ -429,7 +429,7 @@ func TestRoaringBitmap(t *testing.T) {
 		So(result.GetCardinality(), ShouldEqual, rr.GetCardinality()+rr2.GetCardinality())
 	})
 	Convey("basic test", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		var a [4002]uint32
 		pos := 0
 		for k := 0; k < 4000; k++ {
@@ -487,7 +487,7 @@ func TestRoaringBitmap(t *testing.T) {
 		N := 1024
 		for gap := 7; gap < 100000; gap *= 10 {
 			for offset := 2; offset <= 1024; offset *= 2 {
-				rb := NewRoaringBitmap()
+				rb := NewBitmap()
 				for k := 0; k < N; k++ {
 					rb.AddInt(k * gap)
 					So(rb.GetCardinality(), ShouldEqual, k+1)
@@ -499,7 +499,7 @@ func TestRoaringBitmap(t *testing.T) {
 					So(rb.GetCardinality(), ShouldEqual, N)
 				}
 
-				rb2 := NewRoaringBitmap()
+				rb2 := NewBitmap()
 
 				for k := 0; k < N; k++ {
 					rb2.AddInt(k * gap * offset)
@@ -520,7 +520,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("clear test", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		for i := 0; i < 200000; i += 7 {
 			// dense
 			rb.AddInt(i)
@@ -530,8 +530,8 @@ func TestRoaringBitmap(t *testing.T) {
 			rb.AddInt(i)
 		}
 
-		rb2 := NewRoaringBitmap()
-		rb3 := NewRoaringBitmap()
+		rb2 := NewBitmap()
+		rb3 := NewBitmap()
 		for i := 0; i < 200000; i += 4 {
 			rb2.AddInt(i)
 		}
@@ -608,7 +608,7 @@ func TestRoaringBitmap(t *testing.T) {
 		So(validate(rbc, ac3), ShouldEqual, true)
 	})
 	Convey("flipTest1 ", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.Flip(100000, 200000) // in-place on empty bitmap
 		rbcard := rb.GetCardinality()
 		So(100000, ShouldEqual, rbcard)
@@ -621,7 +621,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("flipTest1A", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb1 := Flip(rb, 100000, 200000)
 		rbcard := rb1.GetCardinality()
 		So(100000, ShouldEqual, rbcard)
@@ -636,7 +636,7 @@ func TestRoaringBitmap(t *testing.T) {
 		So(equalsBitSet(bs, rb1), ShouldEqual, true)
 	})
 	Convey("flipTest2", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.Flip(100000, 100000)
 		rbcard := rb.GetCardinality()
 		So(0, ShouldEqual, rbcard)
@@ -646,7 +646,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("flipTest2A", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb1 := Flip(rb, 100000, 100000)
 
 		rb.AddInt(1)
@@ -662,7 +662,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("flipTest3A", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.Flip(100000, 200000) // got 100k-199999
 		rb.Flip(100000, 199991) // give back 100k-199990
 		rbcard := rb.GetCardinality()
@@ -678,7 +678,7 @@ func TestRoaringBitmap(t *testing.T) {
 
 	Convey("flipTest4A", t, func() {
 		// fits evenly on both ends
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.Flip(100000, 200000) // got 100k-199999
 		rb.Flip(65536, 4*65536)
 		rbcard := rb.GetCardinality()
@@ -702,7 +702,7 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("flipTest5", t, func() {
 		// fits evenly on small end, multiple
 		// containers
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.Flip(100000, 132000)
 		rb.Flip(65536, 120000)
 		rbcard := rb.GetCardinality()
@@ -723,7 +723,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("flipTest6", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb1 := Flip(rb, 100000, 132000)
 		rb2 := Flip(rb1, 65536, 120000)
 		//rbcard := rb2.GetCardinality()
@@ -739,7 +739,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("flipTest6A", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb1 := Flip(rb, 100000, 132000)
 		rb2 := Flip(rb1, 99000, 2*65536)
 		rbcard := rb2.GetCardinality()
@@ -758,7 +758,7 @@ func TestRoaringBitmap(t *testing.T) {
 
 	Convey("flipTest7", t, func() {
 		// within 1 word, first container
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.Flip(650, 132000)
 		rb.Flip(648, 651)
 		rbcard := rb.GetCardinality()
@@ -776,7 +776,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 	Convey("flipTestBig", t, func() {
 		numCases := 1000
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		bs := bitset.New(0)
 		//Random r = new Random(3333);
 		checkTime := 2.0
@@ -794,7 +794,7 @@ func TestRoaringBitmap(t *testing.T) {
 			// otherwise
 			// insert some more ANDs to keep things sparser
 			if rand.Float64() < 0.2 {
-				mask := NewRoaringBitmap()
+				mask := NewBitmap()
 				mask1 := bitset.New(0)
 				startM := rand.Intn(65536 * 20)
 				endM := startM + 100000
@@ -819,13 +819,13 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("ortest", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 0; k < 4000; k++ {
 			rr.AddInt(k)
 		}
 		rr.AddInt(100000)
 		rr.AddInt(110000)
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		for k := 0; k < 4000; k++ {
 			rr2.AddInt(k)
 		}
@@ -840,7 +840,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("ORtest", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr.AddInt(k)
 		}
@@ -863,7 +863,7 @@ func TestRoaringBitmap(t *testing.T) {
 			rr.AddInt(k)
 		}
 
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr2.AddInt(k)
 		}
@@ -890,7 +890,7 @@ func TestRoaringBitmap(t *testing.T) {
 	Convey("ortest2", t, func() {
 		arrayrr := make([]uint32, 4000+4000+2)
 		pos := 0
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 0; k < 4000; k++ {
 			rr.AddInt(k)
 			arrayrr[pos] = uint32(k)
@@ -898,7 +898,7 @@ func TestRoaringBitmap(t *testing.T) {
 		}
 		rr.AddInt(100000)
 		rr.AddInt(110000)
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		for k := 4000; k < 8000; k++ {
 			rr2.AddInt(k)
 			arrayrr[pos] = uint32(k)
@@ -921,8 +921,8 @@ func TestRoaringBitmap(t *testing.T) {
 		V1 := make(map[int]bool)
 		V2 := make(map[int]bool)
 
-		rr := NewRoaringBitmap()
-		rr2 := NewRoaringBitmap()
+		rr := NewBitmap()
+		rr2 := NewBitmap()
 		for k := 0; k < 4000; k++ {
 			rr2.AddInt(k)
 			V1[k] = true
@@ -996,8 +996,8 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("ortest4", t, func() {
-		rb := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
+		rb := NewBitmap()
+		rb2 := NewBitmap()
 
 		for i := 0; i < 200000; i += 4 {
 			rb2.AddInt(i)
@@ -1042,7 +1042,7 @@ func TestRoaringBitmap(t *testing.T) {
 		N := 512
 		gap := 70
 
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		for k := 0; k < N; k++ {
 			rb.AddInt(k * gap)
 			So(rb.GetCardinality(), ShouldEqual, k+1)
@@ -1056,7 +1056,7 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("XORtest", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr.AddInt(k)
 		}
@@ -1079,7 +1079,7 @@ func TestRoaringBitmap(t *testing.T) {
 			rr.AddInt(k)
 		}
 
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr2.AddInt(k)
 		}
@@ -1107,8 +1107,8 @@ func TestRoaringBitmap(t *testing.T) {
 		V1 := make(map[int]bool)
 		V2 := make(map[int]bool)
 
-		rr := NewRoaringBitmap()
-		rr2 := NewRoaringBitmap()
+		rr := NewBitmap()
+		rr2 := NewBitmap()
 		// For the first 65536: rr2 has a bitmap container, and rr has
 		// an array container.
 		// We will check the union between a BitmapCintainer and an
@@ -1185,8 +1185,8 @@ func TestRoaringBitmap(t *testing.T) {
 	})
 
 	Convey("XORtest 4", t, func() {
-		rb := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
+		rb := NewBitmap()
+		rb2 := NewBitmap()
 
 		for i := 0; i < 200000; i += 4 {
 			rb2.AddInt(i)
@@ -1240,7 +1240,7 @@ func rTest(N int) {
 	log.Println("rtest N=", N)
 	for gap := 1; gap <= 65536; gap *= 2 {
 		bs1 := bitset.New(0)
-		rb1 := NewRoaringBitmap()
+		rb1 := NewBitmap()
 		for x := 0; x <= N; x += gap {
 			bs1.Set(uint(x))
 			rb1.AddInt(x)
@@ -1249,7 +1249,7 @@ func rTest(N int) {
 		So(equalsBitSet(bs1, rb1), ShouldEqual, true)
 		for offset := 1; offset <= gap; offset *= 2 {
 			bs2 := bitset.New(0)
-			rb2 := NewRoaringBitmap()
+			rb2 := NewBitmap()
 			for x := 0; x <= N; x += gap {
 				bs2.Set(uint(x + offset))
 				rb2.AddInt(x + offset)
@@ -1283,7 +1283,7 @@ func rTest(N int) {
 	}
 }
 
-func equalsBitSet(a *bitset.BitSet, b *RoaringBitmap) bool {
+func equalsBitSet(a *bitset.BitSet, b *Bitmap) bool {
 	for i, e := a.NextSet(0); e; i, e = a.NextSet(i + 1) {
 		if !b.ContainsInt(int(i)) {
 			return false
@@ -1298,7 +1298,7 @@ func equalsBitSet(a *bitset.BitSet, b *RoaringBitmap) bool {
 	return true
 }
 
-func equalsArray(a []int, b *RoaringBitmap) bool {
+func equalsArray(a []int, b *Bitmap) bool {
 	if uint64(len(a)) != b.GetCardinality() {
 		return false
 	}
@@ -1414,8 +1414,8 @@ func TestFlipBigA(t *testing.T) {
 		numCases := 1000
 		bs := bitset.New(0)
 		checkTime := 2.0
-		rb1 := NewRoaringBitmap()
-		rb2 := NewRoaringBitmap()
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
 
 		for i := 0; i < numCases; i++ {
 			start := rand.Intn(65536 * 20)
@@ -1439,7 +1439,7 @@ func TestFlipBigA(t *testing.T) {
 			// otherwise
 			// insert some more ANDs to keep things sparser
 			if (rand.Float64() < 0.2) && (i&1) == 0 {
-				mask := NewRoaringBitmap()
+				mask := NewBitmap()
 				mask1 := bitset.New(0)
 				startM := rand.Intn(65536 * 20)
 				endM := startM + 100000
@@ -1452,7 +1452,7 @@ func TestFlipBigA(t *testing.T) {
 			}
 
 			if float64(i) > checkTime {
-				var rb *RoaringBitmap
+				var rb *Bitmap
 
 				if (i & 1) == 0 {
 					rb = rb2
@@ -1468,10 +1468,10 @@ func TestFlipBigA(t *testing.T) {
 
 func TestDoubleAdd(t *testing.T) {
 	Convey("doubleadd ", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.AddRange(65533, 65536)
 		rb.AddRange(65530, 65536)
-		rb2 := NewRoaringBitmap()
+		rb2 := NewBitmap()
 		rb2.AddRange(65530, 65536)
 		So(rb.Equals(rb2), ShouldEqual, true)
 		rb2.RemoveRange(65530, 65536)
@@ -1481,10 +1481,10 @@ func TestDoubleAdd(t *testing.T) {
 
 func TestDoubleAdd2(t *testing.T) {
 	Convey("doubleadd2 ", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.AddRange(65533, 65536*20)
 		rb.AddRange(65530, 65536*20)
-		rb2 := NewRoaringBitmap()
+		rb2 := NewBitmap()
 		rb2.AddRange(65530, 65536*20)
 		So(rb.Equals(rb2), ShouldEqual, true)
 		rb2.RemoveRange(65530, 65536*20)
@@ -1494,10 +1494,10 @@ func TestDoubleAdd2(t *testing.T) {
 
 func TestDoubleAdd3(t *testing.T) {
 	Convey("doubleadd3 ", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.AddRange(65533, 65536*20+10)
 		rb.AddRange(65530, 65536*20+10)
-		rb2 := NewRoaringBitmap()
+		rb2 := NewBitmap()
 		rb2.AddRange(65530, 65536*20+10)
 		So(rb.Equals(rb2), ShouldEqual, true)
 		rb2.RemoveRange(65530, 65536*20+1)
@@ -1507,7 +1507,7 @@ func TestDoubleAdd3(t *testing.T) {
 
 func TestDoubleAdd4(t *testing.T) {
 	Convey("doubleadd4 ", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.AddRange(65533, 65536*20)
 		rb.RemoveRange(65533+5, 65536*20)
 		So(rb.GetCardinality(), ShouldEqual, 5)
@@ -1516,7 +1516,7 @@ func TestDoubleAdd4(t *testing.T) {
 
 func TestDoubleAdd5(t *testing.T) {
 	Convey("doubleadd5 ", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.AddRange(65533, 65536*20)
 		rb.RemoveRange(65533+5, 65536*20-5)
 		So(rb.GetCardinality(), ShouldEqual, 10)
@@ -1525,7 +1525,7 @@ func TestDoubleAdd5(t *testing.T) {
 
 func TestDoubleAdd6(t *testing.T) {
 	Convey("doubleadd6 ", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.AddRange(65533, 65536*20-5)
 		rb.RemoveRange(65533+5, 65536*20-10)
 		So(rb.GetCardinality(), ShouldEqual, 10)
@@ -1534,7 +1534,7 @@ func TestDoubleAdd6(t *testing.T) {
 
 func TestDoubleAdd7(t *testing.T) {
 	Convey("doubleadd7 ", t, func() {
-		rb := NewRoaringBitmap()
+		rb := NewBitmap()
 		rb.AddRange(65533, 65536*20+1)
 		rb.RemoveRange(65533+1, 65536*20)
 		So(rb.GetCardinality(), ShouldEqual, 2)
@@ -1543,12 +1543,12 @@ func TestDoubleAdd7(t *testing.T) {
 
 func TestDoubleAndNotBug01(t *testing.T) {
 	Convey("AndNotBug01 ", t, func() {
-		rb1 := NewRoaringBitmap()
+		rb1 := NewBitmap()
 		rb1.AddRange(0, 60000)
-		rb2 := NewRoaringBitmap()
+		rb2 := NewBitmap()
 		rb2.AddRange(60000-10, 60000+10)
 		rb2.AndNot(rb1)
-		rb3 := NewRoaringBitmap()
+		rb3 := NewBitmap()
 		rb3.AddRange(60000, 60000+10)
 
 		So(rb2.Equals(rb3), ShouldBeTrue)
@@ -1558,7 +1558,7 @@ func TestDoubleAndNotBug01(t *testing.T) {
 func TestAndNot(t *testing.T) {
 
 	Convey("Test ANDNOT", t, func() {
-		rr := NewRoaringBitmap()
+		rr := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr.AddInt(k)
 		}
@@ -1581,7 +1581,7 @@ func TestAndNot(t *testing.T) {
 			rr.AddInt(k)
 		}
 
-		rr2 := NewRoaringBitmap()
+		rr2 := NewBitmap()
 		for k := 4000; k < 4256; k++ {
 			rr2.AddInt(k)
 		}
