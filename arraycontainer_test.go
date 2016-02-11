@@ -56,19 +56,19 @@ func TestArrayContainerRank(t *testing.T) {
 		thisrank := v.rank(uint16(i))
 		if i < 10 {
 			if thisrank != 0 {
-				t.Errorf("At ", i, " should be zero but is ", thisrank)
+				t.Errorf("At %d should be zero but is %d ",i, thisrank)
 			}
 		} else if i < 100 {
 			if thisrank != 1 {
-				t.Errorf("At ", i, " should be one but is ", thisrank)
+				t.Errorf("At %d should be zero but is %d ",i, thisrank)
 			}
 		} else if i < 1000 {
 			if thisrank != 2 {
-				t.Errorf("At ", i, " should be two but is ", thisrank)
+				t.Errorf("At %d should be zero but is %d ",i, thisrank)
 			}
 		} else {
 			if thisrank != 3 {
-				t.Errorf("At ", i, " should be three but is ", thisrank)
+				t.Errorf("At %d should be zero but is %d ",i, thisrank)
 			}
 		}
 	}
@@ -80,7 +80,7 @@ func TestArrayContainerMassiveSetAndGet(t *testing.T) {
 
 		v = v.add(uint16(j))
 		if v.getCardinality() != 1+j {
-			t.Errorf("Bogus cardinality. ", v.getCardinality(), j)
+			t.Errorf("Bogus cardinality %d %d. ", v.getCardinality(), j)
 		}
 		for i := 0; i <= arrayDefaultMaxSize; i++ {
 			if i <= j {

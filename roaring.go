@@ -38,12 +38,12 @@ func (b *RoaringBitmap) FromBase64(str string) (int, error) {
 }
 
 // Write out a serialized version of this bitmap to stream
-func (b *RoaringBitmap) WriteTo(stream io.Writer) (int, error) {
+func (b *RoaringBitmap) WriteTo(stream io.Writer) (int64, error) {
 	return b.highlowcontainer.writeTo(stream)
 }
 
 // Read a serialized version of this bitmap from stream
-func (b *RoaringBitmap) ReadFrom(stream io.Reader) (int, error) {
+func (b *RoaringBitmap) ReadFrom(stream io.Reader) (int64, error) {
 	return b.highlowcontainer.readFrom(stream)
 }
 

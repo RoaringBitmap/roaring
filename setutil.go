@@ -250,17 +250,6 @@ mainwhile:
 		} else {
 			// (set2[k2] == set1[k1])
 			return true
-			pos++
-			k1++
-			if k1 == len(set1) {
-				break
-			}
-			s1 = set1[k1]
-			k2++
-			if k2 == len(set2) {
-				break
-			}
-			s2 = set2[k2]
 		}
 	}
 	return false

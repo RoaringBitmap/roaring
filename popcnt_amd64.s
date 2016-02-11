@@ -1,5 +1,6 @@
 // +build !appengine
-TEXT ·hasAsm(SB),4,$0
+
+TEXT ·hasAsm(SB),4,$0-1
 MOVQ $1, AX
 CPUID
 SHRQ $23, CX
@@ -13,7 +14,7 @@ RET
 TEXT ·popcntSliceAsm(SB),4,$0-32
 XORQ	AX, AX
 MOVQ	s+0(FP), SI
-MOVQ	s+8(FP), CX
+MOVQ	s_len+8(FP), CX
 TESTQ	CX, CX
 JZ		popcntSliceEnd
 popcntSliceLoop:
@@ -28,7 +29,7 @@ RET
 TEXT ·popcntMaskSliceAsm(SB),4,$0-56
 XORQ	AX, AX
 MOVQ	s+0(FP), SI
-MOVQ	s+8(FP), CX
+MOVQ	s_len+8(FP), CX
 TESTQ	CX, CX
 JZ		popcntMaskSliceEnd
 MOVQ	m+24(FP), DI
@@ -48,7 +49,7 @@ RET
 TEXT ·popcntAndSliceAsm(SB),4,$0-56
 XORQ	AX, AX
 MOVQ	s+0(FP), SI
-MOVQ	s+8(FP), CX
+MOVQ	s_len+8(FP), CX
 TESTQ	CX, CX
 JZ		popcntAndSliceEnd
 MOVQ	m+24(FP), DI
@@ -67,7 +68,7 @@ RET
 TEXT ·popcntOrSliceAsm(SB),4,$0-56
 XORQ	AX, AX
 MOVQ	s+0(FP), SI
-MOVQ	s+8(FP), CX
+MOVQ	s_len+8(FP), CX
 TESTQ	CX, CX
 JZ		popcntOrSliceEnd
 MOVQ	m+24(FP), DI
@@ -86,7 +87,7 @@ RET
 TEXT ·popcntXorSliceAsm(SB),4,$0-56
 XORQ	AX, AX
 MOVQ	s+0(FP), SI
-MOVQ	s+8(FP), CX
+MOVQ	s_len+8(FP), CX
 TESTQ	CX, CX
 JZ		popcntXorSliceEnd
 MOVQ	m+24(FP), DI
