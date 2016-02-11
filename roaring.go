@@ -292,7 +292,7 @@ func (rb *Bitmap) Rank(x uint32) uint32 {
 // Select returns the xth integer in the bitmap
 func (rb *Bitmap) Select(x uint32) (uint32, error) {
 	if rb.GetCardinality() <= uint64(x) {
-		return 0, fmt.Errorf("Can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
+		return 0, fmt.Errorf("can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
 	}
 
 	remaining := x
@@ -305,7 +305,7 @@ func (rb *Bitmap) Select(x uint32) (uint32, error) {
 			return uint32(key)<<16 + uint32(c.selectInt(uint16(remaining))), nil
 		}
 	}
-	return 0, fmt.Errorf("Can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
+	return 0, fmt.Errorf("can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
 }
 
 // And computes the intersection between two bitmaps and stores the result in the current bitmap
