@@ -28,7 +28,6 @@ func TestRangeRemoval(t *testing.T) {
 	})
 }
 
-
 func TestFlipOnEmpty(t *testing.T) {
 
 	Convey("TestFlipOnEmpty in-place", t, func() {
@@ -54,7 +53,7 @@ func TestRoaringBitmapRank(t *testing.T) {
 				for x := uint32(0); x <= N; x += gap {
 					rb1.Add(x)
 				}
-				for y := uint32(0); y <= N; y += 1 {
+				for y := uint32(0); y <= N; y++ {
 					if rb1.Rank(y) != (y+1+gap-1)/gap {
 						So(rb1.Rank(y), ShouldEqual, (y+1+gap-1)/gap)
 					}
@@ -72,7 +71,7 @@ func TestRoaringBitmapSelect(t *testing.T) {
 				for x := uint32(0); x <= N; x += gap {
 					rb1.Add(x)
 				}
-				for y := uint32(0); y <= N/gap; y += 1 {
+				for y := uint32(0); y <= N/gap; y++ {
 					expectedInt := y * gap
 					i, err := rb1.Select(y)
 					if err != nil {

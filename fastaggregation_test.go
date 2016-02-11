@@ -129,7 +129,7 @@ func TestFastAggregationsXOR(t *testing.T) {
 		rb2 := NewRoaringBitmap()
 		rb3 := NewRoaringBitmap()
 
-		for i := uint32(0); i < 40000; i ++ {
+		for i := uint32(0); i < 40000; i++ {
 			rb1.Add(i)
 		}
 		for i := uint32(0); i < 40000; i += 4000 {

@@ -3,15 +3,14 @@ package roaring
 const (
 	arrayDefaultMaxSize = 4096 // containers with 4096 or fewer integers should be array containers.
 	maxCapacity         = 1 << 16
-	serial_cookie       = 12346
+	serialCookie        = 12346
 )
 
 func getSizeInBytesFromCardinality(card int) int {
 	if card > arrayDefaultMaxSize {
 		return maxCapacity / 8
-	} else {
-		return 2 * int(card)
 	}
+	return 2 * int(card)
 }
 
 // should be replaced with optimized assembly instructions

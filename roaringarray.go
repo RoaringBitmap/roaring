@@ -312,7 +312,7 @@ func (ra *roaringArray) serializedSizeInBytes() uint64 {
 func (ra *roaringArray) writeTo(stream io.Writer) (int64, error) {
 	preambleSize := 4 + 4 + 4*len(ra.keys)
 	buf := make([]byte, preambleSize+4*len(ra.keys))
-	binary.LittleEndian.PutUint32(buf[0:], uint32(serial_cookie))
+	binary.LittleEndian.PutUint32(buf[0:], uint32(serialCookie))
 	binary.LittleEndian.PutUint32(buf[4:], uint32(len(ra.keys)))
 
 	for i, key := range ra.keys {
@@ -349,7 +349,7 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if cookie != serial_cookie {
+	if cookie != serialCookie {
 		return 0, err
 	}
 	var size uint32

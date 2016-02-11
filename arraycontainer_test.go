@@ -56,19 +56,19 @@ func TestArrayContainerRank(t *testing.T) {
 		thisrank := v.rank(uint16(i))
 		if i < 10 {
 			if thisrank != 0 {
-				t.Errorf("At %d should be zero but is %d ",i, thisrank)
+				t.Errorf("At %d should be zero but is %d ", i, thisrank)
 			}
 		} else if i < 100 {
 			if thisrank != 1 {
-				t.Errorf("At %d should be zero but is %d ",i, thisrank)
+				t.Errorf("At %d should be zero but is %d ", i, thisrank)
 			}
 		} else if i < 1000 {
 			if thisrank != 2 {
-				t.Errorf("At %d should be zero but is %d ",i, thisrank)
+				t.Errorf("At %d should be zero but is %d ", i, thisrank)
 			}
 		} else {
 			if thisrank != 3 {
-				t.Errorf("At %d should be zero but is %d ",i, thisrank)
+				t.Errorf("At %d should be zero but is %d ", i, thisrank)
 			}
 		}
 	}
