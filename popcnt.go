@@ -1,6 +1,6 @@
 package roaring
 
-// bit population count, taken from
+// bit population count, take from
 // https://code.google.com/p/go/issues/detail?id=4988#c11
 // credit: https://code.google.com/u/arnehormann/
 func popcount(x uint64) (n uint64) {
@@ -10,15 +10,6 @@ func popcount(x uint64) (n uint64) {
 	x &= 0x0f0f0f0f0f0f0f0f
 	x *= 0x0101010101010101
 	return x >> 56
-}
-
-func popcount32(x uint32) (n uint32) {
-	x -= (x >> 1) & 0x55555555
-	x = (x>>2)&0x33333333 + x&0x33333333
-	x += x >> 4
-	x &= 0xF0F0F0F
-	x *= 0x1010101
-	return x >> 24
 }
 
 func popcntSliceGo(s []uint64) uint64 {

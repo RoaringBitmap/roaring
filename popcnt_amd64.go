@@ -2,10 +2,13 @@
 
 package roaring
 
+// *** the following functions are defined in popcnt_amd64.s
+
 //go:noescape
 
 func hasAsm() bool
 
+// useAsm is a flag used to select the GO or ASM implementation of the popcnt function
 var useAsm = hasAsm()
 
 //go:noescape

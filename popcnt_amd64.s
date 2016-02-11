@@ -1,4 +1,4 @@
-// +build !appengine
+// +build amd64,!appengine
 
 TEXT ·hasAsm(SB),4,$0-1
 MOVQ $1, AX
@@ -7,7 +7,6 @@ SHRQ $23, CX
 ANDQ $1, CX
 MOVB CX, ret+0(FP)
 RET
-
 
 #define POPCNTQ_DX_DX BYTE $0xf3; BYTE $0x48; BYTE $0x0f; BYTE $0xb8; BYTE $0xd2
 
