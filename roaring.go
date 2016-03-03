@@ -89,6 +89,29 @@ func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }
 
+// BoundSerializedSizeInBytes returns an upper bound on the serialized size in bytes
+// assuming that one wants to store "cardinality" integers in [0, universe_size)
+func BoundSerializedSizeInBytes(cardinality uint64, universe_size uint64) uint64 {
+	contnbr := (universe_size + uint64(65535)) / uint64(65536)
+	if contnbr > cardinality {
+		contnbr = cardinality
+		// we can't have more containers than we have values
+	}
+	headermax := 8*contnbr + 4
+	if 4 > (contnbr+7)/8 {
+		headermax += 4
+	} else {
+		headermax += (contnbr + 7) / 8
+	}
+	valsarray := 2 * cardinality
+	valsbitmap := contnbr * 8192
+	valsbest := valsarray
+	if valsbest > valsbitmap {
+		valsbest = valsbitmap
+	}
+	return valsbest + headermax
+}
+
 // IntIterable allows you to iterate over the values in a Bitmap
 type IntIterable interface {
 	HasNext() bool

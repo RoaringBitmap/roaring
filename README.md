@@ -106,7 +106,14 @@ consider the following sample of code:
 	}
 ```
 
+Given N integers in [0,x), then the serialized size in bytes of
+a Roaring bitmap should never exceed this bound:
 
+`` 8 + 9 * ((long)x+65535)/65536 + 2 * N ``
+
+That is, given a fixed overhead for the universe size (x), Roaring
+bitmaps never use more than 2 bytes per integer. You can call
+``BoundSerializedSizeInBytes`` for a more precise estimate.
 
 
 ### Documentation

@@ -32,6 +32,9 @@ func TestBase64(t *testing.T) {
 
 func TestSerializationBasic(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
+  if BoundSerializedSizeInBytes(rb.GetCardinality(),1001) < rb.GetSerializedSizeInBytes() {
+    t.Errorf("Bad BoundSerializedSizeInBytes")
+  }
 	l := int(rb.GetSerializedSizeInBytes())
 	buf := new(bytes.Buffer)
 	_, err := rb.WriteTo(buf)
@@ -54,6 +57,9 @@ func TestSerializationBasic(t *testing.T) {
 func TestSerializationBasic2(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000, 10000, 100000, 1000000)
 	buf := new(bytes.Buffer)
+  if BoundSerializedSizeInBytes(rb.GetCardinality(),1000001) < rb.GetSerializedSizeInBytes() {
+    t.Errorf("Bad BoundSerializedSizeInBytes")
+  }
 	l := int(rb.GetSerializedSizeInBytes())
 	_, err := rb.WriteTo(buf)
 	if err != nil {
@@ -77,6 +83,10 @@ func TestSerializationBasic3(t *testing.T) {
 	for i := 5000000; i < 5000000+2*(1<<16); i++ {
 		rb.AddInt(i)
 	}
+  if BoundSerializedSizeInBytes(rb.GetCardinality(),5000000+2*(1<<16) +1) < rb.GetSerializedSizeInBytes() {
+    t.Errorf("Bad BoundSerializedSizeInBytes")
+  }
+
 	l := int(rb.GetSerializedSizeInBytes())
 	buf := new(bytes.Buffer)
 	_, err := rb.WriteTo(buf)
