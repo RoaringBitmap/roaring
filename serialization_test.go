@@ -84,6 +84,33 @@ func TestSerializationToFile(t *testing.T) {
 	if !rb.Equals(newrb) {
 		t.Errorf("Cannot retrieve serialized version")
 	}
+}
+
+func TestSerializationFromJava(t *testing.T) {
+	fname := "testdata/bitmapwithoutruns.bin"
+	newrb := NewBitmap()
+	fin, err := os.Open(fname)
+
+	if err != nil {
+		t.Errorf("Failed reading")
+	}
+	defer func() {
+		fin.Close()
+	}()
+	_, err = newrb.ReadFrom(fin)
+	rb := NewBitmap()
+	for k := uint32(0); k < 100000; k += 1000 {
+		rb.Add(k)
+	}
+	for k := uint32(100000); k < 200000; k++ {
+		rb.Add(3 * k)
+	}
+	for k := uint32(700000); k < 800000; k++ {
+		rb.Add(k)
+	}
+	if !rb.Equals(newrb) {
+		t.Errorf("Bad serialization")
+	}
 
 }
 

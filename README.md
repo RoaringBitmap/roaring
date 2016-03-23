@@ -1,22 +1,22 @@
 roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https://travis-ci.org/RoaringBitmap/roaring)[![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring)
 =============
 
-This is a go port of the Roaring bitmap data structure. 
+This is a go port of the Roaring bitmap data structure.
 
 Roaring is  used by Apache Spark (https://spark.apache.org/), Apache Kylin (http://kylin.io),
-Druid.io (http://druid.io/), Whoosh (https://pypi.python.org/pypi/Whoosh/) 
+Druid.io (http://druid.io/), Whoosh (https://pypi.python.org/pypi/Whoosh/)
 and  Apache Lucene (http://lucene.apache.org/) (as well as supporting systems
-such as Solr and Elastic). 
+such as Solr and Elastic).
 
 The original java version can be found at https://github.com/RoaringBitmap/RoaringBitmap
 
 The Java and Go version are meant to be binary compatible: you can save bitmaps
-from a Java program and load them back in Go, and vice versa. 
+from a Java program and load them back in Go, and vice versa.
 
 
-This code is licensed under Apache License, Version 2.0 (ASL2.0). 
+This code is licensed under Apache License, Version 2.0 (ASL2.0).
 
-Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@statik), Bob Potter (@bpot), Tyson Maly (@tvmaly), Will Glynn (@willglynn), Brent Pedersen (@brentp) 
+Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@statik), Bob Potter (@bpot), Tyson Maly (@tvmaly), Will Glynn (@willglynn), Brent Pedersen (@brentp)
 
 ### Reference
 
@@ -86,7 +86,7 @@ func main() {
 }
 ```
 
-If you wish to use serialization and handle errors, you might want to 
+If you wish to use serialization and handle errors, you might want to
 consider the following sample of code:
 
 ```go
@@ -125,6 +125,15 @@ Current documentation is available at http://godoc.org/github.com/RoaringBitmap/
 Type
 
          go test -bench Benchmark -run -
+
+
+### Compatibility with Java RoaringBitmap library
+
+You can read bitmaps in Go (resp. Java) that have been serialized in Java (resp. Go)
+with the caveat that the Go library does not yet support run containers. So if you plan
+to read bitmaps serialized from Java in Go, you might want to call ``removeRunCompression``
+prior to serializing your Java instances. This is a temporary limitation: we plan to
+add support for run containers to the Go library.
 
 ### Alternative
 
