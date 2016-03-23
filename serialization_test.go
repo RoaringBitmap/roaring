@@ -4,6 +4,7 @@ package roaring
 
 import (
 	"bytes"
+	"os"
 	"testing"
 )
 
@@ -32,9 +33,9 @@ func TestBase64(t *testing.T) {
 
 func TestSerializationBasic(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
-  if BoundSerializedSizeInBytes(rb.GetCardinality(),1001) < rb.GetSerializedSizeInBytes() {
-    t.Errorf("Bad BoundSerializedSizeInBytes")
-  }
+	if BoundSerializedSizeInBytes(rb.GetCardinality(), 1001) < rb.GetSerializedSizeInBytes() {
+		t.Errorf("Bad BoundSerializedSizeInBytes")
+	}
 	l := int(rb.GetSerializedSizeInBytes())
 	buf := new(bytes.Buffer)
 	_, err := rb.WriteTo(buf)
@@ -54,12 +55,44 @@ func TestSerializationBasic(t *testing.T) {
 	}
 }
 
+func TestSerializationToFile(t *testing.T) {
+	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
+	fname := "myfile.bin"
+	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	if err != nil {
+		t.Errorf("Can't open a file for writing")
+	}
+	defer fout.Close()
+	_, err = rb.WriteTo(fout)
+	if err != nil {
+		t.Errorf("Failed writing")
+	}
+	newrb := NewBitmap()
+	fin, err := os.Open(fname)
+
+	if err != nil {
+		t.Errorf("Failed reading")
+	}
+	defer func() {
+		fin.Close()
+		err := os.Remove(fname)
+		if err != nil {
+			t.Errorf("could not delete ", fname)
+		}
+	}()
+	_, err = newrb.ReadFrom(fin)
+	if !rb.Equals(newrb) {
+		t.Errorf("Cannot retrieve serialized version")
+	}
+
+}
+
 func TestSerializationBasic2(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000, 10000, 100000, 1000000)
 	buf := new(bytes.Buffer)
-  if BoundSerializedSizeInBytes(rb.GetCardinality(),1000001) < rb.GetSerializedSizeInBytes() {
-    t.Errorf("Bad BoundSerializedSizeInBytes")
-  }
+	if BoundSerializedSizeInBytes(rb.GetCardinality(), 1000001) < rb.GetSerializedSizeInBytes() {
+		t.Errorf("Bad BoundSerializedSizeInBytes")
+	}
 	l := int(rb.GetSerializedSizeInBytes())
 	_, err := rb.WriteTo(buf)
 	if err != nil {
@@ -83,9 +116,9 @@ func TestSerializationBasic3(t *testing.T) {
 	for i := 5000000; i < 5000000+2*(1<<16); i++ {
 		rb.AddInt(i)
 	}
-  if BoundSerializedSizeInBytes(rb.GetCardinality(),5000000+2*(1<<16) +1) < rb.GetSerializedSizeInBytes() {
-    t.Errorf("Bad BoundSerializedSizeInBytes")
-  }
+	if BoundSerializedSizeInBytes(rb.GetCardinality(), 5000000+2*(1<<16)+1) < rb.GetSerializedSizeInBytes() {
+		t.Errorf("Bad BoundSerializedSizeInBytes")
+	}
 
 	l := int(rb.GetSerializedSizeInBytes())
 	buf := new(bytes.Buffer)
