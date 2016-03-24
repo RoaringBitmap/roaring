@@ -18,9 +18,15 @@ This code is licensed under Apache License, Version 2.0 (ASL2.0).
 
 Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@statik), Bob Potter (@bpot), Tyson Maly (@tvmaly), Will Glynn (@willglynn), Brent Pedersen (@brentp)
 
-### Reference
+### References
 
-Samy Chambi, Daniel Lemire, Owen Kaser, Robert Godin, Better bitmap performance with Roaring bitmaps, Software: Practice and Experience (to appear) http://arxiv.org/abs/1402.6407
+-  Samy Chambi, Daniel Lemire, Owen Kaser, Robert Godin,
+Better bitmap performance with Roaring bitmaps,
+Software: Practice and Experience (accepted in 2015, to appear)
+http://arxiv.org/abs/1402.6407 This paper used data from http://lemire.me/data/realroaring2014.html
+- Daniel Lemire, Gregory Ssi-Yan-Kai, Owen Kaser, Consistently faster and smaller compressed bitmaps with Roaring, Software: Practice and Experience (accepted in 2016, to appear) http://arxiv.org/abs/1603.06549
+
+
 
 ### Dependencies
 
