@@ -31,7 +31,11 @@ func (ac *arrayContainer) serializedSizeInBytes() int {
 	return ac.getCardinality() * 2
 }
 
+// add the values in the range [firstOfRange,lastofRange)
 func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
+	if firstOfRange >= lastOfRange {
+		return ac.clone()
+	}
 	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
 		indexstart = -indexstart - 1
@@ -58,7 +62,11 @@ func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
 	return answer
 }
 
+// remove the values in the range [firstOfRange,lastofRange)
 func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
+	if firstOfRange >= lastOfRange {
+		return ac.clone()
+	}
 	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
 		indexstart = -indexstart - 1
@@ -76,8 +84,11 @@ func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
 	return answer
 }
 
+// add the values in the range [firstOfRange,lastofRange)
 func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
-
+	if firstOfRange >= lastOfRange {
+		return ac
+	}
 	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
 		indexstart = -indexstart - 1
@@ -111,7 +122,11 @@ func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
 	return ac
 }
 
+// remove the values in the range [firstOfRange,lastOfRange)
 func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container {
+	if firstOfRange >= lastOfRange {
+		return ac
+	}
 	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
 		indexstart = -indexstart - 1
@@ -129,8 +144,9 @@ func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container 
 	return answer
 }
 
+// flip the values in the range [firstOfRange,lastOfRange]
 func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
-	if firstOfRange > lastOfRange {
+	if firstOfRange > lastOfRange { // unlike add and remove, not uses an inclusive range [firstOfRange,lastOfRange]
 		return ac.clone()
 	}
 
@@ -486,7 +502,11 @@ func copyOf(array []uint16, size int) []uint16 {
 	return result
 }
 
+// flip the values in the range [firstOfRange,lastOfRange]
 func (ac *arrayContainer) inot(firstOfRange, lastOfRange int) container {
+	if firstOfRange > lastOfRange { // unlike add and remove, not uses an inclusive range [firstOfRange,lastOfRange]
+		return ac
+	}
 	// determine the span of array indices to be affected
 	startIndex := binarySearch(ac.content, uint16(firstOfRange))
 	if startIndex < 0 {
