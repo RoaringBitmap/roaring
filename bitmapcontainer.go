@@ -130,8 +130,9 @@ func (bc *bitmapContainer) clone() container {
 	return &ptr
 }
 
-func (bc *bitmapContainer) inot(firstOfRange, lastOfRange int) container {
-	return bc.NotBitmap(bc, firstOfRange, lastOfRange)
+// negate values in the closed range [firstOfRange, lastOfRange]
+func (bc *bitmapContainer) inotClose(firstOfRange, lastOfRange int) container {
+	return bc.NotBitmapClose(bc, firstOfRange, lastOfRange)
 }
 
 // add all values in range [firstOfRange,lastOfRange)
@@ -173,11 +174,12 @@ func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container
 	return bc
 }
 
-func (bc *bitmapContainer) not(firstOfRange, lastOfRange int) container {
-	return bc.NotBitmap(newBitmapContainer(), firstOfRange, lastOfRange)
+func (bc *bitmapContainer) notClose(firstOfRange, lastOfRange int) container {
+	return bc.NotBitmapClose(newBitmapContainer(), firstOfRange, lastOfRange)
 
 }
-func (bc *bitmapContainer) NotBitmap(answer *bitmapContainer, firstOfRange, lastOfRange int) container {
+// negate values n the closed range [firstOfRange,lastofRange]
+func (bc *bitmapContainer) NotBitmapClose(answer *bitmapContainer, firstOfRange, lastOfRange int) container {
 	// TODO: should be written as optimized assembly
 	if (lastOfRange - firstOfRange + 1) == maxCapacity {
 		newCardinality := maxCapacity - bc.cardinality

@@ -98,7 +98,7 @@ func TestRoaringContainer(t *testing.T) {
 	Convey("inottest0", t, func() {
 		content := []uint16{9}
 		c := makeContainer(content)
-		c = c.inot(0, 10)
+		c = c.inotClose(0, 10)
 		si := c.getShortIterator()
 		i := 0
 		for si.hasNext() {
@@ -115,7 +115,7 @@ func TestRoaringContainer(t *testing.T) {
 		edge := 1 << 13
 		//		edge := 30
 		c := makeContainer(content)
-		c = c.inot(0, edge)
+		c = c.inotClose(0, edge)
 		size := edge - len(content)
 		s := make([]uint16, size+1)
 		pos := 0

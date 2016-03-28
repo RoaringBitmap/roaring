@@ -145,7 +145,7 @@ func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container 
 }
 
 // flip the values in the range [firstOfRange,lastOfRange]
-func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
+func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 	if firstOfRange > lastOfRange { // unlike add and remove, not uses an inclusive range [firstOfRange,lastOfRange]
 		return ac.clone()
 	}
@@ -166,7 +166,7 @@ func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
 	newCardinality := len(ac.content) + cardinalityChange
 
 	if newCardinality > arrayDefaultMaxSize {
-		return ac.toBitmapContainer().not(firstOfRange, lastOfRange)
+		return ac.toBitmapContainer().notClose(firstOfRange, lastOfRange)
 	}
 	answer := newArrayContainer()
 	answer.content = make([]uint16, newCardinality, newCardinality) //a hack for sure
@@ -503,7 +503,7 @@ func copyOf(array []uint16, size int) []uint16 {
 }
 
 // flip the values in the range [firstOfRange,lastOfRange]
-func (ac *arrayContainer) inot(firstOfRange, lastOfRange int) container {
+func (ac *arrayContainer) inotClose(firstOfRange, lastOfRange int) container {
 	if firstOfRange > lastOfRange { // unlike add and remove, not uses an inclusive range [firstOfRange,lastOfRange]
 		return ac
 	}
@@ -526,7 +526,7 @@ func (ac *arrayContainer) inot(firstOfRange, lastOfRange int) container {
 	if cardinalityChange > 0 {
 		if newCardinality > len(ac.content) {
 			if newCardinality > arrayDefaultMaxSize {
-				return ac.toBitmapContainer().inot(firstOfRange, lastOfRange)
+				return ac.toBitmapContainer().inotClose(firstOfRange, lastOfRange)
 			}
 			ac.content = copyOf(ac.content, newCardinality)
 		}

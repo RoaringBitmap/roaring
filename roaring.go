@@ -855,7 +855,7 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint32) {
 		i := rb.highlowcontainer.getIndex(hb)
 
 		if i >= 0 {
-			c := rb.highlowcontainer.getWritableContainerAtIndex(i).inot(int(containerStart), int(containerLast))
+			c := rb.highlowcontainer.getWritableContainerAtIndex(i).inotClose(int(containerStart), int(containerLast))
 			if c.getCardinality() > 0 {
 				rb.highlowcontainer.setContainerAtIndex(i, c)
 			} else {
@@ -996,7 +996,7 @@ func Flip(bm *Bitmap, rangeStart, rangeEnd uint32) *Bitmap {
 		j := answer.highlowcontainer.getIndex(hb)
 
 		if i >= 0 {
-			c := bm.highlowcontainer.getContainerAtIndex(i).not(int(containerStart), int(containerLast))
+			c := bm.highlowcontainer.getContainerAtIndex(i).notClose(int(containerStart), int(containerLast))
 			if c.getCardinality() > 0 {
 				answer.highlowcontainer.insertNewKeyValueAt(-j-1, hb, c)
 			}
