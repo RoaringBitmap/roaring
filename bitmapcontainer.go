@@ -137,8 +137,7 @@ func (bc *bitmapContainer) inotClose(firstOfRange, lastOfRange int) container {
 
 // add all values in range [firstOfRange,lastOfRange)
 func (bc *bitmapContainer) iaddRange(firstOfRange, lastOfRange int) container {
-	setBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
-	bc.computeCardinality()
+	bc.cardinality += setBitmapRangeAndCardinalityChange(bc.bitmap, firstOfRange, lastOfRange)
 	return bc
 }
 
@@ -146,8 +145,7 @@ func (bc *bitmapContainer) iaddRange(firstOfRange, lastOfRange int) container {
 func (bc *bitmapContainer) addRange(firstOfRange, lastOfRange int) container {
 	answer := &bitmapContainer{bc.cardinality, make([]uint64, len(bc.bitmap))}
 	copy(answer.bitmap, bc.bitmap[:])
-	setBitmapRange(answer.bitmap, firstOfRange, lastOfRange)
-	answer.computeCardinality()
+	answer.cardinality += setBitmapRangeAndCardinalityChange(answer.bitmap, firstOfRange, lastOfRange)
 	return answer
 
 }
@@ -156,8 +154,7 @@ func (bc *bitmapContainer) addRange(firstOfRange, lastOfRange int) container {
 func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container {
 	answer := &bitmapContainer{bc.cardinality, make([]uint64, len(bc.bitmap))}
 	copy(answer.bitmap, bc.bitmap[:])
-	resetBitmapRange(answer.bitmap, firstOfRange, lastOfRange)
-	answer.computeCardinality()
+	answer.cardinality += resetBitmapRangeAndCardinalityChange(answer.bitmap, firstOfRange, lastOfRange)
 	if answer.getCardinality() <= arrayDefaultMaxSize {
 		return answer.toArrayContainer()
 	}
@@ -166,8 +163,7 @@ func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container 
 
 // remove all values in range [firstOfRange,lastOfRange)
 func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container {
-	resetBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
-	bc.computeCardinality()
+	bc.cardinality += resetBitmapRangeAndCardinalityChange(bc.bitmap, firstOfRange, lastOfRange)
 	if bc.getCardinality() <= arrayDefaultMaxSize {
 		return bc.toArrayContainer()
 	}
@@ -178,6 +174,7 @@ func (bc *bitmapContainer) notClose(firstOfRange, lastOfRange int) container {
 	return bc.NotBitmapClose(newBitmapContainer(), firstOfRange, lastOfRange)
 
 }
+
 // negate values n the closed range [firstOfRange,lastofRange]
 func (bc *bitmapContainer) NotBitmapClose(answer *bitmapContainer, firstOfRange, lastOfRange int) container {
 	// TODO: should be written as optimized assembly

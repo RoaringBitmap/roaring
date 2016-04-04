@@ -157,7 +157,6 @@ func resetBitmapRange(bitmap []uint64, start int, end int) {
 }
 
 func setBitmapRange(bitmap []uint64, start int, end int) {
-
 	if start >= end {
 		return
 	}
@@ -172,6 +171,40 @@ func setBitmapRange(bitmap []uint64, start int, end int) {
 		bitmap[i] = ^uint64(0)
 	}
 	bitmap[endword] |= ^uint64(0) >> (uint(-end) % 64)
+}
+
+func flipBitmapRangeAndCardinalityChange(bitmap []uint64, start int, end int) int {
+	before := wordCardinalityForBitmapRange(bitmap, start, end)
+	flipBitmapRange(bitmap, start, end)
+	after := wordCardinalityForBitmapRange(bitmap, start, end)
+	return int(after - before)
+}
+
+func resetBitmapRangeAndCardinalityChange(bitmap []uint64, start int, end int) int {
+	before := wordCardinalityForBitmapRange(bitmap, start, end)
+	resetBitmapRange(bitmap, start, end)
+	after := wordCardinalityForBitmapRange(bitmap, start, end)
+	return int(after - before)
+}
+
+func setBitmapRangeAndCardinalityChange(bitmap []uint64, start int, end int) int {
+	before := wordCardinalityForBitmapRange(bitmap, start, end)
+	setBitmapRange(bitmap, start, end)
+	after := wordCardinalityForBitmapRange(bitmap, start, end)
+	return int(after - before)
+}
+
+func wordCardinalityForBitmapRange(bitmap []uint64, start int, end int) uint64 {
+	answer := uint64(0)
+	if start >= end {
+		return answer
+	}
+	firstword := start / 64
+	endword := (end - 1) / 64
+	for i := firstword; i <= endword; i++ {
+		answer += popcount(bitmap[i])
+	}
+	return answer
 }
 
 func selectBitPosition(w uint64, j int) int {
