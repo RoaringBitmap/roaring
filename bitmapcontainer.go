@@ -130,11 +130,6 @@ func (bc *bitmapContainer) clone() container {
 	return &ptr
 }
 
-// negate values in the closed range [firstOfRange, lastOfRange]
-func (bc *bitmapContainer) inotClose(firstOfRange, lastOfRange int) container {
-	return bc.NotBitmapClose(bc, firstOfRange, lastOfRange)
-}
-
 // add all values in range [firstOfRange,lastOfRange)
 func (bc *bitmapContainer) iaddRange(firstOfRange, lastOfRange int) container {
 	bc.cardinality += setBitmapRangeAndCardinalityChange(bc.bitmap, firstOfRange, lastOfRange)
@@ -170,92 +165,27 @@ func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container
 	return bc
 }
 
-func (bc *bitmapContainer) notClose(firstOfRange, lastOfRange int) container {
-	return bc.NotBitmapClose(newBitmapContainer(), firstOfRange, lastOfRange)
-
+// flip all values in range [firstOfRange,lastOfRange)
+func (bc *bitmapContainer) inot(firstOfRange, lastOfRange int) container {
+	if lastOfRange-firstOfRange == maxCapacity {
+		flipBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
+		bc.cardinality = maxCapacity - bc.cardinality
+	} else if lastOfRange-firstOfRange > maxCapacity/2 {
+		flipBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
+		bc.computeCardinality()
+	} else {
+		bc.cardinality += flipBitmapRangeAndCardinalityChange(bc.bitmap, firstOfRange, lastOfRange)
+	}
+	if bc.getCardinality() <= arrayDefaultMaxSize {
+		return bc.toArrayContainer()
+	}
+	return bc
 }
 
-// negate values n the closed range [firstOfRange,lastofRange]
-func (bc *bitmapContainer) NotBitmapClose(answer *bitmapContainer, firstOfRange, lastOfRange int) container {
-	// TODO: should be written as optimized assembly
-	if (lastOfRange - firstOfRange + 1) == maxCapacity {
-		newCardinality := maxCapacity - bc.cardinality
-		for k := 0; k < len(bc.bitmap); k++ {
-			answer.bitmap[k] = ^bc.bitmap[k]
-		}
-		answer.cardinality = newCardinality
-		if newCardinality <= arrayDefaultMaxSize {
-			return answer.toArrayContainer()
-		}
-		return answer
-	}
-	// could be optimized to first determine the answer cardinality,
-	// rather than update/create bitmap and then possibly convert
-
-	cardinalityChange := 0
-	rangeFirstWord := firstOfRange / 64
-	rangeFirstBitPos := firstOfRange & 63
-	rangeLastWord := lastOfRange / 64
-	rangeLastBitPos := lastOfRange & 63
-
-	// if not in place, we need to duplicate stuff before
-	// rangeFirstWord and after rangeLastWord
-	if answer != bc {
-		copy(answer.bitmap, bc.bitmap[:rangeFirstWord])
-		base := rangeLastWord + 1
-		sz := len(bc.bitmap) - base
-		if sz > 0 {
-			copy(answer.bitmap[base:], bc.bitmap[base:base+sz])
-		}
-	}
-
-	// unfortunately, the simple expression gives the wrong mask for
-	// rangeLastBitPos==63
-	// no branchless way comes to mind
-	maskOnLeft := uint64(0xffffffffffffffff)
-	if rangeLastBitPos != 63 {
-		maskOnLeft = (uint64(1) << uint((rangeLastBitPos+1)%64)) - 1
-	}
-	mask := uint64(0xffffffffffffffff) // now zero out stuff in the prefix
-
-	mask ^= (uint64(1) << uint(rangeFirstBitPos%64)) - 1
-
-	if rangeFirstWord == rangeLastWord {
-		// range starts and ends in same word (may have
-		// unchanged bits on both left and right)
-		mask &= maskOnLeft
-		cardinalityChange = -int(popcount(bc.bitmap[rangeFirstWord]))
-		answer.bitmap[rangeFirstWord] = bc.bitmap[rangeFirstWord] ^ mask
-		cardinalityChange += int(popcount(answer.bitmap[rangeFirstWord]))
-		answer.cardinality = bc.cardinality + cardinalityChange
-
-		if answer.cardinality <= arrayDefaultMaxSize {
-			return answer.toArrayContainer()
-		}
-		return answer
-	}
-
-	// range spans words
-	cardinalityChange += -int(popcount(bc.bitmap[rangeFirstWord]))
-	answer.bitmap[rangeFirstWord] = bc.bitmap[rangeFirstWord] ^ mask
-	cardinalityChange += int(popcount(answer.bitmap[rangeFirstWord]))
-
-	cardinalityChange += -int(popcount(bc.bitmap[rangeLastWord]))
-	answer.bitmap[rangeLastWord] = bc.bitmap[rangeLastWord] ^ maskOnLeft
-	cardinalityChange += int(popcount(answer.bitmap[rangeLastWord]))
-
-	// negate the words, if any, strictly between first and last
-	for i := rangeFirstWord + 1; i < rangeLastWord; i++ {
-		bcb := bc.bitmap[i]
-		cardinalityChange += (64 - 2*int(popcount(bcb)))
-		answer.bitmap[i] = ^bcb
-	}
-	answer.cardinality = bc.cardinality + cardinalityChange
-
-	if answer.cardinality <= arrayDefaultMaxSize {
-		return answer.toArrayContainer()
-	}
-	return answer
+// flip all values in range [firstOfRange,lastOfRange)
+func (bc *bitmapContainer) not(firstOfRange, lastOfRange int) container {
+	answer := bc.clone()
+	return answer.inot(firstOfRange, lastOfRange)
 }
 
 func (bc *bitmapContainer) or(a container) container {

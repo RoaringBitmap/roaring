@@ -17,8 +17,8 @@ type container interface {
 	addRange(start, final int) container  // range is [firstOfRange,lastOfRange)
 	iaddRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	remove(uint16) container
-	notClose(start, final int) container               // range is [firstOfRange,lastOfRange], note that convention differs from addRange and removeRange
-	inotClose(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange]
+	not(start, final int) container               // range is [firstOfRange,lastOfRange)
+	inot(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	xor(r container) container
 	getShortIterator() shortIterable
 	contains(i uint16) bool

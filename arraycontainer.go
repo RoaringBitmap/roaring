@@ -144,6 +144,14 @@ func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container 
 	return answer
 }
 
+// flip the values in the range [firstOfRange,lastOfRange)
+func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
+	if firstOfRange >= lastOfRange {
+		return ac.clone()
+	}
+	return ac.notClose(firstOfRange, lastOfRange-1) // remove everything in [firstOfRange,lastOfRange-1]
+}
+
 // flip the values in the range [firstOfRange,lastOfRange]
 func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 	if firstOfRange > lastOfRange { // unlike add and remove, not uses an inclusive range [firstOfRange,lastOfRange]
@@ -166,7 +174,7 @@ func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 	newCardinality := len(ac.content) + cardinalityChange
 
 	if newCardinality > arrayDefaultMaxSize {
-		return ac.toBitmapContainer().notClose(firstOfRange, lastOfRange)
+		return ac.toBitmapContainer().not(firstOfRange, lastOfRange+1)
 	}
 	answer := newArrayContainer()
 	answer.content = make([]uint16, newCardinality, newCardinality) //a hack for sure
@@ -502,6 +510,14 @@ func copyOf(array []uint16, size int) []uint16 {
 	return result
 }
 
+// flip the values in the range [firstOfRange,lastOfRange)
+func (ac *arrayContainer) inot(firstOfRange, lastOfRange int) container {
+	if firstOfRange >= lastOfRange {
+		return ac
+	}
+	return ac.inotClose(firstOfRange, lastOfRange-1) // remove everything in [firstOfRange,lastOfRange-1]
+}
+
 // flip the values in the range [firstOfRange,lastOfRange]
 func (ac *arrayContainer) inotClose(firstOfRange, lastOfRange int) container {
 	if firstOfRange > lastOfRange { // unlike add and remove, not uses an inclusive range [firstOfRange,lastOfRange]
@@ -526,7 +542,7 @@ func (ac *arrayContainer) inotClose(firstOfRange, lastOfRange int) container {
 	if cardinalityChange > 0 {
 		if newCardinality > len(ac.content) {
 			if newCardinality > arrayDefaultMaxSize {
-				return ac.toBitmapContainer().inotClose(firstOfRange, lastOfRange)
+				return ac.toBitmapContainer().inot(firstOfRange, lastOfRange+1)
 			}
 			ac.content = copyOf(ac.content, newCardinality)
 		}
