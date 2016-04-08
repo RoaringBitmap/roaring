@@ -1,6 +1,6 @@
 // +build amd64,!appengine
 
-// This file tests the popcnt funtions
+// This file tests the popcnt functions
 
 package roaring
 
