@@ -91,8 +91,8 @@ func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 
 // BoundSerializedSizeInBytes returns an upper bound on the serialized size in bytes
 // assuming that one wants to store "cardinality" integers in [0, universe_size)
-func BoundSerializedSizeInBytes(cardinality uint64, universe_size uint64) uint64 {
-	contnbr := (universe_size + uint64(65535)) / uint64(65536)
+func BoundSerializedSizeInBytes(cardinality uint64, universeSize uint64) uint64 {
+	contnbr := (universeSize + uint64(65535)) / uint64(65536)
 	if contnbr > cardinality {
 		contnbr = cardinality
 		// we can't have more containers than we have values

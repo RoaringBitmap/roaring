@@ -77,10 +77,10 @@ func TestSerializationToFile(t *testing.T) {
 		fin.Close()
 		err := os.Remove(fname)
 		if err != nil {
-			t.Errorf("could not delete ", fname)
+			t.Errorf("could not delete %s ", fname)
 		}
 	}()
-	_, err = newrb.ReadFrom(fin)
+	_, _ = newrb.ReadFrom(fin)
 	if !rb.Equals(newrb) {
 		t.Errorf("Cannot retrieve serialized version")
 	}
@@ -97,7 +97,7 @@ func TestSerializationFromJava(t *testing.T) {
 	defer func() {
 		fin.Close()
 	}()
-	_, err = newrb.ReadFrom(fin)
+	_, _ = newrb.ReadFrom(fin)
 	rb := NewBitmap()
 	for k := uint32(0); k < 100000; k += 1000 {
 		rb.Add(k)
