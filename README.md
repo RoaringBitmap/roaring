@@ -126,6 +126,12 @@ bitmaps never use more than 2 bytes per integer. You can call
 
 Current documentation is available at http://godoc.org/github.com/RoaringBitmap/roaring
 
+### Coverage
+
+We test our software. For a report on our test coverage, see
+
+https://gocover.io/github.com/RoaringBitmap/roaring
+
 ### Benchmark
 
 Type
