@@ -4,7 +4,6 @@ import (
 	"container/heap"
 )
 
-
 // Or function that requires repairAfterLazy
 func lazyOR(x1, x2 *Bitmap) *Bitmap {
 	answer := NewBitmap()

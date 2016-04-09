@@ -14,7 +14,7 @@ type container interface {
 	getCardinality() int
 	rank(uint16) int
 	add(uint16) container
-	addRange(start, final int) container  // range is [firstOfRange,lastOfRange)
+	//addRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
 	iaddRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	remove(uint16) container
 	not(start, final int) container               // range is [firstOfRange,lastOfRange)
@@ -30,7 +30,7 @@ type container interface {
 	lazyOR(r container) container
 	lazyIOR(r container) container
 	getSizeInBytes() int
-	removeRange(start, final int) container  // range is [firstOfRange,lastOfRange)
+	//removeRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
 	iremoveRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	selectInt(uint16) int
 	serializedSizeInBytes() int

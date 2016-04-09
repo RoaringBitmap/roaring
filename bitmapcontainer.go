@@ -137,16 +137,17 @@ func (bc *bitmapContainer) iaddRange(firstOfRange, lastOfRange int) container {
 }
 
 // add all values in range [firstOfRange,lastOfRange)
-func (bc *bitmapContainer) addRange(firstOfRange, lastOfRange int) container {
+// unused code
+/*func (bc *bitmapContainer) addRange(firstOfRange, lastOfRange int) container {
 	answer := &bitmapContainer{bc.cardinality, make([]uint64, len(bc.bitmap))}
 	copy(answer.bitmap, bc.bitmap[:])
 	answer.cardinality += setBitmapRangeAndCardinalityChange(answer.bitmap, firstOfRange, lastOfRange)
 	return answer
-
-}
+}*/
 
 // remove all values in range [firstOfRange,lastOfRange)
-func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container {
+// unused code
+/*func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container {
 	answer := &bitmapContainer{bc.cardinality, make([]uint64, len(bc.bitmap))}
 	copy(answer.bitmap, bc.bitmap[:])
 	answer.cardinality += resetBitmapRangeAndCardinalityChange(answer.bitmap, firstOfRange, lastOfRange)
@@ -154,7 +155,7 @@ func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container 
 		return answer.toArrayContainer()
 	}
 	return answer
-}
+}*/
 
 // remove all values in range [firstOfRange,lastOfRange)
 func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container {

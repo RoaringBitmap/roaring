@@ -32,7 +32,8 @@ func (ac *arrayContainer) serializedSizeInBytes() int {
 }
 
 // add the values in the range [firstOfRange,lastofRange)
-func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
+// unused code
+/*func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
 	if firstOfRange >= lastOfRange {
 		return ac.clone()
 	}
@@ -60,10 +61,11 @@ func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
 		answer.content[k+indexstart] = uint16(firstOfRange + k)
 	}
 	return answer
-}
+}*/
 
 // remove the values in the range [firstOfRange,lastofRange)
-func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
+// unused code
+/*func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
 	if firstOfRange >= lastOfRange {
 		return ac.clone()
 	}
@@ -82,7 +84,7 @@ func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
 	copy(answer.content[:indexstart], ac.content[:indexstart])
 	copy(answer.content[indexstart:], ac.content[indexstart+rangelength:])
 	return answer
-}
+}*/
 
 // add the values in the range [firstOfRange,lastofRange)
 func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
