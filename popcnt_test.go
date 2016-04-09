@@ -15,6 +15,10 @@ func TestPopcntSlice(t *testing.T) {
 	if resGo != resAsm {
 		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
 	}
+	res := popcntSlice(s)
+	if res != resGo {
+		t.Errorf("The implementations are different")
+	}
 }
 
 func TestPopcntMaskSlice(t *testing.T) {
@@ -24,6 +28,10 @@ func TestPopcntMaskSlice(t *testing.T) {
 	resAsm := popcntMaskSliceAsm(s, m)
 	if resGo != resAsm {
 		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
+	}
+	res := popcntMaskSlice(s, m)
+	if res != resGo {
+		t.Errorf("The implementations are different")
 	}
 }
 
@@ -35,6 +43,10 @@ func TestPopcntAndSlice(t *testing.T) {
 	if resGo != resAsm {
 		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
 	}
+	res := popcntAndSlice(s, m)
+	if res != resGo {
+		t.Errorf("The implementations are different")
+	}
 }
 
 func TestPopcntOrSlice(t *testing.T) {
@@ -45,6 +57,10 @@ func TestPopcntOrSlice(t *testing.T) {
 	if resGo != resAsm {
 		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
 	}
+	res := popcntOrSlice(s, m)
+	if res != resGo {
+		t.Errorf("The implementations are different")
+	}
 }
 
 func TestPopcntXorSlice(t *testing.T) {
@@ -54,5 +70,9 @@ func TestPopcntXorSlice(t *testing.T) {
 	resAsm := popcntXorSliceAsm(s, m)
 	if resGo != resAsm {
 		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
+	}
+	res := popcntXorSlice(s, m)
+	if res != resGo {
+		t.Errorf("The implementations are different")
 	}
 }

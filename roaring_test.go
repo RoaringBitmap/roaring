@@ -10,10 +10,27 @@ import (
 	"github.com/willf/bitset"
 )
 
+func TestIntersects1(t *testing.T) {
+	Convey("intersects", t, func() {
+		bm := NewBitmap()
+    bm.Add(1)
+    bm.AddRange(21, 26)
+    bm2 := NewBitmap()
+    bm2.Add(25)
+    So(bm2.Intersects(bm), ShouldEqual, true)
+    bm.Remove(25)
+    So(bm2.Intersects(bm), ShouldEqual, false)
+    bm.AddRange(1,100000)
+    So(bm2.Intersects(bm), ShouldEqual, true)
+	})
+}
+
+
 func TestRangePanic(t *testing.T) {
 	Convey("TestRangePanic", t, func() {
 		bm := NewBitmap()
-		bm.AddRange(21, 26)
+    bm.Add(1)
+    bm.AddRange(21, 26)
 		bm.AddRange(9, 14)
 		bm.AddRange(11, 16)
 	})
@@ -22,11 +39,38 @@ func TestRangePanic(t *testing.T) {
 func TestRangeRemoval(t *testing.T) {
 	Convey("TestRangeRemovalPanic", t, func() {
 		bm := NewBitmap()
+    bm.Add(1)
 		bm.AddRange(21, 26)
 		bm.AddRange(9, 14)
 		bm.RemoveRange(11, 16)
+    bm.RemoveRange(1, 26)
+    c := bm.GetCardinality()
+		So(c, ShouldEqual, 0)
+    bm.AddRange(1,10000)
+    c = bm.GetCardinality()
+		So(c, ShouldEqual, 10000 - 1)
+    bm.RemoveRange(1,10000)
+    c = bm.GetCardinality()
+		So(c, ShouldEqual, 0)
 	})
 }
+
+
+func TestRangeRemovalFromContent(t *testing.T) {
+	Convey("TestRangeRemovalPanic", t, func() {
+		bm := NewBitmap()
+    for i := 100; i < 10000; i++ {
+      bm.AddInt(i * 3)
+    }
+		bm.AddRange(21, 26)
+		bm.AddRange(9, 14)
+		bm.RemoveRange(11, 16)
+    bm.RemoveRange(0, 30000)
+    c := bm.GetCardinality()
+		So(c, ShouldEqual, 00)
+	})
+}
+
 
 func TestFlipOnEmpty(t *testing.T) {
 
@@ -42,7 +86,6 @@ func TestFlipOnEmpty(t *testing.T) {
 		c := bm.GetCardinality()
 		So(c, ShouldEqual, 10)
 	})
-
 }
 
 func TestBitmapRank(t *testing.T) {

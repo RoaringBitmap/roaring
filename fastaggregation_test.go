@@ -21,6 +21,44 @@ func TestFastAggregations(t *testing.T) {
 	})
 }
 
+func TestFastAggregationsNothing(t *testing.T) {
+	Convey("Fast", t, func() {
+		So(FastAnd().GetCardinality(), ShouldEqual, 0)
+		So(FastOr().GetCardinality(), ShouldEqual, 0)
+		So(HeapXor().GetCardinality(), ShouldEqual, 0)
+	})
+}
+
+func TestFastAggregationsOneEmpty(t *testing.T) {
+	Convey("Fast", t, func() {
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+		rb1.Add(1)
+
+		So(FastAnd(rb1, rb2).GetCardinality(), ShouldEqual, 0)
+		So(FastOr(rb1, rb2).GetCardinality(), ShouldEqual, 1)
+		So(HeapXor(rb1, rb2).GetCardinality(), ShouldEqual, 1)
+	})
+}
+
+func TestFastAggregations3(t *testing.T) {
+	Convey("Fast", t, func() {
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+    rb3 := NewBitmap()
+		rb1.Add(1)
+    rb1.Add(100000)
+    rb2.Add(200000)
+    rb3.Add(1)
+    rb3.Add(300000)
+
+		So(FastAnd(rb1, rb2, rb3).GetCardinality(), ShouldEqual, 0)
+		So(FastOr(rb1, rb2, rb3).GetCardinality(), ShouldEqual, 4)
+		So(HeapXor(rb1, rb2, rb3).GetCardinality(), ShouldEqual, 3)
+	})
+}
+
+
 func TestFastAggregationsSize(t *testing.T) {
 	Convey("Fast", t, func() {
 		rb1 := NewBitmap()

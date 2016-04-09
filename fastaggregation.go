@@ -4,11 +4,6 @@ import (
 	"container/heap"
 )
 
-type rblist []*Bitmap
-
-func (p rblist) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p rblist) Len() int           { return len(p) }
-func (p rblist) Less(i, j int) bool { return p[i].GetSizeInBytes() > p[j].GetSizeInBytes() }
 
 // Or function that requires repairAfterLazy
 func lazyOR(x1, x2 *Bitmap) *Bitmap {
@@ -142,9 +137,8 @@ func FastOr(bitmaps ...*Bitmap) *Bitmap {
 		return bitmaps[0].Clone()
 	}
 	answer := lazyOR(bitmaps[0], bitmaps[1])
-
 	for _, bm := range bitmaps[2:] {
-		answer.lazyOR(bm)
+		answer = answer.lazyOR(bm)
 	}
 	answer.repairAfterLazy()
 	return answer
