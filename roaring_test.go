@@ -10,6 +10,23 @@ import (
 	"github.com/willf/bitset"
 )
 
+func TestFastCard(t *testing.T) {
+	Convey("fast card", t, func() {
+		bm := NewBitmap()
+		bm.Add(1)
+		bm.AddRange(21, 260000)
+		bm2 := NewBitmap()
+		bm2.Add(25)
+		So(bm2.AndCardinality(bm), ShouldEqual, 1)
+    So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
+    So(bm.AndCardinality(bm2), ShouldEqual, 1)
+    So(bm.OrCardinality(bm2), ShouldEqual, bm.GetCardinality())
+    So(bm2.AndCardinality(bm), ShouldEqual, 1)
+    So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
+	})
+}
+
+
 func TestIntersects1(t *testing.T) {
 	Convey("intersects", t, func() {
 		bm := NewBitmap()
