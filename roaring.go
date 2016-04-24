@@ -296,17 +296,17 @@ func (rb *Bitmap) GetCardinality() uint64 {
 }
 
 // Rank returns the number of integers that are smaller or equal to x (Rank(infinity) would be GetCardinality())
-func (rb *Bitmap) Rank(x uint32) uint32 {
-	size := uint32(0)
+func (rb *Bitmap) Rank(x uint32) uint64 {
+	size := uint64(0)
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
 		key := rb.highlowcontainer.getKeyAtIndex(i)
 		if key > highbits(x) {
 			return size
 		}
 		if key < highbits(x) {
-			size += uint32(rb.highlowcontainer.getContainerAtIndex(i).getCardinality())
+			size += uint64(rb.highlowcontainer.getContainerAtIndex(i).getCardinality())
 		} else {
-			return size + uint32(rb.highlowcontainer.getContainerAtIndex(i).rank(lowbits(x)))
+			return size + uint64(rb.highlowcontainer.getContainerAtIndex(i).rank(lowbits(x)))
 		}
 	}
 	return size
@@ -828,18 +828,20 @@ func BitmapOf(dat ...uint32) *Bitmap {
 	return ans
 }
 
-// Flip negates the bits in the given range, any integer present in this range and in the bitmap is removed,
-// and any integer present in the range and not in the bitmap is added
-func (rb *Bitmap) Flip(rangeStart, rangeEnd uint32) {
+// Flip negates the bits in the given range (i.e., [rangeStart,rangeEnd)), any integer present in this range and in the bitmap is removed,
+// and any integer present in the range and not in the bitmap is added.
+// The function uses 64-bit parameters even though a Bitmap stores 32-bit values because it is allowed and meaningful to use [0,uint64(0x100000000)) as a range
+// while uint64(0x100000000) cannot be represented as a 32-bit value.
+func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 
 	if rangeStart >= rangeEnd {
 		return
 	}
 
-	hbStart := highbits(rangeStart)
-	lbStart := lowbits(rangeStart)
-	hbLast := highbits(rangeEnd - 1)
-	lbLast := lowbits(rangeEnd - 1)
+	hbStart := highbits(uint32(rangeStart))
+	lbStart := lowbits(uint32(rangeStart))
+	hbLast := highbits(uint32(rangeEnd - 1))
+	lbLast := lowbits(uint32(rangeEnd - 1))
 
 	max := toIntUnsigned(maxLowBit())
 	for hb := hbStart; hb <= hbLast; hb++ {
@@ -868,21 +870,23 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint32) {
 	}
 }
 
-// FlipInt calls Flip after casting the parameters to uint32 (convenience method)
+// FlipInt calls Flip after casting the parameters  (convenience method)
 func (rb *Bitmap) FlipInt(rangeStart, rangeEnd int) {
-	rb.Flip(uint32(rangeStart), uint32(rangeEnd))
+	rb.Flip(uint64(rangeStart), uint64(rangeEnd))
 }
 
-// AddRange adds the integers in [rangeStart, rangeEnd) to the bitmap
-func (rb *Bitmap) AddRange(rangeStart, rangeEnd uint32) {
+// AddRange adds the integers in [rangeStart, rangeEnd) to the bitmap.
+// The function uses 64-bit parameters even though a Bitmap stores 32-bit values because it is allowed and meaningful to use [0,uint64(0x100000000)) as a range
+// while uint64(0x100000000) cannot be represented as a 32-bit value.
+func (rb *Bitmap) AddRange(rangeStart, rangeEnd uint64) {
 	if rangeStart >= rangeEnd {
 		return
 	}
 
-	hbStart := toIntUnsigned(highbits(rangeStart))
-	lbStart := toIntUnsigned(lowbits(rangeStart))
-	hbLast := toIntUnsigned(highbits(rangeEnd - 1))
-	lbLast := toIntUnsigned(lowbits(rangeEnd - 1))
+	hbStart := toIntUnsigned(highbits(uint32(rangeStart)))
+	lbStart := toIntUnsigned(lowbits(uint32(rangeStart)))
+	hbLast := toIntUnsigned(highbits(uint32(rangeEnd - 1)))
+	lbLast := toIntUnsigned(lowbits(uint32(rangeEnd - 1)))
 
 	max := toIntUnsigned(maxLowBit())
 	for hb := uint16(hbStart); hb <= uint16(hbLast); hb++ {
@@ -907,16 +911,19 @@ func (rb *Bitmap) AddRange(rangeStart, rangeEnd uint32) {
 	}
 }
 
-// RemoveRange removes the integers in [rangeStart, rangeEnd) from the bitmap
-func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint32) {
+// RemoveRange removes the integers in [rangeStart, rangeEnd) from the bitmap.
+// The function uses 64-bit parameters even though a Bitmap stores 32-bit values because it is allowed and meaningful to use [0,uint64(0x100000000)) as a range
+// while uint64(0x100000000) cannot be represented as a 32-bit value.
+func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint64) {
 	if rangeStart >= rangeEnd {
 		return
 	}
 
-	hbStart := toIntUnsigned(highbits(rangeStart))
-	lbStart := toIntUnsigned(lowbits(rangeStart))
-	hbLast := toIntUnsigned(highbits(rangeEnd - 1))
-	lbLast := toIntUnsigned(lowbits(rangeEnd - 1))
+	hbStart := toIntUnsigned(highbits(uint32(rangeStart)))
+	lbStart := toIntUnsigned(lowbits(uint32(rangeStart)))
+	hbLast := toIntUnsigned(highbits(uint32(rangeEnd - 1)))
+	lbLast := toIntUnsigned(lowbits(uint32(rangeEnd - 1)))
+
 
 	max := toIntUnsigned(maxLowBit())
 
@@ -964,19 +971,21 @@ func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint32) {
 	rb.highlowcontainer.removeIndexRange(ifirst, ilast)
 }
 
-// Flip negates the bits in the given range, any integer present in this range and in the bitmap is removed,
+// Flip negates the bits in the given range  (i.e., [rangeStart,rangeEnd)), any integer present in this range and in the bitmap is removed,
 // and any integer present in the range and not in the bitmap is added, a new bitmap is returned leaving
-// the current bitmap unchanged
-func Flip(bm *Bitmap, rangeStart, rangeEnd uint32) *Bitmap {
+// the current bitmap unchanged.
+// The function uses 64-bit parameters even though a Bitmap stores 32-bit values because it is allowed and meaningful to use [0,uint64(0x100000000)) as a range
+// while uint64(0x100000000) cannot be represented as a 32-bit value.
+func Flip(bm *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 	if rangeStart >= rangeEnd {
 		return bm.Clone()
 	}
 
 	answer := NewBitmap()
-	hbStart := highbits(rangeStart)
-	lbStart := lowbits(rangeStart)
-	hbLast := highbits(rangeEnd - 1)
-	lbLast := lowbits(rangeEnd - 1)
+	hbStart := highbits(uint32(rangeStart))
+	lbStart := lowbits(uint32(rangeStart))
+	hbLast := highbits(uint32(rangeEnd - 1))
+	lbLast := lowbits(uint32(rangeEnd - 1))
 
 	// copy the containers before the active area
 	answer.highlowcontainer.appendCopiesUntil(bm.highlowcontainer, hbStart)
@@ -1013,7 +1022,7 @@ func Flip(bm *Bitmap, rangeStart, rangeEnd uint32) *Bitmap {
 	return answer
 }
 
-// FlipInt calls Flip after casting the parameters to uint32 (convenience method)
+// FlipInt calls Flip after casting the parameters (convenience method)
 func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
-	return Flip(bm, uint32(rangeStart), uint32(rangeEnd))
+	return Flip(bm, uint64(rangeStart), uint64(rangeEnd))
 }

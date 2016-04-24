@@ -111,7 +111,7 @@ func TestBitmapRank(t *testing.T) {
 					rb1.Add(x)
 				}
 				for y := uint32(0); y <= N; y++ {
-					if rb1.Rank(y) != (y+1+gap-1)/gap {
+					if rb1.Rank(y) != uint64((y+1+gap-1)/gap) {
 						So(rb1.Rank(y), ShouldEqual, (y+1+gap-1)/gap)
 					}
 				}
@@ -844,7 +844,7 @@ func TestBitmap(t *testing.T) {
 			if rand.Float64() < float64(0.1) {
 				end = start + rand.Intn(100)
 			}
-			rb.Flip(uint32(start), uint32(end))
+			rb.Flip(uint64(start), uint64(end))
 			if start < end {
 				FlipRange(start, end, bs) // throws exception
 			}
@@ -855,7 +855,7 @@ func TestBitmap(t *testing.T) {
 				mask1 := bitset.New(0)
 				startM := rand.Intn(65536 * 20)
 				endM := startM + 100000
-				mask.Flip(uint32(startM), uint32(endM))
+				mask.Flip(uint64(startM), uint64(endM))
 				FlipRange(startM, endM, mask1)
 				mask.Flip(0, 65536*20+100000)
 				FlipRange(0, 65536*20+100000, mask1)
