@@ -18,14 +18,13 @@ func TestFastCard(t *testing.T) {
 		bm2 := NewBitmap()
 		bm2.Add(25)
 		So(bm2.AndCardinality(bm), ShouldEqual, 1)
-    So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
-    So(bm.AndCardinality(bm2), ShouldEqual, 1)
-    So(bm.OrCardinality(bm2), ShouldEqual, bm.GetCardinality())
-    So(bm2.AndCardinality(bm), ShouldEqual, 1)
-    So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
+		So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
+		So(bm.AndCardinality(bm2), ShouldEqual, 1)
+		So(bm.OrCardinality(bm2), ShouldEqual, bm.GetCardinality())
+		So(bm2.AndCardinality(bm), ShouldEqual, 1)
+		So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
 	})
 }
-
 
 func TestIntersects1(t *testing.T) {
 	Convey("intersects", t, func() {

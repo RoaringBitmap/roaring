@@ -162,7 +162,14 @@ func (rb *Bitmap) String() string {
 	start := []byte("{")
 	buffer.Write(start)
 	i := rb.Iterator()
+	counter := 0
 	for i.HasNext() {
+		counter = counter + 1
+		// to avoid exhausting the memory
+		if counter > 0x40000 {
+			buffer.WriteString("...")
+			break
+		}
 		buffer.WriteString(strconv.Itoa(int(i.Next())))
 		if i.HasNext() { // todo: optimize
 			buffer.WriteString(",")
@@ -923,7 +930,6 @@ func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint64) {
 	lbStart := toIntUnsigned(lowbits(uint32(rangeStart)))
 	hbLast := toIntUnsigned(highbits(uint32(rangeEnd - 1)))
 	lbLast := toIntUnsigned(lowbits(uint32(rangeEnd - 1)))
-
 
 	max := toIntUnsigned(maxLowBit())
 
