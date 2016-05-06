@@ -48,9 +48,9 @@ func rangeOfOnes(start, last int) container {
 }
 
 type roaringArray struct {
-	keys       []uint16
-	containers []container
-	dirty      []bool
+	keys            []uint16
+	containers      []container
+	needCopyOnWrite []bool
 }
 
 func newRoaringArray() *roaringArray {
@@ -60,20 +60,19 @@ func newRoaringArray() *roaringArray {
 	return ra
 }
 
-func (ra *roaringArray) appendContainer(key uint16, value container) {
+func (ra *roaringArray) appendContainer(key uint16, value container, mustCopyOnWrite bool) {
 	ra.keys = append(ra.keys, key)
 	ra.containers = append(ra.containers, value)
-	if ra.hasDirty() {
-		ra.dirty = append(ra.dirty, false)
-	}
+	ra.needCopyOnWrite = append(ra.needCopyOnWrite, mustCopyOnWrite)
 }
 
 func (ra *roaringArray) appendWithoutCopy(sa roaringArray, startingindex int) {
-	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex])
+	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex], false)
 }
 
 func (ra *roaringArray) appendCopy(sa roaringArray, startingindex int) {
-	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex].clone())
+	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex], true)
+	sa.setNeedsCopyOnWrite(startingindex)
 }
 
 func (ra *roaringArray) appendWithoutCopyMany(sa roaringArray, startingindex, end int) {
@@ -93,7 +92,8 @@ func (ra *roaringArray) appendCopiesUntil(sa roaringArray, stoppingKey uint16) {
 		if sa.keys[i] >= stoppingKey {
 			break
 		}
-		ra.appendContainer(sa.keys[i], sa.containers[i].clone())
+		ra.appendContainer(sa.keys[i], sa.containers[i], true)
+		sa.setNeedsCopyOnWrite(i)
 	}
 }
 
@@ -106,7 +106,8 @@ func (ra *roaringArray) appendCopiesAfter(sa roaringArray, beforeStart uint16) {
 	}
 
 	for i := startLocation; i < sa.size(); i++ {
-		ra.appendContainer(sa.keys[i], sa.containers[i].clone())
+		ra.appendContainer(sa.keys[i], sa.containers[i], true)
+		sa.setNeedsCopyOnWrite(i)
 	}
 }
 
@@ -119,9 +120,7 @@ func (ra *roaringArray) removeIndexRange(begin, end int) {
 
 	copy(ra.keys[begin:], ra.keys[end:])
 	copy(ra.containers[begin:], ra.containers[end:])
-	if ra.hasDirty() {
-		copy(ra.dirty[begin:], ra.dirty[end:])
-	}
+	copy(ra.needCopyOnWrite[begin:], ra.needCopyOnWrite[end:])
 
 	ra.resize(len(ra.keys) - r)
 }
@@ -133,28 +132,25 @@ func (ra *roaringArray) resize(newsize int) {
 
 	ra.keys = ra.keys[:newsize]
 	ra.containers = ra.containers[:newsize]
-	if ra.hasDirty() {
-		ra.dirty = ra.dirty[:newsize]
-	}
+	ra.needCopyOnWrite = ra.needCopyOnWrite[:newsize]
 }
 
 func (ra *roaringArray) clear() {
 	ra.keys = make([]uint16, 0)
 	ra.containers = make([]container, 0)
-	ra.dirty = make([]bool, 0)
+	ra.needCopyOnWrite = make([]bool, 0)
 }
 
 func (ra *roaringArray) clone() *roaringArray {
 	sa := new(roaringArray)
 	sa.keys = make([]uint16, len(ra.keys))
 	sa.containers = make([]container, len(ra.containers))
-	sa.dirty = make([]bool, len(ra.keys))
+	sa.needCopyOnWrite = make([]bool, len(ra.keys))
 
 	copy(sa.keys, ra.keys)
 	copy(sa.containers, ra.containers)
-
-	sa.markAllDirty()
-	ra.markAllDirty()
+	sa.markAllAsNeedingCopyOnWrite()
+	ra.markAllAsNeedingCopyOnWrite()
 
 	return sa
 }
@@ -171,14 +167,26 @@ func (ra *roaringArray) getContainer(x uint16) container {
 	return ra.containers[i]
 }
 
+func (ra *roaringArray) getWritableContainerContainer(x uint16) container {
+	i := ra.binarySearch(0, len(ra.keys), x)
+	if i < 0 {
+		return nil
+	}
+	if ra.needCopyOnWrite[i] {
+		ra.containers[i] = ra.containers[i].clone()
+		ra.needCopyOnWrite[i] = false
+	}
+	return ra.containers[i]
+}
+
 func (ra *roaringArray) getContainerAtIndex(i int) container {
 	return ra.containers[i]
 }
 
 func (ra *roaringArray) getWritableContainerAtIndex(i int) container {
-	if len(ra.dirty) > 0 && ra.dirty[i] {
+	if ra.needCopyOnWrite[i] {
 		ra.containers[i] = ra.containers[i].clone()
-		ra.dirty[i] = false
+		ra.needCopyOnWrite[i] = false
 	}
 	return ra.containers[i]
 }
@@ -206,11 +214,9 @@ func (ra *roaringArray) insertNewKeyValueAt(i int, key uint16, value container) 
 	ra.keys[i] = key
 	ra.containers[i] = value
 
-	if ra.hasDirty() {
-		ra.dirty = append(ra.dirty, false)
-		copy(ra.dirty[i+1:], ra.dirty[i:])
-		ra.dirty[i] = false
-	}
+	ra.needCopyOnWrite = append(ra.needCopyOnWrite, false)
+	copy(ra.needCopyOnWrite[i+1:], ra.needCopyOnWrite[i:])
+	ra.needCopyOnWrite[i] = false
 }
 
 func (ra *roaringArray) remove(key uint16) bool {
@@ -226,9 +232,7 @@ func (ra *roaringArray) removeAtIndex(i int) {
 	copy(ra.keys[i:], ra.keys[i+1:])
 	copy(ra.containers[i:], ra.containers[i+1:])
 
-	if ra.hasDirty() {
-		copy(ra.dirty[i:], ra.dirty[i+1:])
-	}
+	copy(ra.needCopyOnWrite[i:], ra.needCopyOnWrite[i+1:])
 
 	ra.resize(len(ra.keys) - 1)
 }
@@ -237,13 +241,10 @@ func (ra *roaringArray) setContainerAtIndex(i int, c container) {
 	ra.containers[i] = c
 }
 
-func (ra *roaringArray) replaceKeyAndContainerAtIndex(i int, key uint16, c container) {
+func (ra *roaringArray) replaceKeyAndContainerAtIndex(i int, key uint16, c container, mustCopyOnWrite bool) {
 	ra.keys[i] = key
 	ra.containers[i] = c
-
-	if ra.hasDirty() {
-		ra.dirty[i] = false
-	}
+	ra.needCopyOnWrite[i] = mustCopyOnWrite
 }
 
 func (ra *roaringArray) size() int {
@@ -375,11 +376,11 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 			nb := newBitmapContainer()
 			nb.readFrom(stream)
 			nb.cardinality = int(c)
-			ra.appendContainer(keycard[2*i], nb)
+			ra.appendContainer(keycard[2*i], nb, false)
 		} else {
 			nb := newArrayContainerSize(int(c))
 			nb.readFrom(stream)
-			ra.appendContainer(keycard[2*i], nb)
+			ra.appendContainer(keycard[2*i], nb, false)
 		}
 	}
 	return offset, nil
@@ -435,18 +436,18 @@ func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 	return upper
 }
 
-func (ra *roaringArray) markAllDirty() {
-	dirty := make([]bool, len(ra.keys))
-	for i := range dirty {
-		dirty[i] = true
+func (ra *roaringArray) markAllAsNeedingCopyOnWrite() {
+	needCopyOnWrite := make([]bool, len(ra.keys))
+	for i := range needCopyOnWrite {
+		needCopyOnWrite[i] = true
 	}
-	ra.dirty = dirty
+	ra.needCopyOnWrite = needCopyOnWrite
 }
 
-func (ra *roaringArray) hasDirty() bool {
-	return len(ra.dirty) > 0
+func (ra *roaringArray) needsCopyOnWrite(i int) bool {
+	return ra.needCopyOnWrite[i]
 }
 
-func (ra *roaringArray) isDirty(i int) bool {
-	return ra.hasDirty() && ra.dirty[i]
+func (ra *roaringArray) setNeedsCopyOnWrite(i int) {
+	ra.needCopyOnWrite[i] = true
 }

@@ -219,11 +219,23 @@ func (rb *Bitmap) Add(x uint32) {
 	i := ra.getIndex(hb)
 	if i >= 0 {
 		var c container
-		if ra.hasDirty() {
-			c = ra.getWritableContainerAtIndex(i)
-		} else {
-			c = ra.getContainerAtIndex(i)
-		}
+		c = ra.getWritableContainerAtIndex(i)
+		c = c.add(lowbits(x))
+		rb.highlowcontainer.setContainerAtIndex(i, c)
+	} else {
+		newac := newArrayContainer()
+		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.add(lowbits(x)))
+	}
+}
+
+// Add the integer x to the bitmap
+func (rb *Bitmap) VerboseAdd(x uint32) {
+	hb := highbits(x)
+	ra := &rb.highlowcontainer
+	i := ra.getIndex(hb)
+	if i >= 0 {
+		var c container
+		c = ra.getWritableContainerAtIndex(i)
 		c = c.add(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 	} else {
@@ -238,7 +250,7 @@ func (rb *Bitmap) CheckedAdd(x uint32) bool {
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {
-		C := rb.highlowcontainer.getContainerAtIndex(i)
+		C := rb.highlowcontainer.getWritableContainerAtIndex(i)
 		oldcard := C.getCardinality()
 		C = C.add(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, C)
@@ -274,7 +286,7 @@ func (rb *Bitmap) CheckedRemove(x uint32) bool {
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {
-		C := rb.highlowcontainer.getContainerAtIndex(i)
+		C := rb.highlowcontainer.getWritableContainerAtIndex(i)
 		oldcard := C.getCardinality()
 		C = C.remove(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, C)
@@ -357,7 +369,7 @@ main:
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
 					diff := c1.iand(c2)
 					if diff.getCardinality() > 0 {
-						rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, diff)
+						rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, diff, false)
 						intersectionsize++
 					}
 					pos1++
@@ -456,7 +468,7 @@ main:
 			s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
 			for {
 				if s1 == s2 {
-					c1 := rb.highlowcontainer.getWritableContainerAtIndex(pos1)
+					c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
 					diff := c1.and(c2)
 					answer += uint64(diff.getCardinality()) // TODO: could be faster if we did not have to compute diff
@@ -602,7 +614,7 @@ main:
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
 					diff := c1.iandNot(c2)
 					if diff.getCardinality() > 0 {
-						rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, diff)
+						rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, diff, false)
 						intersectionsize++
 					}
 					pos1++
@@ -613,8 +625,9 @@ main:
 					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 				} else if s1 < s2 {
-					c1 := rb.highlowcontainer.getWritableContainerAtIndex(pos1)
-					rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, c1)
+					c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
+					mustCopyOnWrite := rb.highlowcontainer.needsCopyOnWrite(pos1)
+					rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, c1, mustCopyOnWrite)
 					intersectionsize++
 					pos1++
 					if pos1 == length1 {
@@ -637,7 +650,8 @@ main:
 	for pos1 < length1 {
 		c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
 		s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
-		rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, c1)
+		mustCopyOnWrite := rb.highlowcontainer.needsCopyOnWrite(pos1)
+		rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersectionsize, s1, c1, mustCopyOnWrite)
 		intersectionsize++
 		pos1++
 	}
@@ -673,7 +687,7 @@ main:
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
 
-				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)))
+				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {
@@ -709,7 +723,7 @@ main:
 				C = C.and(x2.highlowcontainer.getContainerAtIndex(pos2))
 
 				if C.getCardinality() > 0 {
-					answer.highlowcontainer.appendContainer(s1, C)
+					answer.highlowcontainer.appendContainer(s1, C, false)
 				}
 				pos1++
 				pos2++
@@ -756,7 +770,7 @@ func Xor(x1, x2 *Bitmap) *Bitmap {
 			} else {
 				c := x1.highlowcontainer.getContainerAtIndex(pos1).xor(x2.highlowcontainer.getContainerAtIndex(pos2))
 				if c.getCardinality() > 0 {
-					answer.highlowcontainer.appendContainer(s1, c)
+					answer.highlowcontainer.appendContainer(s1, c, false)
 				}
 				pos1++
 				pos2++
@@ -799,7 +813,7 @@ main:
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
 					diff := c1.andNot(c2)
 					if diff.getCardinality() > 0 {
-						answer.highlowcontainer.appendContainer(s1, diff)
+						answer.highlowcontainer.appendContainer(s1, diff, false)
 					}
 					pos1++
 					pos2++
@@ -909,7 +923,7 @@ func (rb *Bitmap) AddRange(rangeStart, rangeEnd uint64) {
 		i := rb.highlowcontainer.getIndex(hb)
 
 		if i >= 0 {
-			c := rb.highlowcontainer.getContainerAtIndex(i).iaddRange(int(containerStart), int(containerLast+1))
+			c := rb.highlowcontainer.getWritableContainerAtIndex(i).iaddRange(int(containerStart), int(containerLast+1))
 			rb.highlowcontainer.setContainerAtIndex(i, c)
 		} else { // *think* the range of ones must never be
 			// empty.
@@ -938,7 +952,7 @@ func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint64) {
 		if i < 0 {
 			return
 		}
-		c := rb.highlowcontainer.getContainerAtIndex(i).iremoveRange(int(lbStart), int(lbLast+1))
+		c := rb.highlowcontainer.getWritableContainerAtIndex(i).iremoveRange(int(lbStart), int(lbLast+1))
 		if c.getCardinality() > 0 {
 			rb.highlowcontainer.setContainerAtIndex(i, c)
 		} else {
@@ -951,7 +965,7 @@ func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint64) {
 
 	if ifirst >= 0 {
 		if lbStart != 0 {
-			c := rb.highlowcontainer.getContainerAtIndex(ifirst).iremoveRange(int(lbStart), int(max+1))
+			c := rb.highlowcontainer.getWritableContainerAtIndex(ifirst).iremoveRange(int(lbStart), int(max+1))
 			if c.getCardinality() > 0 {
 				rb.highlowcontainer.setContainerAtIndex(ifirst, c)
 				ifirst++
@@ -962,7 +976,7 @@ func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint64) {
 	}
 	if ilast >= 0 {
 		if lbLast != max {
-			c := rb.highlowcontainer.getContainerAtIndex(ilast).iremoveRange(int(0), int(lbLast+1))
+			c := rb.highlowcontainer.getWritableContainerAtIndex(ilast).iremoveRange(int(0), int(lbLast+1))
 			if c.getCardinality() > 0 {
 				rb.highlowcontainer.setContainerAtIndex(ilast, c)
 			} else {

@@ -33,7 +33,7 @@ main:
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
 
-				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).lazyOR(x2.highlowcontainer.getContainerAtIndex(pos2)))
+				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).lazyOR(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {
@@ -81,7 +81,7 @@ main:
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
 
-				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).lazyIOR(x2.highlowcontainer.getContainerAtIndex(pos2)))
+				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getWritableContainerAtIndex(pos1).lazyIOR(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {
@@ -107,6 +107,7 @@ func (x1 *Bitmap) repairAfterLazy() {
 		switch c.(type) {
 		case *bitmapContainer:
 			if c.(*bitmapContainer).cardinality == invalidCardinality {
+				c = x1.highlowcontainer.getWritableContainerAtIndex(pos)
 				c.(*bitmapContainer).computeCardinality()
 				if c.(*bitmapContainer).getCardinality() <= arrayDefaultMaxSize {
 					x1.highlowcontainer.setContainerAtIndex(pos, c.(*bitmapContainer).toArrayContainer())

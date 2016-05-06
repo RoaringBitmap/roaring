@@ -1,13 +1,12 @@
 package roaring
 
 import (
+	. "github.com/smartystreets/goconvey/convey"
+	"github.com/willf/bitset"
 	"log"
 	"math/rand"
 	"strconv"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/willf/bitset"
 )
 
 func TestFastCard(t *testing.T) {
@@ -1239,26 +1238,34 @@ func TestBitmap(t *testing.T) {
 
 		So(valide, ShouldEqual, true)
 	})
-
+}
+func TestXORtest4(t *testing.T) {
 	Convey("XORtest 4", t, func() {
 		rb := NewBitmap()
 		rb2 := NewBitmap()
+		counter := 0
 
 		for i := 0; i < 200000; i += 4 {
 			rb2.AddInt(i)
+			counter++
 		}
+		So(rb2.GetCardinality(), ShouldEqual, counter)
 		for i := 200000; i < 400000; i += 14 {
 			rb2.AddInt(i)
+			counter++
 		}
+		So(rb2.GetCardinality(), ShouldEqual, counter)
 		rb2card := rb2.GetCardinality()
+		So(rb2card, ShouldEqual, counter)
 
 		// check or against an empty bitmap
 		xorresult := Xor(rb, rb2)
+		So(xorresult.GetCardinality(), ShouldEqual, counter)
 		off := Or(rb2, rb)
+		So(off.GetCardinality(), ShouldEqual, counter)
 		So(xorresult.Equals(off), ShouldEqual, true)
 
 		So(rb2card, ShouldEqual, xorresult.GetCardinality())
-
 		for i := 500000; i < 600000; i += 14 {
 			rb.AddInt(i)
 		}
@@ -1268,6 +1275,7 @@ func TestBitmap(t *testing.T) {
 		// check or against an empty bitmap
 		xorresult2 := Xor(rb, rb2)
 		So(rb2card, ShouldEqual, xorresult.GetCardinality())
+
 		So(rb2.GetCardinality()+rb.GetCardinality(), ShouldEqual, xorresult2.GetCardinality())
 
 		rb.Xor(rb2)
@@ -1411,7 +1419,7 @@ func TestRoaringArray(t *testing.T) {
 	})
 
 	Convey("Test Insert", t, func() {
-		a.appendContainer(0, newArrayContainer())
+		a.appendContainer(0, newArrayContainer(), false)
 
 		So(a.size(), ShouldEqual, 1)
 	})
