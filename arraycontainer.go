@@ -358,7 +358,7 @@ func (ac *arrayContainer) lazyorArray(value2 *arrayContainer) container {
 			mask := uint64(1) << (v % 64)
 			bc.bitmap[i] |= mask
 		}
-		bc.cardinality = -1
+		bc.cardinality = invalidCardinality
 		return bc
 	}
 	answer := newArrayContainerCapacity(maxPossibleCardinality)

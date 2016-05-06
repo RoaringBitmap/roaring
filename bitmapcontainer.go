@@ -288,6 +288,7 @@ func (bc *bitmapContainer) lazyIORArray(value2 *arrayContainer) container {
 		i := uint(vc) >> 6
 		answer.bitmap[i] = answer.bitmap[i] | (uint64(1) << (vc % 64))
 	}
+	answer.cardinality = invalidCardinality
 	return answer
 }
 
@@ -301,6 +302,7 @@ func (bc *bitmapContainer) lazyIORBitmap(value2 *bitmapContainer) container {
 	for k := 0; k < len(answer.bitmap); k++ {
 		answer.bitmap[k] = bc.bitmap[k] | value2.bitmap[k]
 	}
+	bc.cardinality = invalidCardinality
 	return answer
 }
 

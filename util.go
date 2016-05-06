@@ -5,6 +5,7 @@ const (
 	arrayLazyLowerBound = 1024
 	maxCapacity         = 1 << 16
 	serialCookie        = 12346
+	invalidCardinality  = -1
 )
 
 func getSizeInBytesFromCardinality(card int) int {
