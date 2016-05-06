@@ -2,8 +2,8 @@ package roaring
 
 const (
 	arrayDefaultMaxSize = 4096 // containers with 4096 or fewer integers should be array containers.
-        arrayLazyLowerBound = 1024
-        maxCapacity         = 1 << 16
+	arrayLazyLowerBound = 1024
+	maxCapacity         = 1 << 16
 	serialCookie        = 12346
 )
 

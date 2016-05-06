@@ -367,7 +367,6 @@ func (ac *arrayContainer) lazyorArray(value2 *arrayContainer) container {
 	return answer
 }
 
-
 func (ac *arrayContainer) and(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
