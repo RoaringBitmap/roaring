@@ -295,7 +295,7 @@ func (ac *arrayContainer) ior(a container) container {
 func (ac *arrayContainer) lazyIOR(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
-		return ac.orArray(a.(*arrayContainer))
+		return ac.lazyorArray(a.(*arrayContainer))
 	case *bitmapContainer:
 		return a.lazyOR(ac)
 	}
@@ -305,7 +305,7 @@ func (ac *arrayContainer) lazyIOR(a container) container {
 func (ac *arrayContainer) lazyOR(a container) container {
 	switch a.(type) {
 	case *arrayContainer:
-		return ac.orArray(a.(*arrayContainer))
+		return ac.lazyorArray(a.(*arrayContainer))
 	case *bitmapContainer:
 		return a.lazyOR(ac)
 	}
@@ -340,6 +340,33 @@ func (ac *arrayContainer) orArray(value2 *arrayContainer) container {
 	answer.content = answer.content[:nl] // reslice to match actual used capacity
 	return answer
 }
+
+func (ac *arrayContainer) lazyorArray(value2 *arrayContainer) container {
+	value1 := ac
+	maxPossibleCardinality := value1.getCardinality() + value2.getCardinality()
+	if maxPossibleCardinality > arrayDefaultMaxSize { // it could be a bitmap!^M
+		bc := newBitmapContainer()
+		for k := 0; k < len(value2.content); k++ {
+			v := value2.content[k]
+			i := uint(v) >> 6
+			mask := uint64(1) << (v % 64)
+			bc.bitmap[i] |= mask
+		}
+		for k := 0; k < len(ac.content); k++ {
+			v := ac.content[k]
+			i := uint(v) >> 6
+			mask := uint64(1) << (v % 64)
+			bc.bitmap[i] |= mask
+		}
+		bc.cardinality = -1
+		return bc
+	}
+	answer := newArrayContainerCapacity(maxPossibleCardinality)
+	nl := union2by2(value1.content, value2.content, answer.content)
+	answer.content = answer.content[:nl] // reslice to match actual used capacity
+	return answer
+}
+
 
 func (ac *arrayContainer) and(a container) container {
 	switch a.(type) {
