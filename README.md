@@ -18,6 +18,11 @@ This code is licensed under Apache License, Version 2.0 (ASL2.0).
 
 Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@statik), Bob Potter (@bpot), Tyson Maly (@tvmaly), Will Glynn (@willglynn), Brent Pedersen (@brentp)
 
+### Thread-safety
+
+It should generally be considered unsafe to access
+the same bitmaps using different threads without special care.
+
 ### References
 
 -  Samy Chambi, Daniel Lemire, Owen Kaser, Robert Godin,
