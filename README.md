@@ -20,8 +20,9 @@ Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@s
 
 ### Thread-safety
 
-It should generally be considered unsafe to access
+Due to copy-on-write, it should generally be considered unsafe to access
 the same bitmaps using different threads without special care.
+However, copying bitmaps (using the ``Clone`` method) is fast.
 
 ### References
 
