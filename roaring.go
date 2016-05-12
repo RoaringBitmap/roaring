@@ -228,22 +228,6 @@ func (rb *Bitmap) Add(x uint32) {
 	}
 }
 
-// Add the integer x to the bitmap
-func (rb *Bitmap) VerboseAdd(x uint32) {
-	hb := highbits(x)
-	ra := &rb.highlowcontainer
-	i := ra.getIndex(hb)
-	if i >= 0 {
-		var c container
-		c = ra.getWritableContainerAtIndex(i)
-		c = c.add(lowbits(x))
-		rb.highlowcontainer.setContainerAtIndex(i, c)
-	} else {
-		newac := newArrayContainer()
-		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.add(lowbits(x)))
-	}
-}
-
 // CheckedAdd adds the integer x to the bitmap and return true  if it was added (false if the integer was already present)
 func (rb *Bitmap) CheckedAdd(x uint32) bool {
 	// TODO: add unit tests for this method
@@ -1040,6 +1024,18 @@ func Flip(bm *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 	answer.highlowcontainer.appendCopiesAfter(bm.highlowcontainer, hbLast)
 
 	return answer
+}
+
+// Set this bitmap to use copy-on-write so that copies are fast and memory conscious
+// if the parameter is true, otherwise we leave the default where hard copies are made
+// (copy-on-write requires extra care in a threaded context).
+func  (rb *Bitmap) SetCopyOnWrite(val bool) {
+  rb.highlowcontainer.copyOnWrite = val
+}
+
+// Get this bitmap's copy-on-write property
+func  (rb *Bitmap) GetCopyOnWrite(val bool) {
+  return rb.highlowcontainer.copyOnWrite
 }
 
 // FlipInt calls Flip after casting the parameters (convenience method)

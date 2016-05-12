@@ -51,12 +51,13 @@ type roaringArray struct {
 	keys            []uint16
 	containers      []container
 	needCopyOnWrite []bool
+	copyOnWrite     bool
 }
 
 func newRoaringArray() *roaringArray {
 	ra := &roaringArray{}
 	ra.clear()
-
+	ra.copyOnWrite = false
 	return ra
 }
 
@@ -145,13 +146,22 @@ func (ra *roaringArray) clone() *roaringArray {
 	sa := new(roaringArray)
 	sa.keys = make([]uint16, len(ra.keys))
 	sa.containers = make([]container, len(ra.containers))
-	sa.needCopyOnWrite = make([]bool, len(ra.keys))
-
+	sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
+	sa.copyOnWrite = ra.copyOnWrite
 	copy(sa.keys, ra.keys)
-	copy(sa.containers, ra.containers)
-	sa.markAllAsNeedingCopyOnWrite()
-	ra.markAllAsNeedingCopyOnWrite()
-
+	if sa.copyOnWrite {
+		copy(sa.keys, ra.keys)
+		copy(sa.containers, ra.containers)
+		sa.markAllAsNeedingCopyOnWrite()
+		ra.markAllAsNeedingCopyOnWrite()
+	} else {
+		for i := range sa.needCopyOnWrite {
+			sa.needCopyOnWrite[i] = false
+		}
+		for i := range sa.containers {
+			sa.containers[i] = ra.containers[i].clone()
+		}
+	}
 	return sa
 }
 
