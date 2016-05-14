@@ -1029,13 +1029,13 @@ func Flip(bm *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 // Set this bitmap to use copy-on-write so that copies are fast and memory conscious
 // if the parameter is true, otherwise we leave the default where hard copies are made
 // (copy-on-write requires extra care in a threaded context).
-func  (rb *Bitmap) SetCopyOnWrite(val bool) {
-  rb.highlowcontainer.copyOnWrite = val
+func (rb *Bitmap) SetCopyOnWrite(val bool) {
+	rb.highlowcontainer.copyOnWrite = val
 }
 
 // Get this bitmap's copy-on-write property
-func  (rb *Bitmap) GetCopyOnWrite(val bool) {
-  return rb.highlowcontainer.copyOnWrite
+func (rb *Bitmap) GetCopyOnWrite() (val bool) {
+	return rb.highlowcontainer.copyOnWrite
 }
 
 // FlipInt calls Flip after casting the parameters (convenience method)
