@@ -18,6 +18,8 @@ This code is licensed under Apache License, Version 2.0 (ASL2.0).
 
 Contributors: Todd Gruben (@tgruben), Daniel Lemire (@lemire), Elliot Murphy (@statik), Bob Potter (@bpot), Tyson Maly (@tvmaly), Will Glynn (@willglynn), Brent Pedersen (@brentp)
 
+Copyright 2016 by the contributors.
+
 ### Thread-safety
 
 In general, it should generally be considered safe to access
