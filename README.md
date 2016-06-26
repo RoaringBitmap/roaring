@@ -18,12 +18,6 @@ This code is licensed under Apache License, Version 2.0 (ASL2.0).
 
 Copyright 2016 by the authors.
 
-### Thread-safety
-
-In general, it should generally be considered safe to access
-the same bitmaps using different threads as
-long as they are not being modified. However, if some of your
-bitmaps use copy-on-write, then more care is needed.
 
 ### References
 
@@ -132,6 +126,14 @@ bitmaps never use more than 2 bytes per integer. You can call
 ### Documentation
 
 Current documentation is available at http://godoc.org/github.com/RoaringBitmap/roaring
+
+### Thread-safety
+
+In general, it should generally be considered safe to access
+the same bitmaps using different threads as
+long as they are not being modified. However, if some of your
+bitmaps use copy-on-write, then more care is needed: pass
+to your threads a (shallow) copy of your bitmaps.
 
 ### Coverage
 
