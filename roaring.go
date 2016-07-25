@@ -6,6 +6,7 @@
 package roaring
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"fmt"
@@ -45,6 +46,33 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 // ReadFrom reads a serialized version of this bitmap from stream
 func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 	return rb.highlowcontainer.readFrom(stream)
+}
+
+// MarshalBinary implements the encoding.BinaryMarshaler interface for the bitmap
+func (rb *Bitmap) MarshalBinary() ([]byte, error) {
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	_, err := rb.WriteTo(writer)
+	if err != nil {
+		return nil, err
+	}
+	err = writer.Flush()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface for the bitmap
+func (rb *Bitmap) UnmarshalBinary(data []byte) error {
+	var buf bytes.Buffer
+	_, err := buf.Write(data)
+	if err != nil {
+		return err
+	}
+	reader := bufio.NewReader(&buf)
+	_, err = rb.ReadFrom(reader)
+	return err
 }
 
 // NewBitmap creates a new empty Bitmap
