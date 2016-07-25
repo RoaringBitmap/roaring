@@ -4,6 +4,7 @@ package roaring
 
 import (
 	"bytes"
+	"encoding/gob"
 	"os"
 	"testing"
 )
@@ -28,7 +29,6 @@ func TestBase64(t *testing.T) {
 	if !rb.Equals(newrb) {
 		t.Errorf("comparing the base64 to and from failed cannot retrieve serialized version")
 	}
-
 }
 
 func TestSerializationBasic(t *testing.T) {
@@ -163,5 +163,27 @@ func TestSerializationBasic3(t *testing.T) {
 	}
 	if !rb.Equals(newrb) {
 		t.Errorf("Cannot retrieve serialized version")
+	}
+}
+
+func TestGobcoding(t *testing.T) {
+	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
+
+	buf := new(bytes.Buffer)
+	encoder := gob.NewEncoder(buf)
+	err := encoder.Encode(rb)
+	if err != nil {
+		t.Errorf("Gob encoding failed")
+	}
+
+	var b Bitmap
+	decoder := gob.NewDecoder(buf)
+	err = decoder.Decode(&b)
+	if err != nil {
+		t.Errorf("Gob decoding failed")
+	}
+
+	if !b.Equals(rb) {
+		t.Errorf("Decoded bitmap does not equal input bitmap")
 	}
 }
