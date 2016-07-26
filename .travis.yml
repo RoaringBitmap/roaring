@@ -12,10 +12,13 @@ go:
 - 1.5
 - 1.6
 - tip
-
+script:
+- go test -v -covermode=count -coverprofile=coverage.out
+- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken
+  $COVERALLS_TOKEN
 matrix:
   allow_failures:
   - go: tip
-
-dd:
-  secure: blcYYnnNVC5tFjDb74FUyvyYln5gzbBoCPs0AVl3lBjpgd4yH3DYU87lZoPimzxmDeO4K5Umpw7WBb58rkkpNsdqdIFLVjTWvzw6W56PqKMFGnw1Ux7s3c0A+38j90ied14KqZHnhyNNqmY9Jc6Fc9tHNTcuMT1i3vsDnw6TlfM=
+env:
+  matrix:
+    secure: BJJnAPiCNoPjxX4dZg6zkaLJpzFYM6eIRcZ8f4qu6gG0+U1lvG+xkCihNeDDE66oX33H5InhlsZuwZKHot9oJoR0S2F3M+cJ9J/0f1e/BjmBE3Pg65458kf/8jx5XUx2JCHClDyqxKZtpcEqTPyN8YdjkNStuHxHr3kx5Am3gCc=
