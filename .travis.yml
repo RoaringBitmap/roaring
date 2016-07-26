@@ -14,10 +14,7 @@ go:
 - tip
 script:
 - go test -v -covermode=count -coverprofile=coverage.out
-- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken KOlKyOXz0qSjAqvfTF28RzNlr3unxjrLh
 matrix:
   allow_failures:
   - go: tip
-env:
-  matrix:
-    secure: BJJnAPiCNoPjxX4dZg6zkaLJpzFYM6eIRcZ8f4qu6gG0+U1lvG+xkCihNeDDE66oX33H5InhlsZuwZKHot9oJoR0S2F3M+cJ9J/0f1e/BjmBE3Pg65458kf/8jx5XUx2JCHClDyqxKZtpcEqTPyN8YdjkNStuHxHr3kx5Am3gCc=
