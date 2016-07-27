@@ -385,7 +385,6 @@ func (ac *arrayContainer) intersects(a container) bool {
 		return a.intersects(ac)
 	}
 	panic("unsupported container type")
-	return false // should not happen
 }
 
 func (ac *arrayContainer) iand(a container) container {

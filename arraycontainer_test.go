@@ -96,3 +96,57 @@ func TestArrayContainerMassiveSetAndGet(t *testing.T) {
 		}
 	}
 }
+
+type FakeContainer struct {
+	arrayContainer
+}
+
+func TestArrayContainerUnsupportedType(t *testing.T) {
+	a := container(newArrayContainer())
+	testContainerPanics(t, a)
+	b := container(newBitmapContainer())
+	testContainerPanics(t, b)
+}
+
+func testContainerPanics(t *testing.T, c container) {
+	f := &FakeContainer{}
+	assertPanic(t, func() {
+		c.or(f)
+	})
+	assertPanic(t, func() {
+		c.ior(f)
+	})
+	assertPanic(t, func() {
+		c.lazyIOR(f)
+	})
+	assertPanic(t, func() {
+		c.lazyOR(f)
+	})
+	assertPanic(t, func() {
+		c.and(f)
+	})
+	assertPanic(t, func() {
+		c.intersects(f)
+	})
+	assertPanic(t, func() {
+		c.iand(f)
+	})
+	assertPanic(t, func() {
+		c.xor(f)
+	})
+	assertPanic(t, func() {
+		c.andNot(f)
+	})
+	assertPanic(t, func() {
+		c.iandNot(f)
+	})
+}
+
+func assertPanic(t *testing.T, f func()) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		}
+	}()
+	f()
+}
