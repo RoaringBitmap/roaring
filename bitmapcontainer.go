@@ -196,7 +196,7 @@ func (bc *bitmapContainer) or(a container) container {
 	case *bitmapContainer:
 		return bc.orBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) ior(a container) container {
@@ -206,7 +206,7 @@ func (bc *bitmapContainer) ior(a container) container {
 	case *bitmapContainer:
 		return bc.iorBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) lazyIOR(a container) container {
@@ -216,7 +216,7 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 	case *bitmapContainer:
 		return bc.lazyIORBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) lazyOR(a container) container {
@@ -226,7 +226,7 @@ func (bc *bitmapContainer) lazyOR(a container) container {
 	case *bitmapContainer:
 		return bc.lazyORBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
@@ -318,7 +318,7 @@ func (bc *bitmapContainer) xor(a container) container {
 	case *bitmapContainer:
 		return bc.xorBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) xorArray(value2 *arrayContainer) container {
@@ -383,7 +383,7 @@ func (bc *bitmapContainer) and(a container) container {
 	case *bitmapContainer:
 		return bc.andBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) intersects(a container) bool {
@@ -393,7 +393,7 @@ func (bc *bitmapContainer) intersects(a container) bool {
 	case *bitmapContainer:
 		return bc.intersectsBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) iand(a container) container {
@@ -403,7 +403,7 @@ func (bc *bitmapContainer) iand(a container) container {
 	case *bitmapContainer:
 		return bc.iandBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
@@ -479,7 +479,7 @@ func (bc *bitmapContainer) andNot(a container) container {
 	case *bitmapContainer:
 		return bc.andNotBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) iandNot(a container) container {
@@ -489,7 +489,7 @@ func (bc *bitmapContainer) iandNot(a container) container {
 	case *bitmapContainer:
 		return bc.iandNotBitmap(a.(*bitmapContainer))
 	}
-	panic("should never happen")
+	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) andNotArray(value2 *arrayContainer) container {
