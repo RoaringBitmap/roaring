@@ -156,7 +156,9 @@ to read bitmaps serialized from Java in Go, you might want to call ``removeRunCo
 prior to serializing your Java instances. This is a temporary limitation: we plan to
 add support for run containers to the Go library.
 
-### Alternative
+### Alternative in Go
+
+There is a Go version wrapping the C/C++ implementation https://github.com/RoaringBitmap/gocroaring
 
 For an alternative implementation in Go, see https://github.com/fzandona/goroar
 The two versions were written independently.
