@@ -191,7 +191,12 @@ func (rb *Bitmap) String() string {
 	buffer.Write(start)
 	i := rb.Iterator()
 	counter := 0
+	if i.HasNext() {
+		counter = counter + 1
+		buffer.WriteString(strconv.FormatInt(int64(i.Next()), 10))
+	}
 	for i.HasNext() {
+		buffer.WriteString(",")
 		counter = counter + 1
 		// to avoid exhausting the memory
 		if counter > 0x40000 {
@@ -199,9 +204,6 @@ func (rb *Bitmap) String() string {
 			break
 		}
 		buffer.WriteString(strconv.FormatInt(int64(i.Next()), 10))
-		if i.HasNext() { // todo: optimize
-			buffer.WriteString(",")
-		}
 	}
 	buffer.WriteString("}")
 	return buffer.String()

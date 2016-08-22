@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"testing"
 )
+
 func TestStringer(t *testing.T) {
 	v := NewBitmap()
 	for i := uint32(0); i < 10; i++ {
