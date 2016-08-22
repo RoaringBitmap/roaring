@@ -8,6 +8,15 @@ import (
 	"strconv"
 	"testing"
 )
+func TestStringer(t *testing.T) {
+	v := NewBitmap()
+	for i := uint32(0); i < 10; i++ {
+		v.Add(i)
+	}
+	if v.String() != "{0,1,2,3,4,5,6,7,8,9}" {
+		t.Error("bad string output")
+	}
+}
 
 func TestFastCard(t *testing.T) {
 	Convey("fast card", t, func() {

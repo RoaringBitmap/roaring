@@ -198,7 +198,7 @@ func (rb *Bitmap) String() string {
 			buffer.WriteString("...")
 			break
 		}
-		buffer.WriteString(strconv.Itoa(int(i.Next())))
+		buffer.WriteString(strconv.FormatInt(int64(i.Next()), 10))
 		if i.HasNext() { // todo: optimize
 			buffer.WriteString(",")
 		}
