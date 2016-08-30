@@ -258,6 +258,25 @@ func (rb *Bitmap) Add(x uint32) {
 	}
 }
 
+// add the integer x to the bitmap, return the container and its index
+func (rb *Bitmap) addwithptr(x uint32) (int, container) {
+	hb := highbits(x)
+	ra := &rb.highlowcontainer
+	i := ra.getIndex(hb)
+	var c container
+	if i >= 0 {
+		c = ra.getWritableContainerAtIndex(i)
+		c = c.add(lowbits(x))
+		rb.highlowcontainer.setContainerAtIndex(i, c)
+		return i, c
+	} else {
+		newac := newArrayContainer()
+		c = newac.add(lowbits(x))
+		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, c)
+		return -i - 1, c
+	}
+}
+
 // CheckedAdd adds the integer x to the bitmap and return true  if it was added (false if the integer was already present)
 func (rb *Bitmap) CheckedAdd(x uint32) bool {
 	// TODO: add unit tests for this method
@@ -857,8 +876,19 @@ main:
 // BitmapOf generates a new bitmap filled with the specified integer
 func BitmapOf(dat ...uint32) *Bitmap {
 	ans := NewBitmap()
-	for _, i := range dat {
-		ans.Add(i)
+	if len(dat) == 0 {
+		return ans
+	}
+	prev := dat[0]
+	idx, c := ans.addwithptr(prev)
+	for _, i := range dat[1:] {
+		if highbits(prev) == highbits(i) {
+			c = c.add(lowbits(i))
+			ans.highlowcontainer.setContainerAtIndex(idx, c)
+		} else {
+			idx, c = ans.addwithptr(prev)
+		}
+		prev = i
 	}
 	return ans
 }
