@@ -85,8 +85,6 @@ func New() *Bitmap {
 	return &Bitmap{*newRoaringArray()}
 }
 
-
-
 // Clear removes all content from the Bitmap and frees the memory
 func (rb *Bitmap) Clear() {
 	rb.highlowcontainer = *newRoaringArray()
@@ -276,12 +274,11 @@ func (rb *Bitmap) addwithptr(x uint32) (int, container) {
 		c = c.add(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 		return i, c
-	} else {
-		newac := newArrayContainer()
-		c = newac.add(lowbits(x))
-		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, c)
-		return -i - 1, c
 	}
+	newac := newArrayContainer()
+	c = newac.add(lowbits(x))
+	rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, c)
+	return -i - 1, c
 }
 
 // CheckedAdd adds the integer x to the bitmap and return true  if it was added (false if the integer was already present)
