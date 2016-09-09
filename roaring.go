@@ -877,23 +877,28 @@ main:
 	return answer
 }
 
-// BitmapOf generates a new bitmap filled with the specified integer
-func BitmapOf(dat ...uint32) *Bitmap {
-	ans := NewBitmap()
+// AddMany add all of the values in dat
+func (rb *Bitmap) AddMany(dat []uint32) {
 	if len(dat) == 0 {
-		return ans
+		return
 	}
 	prev := dat[0]
-	idx, c := ans.addwithptr(prev)
+	idx, c := rb.addwithptr(prev)
 	for _, i := range dat[1:] {
 		if highbits(prev) == highbits(i) {
 			c = c.add(lowbits(i))
-			ans.highlowcontainer.setContainerAtIndex(idx, c)
+			rb.highlowcontainer.setContainerAtIndex(idx, c)
 		} else {
-			idx, c = ans.addwithptr(prev)
+			idx, c = rb.addwithptr(prev)
 		}
 		prev = i
 	}
+}
+
+// BitmapOf generates a new bitmap filled with the specified integers
+func BitmapOf(dat ...uint32) *Bitmap {
+	ans := NewBitmap()
+  ans.AddMany(dat)
 	return ans
 }
 
