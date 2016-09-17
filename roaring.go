@@ -898,7 +898,7 @@ func (rb *Bitmap) AddMany(dat []uint32) {
 // BitmapOf generates a new bitmap filled with the specified integers
 func BitmapOf(dat ...uint32) *Bitmap {
 	ans := NewBitmap()
-  ans.AddMany(dat)
+	ans.AddMany(dat)
 	return ans
 }
 

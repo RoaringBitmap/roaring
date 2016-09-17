@@ -9,6 +9,28 @@ import (
 	"testing"
 )
 
+// https://github.com/RoaringBitmap/roaring/issues/64
+func TestFlip64(t *testing.T) {
+	bm := New()
+	bm.AddInt(0)
+	bm.Flip(1, 2)
+	i := bm.Iterator()
+	if i.Next() != 0 || i.Next() != 1 || i.HasNext() {
+		t.Error("expected {0,1}")
+	}
+}
+
+// https://github.com/RoaringBitmap/roaring/issues/64
+func TestFlip64Off(t *testing.T) {
+	bm := New()
+	bm.AddInt(10)
+	bm.Flip(11, 12)
+	i := bm.Iterator()
+	if i.Next() != 10 || i.Next() != 11 || i.HasNext() {
+		t.Error("expected {10,11}")
+	}
+}
+
 func TestStringer(t *testing.T) {
 	v := NewBitmap()
 	for i := uint32(0); i < 10; i++ {

@@ -32,61 +32,6 @@ func (ac *arrayContainer) serializedSizeInBytes() int {
 }
 
 // add the values in the range [firstOfRange,lastofRange)
-// unused code
-/*func (ac *arrayContainer) addRange(firstOfRange, lastOfRange int) container {
-	if firstOfRange >= lastOfRange {
-		return ac.clone()
-	}
-	indexstart := binarySearch(ac.content, uint16(firstOfRange))
-	if indexstart < 0 {
-		indexstart = -indexstart - 1
-	}
-	indexend := binarySearch(ac.content, uint16(lastOfRange-1))
-	if indexend < 0 {
-		indexend = -indexend - 1
-	} else {
-		indexend++
-	}
-	rangelength := lastOfRange - firstOfRange
-
-	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
-	if newcardinality > arrayDefaultMaxSize {
-		a := ac.toBitmapContainer()
-		return a.iaddRange(firstOfRange, lastOfRange)
-	}
-	answer := &arrayContainer{make([]uint16, newcardinality)}
-	copy(answer.content[:indexstart], ac.content[:indexstart])
-	copy(answer.content[indexstart+rangelength:], ac.content[indexend:])
-	for k := 0; k < rangelength; k++ {
-		answer.content[k+indexstart] = uint16(firstOfRange + k)
-	}
-	return answer
-}*/
-
-// remove the values in the range [firstOfRange,lastofRange)
-// unused code
-/*func (ac *arrayContainer) removeRange(firstOfRange, lastOfRange int) container {
-	if firstOfRange >= lastOfRange {
-		return ac.clone()
-	}
-	indexstart := binarySearch(ac.content, uint16(firstOfRange))
-	if indexstart < 0 {
-		indexstart = -indexstart - 1
-	}
-	indexend := binarySearch(ac.content, uint16(lastOfRange-1))
-	if indexend < 0 {
-		indexend = -indexend - 1
-	} else {
-		indexend++
-	}
-	rangelength := indexend - indexstart
-	answer := &arrayContainer{make([]uint16, ac.getCardinality()-rangelength)}
-	copy(answer.content[:indexstart], ac.content[:indexstart])
-	copy(answer.content[indexstart:], ac.content[indexstart+rangelength:])
-	return answer
-}*/
-
-// add the values in the range [firstOfRange,lastofRange)
 func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
 	if firstOfRange >= lastOfRange {
 		return ac
@@ -576,10 +521,9 @@ func (ac *arrayContainer) inotClose(firstOfRange, lastOfRange int) container {
 		}
 		base := lastIndex + 1
 		copy(ac.content[lastIndex+1+cardinalityChange:], ac.content[base:base+len(ac.content)-1-lastIndex])
-
-		ac.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange)
+		ac.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange+1)
 	} else { // no expansion needed
-		ac.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange)
+		ac.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange+1)
 		if cardinalityChange < 0 {
 
 			for i := startIndex + newValuesInRange; i < newCardinality; i++ {
@@ -593,14 +537,13 @@ func (ac *arrayContainer) inotClose(firstOfRange, lastOfRange int) container {
 
 func (ac *arrayContainer) negateRange(buffer []uint16, startIndex, lastIndex, startRange, lastRange int) {
 	// compute the negation into buffer
-
 	outPos := 0
 	inPos := startIndex // value here always >= valInRange,
 	// until it is exhausted
 	// n.b., we can start initially exhausted.
 
 	valInRange := startRange
-	for ; valInRange <= lastRange && inPos <= lastIndex; valInRange++ {
+	for ; valInRange < lastRange && inPos <= lastIndex; valInRange++ {
 		if uint16(valInRange) != ac.content[inPos] {
 			buffer[outPos] = uint16(valInRange)
 			outPos++
@@ -611,18 +554,17 @@ func (ac *arrayContainer) negateRange(buffer []uint16, startIndex, lastIndex, st
 
 	// if there are extra items (greater than the biggest
 	// pre-existing one in range), buffer them
-	for ; valInRange <= lastRange; valInRange++ {
+	for ; valInRange < lastRange; valInRange++ {
 		buffer[outPos] = uint16(valInRange)
 		outPos++
 	}
 
 	if outPos != len(buffer) {
-		//panic("negateRange: outPos " + outPos + " whereas buffer.length=" + len(buffer))
-		panic("negateRange: outPos  whereas buffer.length=")
+		panic("negateRange: internal bug")
 	}
 
 	for i, item := range buffer {
-		ac.content[i] = item
+		ac.content[i+startIndex] = item
 	}
 }
 
