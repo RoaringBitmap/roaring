@@ -24,6 +24,8 @@ help:
 	@echo "    make clean       : Remove any build artifact"
 	@echo "    make nuke        : Deletes any intermediate file"
 	@echo ""
+	@echo "    make fuzz       : Fuzzy testing"
+	@echo ""
 
 # Alias for help target
 all: help
@@ -62,6 +64,13 @@ deps:
 	GOPATH=$(GOPATH) go get github.com/willf/bitset 
 	GOPATH=$(GOPATH) go get github.com/golang/lint/golint
 	GOPATH=$(GOPATH) go get github.com/mschoch/smat
+	GOPATH=$(GOPATH) go get github.com/dvyukov/go-fuzz/go-fuzz
+	GOPATH=$(GOPATH) go get github.com/dvyukov/go-fuzz/go-fuzz-build
+
+fuzz:
+	go test -tags=gofuzz -run=TestGenerateSmatCorpus
+	go-fuzz-build github.com/RoaringBitmap/roaring
+	go-fuzz -bin=./roaring-fuzz.zip -workdir=workdir/ -timeout=200
 
 # Remove any build artifact
 clean:

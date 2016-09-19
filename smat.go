@@ -1,3 +1,5 @@
+// +build gofuzz
+
 /*
 # Instructions for smat testing for roaring
 
@@ -54,7 +56,6 @@ the workdir where you should be able to find the panic goroutine stack
 traces.
 */
 
-// +build gofuzz
 
 package roaring
 
