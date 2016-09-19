@@ -33,6 +33,9 @@ http://arxiv.org/abs/1402.6407 This paper used data from http://lemire.me/data/r
 
   - go get github.com/smartystreets/goconvey/convey
   - go get github.com/willf/bitset
+  - go get github.com/mschoch/smat
+
+Note that the smat library requires Go 1.6 or better.
 
 Naturally, you also need to grab the roaring code itself:
   - go get github.com/RoaringBitmap/roaring

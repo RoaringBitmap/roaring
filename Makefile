@@ -61,6 +61,7 @@ deps:
 	GOPATH=$(GOPATH) go get github.com/smartystreets/goconvey/convey
 	GOPATH=$(GOPATH) go get github.com/willf/bitset 
 	GOPATH=$(GOPATH) go get github.com/golang/lint/golint
+	GOPATH=$(GOPATH) go get github.com/mschoch/smat
 
 # Remove any build artifact
 clean:
