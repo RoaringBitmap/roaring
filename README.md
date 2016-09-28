@@ -150,6 +150,24 @@ Type
 
          go test -bench Benchmark -run -
 
+### Iterative use
+
+You can use roaring with gore:
+
+- go get -u github.com/motemen/gore
+- Make sure that ``$GOPATH/bin`` is in your ``$PATH``.
+- go get github/RoaringBitmap/roaring
+
+```go
+$ gore
+gore version 0.2.6  :help for help
+gore> :import github.com/RoaringBitmap/roaring
+gore> x:=roaring.New()
+gore> x.Add(1)
+gore> x.String()
+"{1}"
+```
+
 
 ### Fuzzy testing
 
