@@ -9,6 +9,42 @@ import (
 	"testing"
 )
 
+
+
+
+
+func TestRoaringBitmapBitmapOf(t *testing.T) {
+	array := []uint32{5580, 33722, 44031, 57276, 83097}
+	bmp := BitmapOf(array...)
+	if len(array) != int(bmp.GetCardinality()) {
+		t.Errorf("length diff %d!=%d", len(array), bmp.GetCardinality())
+		t.FailNow()
+	}
+}
+
+func TestRoaringBitmapAdd(t *testing.T) {
+	array := []uint32{5580, 33722, 44031, 57276, 83097}
+	bmp := New()
+	for _, v := range array {
+		bmp.Add(v)
+	}
+	if len(array) != int(bmp.GetCardinality()) {
+		t.Errorf("length diff %d!=%d", len(array), bmp.GetCardinality())
+		t.FailNow()
+	}
+}
+
+func TestRoaringBitmapAddMany(t *testing.T) {
+	array := []uint32{5580, 33722, 44031, 57276, 83097}
+	bmp := NewBitmap()
+	bmp.AddMany(array)
+	if len(array) != int(bmp.GetCardinality()) {
+		t.Errorf("length diff %d!=%d", len(array), bmp.GetCardinality())
+		t.FailNow()
+	}
+}
+
+
 // https://github.com/RoaringBitmap/roaring/issues/64
 func TestFlip64(t *testing.T) {
 	bm := New()

@@ -889,7 +889,7 @@ func (rb *Bitmap) AddMany(dat []uint32) {
 			c = c.add(lowbits(i))
 			rb.highlowcontainer.setContainerAtIndex(idx, c)
 		} else {
-			idx, c = rb.addwithptr(prev)
+			idx, c = rb.addwithptr(i)
 		}
 		prev = i
 	}
