@@ -10,7 +10,7 @@ import (
 func makeContainer(ss []uint16) container {
 	c := newArrayContainer()
 	for _, s := range ss {
-		c.add(s)
+		c.iadd(s)
 	}
 	return c
 }
@@ -86,8 +86,8 @@ func TestRoaringContainer(t *testing.T) {
 		a := newArrayContainer()
 		b := newBitmapContainer()
 		for _, v := range content {
-			a.add(v)
-			b.add(v)
+			a.iadd(v)
+			b.iadd(v)
 		}
 		c := a.toBitmapContainer()
 

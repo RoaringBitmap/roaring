@@ -1,18 +1,21 @@
 package roaring
 
 const (
-	arrayDefaultMaxSize = 4096 // containers with 4096 or fewer integers should be array containers.
-	arrayLazyLowerBound = 1024
-	maxCapacity         = 1 << 16
-	serialCookie        = 12346
-	invalidCardinality  = -1
+	arrayDefaultMaxSize        = 4096 // containers with 4096 or fewer integers should be array containers.
+	arrayLazyLowerBound        = 1024
+	maxCapacity                = 1 << 16
+	serialCookieNoRunContainer = 12346 // only arrays and bitmaps
+	invalidCardinality         = -1
+	serialCookie               = 12347 // runs, arrays, and bitmaps
+	noOffsetThreshold          = 4
 )
 
+// doesn't apply to runContainers
 func getSizeInBytesFromCardinality(card int) int {
 	if card > arrayDefaultMaxSize {
 		return maxCapacity / 8
 	}
-	return 2 * int(card)
+	return 2 * card
 }
 
 // should be replaced with optimized assembly instructions
@@ -119,13 +122,7 @@ func lowbits(x uint32) uint16 {
 	return uint16(x & 0xFFFF)
 }
 
-func maxLowBit() uint16 {
-	return uint16(0xFFFF)
-}
-
-func toIntUnsigned(x uint16) uint32 {
-	return uint32(x)
-}
+const maxLowBit = 0xFFFF
 
 func flipBitmapRange(bitmap []uint64, start int, end int) {
 	if start >= end {
@@ -252,4 +249,10 @@ func selectBitPosition(w uint64, j int) int {
 	}
 	return seen + int(counter)
 
+}
+
+func panicOn(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

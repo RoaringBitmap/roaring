@@ -12,7 +12,7 @@ import (
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
 
-var c uint
+var c9 uint
 
 // go test -bench BenchmarkMemoryUsage -run -
 func BenchmarkMemoryUsage(b *testing.B) {
@@ -273,11 +273,11 @@ func BenchmarkIterateRoaring(b *testing.B) {
 	}
 	b.StartTimer()
 	for j := 0; j < b.N; j++ {
-		c = uint(0)
+		c9 = uint(0)
 		i := s.Iterator()
 		for i.HasNext() {
 			i.Next()
-			c++
+			c9++
 		}
 	}
 }
@@ -294,11 +294,11 @@ func BenchmarkSparseIterateRoaring(b *testing.B) {
 	}
 	b.StartTimer()
 	for j := 0; j < b.N; j++ {
-		c = uint(0)
+		c9 = uint(0)
 		i := s.Iterator()
 		for i.HasNext() {
 			i.Next()
-			c++
+			c9++
 		}
 	}
 
@@ -316,9 +316,9 @@ func BenchmarkIterateBitset(b *testing.B) {
 	}
 	b.StartTimer()
 	for j := 0; j < b.N; j++ {
-		c = uint(0)
+		c9 = uint(0)
 		for i, e := s.NextSet(0); e; i, e = s.NextSet(i + 1) {
-			c++
+			c9++
 		}
 	}
 }
@@ -339,10 +339,10 @@ func BenchmarkSparseContains(b *testing.B) {
 	}
 	b.StartTimer()
 	for j := 0; j < b.N; j++ {
-		c = uint(0)
+		c9 = uint(0)
 		for i := 0; i < 1024; i++ {
 			if s.Contains(a[i]) {
-				c++
+				c9++
 			}
 
 		}
@@ -361,9 +361,9 @@ func BenchmarkSparseIterateBitset(b *testing.B) {
 	}
 	b.StartTimer()
 	for j := 0; j < b.N; j++ {
-		c = uint(0)
+		c9 = uint(0)
 		for i, e := s.NextSet(0); e; i, e = s.NextSet(i + 1) {
-			c++
+			c9++
 		}
 	}
 }
