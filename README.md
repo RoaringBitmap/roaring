@@ -28,17 +28,21 @@ http://arxiv.org/abs/1402.6407 This paper used data from http://lemire.me/data/r
 - Daniel Lemire, Gregory Ssi-Yan-Kai, Owen Kaser, Consistently faster and smaller compressed bitmaps with Roaring, Software: Practice and Experience (accepted in 2016, to appear) http://arxiv.org/abs/1603.06549
 
 
-
 ### Dependencies
 
-  - go get github.com/smartystreets/goconvey/convey
-  - go get github.com/willf/bitset
-  - go get github.com/mschoch/smat
+Dependencies are fetched automatically by giving the `-t` flag to `go get`.
+
+they include
+
+  - github.com/smartystreets/goconvey/convey
+  - github.com/willf/bitset
+  - github.com/mschoch/smat
 
 Note that the smat library requires Go 1.6 or better.
 
-Naturally, you also need to grab the roaring code itself:
-  - go get github.com/RoaringBitmap/roaring
+#### Installation
+
+  - go get -t github.com/RoaringBitmap/roaring
 
 
 ### Example

@@ -106,7 +106,7 @@ func (x1 *Bitmap) repairAfterLazy() {
 		c := x1.highlowcontainer.getContainerAtIndex(pos)
 		switch c.(type) {
 		case *bitmapContainer:
-			if c.(*bitmapContainer).cardinality == invalidCardinality {
+			if c.(*bitmapContainer).Cardinality == invalidCardinality {
 				c = x1.highlowcontainer.getWritableContainerAtIndex(pos)
 				c.(*bitmapContainer).computeCardinality()
 				if c.(*bitmapContainer).getCardinality() <= arrayDefaultMaxSize {
@@ -145,6 +145,7 @@ func FastOr(bitmaps ...*Bitmap) *Bitmap {
 	for _, bm := range bitmaps[2:] {
 		answer = answer.lazyOR(bm)
 	}
+	// here is where repairAfterLazy is called.
 	answer.repairAfterLazy()
 	return answer
 }

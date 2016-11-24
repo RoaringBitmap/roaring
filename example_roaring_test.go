@@ -3,7 +3,7 @@ package roaring_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/RoaringBitmap/roaring"
+	"github.com/glycerine/roaring"
 )
 
 // Example_roaring demonstrates how to use the roaring library.

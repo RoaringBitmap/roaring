@@ -119,13 +119,7 @@ func lowbits(x uint32) uint16 {
 	return uint16(x & 0xFFFF)
 }
 
-func maxLowBit() uint16 {
-	return uint16(0xFFFF)
-}
-
-func toIntUnsigned(x uint16) uint32 {
-	return uint32(x)
-}
+const maxLowBit = 0xFFFF
 
 func flipBitmapRange(bitmap []uint64, start int, end int) {
 	if start >= end {
