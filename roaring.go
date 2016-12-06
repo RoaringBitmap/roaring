@@ -1111,3 +1111,36 @@ func (rb *Bitmap) GetCopyOnWrite() (val bool) {
 func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
 	return Flip(bm, uint64(rangeStart), uint64(rangeEnd))
 }
+
+type Statistics struct {
+	Cardinality           uint64
+	Containers            uint64
+	ArrayContainers       uint64
+	BitmapContainers      uint64
+
+	ArrayContainerBytes   uint64
+	ArrayContainerValues  uint64
+
+	BitmapContainerBytes  uint64
+	BitmapContainerValues uint64
+}
+
+func (bm *Bitmap) Stats() Statistics {
+	stats := Statistics{}
+	stats.Containers = uint64(len(bm.highlowcontainer.containers))
+	for _, c := range bm.highlowcontainer.containers {
+		stats.Cardinality += uint64(c.getCardinality())
+
+		switch c.(type) {
+		case *arrayContainer:
+			stats.ArrayContainers += 1
+			stats.ArrayContainerBytes += uint64(c.getSizeInBytes())
+			stats.ArrayContainerValues += uint64(c.getCardinality())
+		case *bitmapContainer:
+			stats.BitmapContainers += 1
+			stats.BitmapContainerBytes += uint64(c.getSizeInBytes())
+			stats.BitmapContainerValues += uint64(c.getCardinality())
+		}
+	}
+	return stats
+}
