@@ -1738,3 +1738,40 @@ func TestAndNot(t *testing.T) {
 		So(correct.Equals(rr), ShouldEqual, true)
 	})
 }
+
+func TestStats(t *testing.T) {
+	Convey("Test Stats with empty bitmap", t, func() {
+		expectedStats := Statistics{}
+		rr := NewBitmap()
+		So(rr.Stats(), ShouldResemble, expectedStats)
+	})
+	Convey("Test Stats with Bitmap Container", t, func() {
+		// Given a bitmap that should have a single bitmap container
+		expectedStats := Statistics {
+			Cardinality: 60000,
+			Containers: 1,
+
+			BitmapContainers: 1,
+			BitmapContainerValues: 60000,
+			BitmapContainerBytes: 8192,
+		}
+		rr := NewBitmap()
+		rr.AddRange(0, 60000)
+		So(rr.Stats(), ShouldResemble, expectedStats)
+	})
+	Convey("Test Stats with Array Container", t, func() {
+		// Given a bitmap that should have a single array container
+		expectedStats := Statistics {
+			Cardinality: 2,
+			Containers: 1,
+
+			ArrayContainers: 1,
+			ArrayContainerValues: 2,
+			ArrayContainerBytes: 28,
+		}
+		rr := NewBitmap()
+		rr.Add(2)
+		rr.Add(4)
+		So(rr.Stats(), ShouldResemble, expectedStats)
+	})
+}
