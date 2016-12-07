@@ -197,3 +197,8 @@ There is a Go version wrapping the C/C++ implementation https://github.com/Roari
 
 For an alternative implementation in Go, see https://github.com/fzandona/goroar
 The two versions were written independently.
+
+
+### Mailing list/discussion group
+
+https://groups.google.com/forum/#!forum/roaring-bitmaps
