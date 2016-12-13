@@ -40,7 +40,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import (
 	"fmt"
-	"github.com/glycerine/roaring/serz"
 	"sort"
 	"unsafe"
 )
@@ -68,23 +67,6 @@ type interval16 struct {
 // runlen returns the count of integers in the interval.
 func (iv interval16) runlen() int64 {
 	return 1 + int64(iv.Last) - int64(iv.Start)
-}
-
-func newRunContainer16FromSerz(sz *serz.RunContainer16) *runContainer16 {
-	rc := &runContainer16{Card: sz.Card}
-	for i := range sz.Iv {
-		rc.Iv = append(rc.Iv, interval16{Start: sz.Iv[i].Start, Last: sz.Iv[i].Last})
-	}
-	return rc
-}
-
-func (rc *runContainer16) toSerz() *serz.RunContainer16 {
-	sz := &serz.RunContainer16{Card: rc.Card}
-	for i := range rc.Iv {
-		sz.Iv = append(sz.Iv, serz.Interval16{Start: rc.Iv[i].Start, Last: rc.Iv[i].Last})
-	}
-	return sz
-
 }
 
 // String produces a human viewable string of the contents.
@@ -830,12 +812,7 @@ const perIntervalRc16Size = int(unsafe.Sizeof(interval16{}))
 // serializedSizeInBytes returns the number of bytes of memory
 // required by this runContainer16.
 func (rc *runContainer16) serializedSizeInBytes() int {
-	bts, err := rc.toSerz().MarshalMsg(nil)
-	if err != nil {
-		panic(err)
-	}
-	return len(bts)
-	//	return perIntervalRc16Size * len(rc.Iv) // +  baseRc16Size
+	return rc.Msgsize()
 }
 
 // see also runContainer16SerializedSizeInBytes(numRuns int) int

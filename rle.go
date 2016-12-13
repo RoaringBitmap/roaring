@@ -40,7 +40,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import (
 	"fmt"
-	"github.com/glycerine/roaring/serz"
 	"sort"
 	"unsafe"
 )
@@ -68,23 +67,6 @@ type interval32 struct {
 // runlen returns the count of integers in the interval.
 func (iv interval32) runlen() int64 {
 	return 1 + int64(iv.Last) - int64(iv.Start)
-}
-
-func newRunContainer32FromSerz(sz *serz.RunContainer32) *runContainer32 {
-	rc := &runContainer32{Card: sz.Card}
-	for i := range sz.Iv {
-		rc.Iv = append(rc.Iv, interval32{Start: sz.Iv[i].Start, Last: sz.Iv[i].Last})
-	}
-	return rc
-}
-
-func (rc *runContainer32) toSerz() *serz.RunContainer32 {
-	sz := &serz.RunContainer32{Card: rc.Card}
-	for i := range rc.Iv {
-		sz.Iv = append(sz.Iv, serz.Interval32{Start: rc.Iv[i].Start, Last: rc.Iv[i].Last})
-	}
-	return sz
-
 }
 
 // String produces a human viewable string of the contents.
