@@ -26,8 +26,8 @@ func (z *containerSerz) DecodeMsg(dc *msgp.Reader) (err error) {
 		switch msgp.UnsafeString(field) {
 		case "t":
 			{
-				var zbzg int16
-				zbzg, err = dc.ReadInt16()
+				var zbzg uint8
+				zbzg, err = dc.ReadUint8()
 				z.t = contype(zbzg)
 			}
 			if err != nil {
@@ -56,7 +56,7 @@ func (z *containerSerz) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	err = en.WriteInt16(int16(z.t))
+	err = en.WriteUint8(uint8(z.t))
 	if err != nil {
 		return
 	}
@@ -78,7 +78,7 @@ func (z *containerSerz) MarshalMsg(b []byte) (o []byte, err error) {
 	// map header, size 2
 	// string "t"
 	o = append(o, 0x82, 0xa1, 0x74)
-	o = msgp.AppendInt16(o, int16(z.t))
+	o = msgp.AppendUint8(o, uint8(z.t))
 	// string "r"
 	o = append(o, 0xa1, 0x72)
 	o, err = z.r.MarshalMsg(o)
@@ -106,8 +106,8 @@ func (z *containerSerz) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		switch msgp.UnsafeString(field) {
 		case "t":
 			{
-				var zcmr int16
-				zcmr, bts, err = msgp.ReadInt16Bytes(bts)
+				var zcmr uint8
+				zcmr, bts, err = msgp.ReadUint8Bytes(bts)
 				z.t = contype(zcmr)
 			}
 			if err != nil {
@@ -131,15 +131,15 @@ func (z *containerSerz) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *containerSerz) Msgsize() (s int) {
-	s = 1 + 2 + msgp.Int16Size + 2 + z.r.Msgsize()
+	s = 1 + 2 + msgp.Uint8Size + 2 + z.r.Msgsize()
 	return
 }
 
 // DecodeMsg implements msgp.Decodable
 func (z *contype) DecodeMsg(dc *msgp.Reader) (err error) {
 	{
-		var zajw int16
-		zajw, err = dc.ReadInt16()
+		var zajw uint8
+		zajw, err = dc.ReadUint8()
 		(*z) = contype(zajw)
 	}
 	if err != nil {
@@ -150,7 +150,7 @@ func (z *contype) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z contype) EncodeMsg(en *msgp.Writer) (err error) {
-	err = en.WriteInt16(int16(z))
+	err = en.WriteUint8(uint8(z))
 	if err != nil {
 		return
 	}
@@ -160,15 +160,15 @@ func (z contype) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z contype) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	o = msgp.AppendInt16(o, int16(z))
+	o = msgp.AppendUint8(o, uint8(z))
 	return
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
 func (z *contype) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	{
-		var zwht int16
-		zwht, bts, err = msgp.ReadInt16Bytes(bts)
+		var zwht uint8
+		zwht, bts, err = msgp.ReadUint8Bytes(bts)
 		(*z) = contype(zwht)
 	}
 	if err != nil {
@@ -180,7 +180,7 @@ func (z *contype) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z contype) Msgsize() (s int) {
-	s = msgp.Int16Size
+	s = msgp.Uint8Size
 	return
 }
 
@@ -265,8 +265,8 @@ func (z *roaringArray) DecodeMsg(dc *msgp.Reader) (err error) {
 					switch msgp.UnsafeString(field) {
 					case "t":
 						{
-							var zeff int16
-							zeff, err = dc.ReadInt16()
+							var zeff uint8
+							zeff, err = dc.ReadUint8()
 							z.conserz[zxhx].t = contype(zeff)
 						}
 						if err != nil {
@@ -353,7 +353,7 @@ func (z *roaringArray) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return err
 		}
-		err = en.WriteInt16(int16(z.conserz[zxhx].t))
+		err = en.WriteUint8(uint8(z.conserz[zxhx].t))
 		if err != nil {
 			return
 		}
@@ -396,7 +396,7 @@ func (z *roaringArray) MarshalMsg(b []byte) (o []byte, err error) {
 		// map header, size 2
 		// string "t"
 		o = append(o, 0x82, 0xa1, 0x74)
-		o = msgp.AppendInt16(o, int16(z.conserz[zxhx].t))
+		o = msgp.AppendUint8(o, uint8(z.conserz[zxhx].t))
 		// string "r"
 		o = append(o, 0xa1, 0x72)
 		o, err = z.conserz[zxhx].r.MarshalMsg(o)
@@ -488,8 +488,8 @@ func (z *roaringArray) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					switch msgp.UnsafeString(field) {
 					case "t":
 						{
-							var zkgt int16
-							zkgt, bts, err = msgp.ReadInt16Bytes(bts)
+							var zkgt uint8
+							zkgt, bts, err = msgp.ReadUint8Bytes(bts)
 							z.conserz[zxhx].t = contype(zkgt)
 						}
 						if err != nil {
@@ -523,7 +523,7 @@ func (z *roaringArray) UnmarshalMsg(bts []byte) (o []byte, err error) {
 func (z *roaringArray) Msgsize() (s int) {
 	s = 1 + 5 + msgp.ArrayHeaderSize + (len(z.keys) * (msgp.Uint16Size)) + 16 + msgp.ArrayHeaderSize + (len(z.needCopyOnWrite) * (msgp.BoolSize)) + 12 + msgp.BoolSize + 8 + msgp.ArrayHeaderSize
 	for zxhx := range z.conserz {
-		s += 1 + 2 + msgp.Int16Size + 2 + z.conserz[zxhx].r.Msgsize()
+		s += 1 + 2 + msgp.Uint8Size + 2 + z.conserz[zxhx].r.Msgsize()
 	}
 	return
 }

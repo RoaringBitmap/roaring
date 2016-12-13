@@ -10,13 +10,13 @@ import "github.com/tinylib/msgp/msgp"
 func (z *RunIterator32) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
-	var zbzg uint32
-	zbzg, err = dc.ReadMapHeader()
+	var zxvk uint32
+	zxvk, err = dc.ReadMapHeader()
 	if err != nil {
 		return
 	}
-	for zbzg > 0 {
-		zbzg--
+	for zxvk > 0 {
+		zxvk--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
 			return
@@ -33,71 +33,9 @@ func (z *RunIterator32) DecodeMsg(dc *msgp.Reader) (err error) {
 				if z.rc == nil {
 					z.rc = new(runContainer32)
 				}
-				var zbai uint32
-				zbai, err = dc.ReadMapHeader()
+				err = z.rc.DecodeMsg(dc)
 				if err != nil {
 					return
-				}
-				for zbai > 0 {
-					zbai--
-					field, err = dc.ReadMapKeyPtr()
-					if err != nil {
-						return
-					}
-					switch msgp.UnsafeString(field) {
-					case "iv":
-						var zcmr uint32
-						zcmr, err = dc.ReadArrayHeader()
-						if err != nil {
-							return
-						}
-						if cap(z.rc.iv) >= int(zcmr) {
-							z.rc.iv = (z.rc.iv)[:zcmr]
-						} else {
-							z.rc.iv = make([]interval32, zcmr)
-						}
-						for zxvk := range z.rc.iv {
-							var zajw uint32
-							zajw, err = dc.ReadMapHeader()
-							if err != nil {
-								return
-							}
-							for zajw > 0 {
-								zajw--
-								field, err = dc.ReadMapKeyPtr()
-								if err != nil {
-									return
-								}
-								switch msgp.UnsafeString(field) {
-								case "start":
-									z.rc.iv[zxvk].start, err = dc.ReadUint32()
-									if err != nil {
-										return
-									}
-								case "last":
-									z.rc.iv[zxvk].last, err = dc.ReadUint32()
-									if err != nil {
-										return
-									}
-								default:
-									err = dc.Skip()
-									if err != nil {
-										return
-									}
-								}
-							}
-						}
-					case "card":
-						z.rc.card, err = dc.ReadInt64()
-						if err != nil {
-							return
-						}
-					default:
-						err = dc.Skip()
-						if err != nil {
-							return
-						}
-					}
 				}
 			}
 		case "curIndex":
@@ -139,43 +77,7 @@ func (z *RunIterator32) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	} else {
-		// map header, size 2
-		// write "iv"
-		err = en.Append(0x82, 0xa2, 0x69, 0x76)
-		if err != nil {
-			return err
-		}
-		err = en.WriteArrayHeader(uint32(len(z.rc.iv)))
-		if err != nil {
-			return
-		}
-		for zxvk := range z.rc.iv {
-			// map header, size 2
-			// write "start"
-			err = en.Append(0x82, 0xa5, 0x73, 0x74, 0x61, 0x72, 0x74)
-			if err != nil {
-				return err
-			}
-			err = en.WriteUint32(z.rc.iv[zxvk].start)
-			if err != nil {
-				return
-			}
-			// write "last"
-			err = en.Append(0xa4, 0x6c, 0x61, 0x73, 0x74)
-			if err != nil {
-				return err
-			}
-			err = en.WriteUint32(z.rc.iv[zxvk].last)
-			if err != nil {
-				return
-			}
-		}
-		// write "card"
-		err = en.Append(0xa4, 0x63, 0x61, 0x72, 0x64)
-		if err != nil {
-			return err
-		}
-		err = en.WriteInt64(z.rc.card)
+		err = z.rc.EncodeMsg(en)
 		if err != nil {
 			return
 		}
@@ -219,22 +121,10 @@ func (z *RunIterator32) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.rc == nil {
 		o = msgp.AppendNil(o)
 	} else {
-		// map header, size 2
-		// string "iv"
-		o = append(o, 0x82, 0xa2, 0x69, 0x76)
-		o = msgp.AppendArrayHeader(o, uint32(len(z.rc.iv)))
-		for zxvk := range z.rc.iv {
-			// map header, size 2
-			// string "start"
-			o = append(o, 0x82, 0xa5, 0x73, 0x74, 0x61, 0x72, 0x74)
-			o = msgp.AppendUint32(o, z.rc.iv[zxvk].start)
-			// string "last"
-			o = append(o, 0xa4, 0x6c, 0x61, 0x73, 0x74)
-			o = msgp.AppendUint32(o, z.rc.iv[zxvk].last)
+		o, err = z.rc.MarshalMsg(o)
+		if err != nil {
+			return
 		}
-		// string "card"
-		o = append(o, 0xa4, 0x63, 0x61, 0x72, 0x64)
-		o = msgp.AppendInt64(o, z.rc.card)
 	}
 	// string "curIndex"
 	o = append(o, 0xa8, 0x63, 0x75, 0x72, 0x49, 0x6e, 0x64, 0x65, 0x78)
@@ -252,13 +142,13 @@ func (z *RunIterator32) MarshalMsg(b []byte) (o []byte, err error) {
 func (z *RunIterator32) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
-	var zwht uint32
-	zwht, bts, err = msgp.ReadMapHeaderBytes(bts)
+	var zbzg uint32
+	zbzg, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
-	for zwht > 0 {
-		zwht--
+	for zbzg > 0 {
+		zbzg--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
 			return
@@ -275,71 +165,9 @@ func (z *RunIterator32) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				if z.rc == nil {
 					z.rc = new(runContainer32)
 				}
-				var zhct uint32
-				zhct, bts, err = msgp.ReadMapHeaderBytes(bts)
+				bts, err = z.rc.UnmarshalMsg(bts)
 				if err != nil {
 					return
-				}
-				for zhct > 0 {
-					zhct--
-					field, bts, err = msgp.ReadMapKeyZC(bts)
-					if err != nil {
-						return
-					}
-					switch msgp.UnsafeString(field) {
-					case "iv":
-						var zcua uint32
-						zcua, bts, err = msgp.ReadArrayHeaderBytes(bts)
-						if err != nil {
-							return
-						}
-						if cap(z.rc.iv) >= int(zcua) {
-							z.rc.iv = (z.rc.iv)[:zcua]
-						} else {
-							z.rc.iv = make([]interval32, zcua)
-						}
-						for zxvk := range z.rc.iv {
-							var zxhx uint32
-							zxhx, bts, err = msgp.ReadMapHeaderBytes(bts)
-							if err != nil {
-								return
-							}
-							for zxhx > 0 {
-								zxhx--
-								field, bts, err = msgp.ReadMapKeyZC(bts)
-								if err != nil {
-									return
-								}
-								switch msgp.UnsafeString(field) {
-								case "start":
-									z.rc.iv[zxvk].start, bts, err = msgp.ReadUint32Bytes(bts)
-									if err != nil {
-										return
-									}
-								case "last":
-									z.rc.iv[zxvk].last, bts, err = msgp.ReadUint32Bytes(bts)
-									if err != nil {
-										return
-									}
-								default:
-									bts, err = msgp.Skip(bts)
-									if err != nil {
-										return
-									}
-								}
-							}
-						}
-					case "card":
-						z.rc.card, bts, err = msgp.ReadInt64Bytes(bts)
-						if err != nil {
-							return
-						}
-					default:
-						bts, err = msgp.Skip(bts)
-						if err != nil {
-							return
-						}
-					}
 				}
 			}
 		case "curIndex":
@@ -374,7 +202,7 @@ func (z *RunIterator32) Msgsize() (s int) {
 	if z.rc == nil {
 		s += msgp.NilSize
 	} else {
-		s += 1 + 3 + msgp.ArrayHeaderSize + (len(z.rc.iv) * (12 + msgp.Uint32Size + msgp.Uint32Size)) + 5 + msgp.Int64Size
+		s += z.rc.Msgsize()
 	}
 	s += 9 + msgp.Int64Size + 14 + msgp.Uint32Size + 7 + msgp.Int64Size
 	return
@@ -384,13 +212,13 @@ func (z *RunIterator32) Msgsize() (s int) {
 func (z *addHelper32) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
-	var zdaf uint32
-	zdaf, err = dc.ReadMapHeader()
+	var zajw uint32
+	zajw, err = dc.ReadMapHeader()
 	if err != nil {
 		return
 	}
-	for zdaf > 0 {
-		zdaf--
+	for zajw > 0 {
+		zajw--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
 			return
@@ -412,36 +240,36 @@ func (z *addHelper32) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "m":
-			var zpks uint32
-			zpks, err = dc.ReadArrayHeader()
+			var zwht uint32
+			zwht, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
 			}
-			if cap(z.m) >= int(zpks) {
-				z.m = (z.m)[:zpks]
+			if cap(z.m) >= int(zwht) {
+				z.m = (z.m)[:zwht]
 			} else {
-				z.m = make([]interval32, zpks)
+				z.m = make([]interval32, zwht)
 			}
-			for zlqf := range z.m {
-				var zjfb uint32
-				zjfb, err = dc.ReadMapHeader()
+			for zbai := range z.m {
+				var zhct uint32
+				zhct, err = dc.ReadMapHeader()
 				if err != nil {
 					return
 				}
-				for zjfb > 0 {
-					zjfb--
+				for zhct > 0 {
+					zhct--
 					field, err = dc.ReadMapKeyPtr()
 					if err != nil {
 						return
 					}
 					switch msgp.UnsafeString(field) {
 					case "start":
-						z.m[zlqf].start, err = dc.ReadUint32()
+						z.m[zbai].start, err = dc.ReadUint32()
 						if err != nil {
 							return
 						}
 					case "last":
-						z.m[zlqf].last, err = dc.ReadUint32()
+						z.m[zbai].last, err = dc.ReadUint32()
 						if err != nil {
 							return
 						}
@@ -464,9 +292,71 @@ func (z *addHelper32) DecodeMsg(dc *msgp.Reader) (err error) {
 				if z.rc == nil {
 					z.rc = new(runContainer32)
 				}
-				err = z.rc.DecodeMsg(dc)
+				var zcua uint32
+				zcua, err = dc.ReadMapHeader()
 				if err != nil {
 					return
+				}
+				for zcua > 0 {
+					zcua--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "iv":
+						var zxhx uint32
+						zxhx, err = dc.ReadArrayHeader()
+						if err != nil {
+							return
+						}
+						if cap(z.rc.iv) >= int(zxhx) {
+							z.rc.iv = (z.rc.iv)[:zxhx]
+						} else {
+							z.rc.iv = make([]interval32, zxhx)
+						}
+						for zcmr := range z.rc.iv {
+							var zlqf uint32
+							zlqf, err = dc.ReadMapHeader()
+							if err != nil {
+								return
+							}
+							for zlqf > 0 {
+								zlqf--
+								field, err = dc.ReadMapKeyPtr()
+								if err != nil {
+									return
+								}
+								switch msgp.UnsafeString(field) {
+								case "start":
+									z.rc.iv[zcmr].start, err = dc.ReadUint32()
+									if err != nil {
+										return
+									}
+								case "last":
+									z.rc.iv[zcmr].last, err = dc.ReadUint32()
+									if err != nil {
+										return
+									}
+								default:
+									err = dc.Skip()
+									if err != nil {
+										return
+									}
+								}
+							}
+						}
+					case "card":
+						z.rc.card, err = dc.ReadInt64()
+						if err != nil {
+							return
+						}
+					default:
+						err = dc.Skip()
+						if err != nil {
+							return
+						}
+					}
 				}
 			}
 		default:
@@ -518,14 +408,14 @@ func (z *addHelper32) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	for zlqf := range z.m {
+	for zbai := range z.m {
 		// map header, size 2
 		// write "start"
 		err = en.Append(0x82, 0xa5, 0x73, 0x74, 0x61, 0x72, 0x74)
 		if err != nil {
 			return err
 		}
-		err = en.WriteUint32(z.m[zlqf].start)
+		err = en.WriteUint32(z.m[zbai].start)
 		if err != nil {
 			return
 		}
@@ -534,7 +424,7 @@ func (z *addHelper32) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return err
 		}
-		err = en.WriteUint32(z.m[zlqf].last)
+		err = en.WriteUint32(z.m[zbai].last)
 		if err != nil {
 			return
 		}
@@ -550,7 +440,43 @@ func (z *addHelper32) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	} else {
-		err = z.rc.EncodeMsg(en)
+		// map header, size 2
+		// write "iv"
+		err = en.Append(0x82, 0xa2, 0x69, 0x76)
+		if err != nil {
+			return err
+		}
+		err = en.WriteArrayHeader(uint32(len(z.rc.iv)))
+		if err != nil {
+			return
+		}
+		for zcmr := range z.rc.iv {
+			// map header, size 2
+			// write "start"
+			err = en.Append(0x82, 0xa5, 0x73, 0x74, 0x61, 0x72, 0x74)
+			if err != nil {
+				return err
+			}
+			err = en.WriteUint32(z.rc.iv[zcmr].start)
+			if err != nil {
+				return
+			}
+			// write "last"
+			err = en.Append(0xa4, 0x6c, 0x61, 0x73, 0x74)
+			if err != nil {
+				return err
+			}
+			err = en.WriteUint32(z.rc.iv[zcmr].last)
+			if err != nil {
+				return
+			}
+		}
+		// write "card"
+		err = en.Append(0xa4, 0x63, 0x61, 0x72, 0x64)
+		if err != nil {
+			return err
+		}
+		err = en.WriteInt64(z.rc.card)
 		if err != nil {
 			return
 		}
@@ -574,24 +500,36 @@ func (z *addHelper32) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "m"
 	o = append(o, 0xa1, 0x6d)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.m)))
-	for zlqf := range z.m {
+	for zbai := range z.m {
 		// map header, size 2
 		// string "start"
 		o = append(o, 0x82, 0xa5, 0x73, 0x74, 0x61, 0x72, 0x74)
-		o = msgp.AppendUint32(o, z.m[zlqf].start)
+		o = msgp.AppendUint32(o, z.m[zbai].start)
 		// string "last"
 		o = append(o, 0xa4, 0x6c, 0x61, 0x73, 0x74)
-		o = msgp.AppendUint32(o, z.m[zlqf].last)
+		o = msgp.AppendUint32(o, z.m[zbai].last)
 	}
 	// string "rc"
 	o = append(o, 0xa2, 0x72, 0x63)
 	if z.rc == nil {
 		o = msgp.AppendNil(o)
 	} else {
-		o, err = z.rc.MarshalMsg(o)
-		if err != nil {
-			return
+		// map header, size 2
+		// string "iv"
+		o = append(o, 0x82, 0xa2, 0x69, 0x76)
+		o = msgp.AppendArrayHeader(o, uint32(len(z.rc.iv)))
+		for zcmr := range z.rc.iv {
+			// map header, size 2
+			// string "start"
+			o = append(o, 0x82, 0xa5, 0x73, 0x74, 0x61, 0x72, 0x74)
+			o = msgp.AppendUint32(o, z.rc.iv[zcmr].start)
+			// string "last"
+			o = append(o, 0xa4, 0x6c, 0x61, 0x73, 0x74)
+			o = msgp.AppendUint32(o, z.rc.iv[zcmr].last)
 		}
+		// string "card"
+		o = append(o, 0xa4, 0x63, 0x61, 0x72, 0x64)
+		o = msgp.AppendInt64(o, z.rc.card)
 	}
 	return
 }
@@ -600,13 +538,13 @@ func (z *addHelper32) MarshalMsg(b []byte) (o []byte, err error) {
 func (z *addHelper32) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
-	var zcxo uint32
-	zcxo, bts, err = msgp.ReadMapHeaderBytes(bts)
+	var zdaf uint32
+	zdaf, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
-	for zcxo > 0 {
-		zcxo--
+	for zdaf > 0 {
+		zdaf--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
 			return
@@ -628,36 +566,36 @@ func (z *addHelper32) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "m":
-			var zeff uint32
-			zeff, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zpks uint32
+			zpks, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.m) >= int(zeff) {
-				z.m = (z.m)[:zeff]
+			if cap(z.m) >= int(zpks) {
+				z.m = (z.m)[:zpks]
 			} else {
-				z.m = make([]interval32, zeff)
+				z.m = make([]interval32, zpks)
 			}
-			for zlqf := range z.m {
-				var zrsw uint32
-				zrsw, bts, err = msgp.ReadMapHeaderBytes(bts)
+			for zbai := range z.m {
+				var zjfb uint32
+				zjfb, bts, err = msgp.ReadMapHeaderBytes(bts)
 				if err != nil {
 					return
 				}
-				for zrsw > 0 {
-					zrsw--
+				for zjfb > 0 {
+					zjfb--
 					field, bts, err = msgp.ReadMapKeyZC(bts)
 					if err != nil {
 						return
 					}
 					switch msgp.UnsafeString(field) {
 					case "start":
-						z.m[zlqf].start, bts, err = msgp.ReadUint32Bytes(bts)
+						z.m[zbai].start, bts, err = msgp.ReadUint32Bytes(bts)
 						if err != nil {
 							return
 						}
 					case "last":
-						z.m[zlqf].last, bts, err = msgp.ReadUint32Bytes(bts)
+						z.m[zbai].last, bts, err = msgp.ReadUint32Bytes(bts)
 						if err != nil {
 							return
 						}
@@ -680,9 +618,71 @@ func (z *addHelper32) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				if z.rc == nil {
 					z.rc = new(runContainer32)
 				}
-				bts, err = z.rc.UnmarshalMsg(bts)
+				var zcxo uint32
+				zcxo, bts, err = msgp.ReadMapHeaderBytes(bts)
 				if err != nil {
 					return
+				}
+				for zcxo > 0 {
+					zcxo--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "iv":
+						var zeff uint32
+						zeff, bts, err = msgp.ReadArrayHeaderBytes(bts)
+						if err != nil {
+							return
+						}
+						if cap(z.rc.iv) >= int(zeff) {
+							z.rc.iv = (z.rc.iv)[:zeff]
+						} else {
+							z.rc.iv = make([]interval32, zeff)
+						}
+						for zcmr := range z.rc.iv {
+							var zrsw uint32
+							zrsw, bts, err = msgp.ReadMapHeaderBytes(bts)
+							if err != nil {
+								return
+							}
+							for zrsw > 0 {
+								zrsw--
+								field, bts, err = msgp.ReadMapKeyZC(bts)
+								if err != nil {
+									return
+								}
+								switch msgp.UnsafeString(field) {
+								case "start":
+									z.rc.iv[zcmr].start, bts, err = msgp.ReadUint32Bytes(bts)
+									if err != nil {
+										return
+									}
+								case "last":
+									z.rc.iv[zcmr].last, bts, err = msgp.ReadUint32Bytes(bts)
+									if err != nil {
+										return
+									}
+								default:
+									bts, err = msgp.Skip(bts)
+									if err != nil {
+										return
+									}
+								}
+							}
+						}
+					case "card":
+						z.rc.card, bts, err = msgp.ReadInt64Bytes(bts)
+						if err != nil {
+							return
+						}
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							return
+						}
+					}
 				}
 			}
 		default:
@@ -702,7 +702,7 @@ func (z *addHelper32) Msgsize() (s int) {
 	if z.rc == nil {
 		s += msgp.NilSize
 	} else {
-		s += z.rc.Msgsize()
+		s += 1 + 3 + msgp.ArrayHeaderSize + (len(z.rc.iv) * (12 + msgp.Uint32Size + msgp.Uint32Size)) + 5 + msgp.Int64Size
 	}
 	return
 }

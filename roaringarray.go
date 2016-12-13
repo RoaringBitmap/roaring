@@ -62,7 +62,7 @@ type container interface {
 	containerType() contype
 }
 
-type contype int16
+type contype uint8
 
 const (
 	bitmapContype contype = iota
