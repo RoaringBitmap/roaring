@@ -1,11 +1,22 @@
 package roaring
 
 import (
+	"fmt"
 	"unsafe"
 )
 
+//go:generate msgp -unexported
+
 type arrayContainer struct {
 	content []uint16
+}
+
+func (c *arrayContainer) String() string {
+	var s string = "{"
+	for it := c.getShortIterator(); it.hasNext(); {
+		s += fmt.Sprintf("%v, ", it.next())
+	}
+	return s + "}"
 }
 
 func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
@@ -18,17 +29,22 @@ func (ac *arrayContainer) getShortIterator() shortIterable {
 	return &shortIterator{ac.content, 0}
 }
 
+// unsafe.Sizeof calculates the memory used by the top level of the slice
+// descriptor - not including the size of the memory referenced by the slice.
+// http://golang.org/pkg/unsafe/#Sizeof
+const arrayBaseSize = int(unsafe.Sizeof([]uint16{}))
+
 func (ac *arrayContainer) getSizeInBytes() int {
-	// unsafe.Sizeof calculates the memory used by the top level of the slice
-	// descriptor - not including the size of the memory referenced by the slice.
-	// http://golang.org/pkg/unsafe/#Sizeof
-	return ac.getCardinality()*2 + int(unsafe.Sizeof(ac.content))
+	return ac.getCardinality() * 2 // + arrayBaseSize
 }
 
 func (ac *arrayContainer) serializedSizeInBytes() int {
-	// based on https://golang.org/src/pkg/encoding/binary/binary.go#265
-	// there is no serialization overhead for writing an array of fixed size vals
-	return ac.getCardinality() * 2
+	return ac.Msgsize()
+	//return ac.getCardinality() * 2 //+ arrayBaseSize
+}
+
+func arrayContainerSizeInBytes(card int) int {
+	return card * 2 //+ arrayBaseSize
 }
 
 // add the values in the range [firstOfRange,lastofRange)
@@ -154,6 +170,7 @@ func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 }
 
 func (ac *arrayContainer) equals(o interface{}) bool {
+
 	srb, ok := o.(*arrayContainer)
 	if ok {
 		// Check if the containers are the same object.
@@ -172,6 +189,24 @@ func (ac *arrayContainer) equals(o interface{}) bool {
 		}
 		return true
 	}
+
+	bc, ok := o.(container)
+	if ok {
+		// use generic comparison
+		if bc.getCardinality() != ac.getCardinality() {
+			return false
+		}
+		ait := ac.getShortIterator()
+		bit := bc.getShortIterator()
+
+		for ait.hasNext() {
+			if bit.next() != ait.next() {
+				return false
+			}
+		}
+		return true
+	}
+
 	return false
 }
 
@@ -181,7 +216,29 @@ func (ac *arrayContainer) toBitmapContainer() *bitmapContainer {
 	return bc
 
 }
-func (ac *arrayContainer) add(x uint16) container {
+func (ac *arrayContainer) iadd(x uint16) (wasNew bool) {
+	// Special case adding to the end of the container.
+	l := len(ac.content)
+	if l > 0 && l < arrayDefaultMaxSize && ac.content[l-1] < x {
+		ac.content = append(ac.content, x)
+		return true
+	}
+
+	loc := binarySearch(ac.content, x)
+
+	if loc < 0 {
+		s := ac.content
+		i := -loc - 1
+		s = append(s, 0)
+		copy(s[i+1:], s[i:])
+		s[i] = x
+		ac.content = s
+		return true
+	}
+	return false
+}
+
+func (ac *arrayContainer) iaddReturnMinimized(x uint16) container {
 	// Special case adding to the end of the container.
 	l := len(ac.content)
 	if l > 0 && l < arrayDefaultMaxSize && ac.content[l-1] < x {
@@ -194,7 +251,7 @@ func (ac *arrayContainer) add(x uint16) container {
 	if loc < 0 {
 		if len(ac.content) >= arrayDefaultMaxSize {
 			a := ac.toBitmapContainer()
-			a.add(x)
+			a.iadd(x)
 			return a
 		}
 		s := ac.content
@@ -207,14 +264,34 @@ func (ac *arrayContainer) add(x uint16) container {
 	return ac
 }
 
-func (ac *arrayContainer) remove(x uint16) container {
+// iremoveReturnMinimized is allowed to change the return type to minimize storage.
+func (ac *arrayContainer) iremoveReturnMinimized(x uint16) container {
+	ac.iremove(x)
+	return ac
+}
+
+func (ac *arrayContainer) iremove(x uint16) bool {
 	loc := binarySearch(ac.content, x)
 	if loc >= 0 {
 		s := ac.content
 		s = append(s[:loc], s[loc+1:]...)
 		ac.content = s
+		return true
 	}
-	return ac
+	return false
+}
+
+func (ac *arrayContainer) remove(x uint16) container {
+	out := &arrayContainer{make([]uint16, len(ac.content))}
+	copy(out.content, ac.content[:])
+
+	loc := binarySearch(out.content, x)
+	if loc >= 0 {
+		s := out.content
+		s = append(s[:loc], s[loc+1:]...)
+		out.content = s
+	}
+	return out
 }
 
 func (ac *arrayContainer) or(a container) container {
@@ -313,21 +390,25 @@ func (ac *arrayContainer) lazyorArray(value2 *arrayContainer) container {
 }
 
 func (ac *arrayContainer) and(a container) container {
-	switch a.(type) {
+	switch x := a.(type) {
 	case *arrayContainer:
-		return ac.andArray(a.(*arrayContainer))
+		return ac.andArray(x)
 	case *bitmapContainer:
-		return a.and(ac)
+		return x.and(ac)
+	case *runContainer16:
+		return x.andArray(ac)
 	}
 	panic("unsupported container type")
 }
 
 func (ac *arrayContainer) intersects(a container) bool {
-	switch a.(type) {
+	switch x := a.(type) {
 	case *arrayContainer:
-		return ac.intersectsArray(a.(*arrayContainer))
+		return ac.intersectsArray(x)
 	case *bitmapContainer:
-		return a.intersects(ac)
+		return x.intersects(ac)
+	case *runContainer16:
+		return x.intersects(ac)
 	}
 	panic("unsupported container type")
 }
@@ -655,4 +736,61 @@ func newArrayContainerRange(firstOfRun, lastOfRun int) *arrayContainer {
 		this.content = append(this.content, uint16(firstOfRun+i))
 	}
 	return this
+}
+
+func (ac *arrayContainer) numberOfRuns() (nr int) {
+	n := len(ac.content)
+	var runlen uint16
+	var cur, prev uint16
+
+	switch n {
+	case 0:
+		return 0
+	case 1:
+		return 1
+	default:
+		for i := 1; i < n; i++ {
+			prev = ac.content[i-1]
+			cur = ac.content[i]
+
+			if cur == prev+1 {
+				runlen++
+			} else {
+				if cur < prev {
+					panic("then fundamental arrayContainer assumption of sorted ac.content was broken")
+				}
+				if cur == prev {
+					panic("then fundamental arrayContainer assumption of deduplicated content was broken")
+				} else {
+					nr++
+					runlen = 0
+				}
+			}
+		}
+		nr++
+	}
+	return
+}
+
+// convert to run or array *if needed*
+func (ac *arrayContainer) toEfficientContainer() container {
+
+	numRuns := ac.numberOfRuns()
+
+	sizeAsRunContainer := runContainer16SerializedSizeInBytes(numRuns)
+	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
+	card := int(ac.getCardinality())
+	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
+
+	if sizeAsRunContainer <= min(sizeAsBitmapContainer, sizeAsArrayContainer) {
+		return newRunContainer16FromArray(ac)
+	}
+	if card <= arrayDefaultMaxSize {
+		return ac
+	}
+	return ac.toBitmapContainer()
+}
+
+func (bc *arrayContainer) containerType() contype {
+	return arrayContype
 }
