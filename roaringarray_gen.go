@@ -28,13 +28,13 @@ func (z *containerSerz) DecodeMsg(dc *msgp.Reader) (err error) {
 			{
 				var zbzg int16
 				zbzg, err = dc.ReadInt16()
-				z.T = contype(zbzg)
+				z.t = contype(zbzg)
 			}
 			if err != nil {
 				return
 			}
 		case "r":
-			err = z.R.DecodeMsg(dc)
+			err = z.r.DecodeMsg(dc)
 			if err != nil {
 				return
 			}
@@ -56,7 +56,7 @@ func (z *containerSerz) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	err = en.WriteInt16(int16(z.T))
+	err = en.WriteInt16(int16(z.t))
 	if err != nil {
 		return
 	}
@@ -65,7 +65,7 @@ func (z *containerSerz) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	err = z.R.EncodeMsg(en)
+	err = z.r.EncodeMsg(en)
 	if err != nil {
 		return
 	}
@@ -78,10 +78,10 @@ func (z *containerSerz) MarshalMsg(b []byte) (o []byte, err error) {
 	// map header, size 2
 	// string "t"
 	o = append(o, 0x82, 0xa1, 0x74)
-	o = msgp.AppendInt16(o, int16(z.T))
+	o = msgp.AppendInt16(o, int16(z.t))
 	// string "r"
 	o = append(o, 0xa1, 0x72)
-	o, err = z.R.MarshalMsg(o)
+	o, err = z.r.MarshalMsg(o)
 	if err != nil {
 		return
 	}
@@ -108,13 +108,13 @@ func (z *containerSerz) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			{
 				var zcmr int16
 				zcmr, bts, err = msgp.ReadInt16Bytes(bts)
-				z.T = contype(zcmr)
+				z.t = contype(zcmr)
 			}
 			if err != nil {
 				return
 			}
 		case "r":
-			bts, err = z.R.UnmarshalMsg(bts)
+			bts, err = z.r.UnmarshalMsg(bts)
 			if err != nil {
 				return
 			}
@@ -131,7 +131,7 @@ func (z *containerSerz) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *containerSerz) Msgsize() (s int) {
-	s = 1 + 2 + msgp.Int16Size + 2 + z.R.Msgsize()
+	s = 1 + 2 + msgp.Int16Size + 2 + z.r.Msgsize()
 	return
 }
 
@@ -200,57 +200,57 @@ func (z *roaringArray) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Keys":
+		case "keys":
 			var zdaf uint32
 			zdaf, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
 			}
-			if cap(z.Keys) >= int(zdaf) {
-				z.Keys = (z.Keys)[:zdaf]
+			if cap(z.keys) >= int(zdaf) {
+				z.keys = (z.keys)[:zdaf]
 			} else {
-				z.Keys = make([]uint16, zdaf)
+				z.keys = make([]uint16, zdaf)
 			}
-			for zhct := range z.Keys {
-				z.Keys[zhct], err = dc.ReadUint16()
+			for zhct := range z.keys {
+				z.keys[zhct], err = dc.ReadUint16()
 				if err != nil {
 					return
 				}
 			}
-		case "NeedCopyOnWrite":
+		case "needCopyOnWrite":
 			var zpks uint32
 			zpks, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
 			}
-			if cap(z.NeedCopyOnWrite) >= int(zpks) {
-				z.NeedCopyOnWrite = (z.NeedCopyOnWrite)[:zpks]
+			if cap(z.needCopyOnWrite) >= int(zpks) {
+				z.needCopyOnWrite = (z.needCopyOnWrite)[:zpks]
 			} else {
-				z.NeedCopyOnWrite = make([]bool, zpks)
+				z.needCopyOnWrite = make([]bool, zpks)
 			}
-			for zcua := range z.NeedCopyOnWrite {
-				z.NeedCopyOnWrite[zcua], err = dc.ReadBool()
+			for zcua := range z.needCopyOnWrite {
+				z.needCopyOnWrite[zcua], err = dc.ReadBool()
 				if err != nil {
 					return
 				}
 			}
-		case "CopyOnWrite":
-			z.CopyOnWrite, err = dc.ReadBool()
+		case "copyOnWrite":
+			z.copyOnWrite, err = dc.ReadBool()
 			if err != nil {
 				return
 			}
-		case "Conserz":
+		case "conserz":
 			var zjfb uint32
 			zjfb, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
 			}
-			if cap(z.Conserz) >= int(zjfb) {
-				z.Conserz = (z.Conserz)[:zjfb]
+			if cap(z.conserz) >= int(zjfb) {
+				z.conserz = (z.conserz)[:zjfb]
 			} else {
-				z.Conserz = make([]containerSerz, zjfb)
+				z.conserz = make([]containerSerz, zjfb)
 			}
-			for zxhx := range z.Conserz {
+			for zxhx := range z.conserz {
 				var zcxo uint32
 				zcxo, err = dc.ReadMapHeader()
 				if err != nil {
@@ -267,13 +267,13 @@ func (z *roaringArray) DecodeMsg(dc *msgp.Reader) (err error) {
 						{
 							var zeff int16
 							zeff, err = dc.ReadInt16()
-							z.Conserz[zxhx].T = contype(zeff)
+							z.conserz[zxhx].t = contype(zeff)
 						}
 						if err != nil {
 							return
 						}
 					case "r":
-						err = z.Conserz[zxhx].R.DecodeMsg(dc)
+						err = z.conserz[zxhx].r.DecodeMsg(dc)
 						if err != nil {
 							return
 						}
@@ -298,62 +298,62 @@ func (z *roaringArray) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *roaringArray) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 4
-	// write "Keys"
-	err = en.Append(0x84, 0xa4, 0x4b, 0x65, 0x79, 0x73)
+	// write "keys"
+	err = en.Append(0x84, 0xa4, 0x6b, 0x65, 0x79, 0x73)
 	if err != nil {
 		return err
 	}
-	err = en.WriteArrayHeader(uint32(len(z.Keys)))
+	err = en.WriteArrayHeader(uint32(len(z.keys)))
 	if err != nil {
 		return
 	}
-	for zhct := range z.Keys {
-		err = en.WriteUint16(z.Keys[zhct])
+	for zhct := range z.keys {
+		err = en.WriteUint16(z.keys[zhct])
 		if err != nil {
 			return
 		}
 	}
-	// write "NeedCopyOnWrite"
-	err = en.Append(0xaf, 0x4e, 0x65, 0x65, 0x64, 0x43, 0x6f, 0x70, 0x79, 0x4f, 0x6e, 0x57, 0x72, 0x69, 0x74, 0x65)
+	// write "needCopyOnWrite"
+	err = en.Append(0xaf, 0x6e, 0x65, 0x65, 0x64, 0x43, 0x6f, 0x70, 0x79, 0x4f, 0x6e, 0x57, 0x72, 0x69, 0x74, 0x65)
 	if err != nil {
 		return err
 	}
-	err = en.WriteArrayHeader(uint32(len(z.NeedCopyOnWrite)))
+	err = en.WriteArrayHeader(uint32(len(z.needCopyOnWrite)))
 	if err != nil {
 		return
 	}
-	for zcua := range z.NeedCopyOnWrite {
-		err = en.WriteBool(z.NeedCopyOnWrite[zcua])
+	for zcua := range z.needCopyOnWrite {
+		err = en.WriteBool(z.needCopyOnWrite[zcua])
 		if err != nil {
 			return
 		}
 	}
-	// write "CopyOnWrite"
-	err = en.Append(0xab, 0x43, 0x6f, 0x70, 0x79, 0x4f, 0x6e, 0x57, 0x72, 0x69, 0x74, 0x65)
+	// write "copyOnWrite"
+	err = en.Append(0xab, 0x63, 0x6f, 0x70, 0x79, 0x4f, 0x6e, 0x57, 0x72, 0x69, 0x74, 0x65)
 	if err != nil {
 		return err
 	}
-	err = en.WriteBool(z.CopyOnWrite)
+	err = en.WriteBool(z.copyOnWrite)
 	if err != nil {
 		return
 	}
-	// write "Conserz"
-	err = en.Append(0xa7, 0x43, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x7a)
+	// write "conserz"
+	err = en.Append(0xa7, 0x63, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x7a)
 	if err != nil {
 		return err
 	}
-	err = en.WriteArrayHeader(uint32(len(z.Conserz)))
+	err = en.WriteArrayHeader(uint32(len(z.conserz)))
 	if err != nil {
 		return
 	}
-	for zxhx := range z.Conserz {
+	for zxhx := range z.conserz {
 		// map header, size 2
 		// write "t"
 		err = en.Append(0x82, 0xa1, 0x74)
 		if err != nil {
 			return err
 		}
-		err = en.WriteInt16(int16(z.Conserz[zxhx].T))
+		err = en.WriteInt16(int16(z.conserz[zxhx].t))
 		if err != nil {
 			return
 		}
@@ -362,7 +362,7 @@ func (z *roaringArray) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return err
 		}
-		err = z.Conserz[zxhx].R.EncodeMsg(en)
+		err = z.conserz[zxhx].r.EncodeMsg(en)
 		if err != nil {
 			return
 		}
@@ -374,32 +374,32 @@ func (z *roaringArray) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *roaringArray) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 4
-	// string "Keys"
-	o = append(o, 0x84, 0xa4, 0x4b, 0x65, 0x79, 0x73)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Keys)))
-	for zhct := range z.Keys {
-		o = msgp.AppendUint16(o, z.Keys[zhct])
+	// string "keys"
+	o = append(o, 0x84, 0xa4, 0x6b, 0x65, 0x79, 0x73)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.keys)))
+	for zhct := range z.keys {
+		o = msgp.AppendUint16(o, z.keys[zhct])
 	}
-	// string "NeedCopyOnWrite"
-	o = append(o, 0xaf, 0x4e, 0x65, 0x65, 0x64, 0x43, 0x6f, 0x70, 0x79, 0x4f, 0x6e, 0x57, 0x72, 0x69, 0x74, 0x65)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.NeedCopyOnWrite)))
-	for zcua := range z.NeedCopyOnWrite {
-		o = msgp.AppendBool(o, z.NeedCopyOnWrite[zcua])
+	// string "needCopyOnWrite"
+	o = append(o, 0xaf, 0x6e, 0x65, 0x65, 0x64, 0x43, 0x6f, 0x70, 0x79, 0x4f, 0x6e, 0x57, 0x72, 0x69, 0x74, 0x65)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.needCopyOnWrite)))
+	for zcua := range z.needCopyOnWrite {
+		o = msgp.AppendBool(o, z.needCopyOnWrite[zcua])
 	}
-	// string "CopyOnWrite"
-	o = append(o, 0xab, 0x43, 0x6f, 0x70, 0x79, 0x4f, 0x6e, 0x57, 0x72, 0x69, 0x74, 0x65)
-	o = msgp.AppendBool(o, z.CopyOnWrite)
-	// string "Conserz"
-	o = append(o, 0xa7, 0x43, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x7a)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Conserz)))
-	for zxhx := range z.Conserz {
+	// string "copyOnWrite"
+	o = append(o, 0xab, 0x63, 0x6f, 0x70, 0x79, 0x4f, 0x6e, 0x57, 0x72, 0x69, 0x74, 0x65)
+	o = msgp.AppendBool(o, z.copyOnWrite)
+	// string "conserz"
+	o = append(o, 0xa7, 0x63, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x7a)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.conserz)))
+	for zxhx := range z.conserz {
 		// map header, size 2
 		// string "t"
 		o = append(o, 0x82, 0xa1, 0x74)
-		o = msgp.AppendInt16(o, int16(z.Conserz[zxhx].T))
+		o = msgp.AppendInt16(o, int16(z.conserz[zxhx].t))
 		// string "r"
 		o = append(o, 0xa1, 0x72)
-		o, err = z.Conserz[zxhx].R.MarshalMsg(o)
+		o, err = z.conserz[zxhx].r.MarshalMsg(o)
 		if err != nil {
 			return
 		}
@@ -423,57 +423,57 @@ func (z *roaringArray) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Keys":
+		case "keys":
 			var zxpk uint32
 			zxpk, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.Keys) >= int(zxpk) {
-				z.Keys = (z.Keys)[:zxpk]
+			if cap(z.keys) >= int(zxpk) {
+				z.keys = (z.keys)[:zxpk]
 			} else {
-				z.Keys = make([]uint16, zxpk)
+				z.keys = make([]uint16, zxpk)
 			}
-			for zhct := range z.Keys {
-				z.Keys[zhct], bts, err = msgp.ReadUint16Bytes(bts)
+			for zhct := range z.keys {
+				z.keys[zhct], bts, err = msgp.ReadUint16Bytes(bts)
 				if err != nil {
 					return
 				}
 			}
-		case "NeedCopyOnWrite":
+		case "needCopyOnWrite":
 			var zdnj uint32
 			zdnj, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.NeedCopyOnWrite) >= int(zdnj) {
-				z.NeedCopyOnWrite = (z.NeedCopyOnWrite)[:zdnj]
+			if cap(z.needCopyOnWrite) >= int(zdnj) {
+				z.needCopyOnWrite = (z.needCopyOnWrite)[:zdnj]
 			} else {
-				z.NeedCopyOnWrite = make([]bool, zdnj)
+				z.needCopyOnWrite = make([]bool, zdnj)
 			}
-			for zcua := range z.NeedCopyOnWrite {
-				z.NeedCopyOnWrite[zcua], bts, err = msgp.ReadBoolBytes(bts)
+			for zcua := range z.needCopyOnWrite {
+				z.needCopyOnWrite[zcua], bts, err = msgp.ReadBoolBytes(bts)
 				if err != nil {
 					return
 				}
 			}
-		case "CopyOnWrite":
-			z.CopyOnWrite, bts, err = msgp.ReadBoolBytes(bts)
+		case "copyOnWrite":
+			z.copyOnWrite, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
 				return
 			}
-		case "Conserz":
+		case "conserz":
 			var zobc uint32
 			zobc, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.Conserz) >= int(zobc) {
-				z.Conserz = (z.Conserz)[:zobc]
+			if cap(z.conserz) >= int(zobc) {
+				z.conserz = (z.conserz)[:zobc]
 			} else {
-				z.Conserz = make([]containerSerz, zobc)
+				z.conserz = make([]containerSerz, zobc)
 			}
-			for zxhx := range z.Conserz {
+			for zxhx := range z.conserz {
 				var zsnv uint32
 				zsnv, bts, err = msgp.ReadMapHeaderBytes(bts)
 				if err != nil {
@@ -490,13 +490,13 @@ func (z *roaringArray) UnmarshalMsg(bts []byte) (o []byte, err error) {
 						{
 							var zkgt int16
 							zkgt, bts, err = msgp.ReadInt16Bytes(bts)
-							z.Conserz[zxhx].T = contype(zkgt)
+							z.conserz[zxhx].t = contype(zkgt)
 						}
 						if err != nil {
 							return
 						}
 					case "r":
-						bts, err = z.Conserz[zxhx].R.UnmarshalMsg(bts)
+						bts, err = z.conserz[zxhx].r.UnmarshalMsg(bts)
 						if err != nil {
 							return
 						}
@@ -521,9 +521,9 @@ func (z *roaringArray) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *roaringArray) Msgsize() (s int) {
-	s = 1 + 5 + msgp.ArrayHeaderSize + (len(z.Keys) * (msgp.Uint16Size)) + 16 + msgp.ArrayHeaderSize + (len(z.NeedCopyOnWrite) * (msgp.BoolSize)) + 12 + msgp.BoolSize + 8 + msgp.ArrayHeaderSize
-	for zxhx := range z.Conserz {
-		s += 1 + 2 + msgp.Int16Size + 2 + z.Conserz[zxhx].R.Msgsize()
+	s = 1 + 5 + msgp.ArrayHeaderSize + (len(z.keys) * (msgp.Uint16Size)) + 16 + msgp.ArrayHeaderSize + (len(z.needCopyOnWrite) * (msgp.BoolSize)) + 12 + msgp.BoolSize + 8 + msgp.ArrayHeaderSize
+	for zxhx := range z.conserz {
+		s += 1 + 2 + msgp.Int16Size + 2 + z.conserz[zxhx].r.Msgsize()
 	}
 	return
 }

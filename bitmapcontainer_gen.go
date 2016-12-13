@@ -22,24 +22,24 @@ func (z *bitmapContainer) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Cardinality":
-			z.Cardinality, err = dc.ReadInt()
+		case "cardinality":
+			z.cardinality, err = dc.ReadInt()
 			if err != nil {
 				return
 			}
-		case "Bitmap":
+		case "bitmap":
 			var zbai uint32
 			zbai, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
 			}
-			if cap(z.Bitmap) >= int(zbai) {
-				z.Bitmap = (z.Bitmap)[:zbai]
+			if cap(z.bitmap) >= int(zbai) {
+				z.bitmap = (z.bitmap)[:zbai]
 			} else {
-				z.Bitmap = make([]uint64, zbai)
+				z.bitmap = make([]uint64, zbai)
 			}
-			for zxvk := range z.Bitmap {
-				z.Bitmap[zxvk], err = dc.ReadUint64()
+			for zxvk := range z.bitmap {
+				z.bitmap[zxvk], err = dc.ReadUint64()
 				if err != nil {
 					return
 				}
@@ -57,26 +57,26 @@ func (z *bitmapContainer) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *bitmapContainer) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 2
-	// write "Cardinality"
-	err = en.Append(0x82, 0xab, 0x43, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x74, 0x79)
+	// write "cardinality"
+	err = en.Append(0x82, 0xab, 0x63, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x74, 0x79)
 	if err != nil {
 		return err
 	}
-	err = en.WriteInt(z.Cardinality)
+	err = en.WriteInt(z.cardinality)
 	if err != nil {
 		return
 	}
-	// write "Bitmap"
-	err = en.Append(0xa6, 0x42, 0x69, 0x74, 0x6d, 0x61, 0x70)
+	// write "bitmap"
+	err = en.Append(0xa6, 0x62, 0x69, 0x74, 0x6d, 0x61, 0x70)
 	if err != nil {
 		return err
 	}
-	err = en.WriteArrayHeader(uint32(len(z.Bitmap)))
+	err = en.WriteArrayHeader(uint32(len(z.bitmap)))
 	if err != nil {
 		return
 	}
-	for zxvk := range z.Bitmap {
-		err = en.WriteUint64(z.Bitmap[zxvk])
+	for zxvk := range z.bitmap {
+		err = en.WriteUint64(z.bitmap[zxvk])
 		if err != nil {
 			return
 		}
@@ -88,14 +88,14 @@ func (z *bitmapContainer) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *bitmapContainer) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 2
-	// string "Cardinality"
-	o = append(o, 0x82, 0xab, 0x43, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x74, 0x79)
-	o = msgp.AppendInt(o, z.Cardinality)
-	// string "Bitmap"
-	o = append(o, 0xa6, 0x42, 0x69, 0x74, 0x6d, 0x61, 0x70)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Bitmap)))
-	for zxvk := range z.Bitmap {
-		o = msgp.AppendUint64(o, z.Bitmap[zxvk])
+	// string "cardinality"
+	o = append(o, 0x82, 0xab, 0x63, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x74, 0x79)
+	o = msgp.AppendInt(o, z.cardinality)
+	// string "bitmap"
+	o = append(o, 0xa6, 0x62, 0x69, 0x74, 0x6d, 0x61, 0x70)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.bitmap)))
+	for zxvk := range z.bitmap {
+		o = msgp.AppendUint64(o, z.bitmap[zxvk])
 	}
 	return
 }
@@ -116,24 +116,24 @@ func (z *bitmapContainer) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Cardinality":
-			z.Cardinality, bts, err = msgp.ReadIntBytes(bts)
+		case "cardinality":
+			z.cardinality, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				return
 			}
-		case "Bitmap":
+		case "bitmap":
 			var zajw uint32
 			zajw, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.Bitmap) >= int(zajw) {
-				z.Bitmap = (z.Bitmap)[:zajw]
+			if cap(z.bitmap) >= int(zajw) {
+				z.bitmap = (z.bitmap)[:zajw]
 			} else {
-				z.Bitmap = make([]uint64, zajw)
+				z.bitmap = make([]uint64, zajw)
 			}
-			for zxvk := range z.Bitmap {
-				z.Bitmap[zxvk], bts, err = msgp.ReadUint64Bytes(bts)
+			for zxvk := range z.bitmap {
+				z.bitmap[zxvk], bts, err = msgp.ReadUint64Bytes(bts)
 				if err != nil {
 					return
 				}
@@ -151,7 +151,7 @@ func (z *bitmapContainer) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *bitmapContainer) Msgsize() (s int) {
-	s = 1 + 12 + msgp.IntSize + 7 + msgp.ArrayHeaderSize + (len(z.Bitmap) * (msgp.Uint64Size))
+	s = 1 + 12 + msgp.IntSize + 7 + msgp.ArrayHeaderSize + (len(z.bitmap) * (msgp.Uint64Size))
 	return
 }
 
@@ -194,24 +194,24 @@ func (z *bitmapContainerShortIterator) DecodeMsg(dc *msgp.Reader) (err error) {
 						return
 					}
 					switch msgp.UnsafeString(field) {
-					case "Cardinality":
-						z.ptr.Cardinality, err = dc.ReadInt()
+					case "cardinality":
+						z.ptr.cardinality, err = dc.ReadInt()
 						if err != nil {
 							return
 						}
-					case "Bitmap":
+					case "bitmap":
 						var zxhx uint32
 						zxhx, err = dc.ReadArrayHeader()
 						if err != nil {
 							return
 						}
-						if cap(z.ptr.Bitmap) >= int(zxhx) {
-							z.ptr.Bitmap = (z.ptr.Bitmap)[:zxhx]
+						if cap(z.ptr.bitmap) >= int(zxhx) {
+							z.ptr.bitmap = (z.ptr.bitmap)[:zxhx]
 						} else {
-							z.ptr.Bitmap = make([]uint64, zxhx)
+							z.ptr.bitmap = make([]uint64, zxhx)
 						}
-						for zwht := range z.ptr.Bitmap {
-							z.ptr.Bitmap[zwht], err = dc.ReadUint64()
+						for zwht := range z.ptr.bitmap {
+							z.ptr.bitmap[zwht], err = dc.ReadUint64()
 							if err != nil {
 								return
 							}
@@ -254,26 +254,26 @@ func (z *bitmapContainerShortIterator) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	} else {
 		// map header, size 2
-		// write "Cardinality"
-		err = en.Append(0x82, 0xab, 0x43, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x74, 0x79)
+		// write "cardinality"
+		err = en.Append(0x82, 0xab, 0x63, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x74, 0x79)
 		if err != nil {
 			return err
 		}
-		err = en.WriteInt(z.ptr.Cardinality)
+		err = en.WriteInt(z.ptr.cardinality)
 		if err != nil {
 			return
 		}
-		// write "Bitmap"
-		err = en.Append(0xa6, 0x42, 0x69, 0x74, 0x6d, 0x61, 0x70)
+		// write "bitmap"
+		err = en.Append(0xa6, 0x62, 0x69, 0x74, 0x6d, 0x61, 0x70)
 		if err != nil {
 			return err
 		}
-		err = en.WriteArrayHeader(uint32(len(z.ptr.Bitmap)))
+		err = en.WriteArrayHeader(uint32(len(z.ptr.bitmap)))
 		if err != nil {
 			return
 		}
-		for zwht := range z.ptr.Bitmap {
-			err = en.WriteUint64(z.ptr.Bitmap[zwht])
+		for zwht := range z.ptr.bitmap {
+			err = en.WriteUint64(z.ptr.bitmap[zwht])
 			if err != nil {
 				return
 			}
@@ -301,14 +301,14 @@ func (z *bitmapContainerShortIterator) MarshalMsg(b []byte) (o []byte, err error
 		o = msgp.AppendNil(o)
 	} else {
 		// map header, size 2
-		// string "Cardinality"
-		o = append(o, 0x82, 0xab, 0x43, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x74, 0x79)
-		o = msgp.AppendInt(o, z.ptr.Cardinality)
-		// string "Bitmap"
-		o = append(o, 0xa6, 0x42, 0x69, 0x74, 0x6d, 0x61, 0x70)
-		o = msgp.AppendArrayHeader(o, uint32(len(z.ptr.Bitmap)))
-		for zwht := range z.ptr.Bitmap {
-			o = msgp.AppendUint64(o, z.ptr.Bitmap[zwht])
+		// string "cardinality"
+		o = append(o, 0x82, 0xab, 0x63, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x74, 0x79)
+		o = msgp.AppendInt(o, z.ptr.cardinality)
+		// string "bitmap"
+		o = append(o, 0xa6, 0x62, 0x69, 0x74, 0x6d, 0x61, 0x70)
+		o = msgp.AppendArrayHeader(o, uint32(len(z.ptr.bitmap)))
+		for zwht := range z.ptr.bitmap {
+			o = msgp.AppendUint64(o, z.ptr.bitmap[zwht])
 		}
 	}
 	// string "i"
@@ -356,24 +356,24 @@ func (z *bitmapContainerShortIterator) UnmarshalMsg(bts []byte) (o []byte, err e
 						return
 					}
 					switch msgp.UnsafeString(field) {
-					case "Cardinality":
-						z.ptr.Cardinality, bts, err = msgp.ReadIntBytes(bts)
+					case "cardinality":
+						z.ptr.cardinality, bts, err = msgp.ReadIntBytes(bts)
 						if err != nil {
 							return
 						}
-					case "Bitmap":
+					case "bitmap":
 						var zpks uint32
 						zpks, bts, err = msgp.ReadArrayHeaderBytes(bts)
 						if err != nil {
 							return
 						}
-						if cap(z.ptr.Bitmap) >= int(zpks) {
-							z.ptr.Bitmap = (z.ptr.Bitmap)[:zpks]
+						if cap(z.ptr.bitmap) >= int(zpks) {
+							z.ptr.bitmap = (z.ptr.bitmap)[:zpks]
 						} else {
-							z.ptr.Bitmap = make([]uint64, zpks)
+							z.ptr.bitmap = make([]uint64, zpks)
 						}
-						for zwht := range z.ptr.Bitmap {
-							z.ptr.Bitmap[zwht], bts, err = msgp.ReadUint64Bytes(bts)
+						for zwht := range z.ptr.bitmap {
+							z.ptr.bitmap[zwht], bts, err = msgp.ReadUint64Bytes(bts)
 							if err != nil {
 								return
 							}
@@ -408,7 +408,7 @@ func (z *bitmapContainerShortIterator) Msgsize() (s int) {
 	if z.ptr == nil {
 		s += msgp.NilSize
 	} else {
-		s += 1 + 12 + msgp.IntSize + 7 + msgp.ArrayHeaderSize + (len(z.ptr.Bitmap) * (msgp.Uint64Size))
+		s += 1 + 12 + msgp.IntSize + 7 + msgp.ArrayHeaderSize + (len(z.ptr.bitmap) * (msgp.Uint64Size))
 	}
 	s += 2 + msgp.IntSize
 	return

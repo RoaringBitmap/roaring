@@ -10,7 +10,7 @@ package roaring
 var _ container = &runContainer16{}
 
 func (rc *runContainer16) clone() container {
-	return newRunContainer16CopyIv(rc.Iv)
+	return newRunContainer16CopyIv(rc.iv)
 }
 
 func (rc *runContainer16) and(a container) container {
@@ -33,8 +33,8 @@ func (rc *runContainer16) andBitmapContainer(bc *bitmapContainer) container {
 
 func (rc *runContainer16) andArray(ac *arrayContainer) container {
 	out := newRunContainer16()
-	for _, p := range rc.Iv {
-		for i := p.Start; i <= p.Last; i++ {
+	for _, p := range rc.iv {
+		for i := p.start; i <= p.last; i++ {
 			if ac.contains(i) {
 				out.Add(i)
 			}
@@ -73,8 +73,8 @@ func (rc *runContainer16) iandBitmapContainer(bc *bitmapContainer) container {
 func (rc *runContainer16) iandArray(ac *arrayContainer) container {
 	// TODO: optimize by doing less allocation, possibly?
 	out := newRunContainer16()
-	for _, p := range rc.Iv {
-		for i := p.Start; i <= p.Last; i++ {
+	for _, p := range rc.iv {
+		for i := p.start; i <= p.last; i++ {
 			if ac.contains(i) {
 				out.Add(i)
 			}
@@ -99,10 +99,10 @@ func (rc *runContainer16) andNot(a container) container {
 func (rc *runContainer16) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
 	k := 0
 	var val int64
-	for _, p := range rc.Iv {
+	for _, p := range rc.iv {
 		n := p.runlen()
 		for j := int64(0); j < n; j++ {
-			val = int64(p.Start) + j
+			val = int64(p.start) + j
 			x[k+i] = uint32(val) | mask
 			k++
 		}
@@ -118,8 +118,8 @@ func (rc *runContainer16) getShortIterator() shortIterable {
 func (rc *runContainer16) iaddRange(firstOfRange, lastOfRange int) container {
 	addme := newRunContainer16TakeOwnership([]interval16{
 		{
-			Start: uint16(firstOfRange),
-			Last:  uint16(lastOfRange - 1),
+			start: uint16(firstOfRange),
+			last:  uint16(lastOfRange - 1),
 		},
 	})
 	*rc = *rc.union(addme)
@@ -128,7 +128,7 @@ func (rc *runContainer16) iaddRange(firstOfRange, lastOfRange int) container {
 
 // remove the values in the range [firstOfRange,lastOfRange)
 func (rc *runContainer16) iremoveRange(firstOfRange, lastOfRange int) container {
-	x := interval16{Start: uint16(firstOfRange), Last: uint16(lastOfRange - 1)}
+	x := interval16{start: uint16(firstOfRange), last: uint16(lastOfRange - 1)}
 	rc.isubtract(x)
 	return rc
 }
@@ -164,7 +164,7 @@ func (rc *runContainer16) Not(firstOfRange, endx int) *runContainer16 {
 
 	nota := a.invert()
 
-	bs := []interval16{interval16{Start: uint16(firstOfRange), Last: uint16(endx - 1)}}
+	bs := []interval16{interval16{start: uint16(firstOfRange), last: uint16(endx - 1)}}
 	b := newRunContainer16TakeOwnership(bs)
 	//p("b is %s", b)
 
@@ -201,14 +201,14 @@ func (rc *runContainer16) equals(o interface{}) bool {
 			return true
 		}
 
-		if len(srb.Iv) != len(rc.Iv) {
-			//p("Iv len differ")
+		if len(srb.iv) != len(rc.iv) {
+			//p("iv len differ")
 			return false
 		}
 
-		for i, v := range rc.Iv {
-			if v != srb.Iv[i] {
-				//p("differ at Iv i=%v, srb.Iv[i]=%v, rc.Iv[i]=%v", i, srb.Iv[i], rc.Iv[i])
+		for i, v := range rc.iv {
+			if v != srb.iv[i] {
+				//p("differ at iv i=%v, srb.iv[i]=%v, rc.iv[i]=%v", i, srb.iv[i], rc.iv[i])
 				return false
 			}
 		}
@@ -280,8 +280,8 @@ func (rc *runContainer16) orBitmapContainer(bc *bitmapContainer) container {
 // orArray finds the union of rc and ac.
 func (rc *runContainer16) orArray(ac *arrayContainer) container {
 	out := ac.clone()
-	for _, p := range rc.Iv {
-		for i := p.Start; i <= p.Last; i++ {
+	for _, p := range rc.iv {
+		for i := p.start; i <= p.last; i++ {
 			out.iadd(i)
 		}
 	}
@@ -301,8 +301,8 @@ func (rc *runContainer16) ior(a container) container {
 }
 
 func (rc *runContainer16) inplaceUnion(rc2 *runContainer16) container {
-	for _, p := range rc2.Iv {
-		for i := p.Start; i <= p.Last; i++ {
+	for _, p := range rc2.iv {
+		for i := p.start; i <= p.last; i++ {
 			rc.Add(i)
 		}
 	}
@@ -444,7 +444,7 @@ func (rc *runContainer16) getCardinality() int {
 }
 
 func (rc *runContainer16) rank(x uint16) int {
-	n := int64(len(rc.Iv))
+	n := int64(len(rc.iv))
 	xx := int64(x)
 	w, already, _ := rc.search(xx, nil)
 	if w < 0 {
@@ -456,14 +456,14 @@ func (rc *runContainer16) rank(x uint16) int {
 	var rnk int64
 	if !already {
 		for i := int64(0); i <= w; i++ {
-			rnk += rc.Iv[i].runlen()
+			rnk += rc.iv[i].runlen()
 		}
 		return int(rnk)
 	}
 	for i := int64(0); i < w; i++ {
-		rnk += rc.Iv[i].runlen()
+		rnk += rc.iv[i].runlen()
 	}
-	rnk += int64(x-rc.Iv[w].Start) + 1
+	rnk += int64(x-rc.iv[w].start) + 1
 	return int(rnk)
 }
 
@@ -489,12 +489,12 @@ func (rc *runContainer16) andNotBitmap(bc *bitmapContainer) container {
 func (rc *runContainer16) toBitmapContainer() *bitmapContainer {
 	bc := newBitmapContainer()
 	n := rc.getCardinality()
-	bc.Cardinality = n
+	bc.cardinality = n
 	it := rc.NewRunIterator16()
 	for it.HasNext() {
 		x := it.Next()
 		i := int(x) / 64
-		bc.Bitmap[i] |= (uint64(1) << uint(x%64))
+		bc.bitmap[i] |= (uint64(1) << uint(x%64))
 	}
 	return bc
 }
@@ -561,8 +561,8 @@ func (rc *runContainer16) toEfficientContainer() container {
 	}
 	if card <= arrayDefaultMaxSize {
 		ac := newArrayContainer()
-		for i := range rc.Iv {
-			ac.iaddRange(int(rc.Iv[i].Start), int(rc.Iv[i].Last+1))
+		for i := range rc.iv {
+			ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last+1))
 		}
 		return ac
 	}

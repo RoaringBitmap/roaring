@@ -22,19 +22,19 @@ func (z *arrayContainer) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Content":
+		case "content":
 			var zbai uint32
 			zbai, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
 			}
-			if cap(z.Content) >= int(zbai) {
-				z.Content = (z.Content)[:zbai]
+			if cap(z.content) >= int(zbai) {
+				z.content = (z.content)[:zbai]
 			} else {
-				z.Content = make([]uint16, zbai)
+				z.content = make([]uint16, zbai)
 			}
-			for zxvk := range z.Content {
-				z.Content[zxvk], err = dc.ReadUint16()
+			for zxvk := range z.content {
+				z.content[zxvk], err = dc.ReadUint16()
 				if err != nil {
 					return
 				}
@@ -52,17 +52,17 @@ func (z *arrayContainer) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *arrayContainer) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 1
-	// write "Content"
-	err = en.Append(0x81, 0xa7, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74)
+	// write "content"
+	err = en.Append(0x81, 0xa7, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74)
 	if err != nil {
 		return err
 	}
-	err = en.WriteArrayHeader(uint32(len(z.Content)))
+	err = en.WriteArrayHeader(uint32(len(z.content)))
 	if err != nil {
 		return
 	}
-	for zxvk := range z.Content {
-		err = en.WriteUint16(z.Content[zxvk])
+	for zxvk := range z.content {
+		err = en.WriteUint16(z.content[zxvk])
 		if err != nil {
 			return
 		}
@@ -74,11 +74,11 @@ func (z *arrayContainer) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *arrayContainer) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 1
-	// string "Content"
-	o = append(o, 0x81, 0xa7, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Content)))
-	for zxvk := range z.Content {
-		o = msgp.AppendUint16(o, z.Content[zxvk])
+	// string "content"
+	o = append(o, 0x81, 0xa7, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.content)))
+	for zxvk := range z.content {
+		o = msgp.AppendUint16(o, z.content[zxvk])
 	}
 	return
 }
@@ -99,19 +99,19 @@ func (z *arrayContainer) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Content":
+		case "content":
 			var zajw uint32
 			zajw, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.Content) >= int(zajw) {
-				z.Content = (z.Content)[:zajw]
+			if cap(z.content) >= int(zajw) {
+				z.content = (z.content)[:zajw]
 			} else {
-				z.Content = make([]uint16, zajw)
+				z.content = make([]uint16, zajw)
 			}
-			for zxvk := range z.Content {
-				z.Content[zxvk], bts, err = msgp.ReadUint16Bytes(bts)
+			for zxvk := range z.content {
+				z.content[zxvk], bts, err = msgp.ReadUint16Bytes(bts)
 				if err != nil {
 					return
 				}
@@ -129,6 +129,6 @@ func (z *arrayContainer) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *arrayContainer) Msgsize() (s int) {
-	s = 1 + 8 + msgp.ArrayHeaderSize + (len(z.Content) * (msgp.Uint16Size))
+	s = 1 + 8 + msgp.ArrayHeaderSize + (len(z.content) * (msgp.Uint16Size))
 	return
 }

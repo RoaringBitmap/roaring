@@ -793,29 +793,29 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 	Convey("runContainer `subtract` operation removes an interval in-place", t, func() {
 		// basics
 
-		i22 := interval16{Start: 2, Last: 2}
+		i22 := interval16{start: 2, last: 2}
 		left, _ := i22.subtractInterval(i22)
 		So(len(left), ShouldResemble, 0)
 
-		v := interval16{Start: 1, Last: 6}
-		left, _ = v.subtractInterval(interval16{Start: 3, Last: 4})
+		v := interval16{start: 1, last: 6}
+		left, _ = v.subtractInterval(interval16{start: 3, last: 4})
 		So(len(left), ShouldResemble, 2)
-		So(left[0].Start, ShouldEqual, 1)
-		So(left[0].Last, ShouldEqual, 2)
-		So(left[1].Start, ShouldEqual, 5)
-		So(left[1].Last, ShouldEqual, 6)
+		So(left[0].start, ShouldEqual, 1)
+		So(left[0].last, ShouldEqual, 2)
+		So(left[1].start, ShouldEqual, 5)
+		So(left[1].last, ShouldEqual, 6)
 
-		v = interval16{Start: 1, Last: 6}
-		left, _ = v.subtractInterval(interval16{Start: 4, Last: 10})
+		v = interval16{start: 1, last: 6}
+		left, _ = v.subtractInterval(interval16{start: 4, last: 10})
 		So(len(left), ShouldResemble, 1)
-		So(left[0].Start, ShouldEqual, 1)
-		So(left[0].Last, ShouldEqual, 3)
+		So(left[0].start, ShouldEqual, 1)
+		So(left[0].last, ShouldEqual, 3)
 
-		v = interval16{Start: 5, Last: 10}
-		left, _ = v.subtractInterval(interval16{Start: 0, Last: 7})
+		v = interval16{start: 5, last: 10}
+		left, _ = v.subtractInterval(interval16{start: 0, last: 7})
 		So(len(left), ShouldResemble, 1)
-		So(left[0].Start, ShouldEqual, 8)
-		So(left[0].Last, ShouldEqual, 10)
+		So(left[0].start, ShouldEqual, 8)
+		So(left[0].last, ShouldEqual, 10)
 
 		seed := int64(42)
 		p("seed is %v", seed)
@@ -871,11 +871,11 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 				it := rcb.NewRunIterator16()
 				for it.HasNext() {
 					nx := it.Next()
-					rc.isubtract(interval16{Start: nx, Last: nx})
+					rc.isubtract(interval16{start: nx, last: nx})
 				}
 
 				// also check full interval subtraction
-				for _, p := range rcb.Iv {
+				for _, p := range rcb.iv {
 					abkup.isubtract(p)
 				}
 

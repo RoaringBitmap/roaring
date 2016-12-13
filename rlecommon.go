@@ -34,21 +34,21 @@ const MaxUint16 = 65535
 type searchOptions struct {
 
 	// start here instead of at 0
-	StartIndex int64
+	startIndex int64
 
 	// upper bound instead of len(rc.iv);
-	// EndxIndex == 0 means ignore the bound and use
-	// EndxIndex == n ==len(rc.iv) which is also
+	// endxIndex == 0 means ignore the bound and use
+	// endxIndex == n ==len(rc.iv) which is also
 	// naturally the default for search()
 	// when opt = nil.
-	EndxIndex int64
+	endxIndex int64
 }
 
 // And finds the intersection of rc and b.
 func (rc *runContainer32) And(b *Bitmap) *Bitmap {
 	out := NewBitmap()
-	for _, p := range rc.Iv {
-		for i := p.Start; i <= p.Last; i++ {
+	for _, p := range rc.iv {
+		for i := p.start; i <= p.last; i++ {
 			if b.Contains(i) {
 				out.Add(i)
 			}
@@ -60,8 +60,8 @@ func (rc *runContainer32) And(b *Bitmap) *Bitmap {
 // Xor returns the exclusive-or of rc and b.
 func (rc *runContainer32) Xor(b *Bitmap) *Bitmap {
 	out := b.Clone()
-	for _, p := range rc.Iv {
-		for v := p.Start; v <= p.Last; v++ {
+	for _, p := range rc.iv {
+		for v := p.start; v <= p.last; v++ {
 			if out.Contains(v) {
 				out.RemoveRange(uint64(v), uint64(v+1))
 			} else {
@@ -75,8 +75,8 @@ func (rc *runContainer32) Xor(b *Bitmap) *Bitmap {
 // Or returns the union of rc and b.
 func (rc *runContainer32) Or(b *Bitmap) *Bitmap {
 	out := b.Clone()
-	for _, p := range rc.Iv {
-		for v := p.Start; v <= p.Last; v++ {
+	for _, p := range rc.iv {
+		for v := p.start; v <= p.last; v++ {
 			out.Add(v)
 		}
 	}
@@ -111,8 +111,8 @@ type trial struct {
 // And finds the intersection of rc and b.
 func (rc *runContainer16) And(b *Bitmap) *Bitmap {
 	out := NewBitmap()
-	for _, p := range rc.Iv {
-		for i := p.Start; i <= p.Last; i++ {
+	for _, p := range rc.iv {
+		for i := p.start; i <= p.last; i++ {
 			if b.Contains(uint32(i)) {
 				out.Add(uint32(i))
 			}
@@ -124,8 +124,8 @@ func (rc *runContainer16) And(b *Bitmap) *Bitmap {
 // Xor returns the exclusive-or of rc and b.
 func (rc *runContainer16) Xor(b *Bitmap) *Bitmap {
 	out := b.Clone()
-	for _, p := range rc.Iv {
-		for v := p.Start; v <= p.Last; v++ {
+	for _, p := range rc.iv {
+		for v := p.start; v <= p.last; v++ {
 			w := uint32(v)
 			if out.Contains(w) {
 				out.RemoveRange(uint64(w), uint64(w+1))
@@ -140,8 +140,8 @@ func (rc *runContainer16) Xor(b *Bitmap) *Bitmap {
 // Or returns the union of rc and b.
 func (rc *runContainer16) Or(b *Bitmap) *Bitmap {
 	out := b.Clone()
-	for _, p := range rc.Iv {
-		for v := p.Start; v <= p.Last; v++ {
+	for _, p := range rc.iv {
+		for v := p.start; v <= p.last; v++ {
 			out.Add(uint32(v))
 		}
 	}

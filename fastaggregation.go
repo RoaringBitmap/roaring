@@ -106,7 +106,7 @@ func (x1 *Bitmap) repairAfterLazy() {
 		c := x1.highlowcontainer.getContainerAtIndex(pos)
 		switch c.(type) {
 		case *bitmapContainer:
-			if c.(*bitmapContainer).Cardinality == invalidCardinality {
+			if c.(*bitmapContainer).cardinality == invalidCardinality {
 				c = x1.highlowcontainer.getWritableContainerAtIndex(pos)
 				c.(*bitmapContainer).computeCardinality()
 				if c.(*bitmapContainer).getCardinality() <= arrayDefaultMaxSize {

@@ -1,4 +1,4 @@
-.PHONY: help all test format fmtcheck vet lint     qa deps clean nuke rle backrle
+.PHONY: help all test format fmtcheck vet lint     qa deps clean nuke rle backrle ser
 
 
 
@@ -92,6 +92,6 @@ backrle:
 	perl -pi -e 's/16/32/g' rle.go
 	perl -pi -e 's/2032/2016/g' rle.go
 
-ser:
+ser: rle
 	go generate
 

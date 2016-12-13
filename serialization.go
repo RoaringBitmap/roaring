@@ -9,12 +9,12 @@ import (
 )
 
 func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
-	buf := uint16SliceAsByteSlice(b.Content)
+	buf := uint16SliceAsByteSlice(b.content)
 	return stream.Write(buf)
 }
 
 func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
-	buf := uint64SliceAsByteSlice(b.Bitmap)
+	buf := uint64SliceAsByteSlice(b.bitmap)
 	return stream.Write(buf)
 }
 
@@ -35,12 +35,12 @@ func (b *runContainer16) writeTo(stream io.Writer) (int, error) {
 }
 
 func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
-	buf := uint16SliceAsByteSlice(b.Content)
+	buf := uint16SliceAsByteSlice(b.content)
 	return io.ReadFull(stream, buf)
 }
 
 func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
-	buf := uint64SliceAsByteSlice(b.Bitmap)
+	buf := uint64SliceAsByteSlice(b.bitmap)
 	return io.ReadFull(stream, buf)
 }
 

@@ -17,20 +17,20 @@ func init() {
 func TestRleInterval16s(t *testing.T) {
 
 	Convey("canMerge, and mergeInterval16s should do what they say", t, func() {
-		a := interval16{Start: 0, Last: 9}
+		a := interval16{start: 0, last: 9}
 		msg := a.String()
 		p("a is %v", msg)
-		b := interval16{Start: 0, Last: 1}
+		b := interval16{start: 0, last: 1}
 		report := sliceToString16([]interval16{a, b})
 		_ = report
 		p("a and b together are: %s", report)
-		c := interval16{Start: 2, Last: 4}
-		d := interval16{Start: 2, Last: 5}
-		e := interval16{Start: 0, Last: 4}
-		f := interval16{Start: 9, Last: 9}
-		g := interval16{Start: 8, Last: 9}
-		h := interval16{Start: 5, Last: 6}
-		i := interval16{Start: 6, Last: 6}
+		c := interval16{start: 2, last: 4}
+		d := interval16{start: 2, last: 5}
+		e := interval16{start: 0, last: 4}
+		f := interval16{start: 9, last: 9}
+		g := interval16{start: 8, last: 9}
+		h := interval16{start: 5, last: 6}
+		i := interval16{start: 6, last: 6}
 
 		aIb, empty := intersectInterval16s(a, b)
 		So(empty, ShouldBeFalse)
@@ -54,16 +54,16 @@ func TestRleInterval16s(t *testing.T) {
 		So(mergeInterval16s(h, i), ShouldResemble, h)
 		So(mergeInterval16s(i, h), ShouldResemble, h)
 
-		////// Start
-		So(mergeInterval16s(interval16{Start: 0, Last: 0}, interval16{Start: 1, Last: 1}), ShouldResemble, interval16{Start: 0, Last: 1})
-		So(mergeInterval16s(interval16{Start: 1, Last: 1}, interval16{Start: 0, Last: 0}), ShouldResemble, interval16{Start: 0, Last: 1})
-		So(mergeInterval16s(interval16{Start: 0, Last: 4}, interval16{Start: 3, Last: 5}), ShouldResemble, interval16{Start: 0, Last: 5})
-		So(mergeInterval16s(interval16{Start: 0, Last: 4}, interval16{Start: 3, Last: 4}), ShouldResemble, interval16{Start: 0, Last: 4})
+		////// start
+		So(mergeInterval16s(interval16{start: 0, last: 0}, interval16{start: 1, last: 1}), ShouldResemble, interval16{start: 0, last: 1})
+		So(mergeInterval16s(interval16{start: 1, last: 1}, interval16{start: 0, last: 0}), ShouldResemble, interval16{start: 0, last: 1})
+		So(mergeInterval16s(interval16{start: 0, last: 4}, interval16{start: 3, last: 5}), ShouldResemble, interval16{start: 0, last: 5})
+		So(mergeInterval16s(interval16{start: 0, last: 4}, interval16{start: 3, last: 4}), ShouldResemble, interval16{start: 0, last: 4})
 
-		So(mergeInterval16s(interval16{Start: 0, Last: 8}, interval16{Start: 1, Last: 7}), ShouldResemble, interval16{Start: 0, Last: 8})
-		So(mergeInterval16s(interval16{Start: 1, Last: 7}, interval16{Start: 0, Last: 8}), ShouldResemble, interval16{Start: 0, Last: 8})
+		So(mergeInterval16s(interval16{start: 0, last: 8}, interval16{start: 1, last: 7}), ShouldResemble, interval16{start: 0, last: 8})
+		So(mergeInterval16s(interval16{start: 1, last: 7}, interval16{start: 0, last: 8}), ShouldResemble, interval16{start: 0, last: 8})
 
-		So(func() { _ = mergeInterval16s(interval16{Start: 0, Last: 0}, interval16{Start: 2, Last: 3}) }, ShouldPanic)
+		So(func() { _ = mergeInterval16s(interval16{start: 0, last: 0}, interval16{start: 2, last: 3}) }, ShouldPanic)
 
 	})
 }
@@ -81,7 +81,7 @@ func TestRleRunIterator16(t *testing.T) {
 			So(it.HasNext(), ShouldBeFalse)
 		}
 		{
-			rc := newRunContainer16TakeOwnership([]interval16{{Start: 4, Last: 4}})
+			rc := newRunContainer16TakeOwnership([]interval16{{start: 4, last: 4}})
 			So(rc.cardinality(), ShouldEqual, 1)
 			it := rc.NewRunIterator16()
 			So(it.HasNext(), ShouldBeTrue)
@@ -89,7 +89,7 @@ func TestRleRunIterator16(t *testing.T) {
 			So(it.Cur(), ShouldResemble, uint16(4))
 		}
 		{
-			rc := newRunContainer16CopyIv([]interval16{{Start: 4, Last: 9}})
+			rc := newRunContainer16CopyIv([]interval16{{start: 4, last: 9}})
 			So(rc.cardinality(), ShouldEqual, 6)
 			it := rc.NewRunIterator16()
 			So(it.HasNext(), ShouldBeTrue)
@@ -100,7 +100,7 @@ func TestRleRunIterator16(t *testing.T) {
 		}
 
 		{
-			rc := newRunContainer16TakeOwnership([]interval16{{Start: 4, Last: 9}})
+			rc := newRunContainer16TakeOwnership([]interval16{{start: 4, last: 9}})
 			card := rc.cardinality()
 			So(card, ShouldEqual, 6)
 			// serialization size can vary depending on content; don't hardcode it.
@@ -129,14 +129,14 @@ func TestRleRunIterator16(t *testing.T) {
 		}
 		{
 			rc := newRunContainer16TakeOwnership([]interval16{
-				{Start: 0, Last: 0},
-				{Start: 2, Last: 2},
-				{Start: 4, Last: 4},
+				{start: 0, last: 0},
+				{start: 2, last: 2},
+				{start: 4, last: 4},
 			})
 			rc1 := newRunContainer16TakeOwnership([]interval16{
-				{Start: 6, Last: 7},
-				{Start: 10, Last: 11},
-				{Start: MaxUint16, Last: MaxUint16},
+				{start: 6, last: 7},
+				{start: 10, last: 11},
+				{start: MaxUint16, last: MaxUint16},
 			})
 
 			rc = rc.union(rc1)
@@ -154,7 +154,7 @@ func TestRleRunIterator16(t *testing.T) {
 			So(it.HasNext(), ShouldEqual, false)
 
 			rc2 := newRunContainer16TakeOwnership([]interval16{
-				{Start: 0, Last: MaxUint16},
+				{start: 0, last: MaxUint16},
 			})
 
 			p("union with a full [0,2^16-1] container should yield that same single interval run container")
@@ -219,7 +219,7 @@ func TestRleRunSearch16(t *testing.T) {
 
 			p("confirm that opts searchOptions to search reduces search time")
 			opts := &searchOptions{
-				StartIndex: 5,
+				startIndex: 5,
 			}
 			where, present, numCompares = rc.search(MaxUint16, opts)
 			So(present, ShouldBeFalse)
@@ -233,7 +233,7 @@ func TestRleRunSearch16(t *testing.T) {
 			So(where, ShouldEqual, 10)
 
 			// with the bound in place, MaxUint16-3 should not be found
-			opts.EndxIndex = 10
+			opts.endxIndex = 10
 			where, present, _ = rc.search(MaxUint16-3, opts)
 			So(present, ShouldBeFalse)
 			So(where, ShouldEqual, 9)
@@ -267,7 +267,7 @@ func TestRleIntersection16(t *testing.T) {
 			So(isect.contains(6), ShouldBeTrue)
 			So(isect.contains(8), ShouldBeTrue)
 
-			d := newRunContainer16TakeOwnership([]interval16{{Start: 0, Last: MaxUint16}})
+			d := newRunContainer16TakeOwnership([]interval16{{start: 0, last: MaxUint16}})
 
 			isect = isect.intersect(d)
 			p("isect is %v", isect)
@@ -528,9 +528,9 @@ func TestRleAndOrXor16(t *testing.T) {
 	Convey("RunContainer And, Or, Xor tests", t, func() {
 		{
 			rc := newRunContainer16TakeOwnership([]interval16{
-				{Start: 0, Last: 0},
-				{Start: 2, Last: 2},
-				{Start: 4, Last: 4},
+				{start: 0, last: 0},
+				{start: 2, last: 2},
+				{start: 4, last: 4},
 			})
 			b0 := NewBitmap()
 			b0.Add(2)
@@ -549,7 +549,7 @@ func TestRleAndOrXor16(t *testing.T) {
 			arr := newArrayContainerCapacity(0)
 			empty := newRunContainer16FromArray(arr)
 			onceler := newArrayContainerCapacity(1)
-			onceler.Content = append(onceler.Content, uint16(0))
+			onceler.content = append(onceler.content, uint16(0))
 			oneZero := newRunContainer16FromArray(onceler)
 			So(empty.cardinality(), ShouldEqual, 0)
 			So(oneZero.cardinality(), ShouldEqual, 1)
@@ -573,7 +573,7 @@ func TestRlePanics16(t *testing.T) {
 		So(func() { newRunContainer16FromVals(true, 1, 0) }, ShouldPanic)
 
 		arr := newArrayContainerRange(1, 3)
-		arr.Content = []uint16{2, 3, 3, 2, 1}
+		arr.content = []uint16{2, 3, 3, 2, 1}
 		So(func() { newRunContainer16FromArray(arr) }, ShouldPanic)
 	})
 }
@@ -591,13 +591,13 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 		// RunContainer.String()
 		rc := &runContainer16{}
 		So(rc.String(), ShouldEqual, "runContainer16{}")
-		rc.Iv = make([]interval16, 1)
-		rc.Iv[0] = interval16{Start: 3, Last: 4}
+		rc.iv = make([]interval16, 1)
+		rc.iv[0] = interval16{start: 3, last: 4}
 		So(rc.String(), ShouldEqual, "runContainer16{0:[3, 4], }")
 
-		a := interval16{Start: 5, Last: 9}
-		b := interval16{Start: 0, Last: 1}
-		c := interval16{Start: 1, Last: 2}
+		a := interval16{start: 5, last: 9}
+		b := interval16{start: 0, last: 1}
+		c := interval16{start: 1, last: 2}
 
 		// intersectInterval16s(a, b interval16)
 		isect, isEmpty := intersectInterval16s(a, b)
@@ -642,7 +642,7 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			it := empty.NewRunIterator16()
 			So(func() { it.Next() }, ShouldPanic)
 			it2 := ra.NewRunIterator16()
-			it2.curIndex = int64(len(it2.rc.Iv))
+			it2.curIndex = int64(len(it2.rc.iv))
 			So(func() { it2.Next() }, ShouldPanic)
 
 			// RunIterator16.Remove()
@@ -651,7 +651,7 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 
 			// newRunContainer16FromArray
 			arr := newArrayContainerRange(1, 6)
-			arr.Content = []uint16{5, 5, 5, 6, 9}
+			arr.content = []uint16{5, 5, 5, 6, 9}
 			rc3 := newRunContainer16FromArray(arr)
 			So(rc3.cardinality(), ShouldEqual, 3)
 
