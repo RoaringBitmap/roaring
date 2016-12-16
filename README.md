@@ -134,13 +134,15 @@ bitmaps never use more than 2 bytes per integer. You can call
 
 Current documentation is available at http://godoc.org/github.com/RoaringBitmap/roaring
 
-### Thread-safety
+### Goroutine safety
 
-In general, it should generally be considered safe to access
-the same bitmaps using different threads as
-long as they are not being modified. However, if some of your
-bitmaps use copy-on-write, then more care is needed: pass
-to your threads a (shallow) copy of your bitmaps.
+In general, it should not generally be considered safe to access
+the same bitmaps using different goroutines--they are left
+unsynchronized for performance. Should you want to access
+a Bitmap from more than one goroutine, you should
+provide synchronization. Typically this is done by using channels to pass
+the *Bitmap around (in Go style; so there is only ever one owner),
+or by using `sync.Mutex` to serialize operations on Bitmaps.
 
 ### Coverage
 
@@ -189,11 +191,7 @@ traces.
 
 ### Compatibility with Java RoaringBitmap library
 
-You can read bitmaps in Go (resp. Java) that have been serialized in Java (resp. Go)
-with the caveat that the Go library does not yet support run containers. So if you plan
-to read bitmaps serialized from Java in Go, you might want to call ``removeRunCompression``
-prior to serializing your Java instances. This is a temporary limitation: we plan to
-add support for run containers to the Go library.
+You can read bitmaps in Go (resp. Java) that have been serialized in Java (resp. Go).
 
 ### Alternative in Go
 
