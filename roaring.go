@@ -140,7 +140,6 @@ func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }
 
-
 // BoundSerializedSizeInBytes returns an upper bound on the serialized size in bytes
 // assuming that one wants to store "cardinality" integers in [0, universe_size)
 func BoundSerializedSizeInBytes(cardinality uint64, universeSize uint64) uint64 {

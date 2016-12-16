@@ -312,7 +312,7 @@ func (ac *arrayContainer) ior(a container) container {
 	case *bitmapContainer:
 		return a.ior(ac)
 	case *runContainer16:
-		return x.iorArray(ac)
+		return x.orArray(ac) // alternative x.iorArray(ac) is unlikely to be correct
 	}
 	panic("unsupported container type")
 }
@@ -323,6 +323,9 @@ func (ac *arrayContainer) lazyIOR(a container) container {
 		return ac.lazyorArray(x)
 	case *bitmapContainer:
 		return a.lazyOR(ac)
+	case *runContainer16:
+		return x.orArray(ac)
+
 	}
 	panic("unsupported container type")
 }
@@ -333,6 +336,8 @@ func (ac *arrayContainer) lazyOR(a container) container {
 		return ac.lazyorArray(x)
 	case *bitmapContainer:
 		return a.lazyOR(ac)
+	case *runContainer16:
+		return x.orArray(ac)
 	}
 	panic("unsupported container type")
 }
@@ -423,7 +428,7 @@ func (ac *arrayContainer) iand(a container) container {
 	case *bitmapContainer:
 		return ac.iandBitmap(x)
 	case *runContainer16:
-		return x.iandArray(ac)
+		return x.andArray(ac) // alternative x.iandArray(ac) is unlikely to be correct
 	}
 	panic("unsupported container type")
 }
@@ -502,7 +507,7 @@ func (ac *arrayContainer) iandNot(a container) container {
 	case *bitmapContainer:
 		return ac.iandNotBitmap(x)
 	case *runContainer16:
-		return x.iandNotArray(ac)
+		return x.andNotArray(ac) // alternative is unlikely to be correct: x.iandNotArray(ac)
 	}
 	panic("unsupported container type")
 }
