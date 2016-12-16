@@ -618,14 +618,18 @@ func (rc *runContainer16) toEfficientContainer() container {
 		return rc
 	}
 	if card <= arrayDefaultMaxSize {
-		ac := newArrayContainer()
-		for i := range rc.iv {
-			ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last+1))
-		}
-		return ac
+		return rc.toArrayContainer()
 	}
 	bc := newBitmapContainerFromRun(rc)
 	return bc
+}
+
+func (rc *runContainer16) toArrayContainer() *arrayContainer {
+	ac := newArrayContainer()
+	for i := range rc.iv {
+		ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last+1))
+	}
+	return ac
 }
 
 func newRunContainer16FromContainer(c container) *runContainer16 {

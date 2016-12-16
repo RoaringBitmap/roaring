@@ -52,7 +52,6 @@ func TestSerializationBasic037(t *testing.T) {
 		t.Errorf("Failed reading")
 	}
 	if !rb.Equals(newrb) {
-		rleVerbose = true
 		p("rb = '%s'", rb)
 		p("but newrb = '%s'", newrb)
 		t.Errorf("Cannot retrieve serialized version; rb != newrb")

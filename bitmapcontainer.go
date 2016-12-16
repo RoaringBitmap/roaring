@@ -563,19 +563,28 @@ func (bc *bitmapContainer) andNot(a container) container {
 		return bc.andNotArray(x)
 	case *bitmapContainer:
 		return bc.andNotBitmap(x)
-	} // what happens if a is a run container?
+	case *runContainer16:
+		// what happens if a is a run container?
+		panic("todo")
+	}
 	panic("unsupported container type")
 }
 
 func (bc *bitmapContainer) iandNot(a container) container {
+	p("bitmapContainer.iandNot() starting")
+
 	switch x := a.(type) {
 	case *arrayContainer:
+		p("bitmapContainer.iandNot() FIXME! not in place!")
 		// FIXME: this is not iandNotArray, so it won't
 		// have the side-effect specified by the inplace 'i' prefix.
 		return bc.andNotArray(x)
 	case *bitmapContainer:
 		return bc.iandNotBitmap(x)
-	}// what happens if a is a run container?
+	case *runContainer16:
+		// what happens if a is a run container?
+		panic("todo")
+	}
 	panic("unsupported container type")
 }
 

@@ -7,7 +7,7 @@ import (
 )
 
 // Example_roaring demonstrates how to use the roaring library.
-func TestExample_roaring(t *testing.T) {
+func TestExample_roaring060(t *testing.T) {
 	// example inspired by https://github.com/fzandona/goroar
 	fmt.Println("==roaring==")
 	rb1 := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
@@ -70,7 +70,8 @@ func TestExample_roaring(t *testing.T) {
 }
 
 // Example_roaring demonstrates how to use the roaring library with run containers.
-func TestExample2_roaring(t *testing.T) {
+func TestExample2_roaring061(t *testing.T) {
+
 	r1 := New()
 	for i := uint32(100); i < 1000; i++ {
 		r1.Add(i)
@@ -111,8 +112,11 @@ func TestExample2_roaring(t *testing.T) {
 	for i := uint32(0); i < 10000; i += 3 {
 		rb1.Add(i)
 	}
+	fmt.Printf("\nrb1card before doing AndNot(rb3): %v\n",
+		rb1.GetCardinality())
 	rb1.AndNot(rb3)
-	if rb1.GetCardinality() != 1 {
-		t.Errorf("Only the value 0 should survive the andNot")
+	rb1card := rb1.GetCardinality()
+	if rb1card != 1 {
+		t.Errorf("Only the value 0 should survive the andNot; rb1card = %v", rb1card)
 	}
 }
