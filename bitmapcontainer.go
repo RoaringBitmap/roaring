@@ -729,6 +729,11 @@ func (bc *bitmapContainer) toEfficientContainer() container {
 }
 
 func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
+
+	if len(rc.iv) == 1 {
+		return newBitmapContainerwithRange(int(rc.iv[0].start), int(rc.iv[0].last))
+	}
+	
 	bc := newBitmapContainer()
 	for i := range rc.iv {
 		bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last)+1)
