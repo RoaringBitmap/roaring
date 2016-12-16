@@ -545,10 +545,12 @@ func (rc *runContainer16) andNotBitmap(bc *bitmapContainer) container {
 }
 
 func (rc *runContainer16) toBitmapContainer() *bitmapContainer {
+	p("run16 toBitmap starting; rc has %v ranges", len(rc.iv))
 	bc := newBitmapContainer()
 	for i := range rc.iv {
-		bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last+1))
+		bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last)+1)
 	}
+	bc.computeCardinality()
 	return bc
 }
 

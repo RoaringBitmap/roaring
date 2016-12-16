@@ -112,11 +112,13 @@ func TestExample2_roaring061(t *testing.T) {
 	for i := uint32(0); i < 10000; i += 3 {
 		rb1.Add(i)
 	}
-	fmt.Printf("\nrb1card before doing AndNot(rb3): %v\n",
-		rb1.GetCardinality())
+	fmt.Printf("\n rb1card before doing AndNot(rb3): %v, rb3card=%v\n",
+		rb1.GetCardinality(), rb3.GetCardinality())
 	rb1.AndNot(rb3)
 	rb1card := rb1.GetCardinality()
 	if rb1card != 1 {
+		//rb1.RunOptimize()
+		//fmt.Printf("\n rb1 = %s\n", rb1)
 		t.Errorf("Only the value 0 should survive the andNot; rb1card = %v", rb1card)
 	}
 }

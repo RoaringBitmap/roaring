@@ -514,7 +514,7 @@ func (ac *arrayContainer) iandNot(a container) container {
 }
 
 func (ac *arrayContainer) iandNotRun16(rc *runContainer16) container {
-	//p("arrayContainer.iandNotRun16() starting")
+	//p("arrayContainer.iandNotRun16() starting; rc = %s", rc)
 
 	rcb := rc.toBitmapContainer()
 	//p("rcb has size %v", rcb.getCardinality())
@@ -522,19 +522,10 @@ func (ac *arrayContainer) iandNotRun16(rc *runContainer16) container {
 	acb := ac.toBitmapContainer()
 	//p("acb has size %v", acb.getCardinality())
 
-	anew := acb.andNotBitmap(rcb)
-	//p("anew has size %v", anew.getCardinality())
+	acb.iandNotBitmapSurely(rcb)
+	//p("after iandNotBit, acb has size %v", acb.getCardinality())
 
-	switch x := anew.(type) {
-	case *arrayContainer:
-		*ac = *x
-	case *bitmapContainer:
-		*ac = *(x.toArrayContainer())
-	case *runContainer16:
-		*ac = *(x.toArrayContainer())
-	default:
-		panic("unsupported container type")
-	}
+	*ac = *(acb.toArrayContainer())
 	return ac
 }
 

@@ -1005,7 +1005,7 @@ func (rb *Bitmap) AddRange(rangeStart, rangeEnd uint64) {
 		i := rb.highlowcontainer.getIndex(hb)
 
 		if i >= 0 {
-			c := rb.highlowcontainer.getWritableContainerAtIndex(i).iaddRange(int(containerStart), int(containerLast+1))
+			c := rb.highlowcontainer.getWritableContainerAtIndex(i).iaddRange(int(containerStart), int(containerLast)+1)
 			rb.highlowcontainer.setContainerAtIndex(i, c)
 		} else { // *think* the range of ones must never be
 			// empty.

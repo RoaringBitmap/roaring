@@ -585,13 +585,13 @@ func (bc *bitmapContainer) andNotRun16(rc *runContainer16) container {
 }
 
 func (bc *bitmapContainer) iandNot(a container) container {
-	p("bitmapContainer.iandNot() starting")
+	//p("bitmapContainer.iandNot() starting")
 
 	switch x := a.(type) {
 	case *arrayContainer:
 		return bc.iandNotArray(x)
 	case *bitmapContainer:
-		return bc.iandNotBitmap(x)
+		return bc.iandNotBitmapSurely(x)
 	case *runContainer16:
 		return bc.iandNotRun16(x)
 	}
@@ -649,7 +649,10 @@ func (bc *bitmapContainer) iandNotBitmapSurely(value2 *bitmapContainer) *bitmapC
 	return bc
 }
 
-func (bc *bitmapContainer) iandNotBitmap(value2 *bitmapContainer) container {
+// warning, this function may not actually modify the bc array in place!
+// TODO: delete? Mostly replaced with iandNotBitmapSurely
+/*
+func (bc *bitmapContainer) iandNotBitmapSCARY(value2 *bitmapContainer) container {
 	newCardinality := int(popcntMaskSlice(bc.bitmap, value2.bitmap))
 	if newCardinality > arrayDefaultMaxSize {
 		for k := 0; k < len(bc.bitmap); k++ {
@@ -662,6 +665,7 @@ func (bc *bitmapContainer) iandNotBitmap(value2 *bitmapContainer) container {
 	fillArrayANDNOT(ac.content, bc.bitmap, value2.bitmap)
 	return ac
 }
+*/
 
 func (bc *bitmapContainer) contains(i uint16) bool { //testbit
 	x := int(i)
