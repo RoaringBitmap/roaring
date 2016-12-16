@@ -114,7 +114,7 @@ func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask ui
 	}
 }
 
-func (bc *bitmapContainer) equals(o interface{}) bool {
+func (bc *bitmapContainer) equals(o container) bool {
 	srb, ok := o.(*bitmapContainer)
 	if ok {
 		//p("bitmapContainers.equals: both are bitmapContainers")
@@ -277,8 +277,9 @@ func (bc *bitmapContainer) ior(a container) container {
 		for i := range x.iv {
 			bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
 		}
+		return bc
 	}
-	panic("unsupported container type")
+	panic(fmt.Errorf("unsupported container type %T", a))
 }
 
 func (bc *bitmapContainer) lazyIOR(a container) container {
@@ -292,6 +293,7 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 		for i := range x.iv {
 			bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
 		}
+		return bc
 	}
 	panic("unsupported container type")
 }

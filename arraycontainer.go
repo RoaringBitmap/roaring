@@ -168,7 +168,7 @@ func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 
 }
 
-func (ac *arrayContainer) equals(o interface{}) bool {
+func (ac *arrayContainer) equals(o container) bool {
 
 	srb, ok := o.(*arrayContainer)
 	if ok {

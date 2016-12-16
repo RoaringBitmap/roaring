@@ -231,15 +231,15 @@ func (rc *runContainer16) Not(firstOfRange, endx int) *runContainer16 {
 
 // equals is now logical equals; it does not require the
 // same underlying container type.
-func (rc *runContainer16) equals(o interface{}) bool {
+func (rc *runContainer16) equals(o container) bool {
 	srb, ok := o.(*runContainer16)
 
 	if !ok {
 		// maybe value instead of pointer
-		val, valok := o.(runContainer16)
+		val, valok := o.(*runContainer16)
 		if valok {
 			//p("was runContainer16 value...")
-			srb = &val
+			srb = val
 			ok = true
 		}
 	}
@@ -425,7 +425,10 @@ func (rc *runContainer16) iorArray(ac *arrayContainer) container {
 // trick does is minimize memory allocations.
 //
 func (rc *runContainer16) lazyIOR(a container) container {
-	panic("TODO: runContainer16.lazyIOR not yet implemented")
+
+	// not lazy at the moment
+	// TODO: make it lazy
+	return rc.ior(a)
 
 	/*
 		switch c := a.(type) {
@@ -434,7 +437,7 @@ func (rc *runContainer16) lazyIOR(a container) container {
 		case *bitmapContainer:
 			return rc.lazyIorBitmap(c)
 		case *runContainer16:
-			return rc.lazyIorRunContainer16(c)
+			return rc.lazyIorRun16(c)
 		}
 		panic("unsupported container type")
 	*/
@@ -442,7 +445,10 @@ func (rc *runContainer16) lazyIOR(a container) container {
 
 // lazyOR is described above in lazyIOR.
 func (rc *runContainer16) lazyOR(a container) container {
-	panic("TODO: runContainer16.lazyOR not yet implemented")
+
+	// not lazy at the moment
+	// TODO: make it lazy
+	return rc.or(a)
 
 	/*
 		switch c := a.(type) {

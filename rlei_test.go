@@ -1569,3 +1569,33 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 
 	})
 }
+
+func TestAllContainerMethodsAllContainerTypes065(t *testing.T) {
+
+	Convey("each of the container methods that takes two containers should handle all 3x3==9 possible ways of being called -- without panic", t, func() {
+		a := newArrayContainer()
+		r := newRunContainer16()
+		b := newBitmapContainer()
+
+		arr := []container{a, r, b}
+		for _, i := range arr {
+			for _, j := range arr {
+				i.and(j)
+				i.iand(j)
+				i.andNot(j)
+
+				i.iandNot(j)
+				i.xor(j)
+				i.equals(j)
+
+				i.or(j)
+				i.ior(j)
+				i.intersects(j)
+
+				i.lazyOR(j)
+				i.lazyIOR(j)
+			}
+		}
+	})
+
+}

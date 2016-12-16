@@ -41,7 +41,7 @@ type container interface {
 	// equals is now logical equals; it does not require the
 	// same underlying container types, but compares across
 	// any of the implementations.
-	equals(i interface{}) bool
+	equals(r container) bool
 
 	fillLeastSignificant16bits(array []uint32, i int, mask uint32)
 	or(r container) container
