@@ -274,7 +274,8 @@ func (bc *bitmapContainer) ior(a container) container {
 	case *bitmapContainer:
 		return bc.iorBitmap(x)
 	case *runContainer16:
-		return x.iorBitmapContainer(bc)
+		// todo: implement fast function that sets entire ranges in the bitmap containers, current implementation is inefficient
+		return x.orBitmapContainer(bc) // the alternative x.iorBitmapContainer(bc) is unlikely to be correct since would modif. a
 	}
 	panic("unsupported container type")
 }
@@ -285,6 +286,8 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 		return bc.lazyIORArray(x)
 	case *bitmapContainer:
 		return bc.lazyIORBitmap(x)
+	case *runContainer16:
+		return x.orBitmapContainer(bc) // TODO : implement efficient in-place lazy OR to bitmap
 	}
 	panic("unsupported container type")
 }
@@ -295,6 +298,9 @@ func (bc *bitmapContainer) lazyOR(a container) container {
 		return bc.lazyORArray(x)
 	case *bitmapContainer:
 		return bc.lazyORBitmap(x)
+	case *runContainer16:
+		return x.orBitmapContainer(bc) // TODO: implement lazy OR
+
 	}
 	panic("unsupported container type")
 }
@@ -479,6 +485,8 @@ func (bc *bitmapContainer) iand(a container) container {
 		return bc.andArray(x)
 	case *bitmapContainer:
 		return bc.iandBitmap(x)
+	case *runContainer16:
+		return x.andBitmapContainer(bc) // TODO : implement fast in-place
 	}
 	panic("unsupported container type")
 }
@@ -733,7 +741,7 @@ func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
 	if len(rc.iv) == 1 {
 		return newBitmapContainerwithRange(int(rc.iv[0].start), int(rc.iv[0].last))
 	}
-	
+
 	bc := newBitmapContainer()
 	for i := range rc.iv {
 		bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last)+1)

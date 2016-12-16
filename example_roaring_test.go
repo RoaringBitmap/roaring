@@ -103,5 +103,16 @@ func TestExample2_roaring(t *testing.T) {
 	if !r1.Equals(rb3) {
 		t.Errorf("union with large run should give back contained set")
 	}
-
+	rb1 := r1.Clone()
+	rb1.AndNot(rb3)
+	if !rb1.IsEmpty() {
+		t.Errorf("And not with large should clear...")
+	}
+	for i := uint32(0); i < 10000; i += 3 {
+		rb1.Add(i)
+	}
+	rb1.AndNot(rb3)
+	if rb1.GetCardinality() != 1 {
+		t.Errorf("Only the value 0 should survive the andNot")
+	}
 }
