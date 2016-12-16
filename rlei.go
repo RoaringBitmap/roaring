@@ -309,13 +309,18 @@ func (rc *runContainer16) orBitmapContainer(bc *bitmapContainer) container {
 
 // orArray finds the union of rc and ac.
 func (rc *runContainer16) orArray(ac *arrayContainer) container {
-	out := ac.clone()
-	for _, p := range rc.iv {
-		for i := p.start; i <= p.last; i++ {
-			out.iadd(i)
+	bc1 := newBitmapContainerFromRun(rc)
+	bc2 := ac.toBitmapContainer()
+	return bc1.orBitmap(bc2)
+	/*
+		out := ac.clone()
+		for _, p := range rc.iv {
+			for i := p.start; i <= p.last; i++ {
+				out.iadd(i)
+			}
 		}
-	}
-	return out
+		return out
+	*/
 }
 
 func (rc *runContainer16) ior(a container) container {
