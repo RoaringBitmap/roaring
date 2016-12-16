@@ -140,17 +140,6 @@ func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }
 
-// GetMsgpackSerializedSizeInBytes computes an upper bound on
-// the size of the Bitmap when serialized with msgpack2.
-//
-// This bound doesn't account for the reduction in bytes when
-// Snappy streaming compression is applied, as is
-// the typical and done by default; this is hard to
-// approximate without actually doing the compression
-// because it depends on the contents.
-func (rb *Bitmap) GetMsgpackSerializedSizeInBytes() uint64 {
-	return rb.highlowcontainer.msgpackSerializedSizeInBytes()
-}
 
 // BoundSerializedSizeInBytes returns an upper bound on the serialized size in bytes
 // assuming that one wants to store "cardinality" integers in [0, universe_size)

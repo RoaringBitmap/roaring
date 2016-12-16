@@ -619,25 +619,6 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	return int64(pos), nil
 }
 
-// msgpackSerializedSizeInBytes is an upper bound only,
-// and doesn't account for Snappy compression.
-func (ra *roaringArray) msgpackSerializedSizeInBytes() uint64 {
-	n := 0
-	for _, v := range ra.containers {
-		switch cn := v.(type) {
-		case *bitmapContainer:
-			n += cn.Msgsize()
-		case *arrayContainer:
-			n += cn.Msgsize()
-		case *runContainer16:
-			n += cn.Msgsize()
-		default:
-			fmt.Errorf("Unrecognized container implementation: %T", cn)
-		}
-	}
-	return uint64(n)
-}
-
 func (ra *roaringArray) writeToMsgpack(stream io.Writer) error {
 
 	ra.conserz = make([]containerSerz, len(ra.containers))
