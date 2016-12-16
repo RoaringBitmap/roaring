@@ -152,7 +152,7 @@ func TestSerializationBasic4WriteAndReadFile040(t *testing.T) {
 	}
 }
 
-func TestSerializationFromJava(t *testing.T) {
+func TestSerializationFromJava051(t *testing.T) {
 	fname := "testdata/bitmapwithoutruns.bin"
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
@@ -163,6 +163,7 @@ func TestSerializationFromJava(t *testing.T) {
 	defer func() {
 		fin.Close()
 	}()
+
 	_, _ = newrb.ReadFrom(fin)
 	fmt.Println(newrb.GetCardinality())
 	rb := NewBitmap()
@@ -182,7 +183,7 @@ func TestSerializationFromJava(t *testing.T) {
 
 }
 
-func TestSerializationFromJavaWithRuns(t *testing.T) {
+func TestSerializationFromJavaWithRuns052(t *testing.T) {
 	fname := "testdata/bitmapwithruns.bin"
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)

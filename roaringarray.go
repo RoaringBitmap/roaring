@@ -555,31 +555,31 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 			if isRun.contains(uint16(k)) {
 				yesRun = true
 			}
-			p("    descriptive header: key %x:  card %v   isRun: %v", keycard[i], int(keycard[i+1])+1, yesRun)
+			fmt.Printf("\n    descriptive header: key %x:  card %v   isRun: %v\n", keycard[i], int(keycard[i+1])+1, yesRun)
 		}
 		k++
 	}
 
 	// offset header
-	if haveRunContainers && size >= noOffsetThreshold {
-		p("reading offset header of size %v at pos %v", size, pos)
+	//if haveRunContainers && size >= noOffsetThreshold {
+	if size >= noOffsetThreshold {
+		//p("reading offset header of size %v at pos %v", size, pos)
 		offsets := make([]uint32, size, size)
 		err = binary.Read(stream, binary.LittleEndian, offsets)
 		if err != nil {
 			return 0, err
 		}
 		pos += 4 * int(size)
-		p("read offset header of count %v. offsets: %v. pos after is %v", size, offsets, pos)
+		//p("read offset header of count %v. offsets: %v. pos after is %v", size, offsets, pos)
 	} else {
-		p("skipping/should be no offset header, because size %v < noOffsetThreshold."+
-			"  pos is now %v", size, pos)
+		//p("skipping/should be no offset header, because size %v < noOffsetThreshold.  pos is now %v", size, pos)
 	}
 	//offset := int64(4 + 4 + 8*size) // probably wrong now
 	for i := uint32(0); i < size; i++ {
 		key := int(keycard[2*i])
 		card := int(keycard[2*i+1]) + 1
 		if haveRunContainers && isRun.contains(uint16(i)) {
-			p("at key %v, filepos %v, reading a run container", key, pos)
+			//p("at key %v, filepos %v, reading a run container", key, pos)
 			nb := newRunContainer16()
 			nr, err := nb.readFrom(stream)
 			if err != nil {
@@ -592,7 +592,7 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 		} else {
 			//offset += int64(getSizeInBytesFromCardinality(card))
 			if card > arrayDefaultMaxSize {
-				p("at key %v, filepos %v, reading a bitmap container", key, pos)
+				//p("at key %v, filepos %v, reading a bitmap container", key, pos)
 
 				nb := newBitmapContainer()
 				nr, err := nb.readFrom(stream)
@@ -604,7 +604,7 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 				pos += nr
 				ra.appendContainer(keycard[2*i], nb, false)
 			} else {
-				p("at key %v, filepos %v, reading an array container with card %v", key, pos, card)
+				//p("at key %v, filepos %v, reading an array container with card %v", key, pos, card)
 
 				nb := newArrayContainerSize(int(card))
 				nr, err := nb.readFrom(stream)
