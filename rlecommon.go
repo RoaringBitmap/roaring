@@ -151,3 +151,18 @@ func (rc *runContainer16) Or(b *Bitmap) *Bitmap {
 func (rc *runContainer32) and(container) container {
 	panic("TODO. not yet implemented")
 }
+
+// serializedSizeInBytes returns the number of bytes of memory
+// required by this runContainer16. This is for the
+// Roaring format, as specified https://github.com/RoaringBitmap/RoaringFormatSpec/
+func (rc *runContainer16) serializedSizeInBytes() int {
+	// number of runs in one unint16, then each run
+	// needs two more uint16
+	return 2 + len(rc.iv)*4
+}
+
+// serializedSizeInBytes returns the number of bytes of memory
+// required by this runContainer32.
+func (rc *runContainer32) serializedSizeInBytes() int {
+	return 4 + len(rc.iv)*8
+}

@@ -809,12 +809,6 @@ func newRunContainer32TakeOwnership(iv []interval32) *runContainer32 {
 const baseRc32Size = int(unsafe.Sizeof(runContainer32{}))
 const perIntervalRc32Size = int(unsafe.Sizeof(interval32{}))
 
-// serializedSizeInBytes returns the number of bytes of memory
-// required by this runContainer32.
-func (rc *runContainer32) serializedSizeInBytes() int {
-	return rc.Msgsize()
-}
-
 // see also runContainer32SerializedSizeInBytes(numRuns int) int
 
 // getSizeInBytes returns the number of bytes of memory

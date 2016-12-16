@@ -202,6 +202,49 @@ func TestArrayContainerNumberOfRuns025(t *testing.T) {
 
 					acNr := ac.numberOfRuns()
 					So(acNr, ShouldEqual, rcNr)
+
+					// get coverage of arrayContainer coners...
+					So(ac.serializedSizeInBytes(), ShouldEqual, 2*len(ma))
+
+					So(func() { ac.iaddRange(2, 1) }, ShouldNotPanic)
+					So(func() { ac.iremoveRange(2, 1) }, ShouldNotPanic)
+					ac.iremoveRange(0, 2)
+					ac.iremoveRange(0, 2)
+					delete(ma, 0)
+					delete(ma, 1)
+					So(ac.getCardinality(), ShouldEqual, len(ma))
+					ac.iadd(0)
+					ac.iadd(1)
+					ac.iadd(2)
+					ma[0] = true
+					ma[1] = true
+					ma[2] = true
+					newguy := ac.not(0, 3).(*arrayContainer)
+					So(newguy.contains(0), ShouldBeFalse)
+					So(newguy.contains(1), ShouldBeFalse)
+					So(newguy.contains(2), ShouldBeFalse)
+					newguy.notClose(0, 2)
+					newguy.remove(2)
+					newguy.remove(2)
+					newguy.ior(ac)
+
+					messedUp := newArrayContainer()
+					So(messedUp.numberOfRuns(), ShouldEqual, 0)
+
+					// messed up
+					messedUp.content = []uint16{1, 1}
+					So(func() { messedUp.numberOfRuns() }, ShouldPanic)
+					messedUp.content = []uint16{2, 1}
+					So(func() { messedUp.numberOfRuns() }, ShouldPanic)
+
+					shouldBeBit := newArrayContainer()
+					for i := 0; i < arrayDefaultMaxSize+1; i++ {
+						shouldBeBit.iadd(uint16(i * 2))
+					}
+					bit := shouldBeBit.toEfficientContainer()
+					_, isBit := bit.(*bitmapContainer)
+					So(isBit, ShouldBeTrue)
+
 					//fmt.Printf("\nnum runs was: %v\n", rcNr)
 				}
 				p("done with randomized arrayContianer.numberOrRuns() checks for trial %#v", tr)

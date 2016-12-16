@@ -103,8 +103,7 @@ func TestRleRunIterator16(t *testing.T) {
 			rc := newRunContainer16TakeOwnership([]interval16{{start: 4, last: 9}})
 			card := rc.cardinality()
 			So(card, ShouldEqual, 6)
-			// serialization size can vary depending on content; don't hardcode it.
-			// So(rc.serializedSizeInBytes(), ShouldEqual, int(unsafe.Sizeof(interval16{}))*rc.numberOfRuns() /*+baseRc16Size*/)
+			//So(rc.serializedSizeInBytes(), ShouldEqual, 2+4*rc.numberOfRuns())
 
 			it := rc.NewRunIterator16()
 			So(it.HasNext(), ShouldBeTrue)

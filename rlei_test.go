@@ -1556,6 +1556,9 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 				for k := range ma {
 					So(rc.contains(uint16(k)), ShouldBeTrue)
 				}
+
+				// coverage for run16 method
+				So(rc.serializedSizeInBytes(), ShouldEqual, 2+4*rc.numberOfRuns())
 			}
 			p("done with randomized TestRle16RandomIaddRangeIremoveRange031 checks for trial %#v", tr)
 		}

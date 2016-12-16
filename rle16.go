@@ -809,12 +809,6 @@ func newRunContainer16TakeOwnership(iv []interval16) *runContainer16 {
 const baseRc16Size = int(unsafe.Sizeof(runContainer16{}))
 const perIntervalRc16Size = int(unsafe.Sizeof(interval16{}))
 
-// serializedSizeInBytes returns the number of bytes of memory
-// required by this runContainer16.
-func (rc *runContainer16) serializedSizeInBytes() int {
-	return rc.Msgsize()
-}
-
 // see also runContainer16SerializedSizeInBytes(numRuns int) int
 
 // getSizeInBytes returns the number of bytes of memory

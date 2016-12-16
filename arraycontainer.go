@@ -35,16 +35,15 @@ func (ac *arrayContainer) getShortIterator() shortIterable {
 const arrayBaseSize = int(unsafe.Sizeof([]uint16{}))
 
 func (ac *arrayContainer) getSizeInBytes() int {
-	return ac.getCardinality() * 2 // + arrayBaseSize
+	return ac.getCardinality() * 2
 }
 
 func (ac *arrayContainer) serializedSizeInBytes() int {
-	return ac.Msgsize()
-	//return ac.getCardinality() * 2 //+ arrayBaseSize
+	return ac.getCardinality() * 2
 }
 
 func arrayContainerSizeInBytes(card int) int {
-	return card * 2 //+ arrayBaseSize
+	return card * 2
 }
 
 // add the values in the range [firstOfRange,lastofRange)

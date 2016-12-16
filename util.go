@@ -13,8 +13,10 @@ const (
 // doesn't apply to runContainers
 func getSizeInBytesFromCardinality(card int) int {
 	if card > arrayDefaultMaxSize {
+		// bitmapContainer
 		return maxCapacity / 8
 	}
+	// arrayContainer
 	return 2 * card
 }
 

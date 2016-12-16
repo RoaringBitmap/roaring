@@ -495,10 +495,13 @@ func TestSerializationBasicMsgpack035(t *testing.T) {
 			switch cn := v.(type) {
 			case *bitmapContainer:
 				bc = true
+				So(cn.containerType(), ShouldEqual, bitmapContype)
 			case *arrayContainer:
 				ac = true
+				So(cn.containerType(), ShouldEqual, arrayContype)
 			case *runContainer16:
 				rc = true
+				So(cn.containerType(), ShouldEqual, run16Contype)
 			default:
 				fmt.Errorf("Unrecognized container implementation: %T", cn)
 			}
