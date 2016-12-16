@@ -54,6 +54,11 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 	return rb.highlowcontainer.readFrom(stream)
 }
 
+// RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
+func (rb *Bitmap) RunOptimize() {
+	rb.highlowcontainer.runOptimize()
+}
+
 // ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
 // version of this bitmap from stream
 func (rb *Bitmap) ReadFromMsgpack(stream io.Reader) (int64, error) {

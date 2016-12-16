@@ -152,6 +152,64 @@ func TestSerializationBasic4WriteAndReadFile040(t *testing.T) {
 	}
 }
 
+func TestSerializationFromJava(t *testing.T) {
+	fname := "testdata/bitmapwithoutruns.bin"
+	newrb := NewBitmap()
+	fin, err := os.Open(fname)
+
+	if err != nil {
+		t.Errorf("Failed reading")
+	}
+	defer func() {
+		fin.Close()
+	}()
+	_, _ = newrb.ReadFrom(fin)
+	fmt.Println(newrb.GetCardinality())
+	rb := NewBitmap()
+	for k := uint32(0); k < 100000; k += 1000 {
+		rb.Add(k)
+	}
+	for k := uint32(100000); k < 200000; k++ {
+		rb.Add(3 * k)
+	}
+	for k := uint32(700000); k < 800000; k++ {
+		rb.Add(k)
+	}
+	fmt.Println(rb.GetCardinality())
+	if !rb.Equals(newrb) {
+		t.Errorf("Bad serialization")
+	}
+
+}
+
+func TestSerializationFromJavaWithRuns(t *testing.T) {
+	fname := "testdata/bitmapwithruns.bin"
+	newrb := NewBitmap()
+	fin, err := os.Open(fname)
+
+	if err != nil {
+		t.Errorf("Failed reading")
+	}
+	defer func() {
+		fin.Close()
+	}()
+	_, _ = newrb.ReadFrom(fin)
+	rb := NewBitmap()
+	for k := uint32(0); k < 100000; k += 1000 {
+		rb.Add(k)
+	}
+	for k := uint32(100000); k < 200000; k++ {
+		rb.Add(3 * k)
+	}
+	for k := uint32(700000); k < 800000; k++ {
+		rb.Add(k)
+	}
+	if !rb.Equals(newrb) {
+		t.Errorf("Bad serialization")
+	}
+
+}
+
 func TestSerializationBasic2_041(t *testing.T) {
 
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000, 10000, 100000, 1000000)

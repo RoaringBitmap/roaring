@@ -70,6 +70,10 @@ func TestStringer(t *testing.T) {
 	if v.String() != "{0,1,2,3,4,5,6,7,8,9}" {
 		t.Error("bad string output")
 	}
+	v.RunOptimize()
+	if v.String() != "{0,1,2,3,4,5,6,7,8,9}" {
+		t.Error("bad string output")
+	}
 }
 
 func TestFastCard(t *testing.T) {
@@ -79,6 +83,13 @@ func TestFastCard(t *testing.T) {
 		bm.AddRange(21, 260000)
 		bm2 := NewBitmap()
 		bm2.Add(25)
+		So(bm2.AndCardinality(bm), ShouldEqual, 1)
+		So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
+		So(bm.AndCardinality(bm2), ShouldEqual, 1)
+		So(bm.OrCardinality(bm2), ShouldEqual, bm.GetCardinality())
+		So(bm2.AndCardinality(bm), ShouldEqual, 1)
+		So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
+		bm.RunOptimize()
 		So(bm2.AndCardinality(bm), ShouldEqual, 1)
 		So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
 		So(bm.AndCardinality(bm2), ShouldEqual, 1)
