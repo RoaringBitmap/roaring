@@ -561,8 +561,7 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	}
 
 	// offset header
-	//if haveRunContainers && size >= noOffsetThreshold {
-	if size >= noOffsetThreshold {
+	if !haveRunContainers || size >= noOffsetThreshold {
 		//p("reading offset header of size %v at pos %v", size, pos)
 		offsets := make([]uint32, size, size)
 		err = binary.Read(stream, binary.LittleEndian, offsets)
