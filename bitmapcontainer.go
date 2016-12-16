@@ -563,7 +563,7 @@ func (bc *bitmapContainer) andNot(a container) container {
 		return bc.andNotArray(x)
 	case *bitmapContainer:
 		return bc.andNotBitmap(x)
-	}
+	} // what happens if a is a run container?
 	panic("unsupported container type")
 }
 
@@ -575,7 +575,7 @@ func (bc *bitmapContainer) iandNot(a container) container {
 		return bc.andNotArray(x)
 	case *bitmapContainer:
 		return bc.iandNotBitmap(x)
-	}
+	}// what happens if a is a run container?
 	panic("unsupported container type")
 }
 
