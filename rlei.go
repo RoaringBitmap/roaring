@@ -324,7 +324,7 @@ func (rc *runContainer16) or(a container) container {
 // orBitmapContainer finds the union of rc and bc.
 func (rc *runContainer16) orBitmapContainer(bc *bitmapContainer) container {
 	bc2 := newBitmapContainerFromRun(rc)
-	return bc.or(bc2)
+	return bc2.iorBitmap(bc)
 }
 
 // orArray finds the union of rc and ac.
@@ -546,13 +546,8 @@ func (rc *runContainer16) andNotBitmap(bc *bitmapContainer) container {
 
 func (rc *runContainer16) toBitmapContainer() *bitmapContainer {
 	bc := newBitmapContainer()
-	n := rc.getCardinality()
-	bc.cardinality = n
-	it := rc.NewRunIterator16()
-	for it.HasNext() {
-		x := it.Next()
-		i := int(x) / 64
-		bc.bitmap[i] |= (uint64(1) << uint(x%64))
+	for i := range rc.iv {
+		bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last+1))
 	}
 	return bc
 }

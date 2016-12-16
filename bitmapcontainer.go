@@ -274,8 +274,9 @@ func (bc *bitmapContainer) ior(a container) container {
 	case *bitmapContainer:
 		return bc.iorBitmap(x)
 	case *runContainer16:
-		// todo: implement fast function that sets entire ranges in the bitmap containers, current implementation is inefficient
-		return x.orBitmapContainer(bc) // the alternative x.iorBitmapContainer(bc) is unlikely to be correct since would modif. a
+		for i := range x.iv {
+			bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
+		}
 	}
 	panic("unsupported container type")
 }
@@ -287,7 +288,10 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 	case *bitmapContainer:
 		return bc.lazyIORBitmap(x)
 	case *runContainer16:
-		return x.orBitmapContainer(bc) // TODO : implement efficient in-place lazy OR to bitmap
+		// TODO : implement efficient in-place lazy OR to bitmap
+		for i := range x.iv {
+			bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
+		}
 	}
 	panic("unsupported container type")
 }
@@ -299,7 +303,8 @@ func (bc *bitmapContainer) lazyOR(a container) container {
 	case *bitmapContainer:
 		return bc.lazyORBitmap(x)
 	case *runContainer16:
-		return x.orBitmapContainer(bc) // TODO: implement lazy OR
+		// TODO: implement lazy OR
+		return x.orBitmapContainer(bc)
 
 	}
 	panic("unsupported container type")
@@ -486,9 +491,14 @@ func (bc *bitmapContainer) iand(a container) container {
 	case *bitmapContainer:
 		return bc.iandBitmap(x)
 	case *runContainer16:
-		return x.andBitmapContainer(bc) // TODO : implement fast in-place
+		return bc.iandRun16(x)
 	}
 	panic("unsupported container type")
+}
+
+func (bc *bitmapContainer) iandRun16(rc *runContainer16) container {
+	rcb := newBitmapContainerFromRun(rc)
+	return bc.iandBitmap(rcb)
 }
 
 func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
@@ -564,10 +574,14 @@ func (bc *bitmapContainer) andNot(a container) container {
 	case *bitmapContainer:
 		return bc.andNotBitmap(x)
 	case *runContainer16:
-		// what happens if a is a run container?
-		panic("todo")
+		return bc.andNotRun16(x)
 	}
 	panic("unsupported container type")
+}
+
+func (bc *bitmapContainer) andNotRun16(rc *runContainer16) container {
+	rcb := rc.toBitmapContainer()
+	return bc.andNotBitmap(rcb)
 }
 
 func (bc *bitmapContainer) iandNot(a container) container {
@@ -575,17 +589,23 @@ func (bc *bitmapContainer) iandNot(a container) container {
 
 	switch x := a.(type) {
 	case *arrayContainer:
-		p("bitmapContainer.iandNot() FIXME! not in place!")
-		// FIXME: this is not iandNotArray, so it won't
-		// have the side-effect specified by the inplace 'i' prefix.
-		return bc.andNotArray(x)
+		return bc.iandNotArray(x)
 	case *bitmapContainer:
 		return bc.iandNotBitmap(x)
 	case *runContainer16:
-		// what happens if a is a run container?
-		panic("todo")
+		return bc.iandNotRun16(x)
 	}
 	panic("unsupported container type")
+}
+
+func (bc *bitmapContainer) iandNotArray(ac *arrayContainer) container {
+	acb := ac.toBitmapContainer()
+	return bc.iandNotBitmapSurely(acb)
+}
+
+func (bc *bitmapContainer) iandNotRun16(rc *runContainer16) container {
+	rcb := rc.toBitmapContainer()
+	return bc.iandNotBitmapSurely(rcb)
 }
 
 func (bc *bitmapContainer) andNotArray(value2 *arrayContainer) container {
