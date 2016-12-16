@@ -14,7 +14,7 @@ go:
 - tip
 script:
 - go test -v -covermode=count -coverprofile=coverage.out
-- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken KOlKyOXz0qSjAqvfTF28RzNlr3unxjrLh
+- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken KOlKyOXz0qSjAqvfTF28RzNlr3unxjrLh -ignore arraycontainer_gen.go,bitmapcontainer_gen.go,rle16_gen.go,rle_gen.go,roaringarray_gen.go
 matrix:
   allow_failures:
   - go: tip
