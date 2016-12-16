@@ -4,26 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"reflect"
-	"unsafe"
 
 	"github.com/tinylib/msgp/msgp"
 )
-
-func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
-	//	buf := uint16SliceAsByteSlice(b.content)
-	buf := make([]byte, len(b.content)*2)
-	for i := range b.content {
-		//p("arrayContainer is writing b.content[i=%v] = %v", i, b.content[i])
-		binary.LittleEndian.PutUint16(buf[i*2:], b.content[i])
-	}
-	return stream.Write(buf)
-}
-
-func (b *bitmapContainer) writeTo(stream io.Writer) (int, error) {
-	buf := uint64SliceAsByteSlice(b.bitmap)
-	return stream.Write(buf)
-}
 
 // writeTo for runContainer16 follows this
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
@@ -52,23 +35,6 @@ func (b *runContainer16) writeToMsgpack(stream io.Writer) (int, error) {
 		return 0, err
 	}
 	return stream.Write(bts)
-}
-
-// readFrom reads from stream.
-// PRE-REQUISITE: you must size the arrayContainer correctly (allocate b.content)
-// *before* you call readFrom. We can't guess the size in the stream
-// by this point.
-func (b *arrayContainer) readFrom(stream io.Reader) (int, error) {
-	buf := uint16SliceAsByteSlice(b.content)
-	n, err := io.ReadFull(stream, buf)
-	return n, err
-}
-
-func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
-	buf := uint64SliceAsByteSlice(b.bitmap)
-	n, err := io.ReadFull(stream, buf)
-	b.computeCardinality()
-	return n, err
 }
 
 func (b *runContainer32) readFromMsgpack(stream io.Reader) (int, error) {
@@ -112,28 +78,4 @@ func (b *runContainer16) readFrom(stream io.Reader) (int, error) {
 	}
 	//p("exiting runContainer16 readFrom")
 	return 0, err
-}
-
-func uint64SliceAsByteSlice(slice []uint64) []byte {
-	// make a new slice header
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
-
-	// update its capacity and length
-	header.Len *= 8
-	header.Cap *= 8
-
-	// return it
-	return *(*[]byte)(unsafe.Pointer(&header))
-}
-
-func uint16SliceAsByteSlice(slice []uint16) []byte {
-	// make a new slice header
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
-
-	// update its capacity and length
-	header.Len *= 2
-	header.Cap *= 2
-
-	// return it
-	return *(*[]byte)(unsafe.Pointer(&header))
 }
