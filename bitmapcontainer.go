@@ -261,6 +261,8 @@ func (bc *bitmapContainer) or(a container) container {
 		return bc.orArray(x)
 	case *bitmapContainer:
 		return bc.orBitmap(x)
+	case *runContainer16:
+		return x.orBitmapContainer(bc)
 	}
 	panic("unsupported container type")
 }
@@ -271,6 +273,8 @@ func (bc *bitmapContainer) ior(a container) container {
 		return bc.iorArray(x)
 	case *bitmapContainer:
 		return bc.iorBitmap(x)
+	case *runContainer16:
+		return x.iorBitmapContainer(bc)
 	}
 	panic("unsupported container type")
 }
@@ -383,6 +387,8 @@ func (bc *bitmapContainer) xor(a container) container {
 		return bc.xorArray(x)
 	case *bitmapContainer:
 		return bc.xorBitmap(x)
+	case *runContainer16:
+		return x.xorBitmap(bc)
 	}
 	panic("unsupported container type")
 }

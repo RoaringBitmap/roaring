@@ -300,6 +300,8 @@ func (ac *arrayContainer) or(a container) container {
 		return ac.orArray(x)
 	case *bitmapContainer:
 		return a.or(ac)
+	case *runContainer16:
+		return x.orArray(ac)
 	}
 	panic("unsupported container type")
 }
@@ -310,6 +312,8 @@ func (ac *arrayContainer) ior(a container) container {
 		return ac.orArray(x)
 	case *bitmapContainer:
 		return a.ior(ac)
+	case *runContainer16:
+		return x.iorArray(ac)
 	}
 	panic("unsupported container type")
 }
@@ -419,6 +423,8 @@ func (ac *arrayContainer) iand(a container) container {
 		return ac.iandArray(x)
 	case *bitmapContainer:
 		return ac.iandBitmap(x)
+	case *runContainer16:
+		return x.iandArray(ac)
 	}
 	panic("unsupported container type")
 }
@@ -443,6 +449,8 @@ func (ac *arrayContainer) xor(a container) container {
 		return ac.xorArray(x)
 	case *bitmapContainer:
 		return a.xor(ac)
+	case *runContainer16:
+		return x.xorArray(ac)
 	}
 	panic("unsupported container type")
 }
@@ -482,6 +490,8 @@ func (ac *arrayContainer) andNot(a container) container {
 		return ac.andNotArray(x)
 	case *bitmapContainer:
 		return ac.andNotBitmap(x)
+	case *runContainer16:
+		return x.andNotArray(ac)
 	}
 	panic("unsupported container type")
 }
@@ -492,6 +502,8 @@ func (ac *arrayContainer) iandNot(a container) container {
 		return ac.iandNotArray(x)
 	case *bitmapContainer:
 		return ac.iandNotBitmap(x)
+	case *runContainer16:
+		return x.iandNotArray(ac)
 	}
 	panic("unsupported container type")
 }

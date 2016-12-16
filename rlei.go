@@ -36,15 +36,24 @@ func (rc *runContainer16) andBitmapContainer(bc *bitmapContainer) container {
 }
 
 func (rc *runContainer16) andArray(ac *arrayContainer) container {
-	out := newRunContainer16()
-	for _, p := range rc.iv {
-		for i := p.start; i <= p.last; i++ {
-			if ac.contains(i) {
-				out.Add(i)
+
+	// is this faster?
+	bc1 := ac.toBitmapContainer()
+	bc2 := newBitmapContainerFromRun(rc)
+	return bc2.andBitmap(bc1)
+
+	// than below? below seemed to hang a test run...
+	/*
+		out := newRunContainer16()
+		for _, p := range rc.iv {
+			for i := p.start; i <= p.last; i++ {
+				if ac.contains(i) {
+					out.Add(i)
+				}
 			}
 		}
-	}
-	return out
+		return out
+	*/
 }
 
 func (rc *runContainer16) iand(a container) container {
