@@ -166,3 +166,26 @@ func (rc *runContainer16) serializedSizeInBytes() int {
 func (rc *runContainer32) serializedSizeInBytes() int {
 	return 4 + len(rc.iv)*8
 }
+
+func (rc *runContainer32) equals32(srb *runContainer32) bool {
+	//p("both rc32")
+	// Check if the containers are the same object.
+	if rc == srb {
+		//p("same object")
+		return true
+	}
+
+	if len(srb.iv) != len(rc.iv) {
+		//p("iv len differ")
+		return false
+	}
+
+	for i, v := range rc.iv {
+		if v != srb.iv[i] {
+			//p("differ at iv i=%v, srb.iv[i]=%v, rc.iv[i]=%v", i, srb.iv[i], rc.iv[i])
+			return false
+		}
+	}
+	//p("all intervals same, returning true")
+	return true
+}

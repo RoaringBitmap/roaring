@@ -533,3 +533,78 @@ func TestSerializationBasicMsgpack035(t *testing.T) {
 		//fmt.Printf("\n Basic3: good: match on card = %v", c1)
 	})
 }
+
+func TestSerializationRunContainer32Msgpack050(t *testing.T) {
+
+	Convey("runContainer32 writeToMsgpack and readFromMsgpack should save/load data", t, func() {
+		seed := int64(42)
+		p("seed is %v", seed)
+		rand.Seed(seed)
+
+		trials := []trial{
+			trial{n: 10, percentFill: .2, ntrial: 1},
+			/*			trial{n: 10, percentFill: .8, ntrial: 10},
+						trial{n: 10, percentFill: .50, ntrial: 10},
+
+							trial{n: 10, percentFill: .01, ntrial: 10},
+							trial{n: 1000, percentFill: .50, ntrial: 10},
+							trial{n: 1000, percentFill: .99, ntrial: 10},
+			*/
+		}
+
+		tester := func(tr trial) {
+			for j := 0; j < tr.ntrial; j++ {
+				p("TestSerializationRunContainer32Msgpack050 on check# j=%v", j)
+
+				ma := make(map[int]bool)
+
+				n := tr.n
+				a := []uint32{}
+
+				draw := int(float64(n) * tr.percentFill)
+				//p("draw is %v", draw)
+				for i := 0; i < draw; i++ {
+					r0 := rand.Intn(n)
+					a = append(a, uint32(r0))
+					ma[r0] = true
+				}
+
+				orig := newRunContainer32FromVals(false, a...)
+
+				// serialize
+				var buf bytes.Buffer
+				_, err := orig.writeToMsgpack(&buf)
+				if err != nil {
+					panic(err)
+				}
+
+				// deserialize
+				restored := &runContainer32{}
+				_, err = restored.readFromMsgpack(&buf)
+				if err != nil {
+					panic(err)
+				}
+
+				// and compare
+				So(restored.equals32(orig), ShouldBeTrue)
+				orig.removeKey(1)
+
+				// coverage
+				var notEq = newRunContainer32Range(1, 1)
+				So(notEq.equals32(orig), ShouldBeFalse)
+
+				bc := newBitmapContainer()
+				bc.iadd(1)
+				bc.iadd(2)
+				rc22 := newRunContainer32FromBitmapContainer(bc)
+				So(rc22.cardinality(), ShouldEqual, 2)
+			}
+			p("done with msgpack serialization of runContainer32 check for trial %#v", tr)
+		}
+
+		for i := range trials {
+			tester(trials[i])
+		}
+
+	})
+}
