@@ -84,17 +84,37 @@ func (rc *runContainer16) iandBitmapContainer(bc *bitmapContainer) container {
 }
 
 func (rc *runContainer16) iandArray(ac *arrayContainer) container {
-	// TODO: optimize by doing less allocation, possibly?
-	out := newRunContainer16()
-	for _, p := range rc.iv {
-		for i := p.start; i <= p.last; i++ {
-			if ac.contains(i) {
-				out.Add(i)
+
+	bc1 := newBitmapContainerFromRun(rc)
+	bc2 := ac.toBitmapContainer()
+	and := bc1.andBitmap(bc2)
+	var rc2 *runContainer16
+	switch x := and.(type) {
+	case *bitmapContainer:
+		rc2 = newRunContainer16FromBitmapContainer(x)
+	case *arrayContainer:
+		rc2 = newRunContainer16FromArray(x)
+	case *runContainer16:
+		rc2 = x
+	default:
+		panic("unknown container type")
+	}
+	*rc = *rc2
+	return rc
+
+	/*
+		// TODO: optimize by doing less allocation, possibly?
+		out := newRunContainer16()
+		for _, p := range rc.iv {
+			for i := p.start; i <= p.last; i++ {
+				if ac.contains(i) {
+					out.Add(i)
+				}
 			}
 		}
-	}
-	*rc = *out
-	return rc
+		*rc = *out
+		return rc
+	*/
 }
 
 func (rc *runContainer16) andNot(a container) container {
