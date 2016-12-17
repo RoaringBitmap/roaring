@@ -304,7 +304,7 @@ func (ac *arrayContainer) or(a container) container {
 	case *arrayContainer:
 		return ac.orArray(x)
 	case *bitmapContainer:
-		return x.or(ac)
+		return x.orArray(ac)
 	case *runContainer16:
 		return x.orArray(ac)
 	}
@@ -350,14 +350,29 @@ func (ac *arrayContainer) iorRun16(rc *runContainer16) container {
 func (ac *arrayContainer) lazyIOR(a container) container {
 	switch x := a.(type) {
 	case *arrayContainer:
-		return ac.lazyorArray(x)
+		return ac.lazyIorArray(x)
 	case *bitmapContainer:
-		return a.lazyOR(ac)
+		return ac.lazyIorBitmap(x)
 	case *runContainer16:
-		return x.orArray(ac)
+		return ac.lazyIorRun16(x)
 
 	}
 	panic("unsupported container type")
+}
+
+func (ac *arrayContainer) lazyIorArray(ac2 *arrayContainer) container {
+	// TODO actually make this lazy
+	return ac.iorArray(ac2)
+}
+
+func (ac *arrayContainer) lazyIorBitmap(bc *bitmapContainer) container {
+	// TODO actually make this lazy
+	return ac.iorBitmap(bc)
+}
+
+func (ac *arrayContainer) lazyIorRun16(rc *runContainer16) container {
+	// TODO actually make this lazy
+	return ac.iorRun16(rc)
 }
 
 func (ac *arrayContainer) lazyOR(a container) container {
@@ -458,12 +473,21 @@ func (ac *arrayContainer) iand(a container) container {
 	case *bitmapContainer:
 		return ac.iandBitmap(x)
 	case *runContainer16:
-		return x.andArray(ac) // alternative x.iandArray(ac) is unlikely to be correct
+		return ac.iandRun16(x)
 	}
 	panic("unsupported container type")
 }
 
-func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) *arrayContainer {
+func (ac *arrayContainer) iandRun16(rc *runContainer16) container {
+
+	bc1 := ac.toBitmapContainer()
+	bc2 := newBitmapContainerFromRun(rc)
+	bc2.iandBitmap(bc1)
+	*ac = *newArrayContainerFromBitmap(bc2)
+	return ac
+}
+
+func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) container {
 	pos := 0
 	c := ac.getCardinality()
 	for k := 0; k < c; k++ {
@@ -525,9 +549,15 @@ func (ac *arrayContainer) andNot(a container) container {
 	case *bitmapContainer:
 		return ac.andNotBitmap(x)
 	case *runContainer16:
-		return x.andNotArray(ac)
+		return ac.andNotRun16(x)
 	}
 	panic("unsupported container type")
+}
+
+func (ac *arrayContainer) andNotRun16(rc *runContainer16) container {
+	acb := ac.toBitmapContainer()
+	rcb := rc.toBitmapContainer()
+	return acb.andNotBitmap(rcb)
 }
 
 func (ac *arrayContainer) iandNot(a container) container {

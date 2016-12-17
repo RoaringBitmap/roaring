@@ -106,6 +106,10 @@ type trial struct {
 	// only in the union test
 	// only subtract test
 	percentDelete float64
+
+	// only in 067 randomized operations
+	// we do this + 1 passes
+	numRandomOpsPass int
 }
 
 // And finds the intersection of rc and b.

@@ -1,5 +1,10 @@
 package roaring
 
+import (
+	"math/rand"
+	"sort"
+)
+
 const (
 	arrayDefaultMaxSize        = 4096 // containers with 4096 or fewer integers should be array containers.
 	arrayLazyLowerBound        = 1024
@@ -257,4 +262,29 @@ func panicOn(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+type ph struct {
+	orig int
+	rand int
+}
+
+type pha []ph
+
+func (p pha) Len() int           { return len(p) }
+func (p pha) Less(i, j int) bool { return p[i].rand < p[j].rand }
+func (p pha) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func getRandomPermutation(n int) []int {
+	r := make([]ph, n)
+	for i := 0; i < n; i++ {
+		r[i].orig = i
+		r[i].rand = rand.Intn(1 << 31)
+	}
+	sort.Sort(pha(r))
+	m := make([]int, n)
+	for i := range m {
+		m[i] = r[i].orig
+	}
+	return m
 }

@@ -1614,12 +1614,14 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 
 	Convey("each of the container methods that takes two containers should handle all 3x3==9 possible ways of being called -- and return results that agree with each other", t, func() {
 
+		rleVerbose = true
+
 		seed := int64(42)
 		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 1000, percentFill: .9, ntrial: 5},
+			trial{n: 10, percentFill: .7, ntrial: 1, numRandomOpsPass: 2},
 		}
 
 		tester := func(tr trial) {
@@ -1654,86 +1656,90 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 					}
 				}
 
-				for k := 0; k < nCalls; k++ {
-					c1 := callme[k]          // array receiver
-					c2 := callme[k+nCalls]   // run reciever
-					c3 := callme[k+2*nCalls] // bitmap receiver
+				for pass := 0; pass < tr.numRandomOpsPass+1; pass++ {
+					for k := 0; k < nCalls; k++ {
+						perm := getRandomPermutation(nCalls)
+						kk := perm[k]
+						c1 := callme[kk]          // array receiver
+						c2 := callme[kk+nCalls]   // run reciever
+						c3 := callme[kk+2*nCalls] // bitmap receiver
 
-					if c1.name != c2.name {
-						panic("internal logic error")
-					}
-					if c3.name != c2.name {
-						panic("internal logic error")
-					}
+						if c1.name != c2.name {
+							panic("internal logic error")
+						}
+						if c3.name != c2.name {
+							panic("internal logic error")
+						}
 
-					p("\n ========== testing calls to '%s' all match\n", c1.name)
-					for k2, a := range arg {
+						p("\n ========== testing calls to '%s' all match\n", c1.name)
+						for k2, a := range arg {
 
-						p("\n ------------  on arg as '%s': %s\n", m[k2], a)
-						p("\n prior to '%s', array receiver c1 is '%s'\n", c1.name, c1.cn)
-						p("\n prior to '%s', run receiver c2 is '%s'\n", c2.name, c2.cn)
-						p("\n prior to '%s', bitmap receiver c3 is '%s'\n", c3.name, c3.cn)
-						So(c1.cn.equals(c2.cn), ShouldBeTrue)
-						So(c1.cn.equals(c3.cn), ShouldBeTrue)
+							p("\n ------------  on arg as '%s': %s\n", m[k2], a)
+							p("\n prior to '%s', array receiver c1 is '%s'\n", c1.name, c1.cn)
+							p("\n prior to '%s', run receiver c2 is '%s'\n", c2.name, c2.cn)
+							p("\n prior to '%s', bitmap receiver c3 is '%s'\n", c3.name, c3.cn)
+							So(c1.cn.equals(c2.cn), ShouldBeTrue)
+							So(c1.cn.equals(c3.cn), ShouldBeTrue)
 
-						res1 := c1.call(a) // array
-						res2 := c2.call(a) // run
-						res3 := c3.call(a) // bitmap
+							res1 := c1.call(a) // array
+							res2 := c2.call(a) // run
+							res3 := c3.call(a) // bitmap
 
-						z := c1.name
+							z := c1.name
 
-						if strings.HasPrefix(z, "lazy") {
-							// on purpose, the lazy functions
-							// do not scan to update their cardinality
-							if asBc, isBc := res1.(*bitmapContainer); isBc {
-								asBc.computeCardinality()
+							if strings.HasPrefix(z, "lazy") {
+								// on purpose, the lazy functions
+								// do not scan to update their cardinality
+								if asBc, isBc := res1.(*bitmapContainer); isBc {
+									asBc.computeCardinality()
+								}
+								if asBc, isBc := res2.(*bitmapContainer); isBc {
+									asBc.computeCardinality()
+								}
+								if asBc, isBc := res3.(*bitmapContainer); isBc {
+									asBc.computeCardinality()
+								}
 							}
-							if asBc, isBc := res2.(*bitmapContainer); isBc {
-								asBc.computeCardinality()
+
+							// check for equality all ways...
+							// excercising equals() calls too.
+
+							p("'%s' receiver, '%s' arg, call='%s', res1=%s",
+								m[0], m[k2], z, res1)
+							p("'%s' receiver, '%s' arg, call='%s', res2=%s",
+								m[1], m[k2], z, res2)
+							p("'%s' receiver, '%s' arg, call='%s', res3=%s",
+								m[2], m[k2], z, res3)
+
+							if !res1.equals(res2) {
+								panic(fmt.Sprintf("k:%v, k2:%v, res1 != res2,"+
+									" call is '%s'", k, k2, c1.name))
 							}
-							if asBc, isBc := res3.(*bitmapContainer); isBc {
-								asBc.computeCardinality()
+							if !res2.equals(res1) {
+								panic(fmt.Sprintf("k:%v, k2:%v, res2 != res1,"+
+									" call is '%s'", k, k2, c1.name))
+							}
+							if !res1.equals(res3) {
+								p("res1 = %s", res1)
+								p("res3 = %s", res3)
+								panic(fmt.Sprintf("k:%v, k2:%v, res1 != res3,"+
+									" call is '%s'", k, k2, c1.name))
+							}
+							if !res3.equals(res1) {
+								panic(fmt.Sprintf("k:%v, k2:%v, res3 != res1,"+
+									" call is '%s'", k, k2, c1.name))
+							}
+							if !res2.equals(res3) {
+								panic(fmt.Sprintf("k:%v, k2:%v, res2 != res3,"+
+									" call is '%s'", k, k2, c1.name))
+							}
+							if !res3.equals(res2) {
+								panic(fmt.Sprintf("k:%v, k2:%v, res3 != res2,"+
+									" call is '%s'", k, k2, c1.name))
 							}
 						}
-
-						// check for equality all ways...
-						// excercising equals() calls too.
-
-						p("'%s' receiver, '%s' arg, call='%s', res1=%s",
-							m[0], m[k2], z, res1)
-						p("'%s' receiver, '%s' arg, call='%s', res2=%s",
-							m[1], m[k2], z, res2)
-						p("'%s' receiver, '%s' arg, call='%s', res3=%s",
-							m[2], m[k2], z, res3)
-
-						if !res1.equals(res2) {
-							panic(fmt.Sprintf("k:%v, k2:%v, res1 != res2,"+
-								" call is '%s'", k, k2, c1.name))
-						}
-						if !res2.equals(res1) {
-							panic(fmt.Sprintf("k:%v, k2:%v, res2 != res1,"+
-								" call is '%s'", k, k2, c1.name))
-						}
-						if !res1.equals(res3) {
-							p("res1 = %s", res1)
-							p("res3 = %s", res3)
-							panic(fmt.Sprintf("k:%v, k2:%v, res1 != res3,"+
-								" call is '%s'", k, k2, c1.name))
-						}
-						if !res3.equals(res1) {
-							panic(fmt.Sprintf("k:%v, k2:%v, res3 != res1,"+
-								" call is '%s'", k, k2, c1.name))
-						}
-						if !res2.equals(res3) {
-							panic(fmt.Sprintf("k:%v, k2:%v, res2 != res3,"+
-								" call is '%s'", k, k2, c1.name))
-						}
-						if !res3.equals(res2) {
-							panic(fmt.Sprintf("k:%v, k2:%v, res3 != res2,"+
-								" call is '%s'", k, k2, c1.name))
-						}
-					}
-				}
+					} // end k
+				} // end pass
 
 			} // end j
 			p("done with randomized TestAllContainerMethodsAllContainerTypesWithData067 checks for trial %#v", tr)
