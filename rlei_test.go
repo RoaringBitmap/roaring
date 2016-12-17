@@ -1599,3 +1599,134 @@ func TestAllContainerMethodsAllContainerTypes065(t *testing.T) {
 	})
 
 }
+
+type twoCall func(r container) container
+
+type twofer struct {
+	name string
+	call twoCall
+}
+
+func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
+
+	Convey("each of the container methods that takes two containers should handle all 3x3==9 possible ways of being called -- and return results that agree with each other", t, func() {
+
+		tr := trial{n: 10, percentFill: 0.7, ntrial: 1}
+
+		a, r, b := getRandomSameThreeContainers(tr)
+		a2, r2, b2 := getRandomSameThreeContainers(tr)
+
+		fmt.Printf("\n receiver is '%s'\n", r)
+		fmt.Printf("\n argument is '%s'\n", r2)
+
+		m := []string{"array", "run", "bitmap"}
+
+		receiver := []container{a, r, b}
+		args := []container{a2, r2, b2}
+		callme := []twofer{}
+
+		nCalls := 0
+		for k, c := range receiver {
+			callme = append(callme, twofer{"and", c.and})
+			callme = append(callme, twofer{"iand", c.iand})
+			callme = append(callme, twofer{"ior", c.ior})
+			callme = append(callme, twofer{"lazyOR", c.lazyOR})
+			callme = append(callme, twofer{"lazyIOR", c.lazyIOR})
+			callme = append(callme, twofer{"or", c.or})
+			callme = append(callme, twofer{"xor", c.xor})
+			callme = append(callme, twofer{"andNot", c.andNot})
+			callme = append(callme, twofer{"iandNot", c.iandNot})
+			if k == 0 {
+				nCalls = len(callme)
+			}
+		}
+
+		for k := 0; k < nCalls; k++ {
+			c1 := callme[k]          // array receiver
+			c2 := callme[k+nCalls]   // run reciever
+			c3 := callme[k+2*nCalls] // bitmap receiver
+
+			if c1.name != c2.name {
+				panic("internal logic error")
+			}
+			if c3.name != c2.name {
+				panic("internal logic error")
+			}
+
+			fmt.Printf("\n ========== testing calls to '%s' all match\n", c1.name)
+			for k2, a := range args {
+				//fmt.Printf("\n testing with argument of '%s'\n", m[k2])
+				res1 := c1.call(a)
+				res2 := c2.call(a)
+				res3 := c3.call(a)
+
+				z := c1.name
+
+				// check for equality all ways...
+				// excercising equals() calls too.
+				rleVerbose = true
+				p("'%s' receiver, '%s' arg, call='%s', res1=%s",
+					m[0], m[k2], z, res1)
+				p("'%s' receiver, '%s' arg, call='%s', res2=%s",
+					m[1], m[k2], z, res2)
+				p("'%s' receiver, '%s' arg, call='%s', res3=%s",
+					m[2], m[k2], z, res3)
+
+				if !res1.equals(res2) {
+					panic(fmt.Sprintf("k:%v, k2:%v, res1 != res2,"+
+						" call is '%s'", k, k2, c1.name))
+				}
+				if !res2.equals(res1) {
+					panic(fmt.Sprintf("k:%v, k2:%v, res2 != res1,"+
+						" call is '%s'", k, k2, c1.name))
+				}
+				if !res1.equals(res3) {
+					panic(fmt.Sprintf("k:%v, k2:%v, res1 != res3,"+
+						" call is '%s'", k, k2, c1.name))
+				}
+				if !res3.equals(res1) {
+					panic(fmt.Sprintf("k:%v, k2:%v, res3 != res1,"+
+						" call is '%s'", k, k2, c1.name))
+				}
+				if !res2.equals(res3) {
+					panic(fmt.Sprintf("k:%v, k2:%v, res2 != res3,"+
+						" call is '%s'", k, k2, c1.name))
+				}
+				if !res3.equals(res2) {
+					panic(fmt.Sprintf("k:%v, k2:%v, res3 != res2,"+
+						" call is '%s'", k, k2, c1.name))
+				}
+			}
+		}
+	})
+
+}
+
+// generate random contents, then return that same
+// logical content in three different container types
+func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *bitmapContainer) {
+
+	ma := make(map[int]bool)
+
+	n := tr.n
+	a := []uint16{}
+
+	draw := int(float64(n) * tr.percentFill)
+	for i := 0; i < draw; i++ {
+		r0 := rand.Intn(n)
+		a = append(a, uint16(r0))
+		ma[r0] = true
+	}
+
+	//showArray16(a, "a")
+
+	rc := newRunContainer16FromVals(false, a...)
+
+	//p("rc from a is %v", rc)
+
+	// vs bitmapContainer
+	bc := newBitmapContainerFromRun(rc)
+	ac := rc.toArrayContainer()
+
+	return ac, rc, bc
+}
