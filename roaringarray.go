@@ -646,7 +646,7 @@ func (ra *roaringArray) writeToMsgpack(stream io.Writer) error {
 			ra.conserz[i].t = run16Contype
 			ra.conserz[i].r = bts
 		default:
-			fmt.Errorf("Unrecognized container implementation: %T", cn)
+			panic(fmt.Errorf("Unrecognized container implementation: %T", cn))
 		}
 	}
 	w := snappy.NewWriter(stream)

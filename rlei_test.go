@@ -73,33 +73,33 @@ func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 				// vs runContainer
 				rcb := newRunContainer16FromVals(false, b...)
 
-				rc_vs_bc_isect := rc.and(bc)
-				rc_vs_ac_isect := rc.and(ac)
-				rc_vs_rcb_isect := rc.and(rcb)
+				rcVsBcIsect := rc.and(bc)
+				rcVsAcIsect := rc.and(ac)
+				rcVsRcbIsect := rc.and(rcb)
 
-				p("rc_vs_bc_isect is %v", rc_vs_bc_isect)
-				p("rc_vs_ac_isect is %v", rc_vs_ac_isect)
-				p("rc_vs_rcb_isect is %v", rc_vs_rcb_isect)
+				p("rcVsBcIsect is %v", rcVsBcIsect)
+				p("rcVsAcIsect is %v", rcVsAcIsect)
+				p("rcVsRcbIsect is %v", rcVsRcbIsect)
 
 				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rc_vs_bc_isect", k)
-					So(rc_vs_bc_isect.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsBcIsect", k)
+					So(rcVsBcIsect.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_ac_isect", k)
-					So(rc_vs_ac_isect.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsAcIsect", k)
+					So(rcVsAcIsect.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_rcb_isect", k)
-					So(rc_vs_rcb_isect.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsRcbIsect", k)
+					So(rcVsRcbIsect.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rc_vs_bc_isect is %v, len(hashi) is %v", rc_vs_bc_isect.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_ac_isect is %v, len(hashi) is %v", rc_vs_ac_isect.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_rcb_isect is %v, len(hashi) is %v", rc_vs_rcb_isect.getCardinality(), len(hashi))
-				So(rc_vs_bc_isect.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_ac_isect.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_rcb_isect.getCardinality(), ShouldEqual, len(hashi))
+				p("checking for cardinality agreement: rcVsBcIsect is %v, len(hashi) is %v", rcVsBcIsect.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsAcIsect is %v, len(hashi) is %v", rcVsAcIsect.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsRcbIsect is %v, len(hashi) is %v", rcVsRcbIsect.getCardinality(), len(hashi))
+				So(rcVsBcIsect.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsAcIsect.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsRcbIsect.getCardinality(), ShouldEqual, len(hashi))
 			}
 			p("done with randomized and() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
@@ -180,33 +180,33 @@ func TestRle16RandomUnionAgainstOtherContainers011(t *testing.T) {
 				// vs runContainer
 				rcb := newRunContainer16FromVals(false, b...)
 
-				rc_vs_bc_union := rc.or(bc)
-				rc_vs_ac_union := rc.or(ac)
-				rc_vs_rcb_union := rc.or(rcb)
+				rcVsBcUnion := rc.or(bc)
+				rcVsAcUnion := rc.or(ac)
+				rcVsRcbUnion := rc.or(rcb)
 
-				p("rc_vs_bc_union is %v", rc_vs_bc_union)
-				p("rc_vs_ac_union is %v", rc_vs_ac_union)
-				p("rc_vs_rcb_union is %v", rc_vs_rcb_union)
+				p("rcVsBcUnion is %v", rcVsBcUnion)
+				p("rcVsAcUnion is %v", rcVsAcUnion)
+				p("rcVsRcbUnion is %v", rcVsRcbUnion)
 
 				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rc_vs_bc_union", k)
-					So(rc_vs_bc_union.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsBcUnion", k)
+					So(rcVsBcUnion.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_ac_union", k)
-					So(rc_vs_ac_union.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsAcUnion", k)
+					So(rcVsAcUnion.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_rcb_union", k)
-					So(rc_vs_rcb_union.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsRcbUnion", k)
+					So(rcVsRcbUnion.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rc_vs_bc_union is %v, len(hashi) is %v", rc_vs_bc_union.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_ac_union is %v, len(hashi) is %v", rc_vs_ac_union.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_rcb_union is %v, len(hashi) is %v", rc_vs_rcb_union.getCardinality(), len(hashi))
-				So(rc_vs_bc_union.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_ac_union.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_rcb_union.getCardinality(), ShouldEqual, len(hashi))
+				p("checking for cardinality agreement: rcVsBcUnion is %v, len(hashi) is %v", rcVsBcUnion.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsAcUnion is %v, len(hashi) is %v", rcVsAcUnion.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsRcbUnion is %v, len(hashi) is %v", rcVsRcbUnion.getCardinality(), len(hashi))
+				So(rcVsBcUnion.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsAcUnion.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsRcbUnion.getCardinality(), ShouldEqual, len(hashi))
 			}
 			p("done with randomized or() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
@@ -267,9 +267,9 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 
 				p("rc from a is %v", rc)
 
-				rc_vs_bc_union := rc.Clone()
-				rc_vs_ac_union := rc.Clone()
-				rc_vs_rcb_union := rc.Clone()
+				rcVsBcUnion := rc.Clone()
+				rcVsAcUnion := rc.Clone()
+				rcVsRcbUnion := rc.Clone()
 
 				// vs bitmapContainer
 				bc := newBitmapContainer()
@@ -286,33 +286,33 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 				// vs runContainer
 				rcb := newRunContainer16FromVals(false, b...)
 
-				rc_vs_bc_union.ior(bc)
-				rc_vs_ac_union.ior(ac)
-				rc_vs_rcb_union.ior(rcb)
+				rcVsBcUnion.ior(bc)
+				rcVsAcUnion.ior(ac)
+				rcVsRcbUnion.ior(rcb)
 
-				p("rc_vs_bc_union is %v", rc_vs_bc_union)
-				p("rc_vs_ac_union is %v", rc_vs_ac_union)
-				p("rc_vs_rcb_union is %v", rc_vs_rcb_union)
+				p("rcVsBcUnion is %v", rcVsBcUnion)
+				p("rcVsAcUnion is %v", rcVsAcUnion)
+				p("rcVsRcbUnion is %v", rcVsRcbUnion)
 
 				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rc_vs_bc_union", k)
-					So(rc_vs_bc_union.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsBcUnion", k)
+					So(rcVsBcUnion.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_ac_union", k)
-					So(rc_vs_ac_union.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsAcUnion", k)
+					So(rcVsAcUnion.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_rcb_union", k)
-					So(rc_vs_rcb_union.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsRcbUnion", k)
+					So(rcVsRcbUnion.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rc_vs_bc_union is %v, len(hashi) is %v", rc_vs_bc_union.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_ac_union is %v, len(hashi) is %v", rc_vs_ac_union.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_rcb_union is %v, len(hashi) is %v", rc_vs_rcb_union.getCardinality(), len(hashi))
-				So(rc_vs_bc_union.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_ac_union.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_rcb_union.getCardinality(), ShouldEqual, len(hashi))
+				p("checking for cardinality agreement: rcVsBcUnion is %v, len(hashi) is %v", rcVsBcUnion.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsAcUnion is %v, len(hashi) is %v", rcVsAcUnion.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsRcbUnion is %v, len(hashi) is %v", rcVsRcbUnion.getCardinality(), len(hashi))
+				So(rcVsBcUnion.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsAcUnion.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsRcbUnion.getCardinality(), ShouldEqual, len(hashi))
 			}
 			p("done with randomized or() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
@@ -387,37 +387,37 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 				// vs runContainer
 				rcb := newRunContainer16FromVals(false, b...)
 
-				rc_vs_bc_isect := rc.Clone()
-				rc_vs_ac_isect := rc.Clone()
-				rc_vs_rcb_isect := rc.Clone()
+				rcVsBcIsect := rc.Clone()
+				rcVsAcIsect := rc.Clone()
+				rcVsRcbIsect := rc.Clone()
 
-				rc_vs_bc_isect.iand(bc)
-				rc_vs_ac_isect.iand(ac)
-				rc_vs_rcb_isect.iand(rcb)
+				rcVsBcIsect.iand(bc)
+				rcVsAcIsect.iand(ac)
+				rcVsRcbIsect.iand(rcb)
 
-				p("rc_vs_bc_isect is %v", rc_vs_bc_isect)
-				p("rc_vs_ac_isect is %v", rc_vs_ac_isect)
-				p("rc_vs_rcb_isect is %v", rc_vs_rcb_isect)
+				p("rcVsBcIsect is %v", rcVsBcIsect)
+				p("rcVsAcIsect is %v", rcVsAcIsect)
+				p("rcVsRcbIsect is %v", rcVsRcbIsect)
 
 				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rc_vs_bc_isect", k)
-					So(rc_vs_bc_isect.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsBcIsect", k)
+					So(rcVsBcIsect.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_ac_isect", k)
-					So(rc_vs_ac_isect.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsAcIsect", k)
+					So(rcVsAcIsect.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_rcb_isect", k)
-					So(rc_vs_rcb_isect.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsRcbIsect", k)
+					So(rcVsRcbIsect.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rc_vs_bc_isect is %v, len(hashi) is %v", rc_vs_bc_isect.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_ac_isect is %v, len(hashi) is %v", rc_vs_ac_isect.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_rcb_isect is %v, len(hashi) is %v", rc_vs_rcb_isect.getCardinality(), len(hashi))
-				So(rc_vs_bc_isect.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_ac_isect.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_rcb_isect.getCardinality(), ShouldEqual, len(hashi))
+				p("checking for cardinality agreement: rcVsBcIsect is %v, len(hashi) is %v", rcVsBcIsect.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsAcIsect is %v, len(hashi) is %v", rcVsAcIsect.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsRcbIsect is %v, len(hashi) is %v", rcVsRcbIsect.getCardinality(), len(hashi))
+				So(rcVsBcIsect.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsAcIsect.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsRcbIsect.getCardinality(), ShouldEqual, len(hashi))
 			}
 			p("done with randomized and() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
@@ -577,33 +577,33 @@ func TestRle16RandomAndNot016(t *testing.T) {
 				// vs runContainer
 				rcb := newRunContainer16FromVals(false, b...)
 
-				rc_vs_bc_andnot := rc.andNot(bc)
-				rc_vs_ac_andnot := rc.andNot(ac)
-				rc_vs_rcb_andnot := rc.andNot(rcb)
+				rcVsBcAndnot := rc.andNot(bc)
+				rcVsAcAndnot := rc.andNot(ac)
+				rcVsRcbAndnot := rc.andNot(rcb)
 
-				p("rc_vs_bc_andnot is %v", rc_vs_bc_andnot)
-				p("rc_vs_ac_andnot is %v", rc_vs_ac_andnot)
-				p("rc_vs_rcb_andnot is %v", rc_vs_rcb_andnot)
+				p("rcVsBcAndnot is %v", rcVsBcAndnot)
+				p("rcVsAcAndnot is %v", rcVsAcAndnot)
+				p("rcVsRcbAndnot is %v", rcVsRcbAndnot)
 
 				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rc_vs_bc_andnot", k)
-					So(rc_vs_bc_andnot.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsBcAndnot", k)
+					So(rcVsBcAndnot.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_ac_andnot", k)
-					So(rc_vs_ac_andnot.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsAcAndnot", k)
+					So(rcVsAcAndnot.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_rcb_andnot", k)
-					So(rc_vs_rcb_andnot.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsRcbAndnot", k)
+					So(rcVsRcbAndnot.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rc_vs_bc_andnot is %v, len(hashi) is %v", rc_vs_bc_andnot.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_ac_andnot is %v, len(hashi) is %v", rc_vs_ac_andnot.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_rcb_andnot is %v, len(hashi) is %v", rc_vs_rcb_andnot.getCardinality(), len(hashi))
-				So(rc_vs_bc_andnot.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_ac_andnot.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_rcb_andnot.getCardinality(), ShouldEqual, len(hashi))
+				p("checking for cardinality agreement: rcVsBcAndnot is %v, len(hashi) is %v", rcVsBcAndnot.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsAcAndnot is %v, len(hashi) is %v", rcVsAcAndnot.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsRcbAndnot is %v, len(hashi) is %v", rcVsRcbAndnot.getCardinality(), len(hashi))
+				So(rcVsBcAndnot.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsAcAndnot.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsRcbAndnot.getCardinality(), ShouldEqual, len(hashi))
 			}
 			p("done with randomized andNot() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
@@ -679,37 +679,37 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 				// vs runContainer
 				rcb := newRunContainer16FromVals(false, b...)
 
-				rc_vs_bc_iandnot := rc.Clone()
-				rc_vs_ac_iandnot := rc.Clone()
-				rc_vs_rcb_iandnot := rc.Clone()
+				rcVsBcIandnot := rc.Clone()
+				rcVsAcIandnot := rc.Clone()
+				rcVsRcbIandnot := rc.Clone()
 
-				rc_vs_bc_iandnot.iandNot(bc)
-				rc_vs_ac_iandnot.iandNot(ac)
-				rc_vs_rcb_iandnot.iandNot(rcb)
+				rcVsBcIandnot.iandNot(bc)
+				rcVsAcIandnot.iandNot(ac)
+				rcVsRcbIandnot.iandNot(rcb)
 
-				p("rc_vs_bc_iandnot is %v", rc_vs_bc_iandnot)
-				p("rc_vs_ac_iandnot is %v", rc_vs_ac_iandnot)
-				p("rc_vs_rcb_iandnot is %v", rc_vs_rcb_iandnot)
+				p("rcVsBcIandnot is %v", rcVsBcIandnot)
+				p("rcVsAcIandnot is %v", rcVsAcIandnot)
+				p("rcVsRcbIandnot is %v", rcVsRcbIandnot)
 
 				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rc_vs_bc_iandnot", k)
-					So(rc_vs_bc_iandnot.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsBcIandnot", k)
+					So(rcVsBcIandnot.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_ac_iandnot", k)
-					So(rc_vs_ac_iandnot.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsAcIandnot", k)
+					So(rcVsAcIandnot.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rc_vs_rcb_iandnot", k)
-					So(rc_vs_rcb_iandnot.contains(uint16(k)), ShouldBeTrue)
+					p("hashi has %v, checking in rcVsRcbIandnot", k)
+					So(rcVsRcbIandnot.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rc_vs_bc_iandnot is %v, len(hashi) is %v", rc_vs_bc_iandnot.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_ac_iandnot is %v, len(hashi) is %v", rc_vs_ac_iandnot.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rc_vs_rcb_iandnot is %v, len(hashi) is %v", rc_vs_rcb_iandnot.getCardinality(), len(hashi))
-				So(rc_vs_bc_iandnot.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_ac_iandnot.getCardinality(), ShouldEqual, len(hashi))
-				So(rc_vs_rcb_iandnot.getCardinality(), ShouldEqual, len(hashi))
+				p("checking for cardinality agreement: rcVsBcIandnot is %v, len(hashi) is %v", rcVsBcIandnot.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsAcIandnot is %v, len(hashi) is %v", rcVsAcIandnot.getCardinality(), len(hashi))
+				p("checking for cardinality agreement: rcVsRcbIandnot is %v, len(hashi) is %v", rcVsRcbIandnot.getCardinality(), len(hashi))
+				So(rcVsBcIandnot.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsAcIandnot.getCardinality(), ShouldEqual, len(hashi))
+				So(rcVsRcbIandnot.getCardinality(), ShouldEqual, len(hashi))
 			}
 			p("done with randomized andNot() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}

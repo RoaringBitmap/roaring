@@ -12,9 +12,9 @@ type bitmapContainer struct {
 	bitmap      []uint64
 }
 
-func (c bitmapContainer) String() string {
+func (bc bitmapContainer) String() string {
 	var s string
-	for it := c.getShortIterator(); it.hasNext(); {
+	for it := bc.getShortIterator(); it.hasNext(); {
 		s += fmt.Sprintf("%v, ", it.next())
 	}
 	return s

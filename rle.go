@@ -1192,44 +1192,44 @@ func (rc *runContainer32) invert() *runContainer32 {
 	return &runContainer32{iv: m}
 }
 
-func (a interval32) equal(b interval32) bool {
-	if a.start == b.start {
-		return a.last == b.last
+func (iv interval32) equal(b interval32) bool {
+	if iv.start == b.start {
+		return iv.last == b.last
 	}
 	return false
 }
 
-func (a interval32) isSuperSetOf(b interval32) bool {
-	return a.start <= b.start && b.last <= a.last
+func (iv interval32) isSuperSetOf(b interval32) bool {
+	return iv.start <= b.start && b.last <= iv.last
 }
 
-func (cur interval32) subtractInterval(del interval32) (left []interval32, delcount int64) {
+func (iv interval32) subtractInterval(del interval32) (left []interval32, delcount int64) {
 	defer func() {
-		//p("returning from subtractInterval of cur - del with cur=%s and del=%s, returning left=%s, delcount=%v", cur, del, ivalString32(left), delcount)
+		//p("returning from subtractInterval of iv - del with iv=%s and del=%s, returning left=%s, delcount=%v", iv, del, ivalString32(left), delcount)
 	}()
-	isect, isEmpty := intersectInterval32s(cur, del)
+	isect, isEmpty := intersectInterval32s(iv, del)
 
 	if isEmpty {
 		//p("isEmpty")
 		return nil, 0
 	}
-	if del.isSuperSetOf(cur) {
-		return nil, cur.runlen()
+	if del.isSuperSetOf(iv) {
+		return nil, iv.runlen()
 	}
 
 	switch {
-	case isect.start > cur.start && isect.last < cur.last:
+	case isect.start > iv.start && isect.last < iv.last:
 		//p("split into two")
-		new0 := interval32{start: cur.start, last: isect.start - 1}
-		new1 := interval32{start: isect.last + 1, last: cur.last}
+		new0 := interval32{start: iv.start, last: isect.start - 1}
+		new1 := interval32{start: isect.last + 1, last: iv.last}
 		return []interval32{new0, new1}, isect.runlen()
-	case isect.start == cur.start:
-		//p("removal of only the first half or so of cur interval. isect: %s, cur: %s, del: %s", isect, cur, del)
-		return []interval32{{start: isect.last + 1, last: cur.last}}, isect.runlen()
+	case isect.start == iv.start:
+		//p("removal of only the first half or so of iv interval. isect: %s, iv: %s, del: %s", isect, iv, del)
+		return []interval32{{start: isect.last + 1, last: iv.last}}, isect.runlen()
 	default:
-		//p("isect.end == cur.end")
-		//p("removal of only the last half or so of cur interval")
-		return []interval32{{start: cur.start, last: isect.start - 1}}, isect.runlen()
+		//p("isect.end == iv.end")
+		//p("removal of only the last half or so of iv interval")
+		return []interval32{{start: iv.start, last: isect.start - 1}}, isect.runlen()
 	}
 }
 
@@ -1481,6 +1481,6 @@ func (rc *runContainer32) numberOfRuns() (nr int) {
 	return len(rc.iv)
 }
 
-func (bc *runContainer32) containerType() contype {
+func (rc *runContainer32) containerType() contype {
 	return run32Contype
 }

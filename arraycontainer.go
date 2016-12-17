@@ -11,9 +11,9 @@ type arrayContainer struct {
 	content []uint16
 }
 
-func (c *arrayContainer) String() string {
-	var s string = "{"
-	for it := c.getShortIterator(); it.hasNext(); {
+func (ac *arrayContainer) String() string {
+	s := "{"
+	for it := ac.getShortIterator(); it.hasNext(); {
 		s += fmt.Sprintf("%v, ", it.next())
 	}
 	return s + "}"
@@ -901,6 +901,6 @@ func (ac *arrayContainer) toEfficientContainer() container {
 	return ac.toBitmapContainer()
 }
 
-func (bc *arrayContainer) containerType() contype {
+func (ac *arrayContainer) containerType() contype {
 	return arrayContype
 }

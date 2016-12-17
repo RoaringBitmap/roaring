@@ -46,7 +46,7 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 	return rb.highlowcontainer.writeTo(stream)
 }
 
-// WriteTo writes a msgpack2/snappy-streaming compressed serialized
+// WriteToMsgpack writes a msgpack2/snappy-streaming compressed serialized
 // version of this bitmap to stream. The format is not
 // compatible with the WriteTo() format, and is
 // experimental: it may produce smaller on disk
@@ -1161,6 +1161,7 @@ func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
 	return Flip(bm, uint64(rangeStart), uint64(rangeEnd))
 }
 
+// Statistics provides details on the container types in use.
 type Statistics struct {
 	Cardinality uint64
 	Containers  uint64
@@ -1178,23 +1179,24 @@ type Statistics struct {
 	RunContainerValues uint64
 }
 
-func (bm *Bitmap) Stats() Statistics {
+// Stats returns details on container type usage in a Statistics struct.
+func (rb *Bitmap) Stats() Statistics {
 	stats := Statistics{}
-	stats.Containers = uint64(len(bm.highlowcontainer.containers))
-	for _, c := range bm.highlowcontainer.containers {
+	stats.Containers = uint64(len(rb.highlowcontainer.containers))
+	for _, c := range rb.highlowcontainer.containers {
 		stats.Cardinality += uint64(c.getCardinality())
 
 		switch c.(type) {
 		case *arrayContainer:
-			stats.ArrayContainers += 1
+			stats.ArrayContainers++
 			stats.ArrayContainerBytes += uint64(c.getSizeInBytes())
 			stats.ArrayContainerValues += uint64(c.getCardinality())
 		case *bitmapContainer:
-			stats.BitmapContainers += 1
+			stats.BitmapContainers++
 			stats.BitmapContainerBytes += uint64(c.getSizeInBytes())
 			stats.BitmapContainerValues += uint64(c.getCardinality())
 		case *runContainer16:
-			stats.RunContainers += 1
+			stats.RunContainers++
 			stats.RunContainerBytes += uint64(c.getSizeInBytes())
 			stats.RunContainerValues += uint64(c.getCardinality())
 		}

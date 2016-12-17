@@ -21,7 +21,7 @@ func TestExample_roaring060(t *testing.T) {
 
 	fmt.Println("Cardinality: ", rb1.GetCardinality())
 	if rb1.GetCardinality() != 7 {
-		t.Errorf("Bad cardinality.", rb1.GetCardinality())
+		t.Errorf("Bad cardinality: %v", rb1.GetCardinality())
 	}
 
 	fmt.Println("Contains 3? ", rb1.Contains(3))
@@ -90,14 +90,14 @@ func TestExample2_roaring061(t *testing.T) {
 	if cardinality != r1.GetCardinality() {
 		t.Errorf("RunOptimize should not change cardinality.")
 	}
-	compact_size := r1.GetSizeInBytes()
-	if compact_size >= size {
+	compactSize := r1.GetSizeInBytes()
+	if compactSize >= size {
 		t.Errorf("Run optimized size should be smaller.")
 	}
 	if !r1.Equals(rb2) {
 		t.Errorf("RunOptimize should not affect equality.")
 	}
-	fmt.Print("size before run optimize: ", size, " bytes, and after: ", compact_size, " bytes.\n")
+	fmt.Print("size before run optimize: ", size, " bytes, and after: ", compactSize, " bytes.\n")
 	rb3 := New()
 	rb3.AddRange(1, 10000000)
 	r1.Or(rb3)
