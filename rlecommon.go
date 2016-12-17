@@ -110,6 +110,10 @@ type trial struct {
 	// only in 067 randomized operations
 	// we do this + 1 passes
 	numRandomOpsPass int
+
+	// allow sampling range control
+	// only recent tests respect this.
+	srang *interval16
 }
 
 // And finds the intersection of rc and b.

@@ -356,9 +356,11 @@ func (rc *runContainer16) ior(a container) container {
 }
 
 func (rc *runContainer16) inplaceUnion(rc2 *runContainer16) container {
+	p("rc.inplaceUnion with len(rc2.iv)=%v", len(rc2.iv))
 	for _, p := range rc2.iv {
-		for i := p.start; i <= p.last; i++ {
-			rc.Add(i)
+		last := int64(p.last)
+		for i := int64(p.start); i <= last; i++ {
+			rc.Add(uint16(i))
 		}
 	}
 	return rc
@@ -630,7 +632,7 @@ func (rc *runContainer16) toEfficientContainer() container {
 func (rc *runContainer16) toArrayContainer() *arrayContainer {
 	ac := newArrayContainer()
 	for i := range rc.iv {
-		ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last+1))
+		ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last)+1)
 	}
 	return ac
 }

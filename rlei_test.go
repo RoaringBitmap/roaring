@@ -1622,7 +1622,7 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 
 		trials := []trial{
 			trial{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100},
-		}
+			trial{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100, srang: &interval16{MaxUint16 - 100, MaxUint16}}}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
@@ -1631,7 +1631,11 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 				a, r, b := getRandomSameThreeContainers(tr)
 				a2, r2, b2 := getRandomSameThreeContainers(tr)
 
-				p("\n receiver is '%s'\n", r)
+				p("prior to any operations, fresh from getRandom...")
+				p("receiver (a) is '%s'", a)
+				p("receiver (r) is '%s'", r)
+				p("receiver (b) is '%s'", b)
+
 				p("\n argument is '%s'\n", r2)
 
 				m := []string{"array", "run", "bitmap"}
@@ -1678,8 +1682,12 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 							p("\n prior to '%s', array receiver c1 is '%s'\n", c1.name, c1.cn)
 							p("\n prior to '%s', run receiver c2 is '%s'\n", c2.name, c2.cn)
 							p("\n prior to '%s', bitmap receiver c3 is '%s'\n", c3.name, c3.cn)
-							So(c1.cn.equals(c2.cn), ShouldBeTrue)
-							So(c1.cn.equals(c3.cn), ShouldBeTrue)
+							if !c1.cn.equals(c2.cn) {
+								panic("c1 not equal to c2")
+							}
+							if !c1.cn.equals(c3.cn) {
+								panic("c1 not equal to c3")
+							}
 
 							res1 := c1.call(a) // array
 							res2 := c2.call(a) // run
@@ -1762,9 +1770,20 @@ func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *
 	n := tr.n
 	a := []uint16{}
 
+	var samp interval16
+	if tr.srang != nil {
+		samp = *tr.srang
+	} else {
+		samp.start = 0
+		if n-1 > MaxUint16 {
+			panic(fmt.Errorf("n out of range: %v", n))
+		}
+		samp.last = uint16(n - 1)
+	}
+
 	draw := int(float64(n) * tr.percentFill)
 	for i := 0; i < draw; i++ {
-		r0 := rand.Intn(n)
+		r0 := int(samp.start) + rand.Intn(int(samp.runlen()))
 		a = append(a, uint16(r0))
 		ma[r0] = true
 	}
@@ -1773,7 +1792,7 @@ func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *
 
 	rc := newRunContainer16FromVals(false, a...)
 
-	//p("rc from a is %v", rc)
+	p("rc from a is %v", rc)
 
 	// vs bitmapContainer
 	bc := newBitmapContainerFromRun(rc)

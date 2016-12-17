@@ -256,3 +256,25 @@ func TestArrayContainerNumberOfRuns025(t *testing.T) {
 
 		})
 }
+
+func TestArrayContainerIaddRangeNearMax068(t *testing.T) {
+
+	Convey("arrayContainer iaddRange should work near MaxUint16", t, func() {
+
+		iv := []interval16{{65525, 65527}, {65530, 65530}, {65534, 65535}}
+		rc := newRunContainer16TakeOwnership(iv)
+
+		ac2 := rc.toArrayContainer()
+		So(ac2.equals(rc), ShouldBeTrue)
+		So(rc.equals(ac2), ShouldBeTrue)
+
+		ac := newArrayContainer()
+		endx := int(MaxUint16) + 1
+		first := endx - 3
+		ac.iaddRange(first-20, endx-20)
+		ac.iaddRange(first-6, endx-6)
+		ac.iaddRange(first, endx)
+		So(ac.getCardinality(), ShouldEqual, 9)
+
+	})
+}

@@ -46,54 +46,65 @@ func arrayContainerSizeInBytes(card int) int {
 	return card * 2
 }
 
-// add the values in the range [firstOfRange,lastofRange)
-func (ac *arrayContainer) iaddRange(firstOfRange, lastOfRange int) container {
-	if firstOfRange >= lastOfRange {
+// add the values in the range [firstOfRange,endx)
+func (ac *arrayContainer) iaddRange(firstOfRange, endx int) container {
+	//p("top of ac.iaddRange")
+	if firstOfRange >= endx {
+		//p("bailing early")
 		return ac
 	}
 	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
+		//p("indexstart < 0")
 		indexstart = -indexstart - 1
 	}
-	indexend := binarySearch(ac.content, uint16(lastOfRange-1))
+	indexend := binarySearch(ac.content, uint16(endx-1))
 	if indexend < 0 {
+		//p("indexend < 0")
 		indexend = -indexend - 1
 	} else {
+		//p("indexend >= 0")
 		indexend++
 	}
-	rangelength := lastOfRange - firstOfRange
+	rangelength := endx - firstOfRange
+	//p("rangelength = %v", rangelength)
 	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
 	if newcardinality > arrayDefaultMaxSize {
+		//p("going to bitmap")
 		a := ac.toBitmapContainer()
-		return a.iaddRange(firstOfRange, lastOfRange)
+		return a.iaddRange(firstOfRange, endx)
 	}
 	if cap(ac.content) < newcardinality {
+		//p("cap < newcard")
 		tmp := make([]uint16, newcardinality, newcardinality)
 		copy(tmp[:indexstart], ac.content[:indexstart])
 		copy(tmp[indexstart+rangelength:], ac.content[indexend:])
 
 		ac.content = tmp
 	} else {
+		//p("cap >= newcard")
 		ac.content = ac.content[:newcardinality]
 		copy(ac.content[indexstart+rangelength:], ac.content[indexend:])
 
 	}
 	for k := 0; k < rangelength; k++ {
+		//p("k=%v, rangelength=%v, adding content %v", k, rangelength, uint16(firstOfRange+k))
 		ac.content[k+indexstart] = uint16(firstOfRange + k)
 	}
+	//p("at bottom")
 	return ac
 }
 
-// remove the values in the range [firstOfRange,lastOfRange)
-func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container {
-	if firstOfRange >= lastOfRange {
+// remove the values in the range [firstOfRange,endx)
+func (ac *arrayContainer) iremoveRange(firstOfRange, endx int) container {
+	if firstOfRange >= endx {
 		return ac
 	}
 	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
 		indexstart = -indexstart - 1
 	}
-	indexend := binarySearch(ac.content, uint16(lastOfRange-1))
+	indexend := binarySearch(ac.content, uint16(endx-1))
 	if indexend < 0 {
 		indexend = -indexend - 1
 	} else {
@@ -106,12 +117,12 @@ func (ac *arrayContainer) iremoveRange(firstOfRange, lastOfRange int) container 
 	return answer
 }
 
-// flip the values in the range [firstOfRange,lastOfRange)
-func (ac *arrayContainer) not(firstOfRange, lastOfRange int) container {
-	if firstOfRange >= lastOfRange {
+// flip the values in the range [firstOfRange,endx)
+func (ac *arrayContainer) not(firstOfRange, endx int) container {
+	if firstOfRange >= endx {
 		return ac.clone()
 	}
-	return ac.notClose(firstOfRange, lastOfRange-1) // remove everything in [firstOfRange,lastOfRange-1]
+	return ac.notClose(firstOfRange, endx-1) // remove everything in [firstOfRange,endx-1]
 }
 
 // flip the values in the range [firstOfRange,lastOfRange]
@@ -657,12 +668,12 @@ func copyOf(array []uint16, size int) []uint16 {
 	return result
 }
 
-// flip the values in the range [firstOfRange,lastOfRange)
-func (ac *arrayContainer) inot(firstOfRange, lastOfRange int) container {
-	if firstOfRange >= lastOfRange {
+// flip the values in the range [firstOfRange,endx)
+func (ac *arrayContainer) inot(firstOfRange, endx int) container {
+	if firstOfRange >= endx {
 		return ac
 	}
-	return ac.inotClose(firstOfRange, lastOfRange-1) // remove everything in [firstOfRange,lastOfRange-1]
+	return ac.inotClose(firstOfRange, endx-1) // remove everything in [firstOfRange,endx-1]
 }
 
 // flip the values in the range [firstOfRange,lastOfRange]
