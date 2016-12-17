@@ -267,28 +267,23 @@ func (rc *runContainer16) equals(o container) bool {
 	}
 
 	//p("not both rc16; o is %T / val=%#v", o, o)
-	bc, ok := o.(container)
-	if ok {
-		// use generic comparison
-		if bc.getCardinality() != rc.getCardinality() {
-			//p("card differ bc.card=%v, rc.card=%v", bc.getCardinality(), rc.getCardinality())
+	// use generic comparison
+	if o.getCardinality() != rc.getCardinality() {
+		//p("card differ o.card=%v, rc.card=%v", o.getCardinality(), rc.getCardinality())
+		return false
+	}
+	rit := rc.getShortIterator()
+	bit := o.getShortIterator()
+
+	//k := 0
+	for rit.hasNext() {
+		if bit.next() != rit.next() {
+			//p("differ at pos %k", k)
 			return false
 		}
-		rit := rc.getShortIterator()
-		bit := bc.getShortIterator()
-
-		//k := 0
-		for rit.hasNext() {
-			if bit.next() != rit.next() {
-				//p("differ at pos %k", k)
-				return false
-			}
-			//k++
-		}
-		return true
+		//k++
 	}
-	//p("o was not a container!")
-	return false
+	return true
 }
 
 func (rc *runContainer16) iaddReturnMinimized(x uint16) container {

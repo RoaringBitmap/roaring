@@ -125,24 +125,19 @@ func (bc *bitmapContainer) equals(o container) bool {
 		return bitmapEquals(bc.bitmap, srb.bitmap)
 	}
 
-	ac, ok := o.(container)
-	if ok {
-		// use generic comparison
-		if bc.getCardinality() != ac.getCardinality() {
+	// use generic comparison
+	if bc.getCardinality() != o.getCardinality() {
+		return false
+	}
+	ait := o.getShortIterator()
+	bit := bc.getShortIterator()
+
+	for ait.hasNext() {
+		if bit.next() != ait.next() {
 			return false
 		}
-		ait := ac.getShortIterator()
-		bit := bc.getShortIterator()
-
-		for ait.hasNext() {
-			if bit.next() != ait.next() {
-				return false
-			}
-		}
-		return true
 	}
-
-	return false
+	return true
 }
 
 func (bc *bitmapContainer) iaddReturnMinimized(i uint16) container {
@@ -232,16 +227,20 @@ func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container
 	return bc
 }
 
-// flip all values in range [firstOfRange,lastOfRange)
-func (bc *bitmapContainer) inot(firstOfRange, lastOfRange int) container {
-	if lastOfRange-firstOfRange == maxCapacity {
-		flipBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
+// flip all values in range [firstOfRange,endx)
+func (bc *bitmapContainer) inot(firstOfRange, endx int) container {
+	p("bc.inot() called with [%v, %v)", firstOfRange, endx)
+	if endx-firstOfRange == maxCapacity {
+		//p("endx-firstOfRange == maxCapacity")
+		flipBitmapRange(bc.bitmap, firstOfRange, endx)
 		bc.cardinality = maxCapacity - bc.cardinality
-	} else if lastOfRange-firstOfRange > maxCapacity/2 {
-		flipBitmapRange(bc.bitmap, firstOfRange, lastOfRange)
+		//p("bc.cardinality is now %v", bc.cardinality)
+	} else if endx-firstOfRange > maxCapacity/2 {
+		//p("endx-firstOfRange > maxCapacity/2")
+		flipBitmapRange(bc.bitmap, firstOfRange, endx)
 		bc.computeCardinality()
 	} else {
-		bc.cardinality += flipBitmapRangeAndCardinalityChange(bc.bitmap, firstOfRange, lastOfRange)
+		bc.cardinality += flipBitmapRangeAndCardinalityChange(bc.bitmap, firstOfRange, endx)
 	}
 	if bc.getCardinality() <= arrayDefaultMaxSize {
 		return bc.toArrayContainer()
@@ -249,10 +248,10 @@ func (bc *bitmapContainer) inot(firstOfRange, lastOfRange int) container {
 	return bc
 }
 
-// flip all values in range [firstOfRange,lastOfRange)
-func (bc *bitmapContainer) not(firstOfRange, lastOfRange int) container {
+// flip all values in range [firstOfRange,endx)
+func (bc *bitmapContainer) not(firstOfRange, endx int) container {
 	answer := bc.clone()
-	return answer.inot(firstOfRange, lastOfRange)
+	return answer.inot(firstOfRange, endx)
 }
 
 func (bc *bitmapContainer) or(a container) container {

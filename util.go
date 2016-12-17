@@ -139,6 +139,7 @@ func flipBitmapRange(bitmap []uint64, start int, end int) {
 	endword := (end - 1) / 64
 	bitmap[firstword] ^= ^(^uint64(0) << uint(start%64))
 	for i := firstword; i < endword; i++ {
+		//p("flipBitmapRange on i=%v", i)
 		bitmap[i] = ^bitmap[i]
 	}
 	bitmap[endword] ^= ^uint64(0) >> (uint(-end) % 64)

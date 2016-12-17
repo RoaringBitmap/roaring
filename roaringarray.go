@@ -32,8 +32,8 @@ type container interface {
 	iremove(x uint16) bool                   // inplace, returns true if x was present.
 	iremoveReturnMinimized(uint16) container // may change return type to minimize storage.
 
-	not(start, final int) container               // range is [firstOfRange,lastOfRange)
-	inot(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
+	not(start, final int) container        // range is [firstOfRange,lastOfRange)
+	inot(firstOfRange, endx int) container // i stands for inplace, range is [firstOfRange,endx)
 	xor(r container) container
 	getShortIterator() shortIterable
 	contains(i uint16) bool
