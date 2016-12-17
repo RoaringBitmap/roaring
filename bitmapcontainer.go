@@ -277,6 +277,7 @@ func (bc *bitmapContainer) ior(a container) container {
 		for i := range x.iv {
 			bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
 		}
+		bc.computeCardinality()
 		return bc
 	}
 	panic(fmt.Errorf("unsupported container type %T", a))
@@ -293,6 +294,7 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 		for i := range x.iv {
 			bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
 		}
+		bc.computeCardinality()
 		return bc
 	}
 	panic("unsupported container type")
@@ -781,6 +783,7 @@ func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
 	for i := range rc.iv {
 		bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last)+1)
 	}
+	bc.computeCardinality()
 	return bc
 }
 
