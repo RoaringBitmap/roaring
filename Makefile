@@ -1,4 +1,4 @@
-.PHONY: help all test format fmtcheck vet lint     qa deps clean nuke
+.PHONY: help all test format fmtcheck vet lint     qa deps clean nuke rle backrle ser
 
 
 
@@ -80,3 +80,21 @@ clean:
 nuke:
 	rm -rf ./target
 	GOPATH=$(GOPATH) go clean -i ./...
+
+rle:
+	cp rle.go rle16.go
+	perl -pi -e 's/32/16/g' rle16.go
+	cp rle_test.go rle16_test.go
+	perl -pi -e 's/32/16/g' rle16_test.go
+
+backrle:
+	cp rle16.go rle.go
+	perl -pi -e 's/16/32/g' rle.go
+	perl -pi -e 's/2032/2016/g' rle.go
+
+ser: rle
+	go generate
+
+cover:
+	go test -coverprofile=coverage.out 
+	go tool cover -html=coverage.out

@@ -9,10 +9,6 @@ import (
 	"testing"
 )
 
-
-
-
-
 func TestRoaringBitmapBitmapOf(t *testing.T) {
 	array := []uint32{5580, 33722, 44031, 57276, 83097}
 	bmp := BitmapOf(array...)
@@ -44,7 +40,6 @@ func TestRoaringBitmapAddMany(t *testing.T) {
 	}
 }
 
-
 // https://github.com/RoaringBitmap/roaring/issues/64
 func TestFlip64(t *testing.T) {
 	bm := New()
@@ -75,6 +70,10 @@ func TestStringer(t *testing.T) {
 	if v.String() != "{0,1,2,3,4,5,6,7,8,9}" {
 		t.Error("bad string output")
 	}
+	v.RunOptimize()
+	if v.String() != "{0,1,2,3,4,5,6,7,8,9}" {
+		t.Error("bad string output")
+	}
 }
 
 func TestFastCard(t *testing.T) {
@@ -84,6 +83,13 @@ func TestFastCard(t *testing.T) {
 		bm.AddRange(21, 260000)
 		bm2 := NewBitmap()
 		bm2.Add(25)
+		So(bm2.AndCardinality(bm), ShouldEqual, 1)
+		So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
+		So(bm.AndCardinality(bm2), ShouldEqual, 1)
+		So(bm.OrCardinality(bm2), ShouldEqual, bm.GetCardinality())
+		So(bm2.AndCardinality(bm), ShouldEqual, 1)
+		So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
+		bm.RunOptimize()
 		So(bm2.AndCardinality(bm), ShouldEqual, 1)
 		So(bm2.OrCardinality(bm), ShouldEqual, bm.GetCardinality())
 		So(bm.AndCardinality(bm2), ShouldEqual, 1)
@@ -530,11 +536,11 @@ func TestBitmap(t *testing.T) {
 	Convey("ArrayContainerCardinalityTest", t, func() {
 		ac := newArrayContainer()
 		for k := uint16(0); k < 100; k++ {
-			ac.add(k)
+			ac.iadd(k)
 			So(ac.getCardinality(), ShouldEqual, k+1)
 		}
 		for k := uint16(0); k < 100; k++ {
-			ac.add(k)
+			ac.iadd(k)
 			So(ac.getCardinality(), ShouldEqual, 100)
 		}
 	})
@@ -581,20 +587,20 @@ func TestBitmap(t *testing.T) {
 	Convey("BitmapContainerCardinalityTest", t, func() {
 		ac := newBitmapContainer()
 		for k := uint16(0); k < 100; k++ {
-			ac.add(k)
+			ac.iadd(k)
 			So(ac.getCardinality(), ShouldEqual, k+1)
 		}
 		for k := uint16(0); k < 100; k++ {
-			ac.add(k)
+			ac.iadd(k)
 			So(ac.getCardinality(), ShouldEqual, 100)
 		}
 	})
 
 	Convey("BitmapContainerTest", t, func() {
 		rr := newBitmapContainer()
-		rr.add(uint16(110))
-		rr.add(uint16(114))
-		rr.add(uint16(115))
+		rr.iadd(uint16(110))
+		rr.iadd(uint16(114))
+		rr.iadd(uint16(115))
 		var array [3]uint16
 		pos := 0
 		for itr := rr.getShortIterator(); itr.hasNext(); {
@@ -705,22 +711,22 @@ func TestBitmap(t *testing.T) {
 		ac3 := newArrayContainer()
 
 		for i := 0; i < 5000; i++ {
-			bc1.add(uint16(i * 70))
+			bc1.iadd(uint16(i * 70))
 		}
 		for i := 0; i < 5000; i++ {
-			bc2.add(uint16(i * 70))
+			bc2.iadd(uint16(i * 70))
 		}
 		for i := 0; i < 5000; i++ {
-			bc3.add(uint16(i * 70))
+			bc3.iadd(uint16(i * 70))
 		}
 		for i := 0; i < 4000; i++ {
-			ac1.add(uint16(i * 50))
+			ac1.iadd(uint16(i * 50))
 		}
 		for i := 0; i < 4000; i++ {
-			ac2.add(uint16(i * 50))
+			ac2.iadd(uint16(i * 50))
 		}
 		for i := 0; i < 4000; i++ {
-			ac3.add(uint16(i * 50))
+			ac3.iadd(uint16(i * 50))
 		}
 
 		rbc := ac1.clone().(*arrayContainer).toBitmapContainer()
@@ -1514,28 +1520,28 @@ func TestRoaringArray(t *testing.T) {
 
 	Convey("Test ArrayContainer Add", t, func() {
 		ar := newArrayContainer()
-		ar.add(1)
+		ar.iadd(1)
 		So(ar.getCardinality(), ShouldEqual, 1)
 	})
 
 	Convey("Test ArrayContainer Add wacky", t, func() {
 		ar := newArrayContainer()
-		ar.add(0)
-		ar.add(5000)
+		ar.iadd(0)
+		ar.iadd(5000)
 		So(ar.getCardinality(), ShouldEqual, 2)
 	})
 
 	Convey("Test ArrayContainer Add Reverse", t, func() {
 		ar := newArrayContainer()
-		ar.add(5000)
-		ar.add(2048)
-		ar.add(0)
+		ar.iadd(5000)
+		ar.iadd(2048)
+		ar.iadd(0)
 		So(ar.getCardinality(), ShouldEqual, 3)
 	})
 
 	Convey("Test BitmapContainer Add ", t, func() {
 		bm := newBitmapContainer()
-		bm.add(0)
+		bm.iadd(0)
 		So(bm.getCardinality(), ShouldEqual, 1)
 	})
 
@@ -1745,15 +1751,40 @@ func TestStats(t *testing.T) {
 		rr := NewBitmap()
 		So(rr.Stats(), ShouldResemble, expectedStats)
 	})
-	Convey("Test Stats with Bitmap Container", t, func() {
+	Convey("Test Stats with bitmap Container", t, func() {
 		// Given a bitmap that should have a single bitmap container
-		expectedStats := Statistics {
+		expectedStats := Statistics{
 			Cardinality: 60000,
-			Containers: 1,
+			Containers:  1,
 
-			BitmapContainers: 1,
+			BitmapContainers:      1,
 			BitmapContainerValues: 60000,
-			BitmapContainerBytes: 8192,
+			BitmapContainerBytes:  8192,
+
+			RunContainers:      0,
+			RunContainerBytes:  0,
+			RunContainerValues: 0,
+		}
+		rr := NewBitmap()
+		for i := uint32(0); i < 60000; i++ {
+			rr.Add(i)
+		}
+		So(rr.Stats(), ShouldResemble, expectedStats)
+	})
+
+	Convey("Test Stats with run Container", t, func() {
+		// Given that we should have a single run container
+		expectedStats := Statistics{
+			Cardinality: 60000,
+			Containers:  1,
+
+			BitmapContainers:      0,
+			BitmapContainerValues: 0,
+			BitmapContainerBytes:  0,
+
+			RunContainers:      1,
+			RunContainerBytes:  4,
+			RunContainerValues: 60000,
 		}
 		rr := NewBitmap()
 		rr.AddRange(0, 60000)
@@ -1761,17 +1792,27 @@ func TestStats(t *testing.T) {
 	})
 	Convey("Test Stats with Array Container", t, func() {
 		// Given a bitmap that should have a single array container
-		expectedStats := Statistics {
+		expectedStats := Statistics{
 			Cardinality: 2,
-			Containers: 1,
+			Containers:  1,
 
-			ArrayContainers: 1,
+			ArrayContainers:      1,
 			ArrayContainerValues: 2,
-			ArrayContainerBytes: 28,
+			ArrayContainerBytes:  4,
 		}
 		rr := NewBitmap()
 		rr.Add(2)
 		rr.Add(4)
 		So(rr.Stats(), ShouldResemble, expectedStats)
+	})
+}
+
+func TestFlipVerySmall(t *testing.T) {
+	Convey("very small basic Flip test", t, func() {
+		rb := NewBitmap()
+		rb.Flip(0, 10) // got [0,9], card is 10
+		rb.Flip(0, 1)  // give back the number 0, card goes to 9
+		rbcard := rb.GetCardinality()
+		So(rbcard, ShouldEqual, 9)
 	})
 }

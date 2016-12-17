@@ -3,15 +3,18 @@ package roaring
 // to run just these tests: go test -run TestArrayContainer*
 
 import (
+	"math/rand"
 	"reflect"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestArrayContainerTransition(t *testing.T) {
 	v := container(newArrayContainer())
 	arraytype := reflect.TypeOf(v)
 	for i := 0; i < arrayDefaultMaxSize; i++ {
-		v = v.add(uint16(i))
+		v = v.iaddReturnMinimized(uint16(i))
 	}
 	if v.getCardinality() != arrayDefaultMaxSize {
 		t.Errorf("Bad cardinality.")
@@ -20,7 +23,7 @@ func TestArrayContainerTransition(t *testing.T) {
 		t.Errorf("Should be an array.")
 	}
 	for i := 0; i < arrayDefaultMaxSize; i++ {
-		v = v.add(uint16(i))
+		v = v.iaddReturnMinimized(uint16(i))
 	}
 	if v.getCardinality() != arrayDefaultMaxSize {
 		t.Errorf("Bad cardinality.")
@@ -28,14 +31,14 @@ func TestArrayContainerTransition(t *testing.T) {
 	if reflect.TypeOf(v) != arraytype {
 		t.Errorf("Should be an array.")
 	}
-	v = v.add(uint16(arrayDefaultMaxSize))
+	v = v.iaddReturnMinimized(uint16(arrayDefaultMaxSize))
 	if v.getCardinality() != arrayDefaultMaxSize+1 {
 		t.Errorf("Bad cardinality.")
 	}
 	if reflect.TypeOf(v) == arraytype {
 		t.Errorf("Should be a bitmap.")
 	}
-	v = v.remove(uint16(arrayDefaultMaxSize))
+	v = v.iremoveReturnMinimized(uint16(arrayDefaultMaxSize))
 	if v.getCardinality() != arrayDefaultMaxSize {
 		t.Errorf("Bad cardinality.")
 	}
@@ -46,9 +49,9 @@ func TestArrayContainerTransition(t *testing.T) {
 
 func TestArrayContainerRank(t *testing.T) {
 	v := container(newArrayContainer())
-	v = v.add(10)
-	v = v.add(100)
-	v = v.add(1000)
+	v = v.iaddReturnMinimized(10)
+	v = v.iaddReturnMinimized(100)
+	v = v.iaddReturnMinimized(1000)
 	if v.getCardinality() != 3 {
 		t.Errorf("Bogus cardinality.")
 	}
@@ -78,7 +81,7 @@ func TestArrayContainerMassiveSetAndGet(t *testing.T) {
 	v := container(newArrayContainer())
 	for j := 0; j <= arrayDefaultMaxSize; j++ {
 
-		v = v.add(uint16(j))
+		v = v.iaddReturnMinimized(uint16(j))
 		if v.getCardinality() != 1+j {
 			t.Errorf("Bogus cardinality %d %d. ", v.getCardinality(), j)
 		}
@@ -149,4 +152,129 @@ func assertPanic(t *testing.T, f func()) {
 		}
 	}()
 	f()
+}
+
+func TestArrayContainerNumberOfRuns025(t *testing.T) {
+
+	Convey("arrayContainer's numberOfRuns() function should be correct against the runContainer equivalent",
+		t, func() {
+			seed := int64(42)
+			p("seed is %v", seed)
+			rand.Seed(seed)
+
+			trials := []trial{
+				trial{n: 1000, percentFill: .1, ntrial: 10},
+				/*
+					trial{n: 100, percentFill: .5, ntrial: 10},
+					trial{n: 100, percentFill: .01, ntrial: 10},
+					trial{n: 100, percentFill: .99, ntrial: 10},
+				*/
+			}
+
+			tester := func(tr trial) {
+				for j := 0; j < tr.ntrial; j++ {
+					p("TestArrayContainerNumberOfRuns023 on check# j=%v", j)
+					ma := make(map[int]bool)
+
+					n := tr.n
+					a := []uint16{}
+
+					draw := int(float64(n) * tr.percentFill)
+					for i := 0; i < draw; i++ {
+						r0 := rand.Intn(n)
+						a = append(a, uint16(r0))
+						ma[r0] = true
+					}
+
+					showArray16(a, "a")
+
+					// RunContainer computes this automatically
+					rc := newRunContainer16FromVals(false, a...)
+					rcNr := rc.numberOfRuns()
+
+					p("rcNr from run container is %v", rcNr)
+
+					// vs arrayContainer
+					ac := newArrayContainer()
+					for k := range ma {
+						ac.iadd(uint16(k))
+					}
+
+					acNr := ac.numberOfRuns()
+					So(acNr, ShouldEqual, rcNr)
+
+					// get coverage of arrayContainer coners...
+					So(ac.serializedSizeInBytes(), ShouldEqual, 2*len(ma))
+
+					So(func() { ac.iaddRange(2, 1) }, ShouldNotPanic)
+					So(func() { ac.iremoveRange(2, 1) }, ShouldNotPanic)
+					ac.iremoveRange(0, 2)
+					ac.iremoveRange(0, 2)
+					delete(ma, 0)
+					delete(ma, 1)
+					So(ac.getCardinality(), ShouldEqual, len(ma))
+					ac.iadd(0)
+					ac.iadd(1)
+					ac.iadd(2)
+					ma[0] = true
+					ma[1] = true
+					ma[2] = true
+					newguy := ac.not(0, 3).(*arrayContainer)
+					So(newguy.contains(0), ShouldBeFalse)
+					So(newguy.contains(1), ShouldBeFalse)
+					So(newguy.contains(2), ShouldBeFalse)
+					newguy.notClose(0, 2)
+					newguy.remove(2)
+					newguy.remove(2)
+					newguy.ior(ac)
+
+					messedUp := newArrayContainer()
+					So(messedUp.numberOfRuns(), ShouldEqual, 0)
+
+					// messed up
+					messedUp.content = []uint16{1, 1}
+					So(func() { messedUp.numberOfRuns() }, ShouldPanic)
+					messedUp.content = []uint16{2, 1}
+					So(func() { messedUp.numberOfRuns() }, ShouldPanic)
+
+					shouldBeBit := newArrayContainer()
+					for i := 0; i < arrayDefaultMaxSize+1; i++ {
+						shouldBeBit.iadd(uint16(i * 2))
+					}
+					bit := shouldBeBit.toEfficientContainer()
+					_, isBit := bit.(*bitmapContainer)
+					So(isBit, ShouldBeTrue)
+
+					//fmt.Printf("\nnum runs was: %v\n", rcNr)
+				}
+				p("done with randomized arrayContianer.numberOrRuns() checks for trial %#v", tr)
+			}
+
+			for i := range trials {
+				tester(trials[i])
+			}
+
+		})
+}
+
+func TestArrayContainerIaddRangeNearMax068(t *testing.T) {
+
+	Convey("arrayContainer iaddRange should work near MaxUint16", t, func() {
+
+		iv := []interval16{{65525, 65527}, {65530, 65530}, {65534, 65535}}
+		rc := newRunContainer16TakeOwnership(iv)
+
+		ac2 := rc.toArrayContainer()
+		So(ac2.equals(rc), ShouldBeTrue)
+		So(rc.equals(ac2), ShouldBeTrue)
+
+		ac := newArrayContainer()
+		endx := int(MaxUint16) + 1
+		first := endx - 3
+		ac.iaddRange(first-20, endx-20)
+		ac.iaddRange(first-6, endx-6)
+		ac.iaddRange(first, endx)
+		So(ac.getCardinality(), ShouldEqual, 9)
+
+	})
 }

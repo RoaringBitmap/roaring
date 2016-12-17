@@ -145,6 +145,7 @@ func FastOr(bitmaps ...*Bitmap) *Bitmap {
 	for _, bm := range bitmaps[2:] {
 		answer = answer.lazyOR(bm)
 	}
+	// here is where repairAfterLazy is called.
 	answer.repairAfterLazy()
 	return answer
 }

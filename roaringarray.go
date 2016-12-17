@@ -1,9 +1,16 @@
 package roaring
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
+
+	snappy "github.com/glycerine/go-unsnap-stream"
+	"github.com/tinylib/msgp/msgp"
 )
+
+//go:generate msgp -unexported
 
 type container interface {
 	clone() container
@@ -12,17 +19,30 @@ type container interface {
 	andNot(container) container
 	iandNot(container) container // i stands for inplace
 	getCardinality() int
+	// rank returns the number of integers that are
+	// smaller or equal to x. rank(infinity) would be getCardinality().
 	rank(uint16) int
-	add(uint16) container
+
+	iadd(x uint16) bool                   // inplace, returns true if x was new.
+	iaddReturnMinimized(uint16) container // may change return type to minimize storage.
+
 	//addRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
 	iaddRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
-	remove(uint16) container
+
+	iremove(x uint16) bool                   // inplace, returns true if x was present.
+	iremoveReturnMinimized(uint16) container // may change return type to minimize storage.
+
 	not(start, final int) container               // range is [firstOfRange,lastOfRange)
 	inot(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	xor(r container) container
 	getShortIterator() shortIterable
 	contains(i uint16) bool
-	equals(i interface{}) bool
+
+	// equals is now logical equals; it does not require the
+	// same underlying container types, but compares across
+	// any of the implementations.
+	equals(r container) bool
+
 	fillLeastSignificant16bits(array []uint32, i int, mask uint32)
 	or(r container) container
 	ior(r container) container   // i stands for inplace
@@ -32,33 +52,76 @@ type container interface {
 	getSizeInBytes() int
 	//removeRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
 	iremoveRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
-	selectInt(uint16) int
+	selectInt(x uint16) int                  // selectInt returns the xth integer in the container
 	serializedSizeInBytes() int
 	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)
+
+	numberOfRuns() int
+	toEfficientContainer() container
+	String() string
+	containerType() contype
 }
+
+type contype uint8
+
+const (
+	bitmapContype contype = iota
+	arrayContype
+	run16Contype
+	run32Contype
+)
 
 // careful: range is [firstOfRange,lastOfRange]
 func rangeOfOnes(start, last int) container {
-	if (last - start + 1) > arrayDefaultMaxSize {
-		return newBitmapContainerwithRange(start, last)
+	if start > MaxUint16 {
+		panic("rangeOfOnes called with start > MaxUint16")
 	}
-
-	return newArrayContainerRange(start, last)
+	if last > MaxUint16 {
+		panic("rangeOfOnes called with last > MaxUint16")
+	}
+	if start < 0 {
+		panic("rangeOfOnes called with start < 0")
+	}
+	if last < 0 {
+		panic("rangeOfOnes called with last < 0")
+	}
+	return newRunContainer16Range(uint16(start), uint16(last))
 }
 
 type roaringArray struct {
 	keys            []uint16
-	containers      []container
+	containers      []container `msg:"-"` // don't try to serialize directly.
 	needCopyOnWrite []bool
 	copyOnWrite     bool
+
+	// conserz is used at serialization time
+	// to serialize containers. Otherwise empty.
+	conserz []containerSerz
+}
+
+// containerSerz facilitates serializing container (tricky to
+// serialize because it is an interface) by providing a
+// light wrapper with a type identifier.
+type containerSerz struct {
+	t contype  `msg:"t"` // type
+	r msgp.Raw `msg:"r"` // Raw msgpack of the actual container type
 }
 
 func newRoaringArray() *roaringArray {
-	ra := &roaringArray{}
-	ra.clear()
-	ra.copyOnWrite = false
-	return ra
+	return &roaringArray{}
+}
+
+// runOptimize compresses the element containers to minimize space consumed.
+// Q: how does this interact with copyOnWrite and needCopyOnWrite?
+// A: since we aren't changing the logical content, just the representation,
+//    we don't both to check the needCopyOnWrite bits. We replace
+//    (possibly all) elements of ra.containers in-place with space
+//    optimized versions.
+func (ra *roaringArray) runOptimize() {
+	for i := range ra.containers {
+		ra.containers[i] = ra.containers[i].toEfficientContainer()
+	}
 }
 
 func (ra *roaringArray) appendContainer(key uint16, value container, mustCopyOnWrite bool) {
@@ -137,40 +200,40 @@ func (ra *roaringArray) resize(newsize int) {
 }
 
 func (ra *roaringArray) clear() {
-	ra.keys = make([]uint16, 0)
-	ra.containers = make([]container, 0)
-	ra.needCopyOnWrite = make([]bool, 0)
+	*ra = roaringArray{}
 }
 
 func (ra *roaringArray) clone() *roaringArray {
-	sa := new(roaringArray)
-	sa.keys = make([]uint16, len(ra.keys))
-	sa.containers = make([]container, len(ra.containers))
-	sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
-	sa.copyOnWrite = ra.copyOnWrite
-	copy(sa.keys, ra.keys)
-	if sa.copyOnWrite {
-		copy(sa.keys, ra.keys)
-		copy(sa.containers, ra.containers)
-		sa.markAllAsNeedingCopyOnWrite()
+
+	// shallow copy, slices will have the same backing arrays.
+	sa := *ra
+
+	// this is where copyOnWrite is used.
+	if ra.copyOnWrite {
 		ra.markAllAsNeedingCopyOnWrite()
+		// sa.needCopyOnWrite is shared
 	} else {
-		for i := range sa.needCopyOnWrite {
-			sa.needCopyOnWrite[i] = false
-		}
+		// make a full copy
+
+		sa.keys = make([]uint16, len(ra.keys))
+		copy(sa.keys, ra.keys)
+
+		sa.containers = make([]container, len(ra.containers))
 		for i := range sa.containers {
 			sa.containers[i] = ra.containers[i].clone()
 		}
+
+		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
 	}
-	return sa
+	return &sa
 }
 
 func (ra *roaringArray) containsKey(x uint16) bool {
-	return (ra.binarySearch(0, len(ra.keys), x) >= 0)
+	return (ra.binarySearch(0, int64(len(ra.keys)), x) >= 0)
 }
 
 func (ra *roaringArray) getContainer(x uint16) container {
-	i := ra.binarySearch(0, len(ra.keys), x)
+	i := ra.binarySearch(0, int64(len(ra.keys)), x)
 	if i < 0 {
 		return nil
 	}
@@ -178,7 +241,7 @@ func (ra *roaringArray) getContainer(x uint16) container {
 }
 
 func (ra *roaringArray) getWritableContainerContainer(x uint16) container {
-	i := ra.binarySearch(0, len(ra.keys), x)
+	i := ra.binarySearch(0, int64(len(ra.keys)), x)
 	if i < 0 {
 		return nil
 	}
@@ -207,7 +270,7 @@ func (ra *roaringArray) getIndex(x uint16) int {
 	if (size == 0) || (ra.keys[size-1] == x) {
 		return size - 1
 	}
-	return ra.binarySearch(0, size, x)
+	return int(ra.binarySearch(0, int64(size), x))
 }
 
 func (ra *roaringArray) getKeyAtIndex(i int) uint16 {
@@ -230,7 +293,7 @@ func (ra *roaringArray) insertNewKeyValueAt(i int, key uint16, value container) 
 }
 
 func (ra *roaringArray) remove(key uint16) bool {
-	i := ra.binarySearch(0, len(ra.keys), key)
+	i := ra.binarySearch(0, int64(len(ra.keys)), key)
 	if i >= 0 { // if a new key
 		ra.removeAtIndex(i)
 		return true
@@ -261,11 +324,11 @@ func (ra *roaringArray) size() int {
 	return len(ra.keys)
 }
 
-func (ra *roaringArray) binarySearch(begin, end int, ikey uint16) int {
+func (ra *roaringArray) binarySearch(begin, end int64, ikey uint16) int {
 	low := begin
 	high := end - 1
 	for low+16 <= high {
-		middleIndex := int(uint((low + high)) >> 1)
+		middleIndex := low + (high-low)/2 // avoid overflow
 		middleValue := ra.keys[middleIndex]
 
 		if middleValue < ikey {
@@ -273,19 +336,19 @@ func (ra *roaringArray) binarySearch(begin, end int, ikey uint16) int {
 		} else if middleValue > ikey {
 			high = middleIndex - 1
 		} else {
-			return middleIndex
+			return int(middleIndex)
 		}
 	}
 	for ; low <= high; low++ {
 		val := ra.keys[low]
 		if val >= ikey {
 			if val == ikey {
-				return low
+				return int(low)
 			}
 			break
 		}
 	}
-	return -(low + 1)
+	return -int(low + 1)
 }
 
 func (ra *roaringArray) equals(o interface{}) bool {
@@ -311,89 +374,327 @@ func (ra *roaringArray) equals(o interface{}) bool {
 	return false
 }
 
+// this can be expensive; don't call it unnecessarily in production
 func (ra *roaringArray) serializedSizeInBytes() uint64 {
-	count := uint64(4 + 4)
-	for _, c := range ra.containers {
-		count = count + 4 + 4
-		count = count + uint64(c.serializedSizeInBytes())
-	}
-	return count
+	n, _ := ra.writeToHelper(nil, true)
+	return uint64(n)
 }
 
-func (ra *roaringArray) writeTo(stream io.Writer) (int64, error) {
-	preambleSize := 4 + 4 + 4*len(ra.keys)
-	buf := make([]byte, preambleSize+4*len(ra.keys))
-	binary.LittleEndian.PutUint32(buf[0:], uint32(serialCookie))
-	binary.LittleEndian.PutUint32(buf[4:], uint32(len(ra.keys)))
+//
+// spec: https://github.com/RoaringBitmap/RoaringFormatSpec
+//
+func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
+	return ra.writeToHelper(out, false)
+}
 
-	for i, key := range ra.keys {
-		off := 8 + i*4
-		binary.LittleEndian.PutUint16(buf[off:], uint16(key))
+// if fake then `out io.Writer` won't be touched, and the number of bytes
+// that would have been written and nil will be returned
+func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
+	stream := &bytes.Buffer{}
 
-		c := ra.containers[i]
-		binary.LittleEndian.PutUint16(buf[off+2:], uint16(c.getCardinality()-1))
+	//p("roaringArray.writeTo starting")
+	numKeys := len(ra.keys)
+	isRunSizeInBytes := (numKeys + 7) / 8
+
+	// compute isRun bitmap
+	var ir []byte
+	isRun := newBitmapContainer()
+	for i, c := range ra.containers {
+		switch c.(type) {
+		case *runContainer16:
+			isRun.iadd(uint16(i))
+		}
 	}
+	ir = uint64SliceAsByteSlice(isRun.bitmap)[:isRunSizeInBytes]
+
+	const cookieSize = 4
+	descriptiveHeaderSize := 4 * len(ra.keys)
+	preambleSize := cookieSize + isRunSizeInBytes + descriptiveHeaderSize
+
+	buf := make([]byte, preambleSize+4*len(ra.keys))
+	binary.LittleEndian.PutUint16(buf[0:], uint16(serialCookie))
+	if len(ra.keys) > MaxUint16 {
+		panic("should be impossible to have this many keys")
+	}
+	binary.LittleEndian.PutUint16(buf[2:], uint16(len(ra.keys)-1))
+	nw := 4
+	//p("after writing serialCookie and number of keys -1, now nw: %v", nw)
+
+	// isRun bitset
+	nw += copy(buf[nw:], ir)
+	//p("after writing isRun array of len(%v), now nw: %v, this will be start of descriptive header", len(ir), nw)
+
+	// descriptive header
+	for i, key := range ra.keys {
+		binary.LittleEndian.PutUint16(buf[nw:], uint16(key))
+		nw += 2
+		c := ra.containers[i]
+		binary.LittleEndian.PutUint16(buf[nw:], uint16(c.getCardinality()-1))
+		nw += 2
+	}
+	//p("after writing descriptiveHeader, now nw: %v", nw)
 
 	startOffset := int64(preambleSize + 4*len(ra.keys))
-	for i, c := range ra.containers {
-		binary.LittleEndian.PutUint32(buf[preambleSize+i*4:], uint32(startOffset))
-		startOffset += int64(getSizeInBytesFromCardinality(c.getCardinality()))
+	if len(ra.keys) >= noOffsetThreshold {
+		//p("writing offset header at nw: %v", nw)
+		// offset header
+		for _, c := range ra.containers {
+			binary.LittleEndian.PutUint32(buf[nw:], uint32(startOffset))
+			nw += 4
+			switch rc := c.(type) {
+			case *runContainer16:
+				startOffset += 2 + int64(len(rc.iv))*4
+			default:
+				startOffset += int64(getSizeInBytesFromCardinality(c.getCardinality()))
+			}
+		}
+	} else {
+		//p("skiping offset header at nw %v", nw)
 	}
 
-	_, err := stream.Write(buf)
-	if err != nil {
-		return 0, err
-	}
-
-	for _, c := range ra.containers {
-		_, err := c.writeTo(stream)
+	if !fake {
+		nsw, err := stream.Write(buf[:nw])
 		if err != nil {
 			return 0, err
 		}
+		if nsw != nw {
+			panic("short write!")
+		}
 	}
-	return startOffset, nil
+	for i, c := range ra.containers {
+		_ = i
+		//p("writeTo writing %v-th container with key %v (card: %v) at fileloc: %v / nw: %v", i, ra.keys[i], c.getCardinality(), len(stream.Bytes()), nw)
+		writ, err := c.writeTo(stream)
+		if err != nil {
+			return 0, err
+		}
+		nw += writ
+	}
+
+	by := stream.Bytes()
+
+	if fake {
+		return int64(nw), nil
+	}
+
+	n, err := out.Write(by)
+	if err == nil && n < len(by) {
+		err = io.ErrShortWrite
+	}
+	return int64(n), err
 }
 
 func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
+
+	pos := 0
+
 	var cookie uint32
 	err := binary.Read(stream, binary.LittleEndian, &cookie)
+
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
 	}
-	if cookie != serialCookie {
-		return 0, err
+	pos += 4
+
+	if cookie != serialCookieNoRunContainer && cookie&0x0000FFFF != serialCookie {
+		return 0, fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
 	}
+
 	var size uint32
-	err = binary.Read(stream, binary.LittleEndian, &size)
-	if err != nil {
-		return 0, err
+	haveRunContainers := false
+	var isRun container = newRunContainer16()
+	if cookie&0x0000FFFF == serialCookie {
+		haveRunContainers = true
+		size = (cookie >> 16) + 1
+		//p("stream contains run containers. total number of containers == size = %v", size)
+		bytesToRead := (int(size) + 7) / 8
+		//p("bytesToRead = %v", bytesToRead)
+		by := make([]byte, bytesToRead)
+		nr, err := io.ReadAtLeast(stream, by, bytesToRead)
+		if err != nil {
+			return 8 + int64(nr), fmt.Errorf("error in readFrom: could not read the "+
+				"runContainer bit flags of length %v bytes: %v", bytesToRead, err)
+		}
+		pos += nr
+		//p("by = %#v", by)
+
+		bc := newBitmapContainer()
+		asBy := uint64SliceAsByteSlice(bc.bitmap)
+		for i := range by {
+			asBy[i] = by[i]
+		}
+		bc.computeCardinality()
+		//p("bc = %s", bc)
+		isRun = bc
+		//p("read in isRun bitmap container ok: '%s'", bc.String())
+		//p("after read of isRun bitmap, now at pos = %v", pos)
+	} else {
+		err = binary.Read(stream, binary.LittleEndian, &size)
+		if err != nil {
+			return 0, fmt.Errorf("error in roaringArray.readFrom: when reading size, got: %s", err)
+		}
+		pos += 4
+		//p("!serialCookie, so after skip of isRun bitmap, and read of size, now at pos = %v", pos)
 	}
+
+	// descriptive header
 	keycard := make([]uint16, 2*size, 2*size)
 	err = binary.Read(stream, binary.LittleEndian, keycard)
 	if err != nil {
 		return 0, err
 	}
-	offsets := make([]uint32, size, size)
-	err = binary.Read(stream, binary.LittleEndian, offsets)
-	if err != nil {
-		return 0, err
+	//p("got descriptive header, starting at pos %v:", pos)
+	pos += 2 * 2 * int(size)
+	//p("descriptive header ends at pos %v:", pos)
+
+	k := 0
+	for i := 0; i < len(keycard); i += 2 {
+		if rleVerbose {
+			// debug stuff here:
+			yesRun := false
+			if isRun.contains(uint16(k)) {
+				yesRun = true
+			}
+			fmt.Printf("\n    descriptive header: key %x:  card %v   isRun: %v\n", keycard[i], int(keycard[i+1])+1, yesRun)
+		}
+		k++
 	}
-	offset := int64(4 + 4 + 8*size)
+
+	// offset header
+	if !haveRunContainers || size >= noOffsetThreshold {
+		//p("reading offset header of size %v at pos %v", size, pos)
+		offsets := make([]uint32, size, size)
+		err = binary.Read(stream, binary.LittleEndian, offsets)
+		if err != nil {
+			return 0, err
+		}
+		pos += 4 * int(size)
+		//p("read offset header of count %v. offsets: %v. pos after is %v", size, offsets, pos)
+	} else {
+		//p("skipping/should be no offset header, because size %v < noOffsetThreshold.  pos is now %v", size, pos)
+	}
+	//offset := int64(4 + 4 + 8*size) // probably wrong now
 	for i := uint32(0); i < size; i++ {
-		c := int(keycard[2*i+1]) + 1
-		offset += int64(getSizeInBytesFromCardinality(c))
-		if c > arrayDefaultMaxSize {
-			nb := newBitmapContainer()
-			nb.readFrom(stream)
-			nb.cardinality = int(c)
-			ra.appendContainer(keycard[2*i], nb, false)
+		key := int(keycard[2*i])
+		card := int(keycard[2*i+1]) + 1
+		if haveRunContainers && isRun.contains(uint16(i)) {
+			//p("at key %v, filepos %v, reading a run container", key, pos)
+			nb := newRunContainer16()
+			nr, err := nb.readFrom(stream)
+			if err != nil {
+				return 0, err
+			}
+			//p("at key %v, filepos %v, read a run container: %s", key, pos, nb)
+			pos += nr
+			//offset += 2 + int64(len(nb.iv))*4
+			ra.appendContainer(uint16(key), nb, false)
 		} else {
-			nb := newArrayContainerSize(int(c))
-			nb.readFrom(stream)
-			ra.appendContainer(keycard[2*i], nb, false)
+			//offset += int64(getSizeInBytesFromCardinality(card))
+			if card > arrayDefaultMaxSize {
+				//p("at key %v, filepos %v, reading a bitmap container", key, pos)
+
+				nb := newBitmapContainer()
+				nr, err := nb.readFrom(stream)
+				if err != nil {
+					return 0, err
+				}
+				nb.cardinality = int(card)
+				//p("at key %v, filepos %v, read a bitmap container = %s", key, pos, nb)
+				pos += nr
+				ra.appendContainer(keycard[2*i], nb, false)
+			} else {
+				//p("at key %v, filepos %v, reading an array container with card %v", key, pos, card)
+
+				nb := newArrayContainerSize(int(card))
+				nr, err := nb.readFrom(stream)
+				if err != nil {
+					return 0, err
+				}
+				//p("at key %v, filepos %v, read an array container (card %v) = %s",key, pos, card, nb)
+				pos += nr
+				ra.appendContainer(keycard[2*i], nb, false)
+			}
 		}
 	}
-	return offset, nil
+	return int64(pos), nil
+}
+
+func (ra *roaringArray) writeToMsgpack(stream io.Writer) error {
+
+	ra.conserz = make([]containerSerz, len(ra.containers))
+	for i, v := range ra.containers {
+		switch cn := v.(type) {
+		case *bitmapContainer:
+			bts, err := cn.MarshalMsg(nil)
+			if err != nil {
+				return err
+			}
+			ra.conserz[i].t = bitmapContype
+			ra.conserz[i].r = bts
+		case *arrayContainer:
+			bts, err := cn.MarshalMsg(nil)
+			if err != nil {
+				return err
+			}
+			ra.conserz[i].t = arrayContype
+			ra.conserz[i].r = bts
+		case *runContainer16:
+			bts, err := cn.MarshalMsg(nil)
+			if err != nil {
+				return err
+			}
+			ra.conserz[i].t = run16Contype
+			ra.conserz[i].r = bts
+		default:
+			fmt.Errorf("Unrecognized container implementation: %T", cn)
+		}
+	}
+	w := snappy.NewWriter(stream)
+	err := msgp.Encode(w, ra)
+	ra.conserz = nil
+	return err
+}
+
+func (ra *roaringArray) readFromMsgpack(stream io.Reader) error {
+	r := snappy.NewReader(stream)
+	err := msgp.Decode(r, ra)
+	if err != nil {
+		return err
+	}
+
+	if len(ra.containers) != len(ra.keys) {
+		ra.containers = make([]container, len(ra.keys))
+	}
+
+	for i, v := range ra.conserz {
+		switch v.t {
+		case bitmapContype:
+			c := &bitmapContainer{}
+			_, err = c.UnmarshalMsg(v.r)
+			if err != nil {
+				return err
+			}
+			ra.containers[i] = c
+		case arrayContype:
+			c := &arrayContainer{}
+			_, err = c.UnmarshalMsg(v.r)
+			if err != nil {
+				return err
+			}
+			ra.containers[i] = c
+		case run16Contype:
+			c := &runContainer16{}
+			_, err = c.UnmarshalMsg(v.r)
+			if err != nil {
+				return err
+			}
+			ra.containers[i] = c
+		default:
+			return fmt.Errorf("unrecognized contype serialization code: '%v'", v.t)
+		}
+	}
+	ra.conserz = nil
+	return nil
 }
 
 func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
@@ -447,11 +748,9 @@ func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 }
 
 func (ra *roaringArray) markAllAsNeedingCopyOnWrite() {
-	needCopyOnWrite := make([]bool, len(ra.keys))
-	for i := range needCopyOnWrite {
-		needCopyOnWrite[i] = true
+	for i := range ra.needCopyOnWrite {
+		ra.needCopyOnWrite[i] = true
 	}
-	ra.needCopyOnWrite = needCopyOnWrite
 }
 
 func (ra *roaringArray) needsCopyOnWrite(i int) bool {
