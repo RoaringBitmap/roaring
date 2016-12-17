@@ -38,18 +38,29 @@ func (rb *Bitmap) FromBase64(str string) (int64, error) {
 	return rb.ReadFrom(buf)
 }
 
-// WriteTo writes a serialized version of this bitmap to stream
+// WriteTo writes a serialized version of this bitmap to stream.
+// The format is compatible with other RoaringBitmap
+// implementations (Java, C) and is documented here:
+// https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 	return rb.highlowcontainer.writeTo(stream)
 }
 
 // WriteTo writes a msgpack2/snappy-streaming compressed serialized
-// version of this bitmap to stream
+// version of this bitmap to stream. The format is not
+// compatible with the WriteTo() format, and is
+// experimental: it may produce smaller on disk
+// footprint and/or be faster to read, depending
+// on your content. Currently only the Go roaring
+// implementation supports this format.
 func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 	return 0, rb.highlowcontainer.writeToMsgpack(stream)
 }
 
-// ReadFrom reads a serialized version of this bitmap from stream
+// ReadFrom reads a serialized version of this bitmap from stream.
+// The format is compatible with other RoaringBitmap
+// implementations (Java, C) and is documented here:
+// https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 	return rb.highlowcontainer.readFrom(stream)
 }
@@ -60,7 +71,9 @@ func (rb *Bitmap) RunOptimize() {
 }
 
 // ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
-// version of this bitmap from stream
+// version of this bitmap from stream. The format is
+// expected is that written by the WriteToMsgpack()
+// call; see additional notes there.
 func (rb *Bitmap) ReadFromMsgpack(stream io.Reader) (int64, error) {
 	return 0, rb.highlowcontainer.readFromMsgpack(stream)
 }

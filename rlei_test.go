@@ -870,9 +870,9 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 				p("rc.cardinality = %v", rc.cardinality())
 				p("rcb from b is %v", rcb)
 				p("rcb.cardinality = %v", rcb.cardinality())
-				it := rcb.NewRunIterator16()
-				for it.HasNext() {
-					nx := it.Next()
+				it := rcb.newRunIterator16()
+				for it.hasNext() {
+					nx := it.next()
 					rc.isubtract(interval16{start: nx, last: nx})
 				}
 

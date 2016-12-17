@@ -97,7 +97,7 @@ func TestExample2_roaring061(t *testing.T) {
 	if !r1.Equals(rb2) {
 		t.Errorf("RunOptimize should not affect equality.")
 	}
-	fmt.Print("size before run optimize ", size, " bytes, and after ", compact_size, " bytes")
+	fmt.Print("size before run optimize: ", size, " bytes, and after: ", compact_size, " bytes.\n")
 	rb3 := New()
 	rb3.AddRange(1, 10000000)
 	r1.Or(rb3)
@@ -112,7 +112,7 @@ func TestExample2_roaring061(t *testing.T) {
 	for i := uint32(0); i < 10000; i += 3 {
 		rb1.Add(i)
 	}
-	fmt.Printf("\n rb1card before doing AndNot(rb3): %v, rb3card=%v\n",
+	p("rb1card before doing AndNot(rb3): %v, rb3card=%v",
 		rb1.GetCardinality(), rb3.GetCardinality())
 	rb1.AndNot(rb3)
 	rb1card := rb1.GetCardinality()

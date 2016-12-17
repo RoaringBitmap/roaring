@@ -907,34 +907,27 @@ func (rc *runContainer32) Add(k uint32) (wasNew bool) {
 	return
 }
 
-//msgp:ignore RunIterator
+//msgp:ignore runIterator
 
-// RunIterator32 advice: you must call Next() at least once
+// runIterator32 advice: you must call Next() at least once
 // before calling Cur(); and you should call HasNext()
 // before calling Next() to insure there are contents.
-type RunIterator32 struct {
+type runIterator32 struct {
 	rc            *runContainer32
 	curIndex      int64
 	curPosInIndex uint32
 	curSeq        int64
 }
 
-// NewRunIterator32 returns a new empty run container.
-func (rc *runContainer32) NewRunIterator32() *RunIterator32 {
-	return &RunIterator32{rc: rc, curIndex: -1}
-}
-
-func (ri *RunIterator32) hasNext() bool {
-	return ri.HasNext()
-}
-func (ri *RunIterator32) next() uint32 {
-	return ri.Next()
+// newRunIterator32 returns a new empty run container.
+func (rc *runContainer32) newRunIterator32() *runIterator32 {
+	return &runIterator32{rc: rc, curIndex: -1}
 }
 
 // HasNext returns false if calling Next will panic. It
 // returns true when there is at least one more value
 // available in the iteration sequence.
-func (ri *RunIterator32) HasNext() bool {
+func (ri *runIterator32) hasNext() bool {
 	if len(ri.rc.iv) == 0 {
 		return false
 	}
@@ -944,19 +937,19 @@ func (ri *RunIterator32) HasNext() bool {
 	return ri.curSeq+1 < ri.rc.cardinality()
 }
 
-// Cur returns the current value pointed to by the iterator.
-func (ri *RunIterator32) Cur() uint32 {
+// cur returns the current value pointed to by the iterator.
+func (ri *runIterator32) cur() uint32 {
 	//p("in Cur, curIndex=%v, curPosInIndex=%v", ri.curIndex, ri.curPosInIndex)
 	return ri.rc.iv[ri.curIndex].start + ri.curPosInIndex
 }
 
 // Next returns the next value in the iteration sequence.
-func (ri *RunIterator32) Next() uint32 {
-	if !ri.HasNext() {
+func (ri *runIterator32) next() uint32 {
+	if !ri.hasNext() {
 		panic("no Next available")
 	}
 	if ri.curIndex >= int64(len(ri.rc.iv)) {
-		panic("RunIterator.Next() going beyond what is available")
+		panic("runIterator.Next() going beyond what is available")
 	}
 	if ri.curIndex == -1 {
 		// first time is special
@@ -972,19 +965,19 @@ func (ri *RunIterator32) Next() uint32 {
 		}
 		ri.curSeq++
 	}
-	return ri.Cur()
+	return ri.cur()
 }
 
-// Remove removes the element that the iterator
+// remove removes the element that the iterator
 // is on from the run container. You can use
 // Cur if you want to double check what is about
 // to be deleted.
-func (ri *RunIterator32) Remove() uint32 {
+func (ri *runIterator32) remove() uint32 {
 	n := ri.rc.cardinality()
 	if n == 0 {
-		panic("RunIterator.Remove called on empty runContainer32")
+		panic("runIterator.Remove called on empty runContainer32")
 	}
-	cur := ri.Cur()
+	cur := ri.cur()
 
 	ri.rc.deleteAt(&ri.curIndex, &ri.curPosInIndex, &ri.curSeq)
 	return cur

@@ -143,7 +143,7 @@ func (rc *runContainer16) fillLeastSignificant16bits(x []uint32, i int, mask uin
 }
 
 func (rc *runContainer16) getShortIterator() shortIterable {
-	return rc.NewRunIterator16()
+	return rc.newRunIterator16()
 }
 
 // add the values in the range [firstOfRange, endx). endx

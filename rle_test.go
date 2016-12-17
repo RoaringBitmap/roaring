@@ -77,26 +77,26 @@ func TestRleRunIterator32(t *testing.T) {
 			_ = msg
 			p("an empty container: '%s'\n", msg)
 			So(rc.cardinality(), ShouldEqual, 0)
-			it := rc.NewRunIterator32()
-			So(it.HasNext(), ShouldBeFalse)
+			it := rc.newRunIterator32()
+			So(it.hasNext(), ShouldBeFalse)
 		}
 		{
 			rc := newRunContainer32TakeOwnership([]interval32{{start: 4, last: 4}})
 			So(rc.cardinality(), ShouldEqual, 1)
-			it := rc.NewRunIterator32()
-			So(it.HasNext(), ShouldBeTrue)
-			So(it.Next(), ShouldResemble, uint32(4))
-			So(it.Cur(), ShouldResemble, uint32(4))
+			it := rc.newRunIterator32()
+			So(it.hasNext(), ShouldBeTrue)
+			So(it.next(), ShouldResemble, uint32(4))
+			So(it.cur(), ShouldResemble, uint32(4))
 		}
 		{
 			rc := newRunContainer32CopyIv([]interval32{{start: 4, last: 9}})
 			So(rc.cardinality(), ShouldEqual, 6)
-			it := rc.NewRunIterator32()
-			So(it.HasNext(), ShouldBeTrue)
+			it := rc.newRunIterator32()
+			So(it.hasNext(), ShouldBeTrue)
 			for i := 4; i < 10; i++ {
-				So(it.Next(), ShouldEqual, uint32(i))
+				So(it.next(), ShouldEqual, uint32(i))
 			}
-			So(it.HasNext(), ShouldBeFalse)
+			So(it.hasNext(), ShouldBeFalse)
 		}
 
 		{
@@ -105,25 +105,25 @@ func TestRleRunIterator32(t *testing.T) {
 			So(card, ShouldEqual, 6)
 			//So(rc.serializedSizeInBytes(), ShouldEqual, 2+4*rc.numberOfRuns())
 
-			it := rc.NewRunIterator32()
-			So(it.HasNext(), ShouldBeTrue)
+			it := rc.newRunIterator32()
+			So(it.hasNext(), ShouldBeTrue)
 			for i := 4; i < 6; i++ {
-				So(it.Next(), ShouldEqual, uint32(i))
+				So(it.next(), ShouldEqual, uint32(i))
 			}
-			So(it.Cur(), ShouldEqual, uint32(5))
+			So(it.cur(), ShouldEqual, uint32(5))
 
 			p("before Remove of 5, rc = '%s'", rc)
 
-			So(it.Remove(), ShouldEqual, uint32(5))
+			So(it.remove(), ShouldEqual, uint32(5))
 
 			p("after Remove of 5, rc = '%s'", rc)
 			So(rc.cardinality(), ShouldEqual, 5)
 
-			it2 := rc.NewRunIterator32()
+			it2 := rc.newRunIterator32()
 			So(rc.cardinality(), ShouldEqual, 5)
-			So(it2.Next(), ShouldEqual, uint32(4))
+			So(it2.next(), ShouldEqual, uint32(4))
 			for i := 6; i < 10; i++ {
-				So(it2.Next(), ShouldEqual, uint32(i))
+				So(it2.next(), ShouldEqual, uint32(i))
 			}
 		}
 		{
@@ -141,16 +141,16 @@ func TestRleRunIterator32(t *testing.T) {
 			rc = rc.union(rc1)
 
 			So(rc.cardinality(), ShouldEqual, 8)
-			it := rc.NewRunIterator32()
-			So(it.Next(), ShouldEqual, uint32(0))
-			So(it.Next(), ShouldEqual, uint32(2))
-			So(it.Next(), ShouldEqual, uint32(4))
-			So(it.Next(), ShouldEqual, uint32(6))
-			So(it.Next(), ShouldEqual, uint32(7))
-			So(it.Next(), ShouldEqual, uint32(10))
-			So(it.Next(), ShouldEqual, uint32(11))
-			So(it.Next(), ShouldEqual, uint32(MaxUint32))
-			So(it.HasNext(), ShouldEqual, false)
+			it := rc.newRunIterator32()
+			So(it.next(), ShouldEqual, uint32(0))
+			So(it.next(), ShouldEqual, uint32(2))
+			So(it.next(), ShouldEqual, uint32(4))
+			So(it.next(), ShouldEqual, uint32(6))
+			So(it.next(), ShouldEqual, uint32(7))
+			So(it.next(), ShouldEqual, uint32(10))
+			So(it.next(), ShouldEqual, uint32(11))
+			So(it.next(), ShouldEqual, uint32(MaxUint32))
+			So(it.hasNext(), ShouldEqual, false)
 
 			rc2 := newRunContainer32TakeOwnership([]interval32{
 				{start: 0, last: MaxUint32},
@@ -636,17 +636,17 @@ func TestRleCoverageOddsAndEnds32(t *testing.T) {
 			ra.Add(5)
 			So(ra.cardinality(), ShouldEqual, 2)
 
-			// NewRunIterator32()
+			// newRunIterator32()
 			empty := newRunContainer32()
-			it := empty.NewRunIterator32()
-			So(func() { it.Next() }, ShouldPanic)
-			it2 := ra.NewRunIterator32()
+			it := empty.newRunIterator32()
+			So(func() { it.next() }, ShouldPanic)
+			it2 := ra.newRunIterator32()
 			it2.curIndex = int64(len(it2.rc.iv))
-			So(func() { it2.Next() }, ShouldPanic)
+			So(func() { it2.next() }, ShouldPanic)
 
-			// RunIterator32.Remove()
-			emptyIt := empty.NewRunIterator32()
-			So(func() { emptyIt.Remove() }, ShouldPanic)
+			// runIterator32.remove()
+			emptyIt := empty.newRunIterator32()
+			So(func() { emptyIt.remove() }, ShouldPanic)
 
 			// newRunContainer32FromArray
 			arr := newArrayContainerRange(1, 6)
@@ -672,16 +672,16 @@ func TestRleCoverageOddsAndEnds32(t *testing.T) {
 			rc3.Add(10)
 			rc3.Add(12)
 			So(rc3.cardinality(), ShouldEqual, 5)
-			it3 := rc3.NewRunIterator32()
-			it3.Next()
-			it3.Next()
-			it3.Next()
-			it3.Next()
+			it3 := rc3.newRunIterator32()
+			it3.next()
+			it3.next()
+			it3.next()
+			it3.next()
 			//p("rc3 = %v", rc3) // 5, 6, 9, 10, 12
-			So(it3.Cur(), ShouldEqual, uint32(10))
-			it3.Remove()
+			So(it3.cur(), ShouldEqual, uint32(10))
+			it3.remove()
 			//p("after Remove of 10, rc3 = %v", rc3) // 5, 6, 9, 12
-			So(it3.Next(), ShouldEqual, uint32(12))
+			So(it3.next(), ShouldEqual, uint32(12))
 		}
 	})
 }
