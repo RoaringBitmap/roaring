@@ -172,7 +172,7 @@ func (ac *arrayContainer) equals(o container) bool {
 
 	srb, ok := o.(*arrayContainer)
 	if ok {
-		p("both arrays")
+		//p("both arrays")
 		// Check if the containers are the same object.
 		if ac == srb {
 			return true
@@ -192,14 +192,13 @@ func (ac *arrayContainer) equals(o container) bool {
 
 	bc, ok := o.(container)
 	if ok {
-		p("not both arrays")
+		//p("not both arrays")
 
 		// use generic comparison
 		bCard := bc.getCardinality()
 		aCard := ac.getCardinality()
 		if bCard != aCard {
-			p("card differs: bCard:%v on %T vs aCard:%v on %T",
-				bCard, bc, aCard, ac)
+			//p("card differs: bCard:%v on %T vs aCard:%v on %T", bCard, bc, aCard, ac)
 			return false
 		}
 		ait := ac.getShortIterator()
