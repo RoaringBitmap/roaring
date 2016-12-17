@@ -683,6 +683,17 @@ func TestRleCoverageOddsAndEnds32(t *testing.T) {
 			//p("after Remove of 10, rc3 = %v", rc3) // 5, 6, 9, 12
 			So(it3.next(), ShouldEqual, uint32(12))
 		}
+
+		// runContainer32.equals
+		{
+			rc32 := newRunContainer32()
+			So(rc32.equals32(rc32), ShouldBeTrue)
+			rc32b := newRunContainer32()
+			So(rc32.equals32(rc32b), ShouldBeTrue)
+			rc32.Add(1)
+			rc32b.Add(2)
+			So(rc32.equals32(rc32b), ShouldBeFalse)
+		}
 	})
 }
 

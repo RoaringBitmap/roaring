@@ -2,7 +2,6 @@ package roaring
 
 import (
 	"fmt"
-	"sort"
 )
 
 // common to rle32.go and rle16.go
@@ -83,20 +82,6 @@ func (rc *runContainer32) Or(b *Bitmap) *Bitmap {
 	return out
 }
 
-func showHash(name string, h map[int]bool) {
-	hv := []int{}
-	for k := range h {
-		hv = append(hv, k)
-	}
-	sort.Sort(sort.IntSlice(hv))
-	stringH := ""
-	for i := range hv {
-		stringH += fmt.Sprintf("%v, ", hv[i])
-	}
-
-	fmt.Printf("%s is (len %v): %s", name, len(h), stringH)
-}
-
 // trial is used in the randomized testing of runContainers
 type trial struct {
 	n           int
@@ -156,9 +141,9 @@ func (rc *runContainer16) Or(b *Bitmap) *Bitmap {
 	return out
 }
 
-func (rc *runContainer32) and(container) container {
-	panic("TODO. not yet implemented")
-}
+//func (rc *runContainer32) and(container) container {
+//	panic("TODO. not yet implemented")
+//}
 
 // serializedSizeInBytes returns the number of bytes of memory
 // required by this runContainer16. This is for the
@@ -173,27 +158,4 @@ func (rc *runContainer16) serializedSizeInBytes() int {
 // required by this runContainer32.
 func (rc *runContainer32) serializedSizeInBytes() int {
 	return 4 + len(rc.iv)*8
-}
-
-func (rc *runContainer32) equals32(srb *runContainer32) bool {
-	//p("both rc32")
-	// Check if the containers are the same object.
-	if rc == srb {
-		//p("same object")
-		return true
-	}
-
-	if len(srb.iv) != len(rc.iv) {
-		//p("iv len differ")
-		return false
-	}
-
-	for i, v := range rc.iv {
-		if v != srb.iv[i] {
-			//p("differ at iv i=%v, srb.iv[i]=%v, rc.iv[i]=%v", i, srb.iv[i], rc.iv[i])
-			return false
-		}
-	}
-	//p("all intervals same, returning true")
-	return true
 }

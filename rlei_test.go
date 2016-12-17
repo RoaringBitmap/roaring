@@ -10,6 +10,21 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+// showHash utility really only used in testing
+func showHash(name string, h map[int]bool) {
+	hv := []int{}
+	for k := range h {
+		hv = append(hv, k)
+	}
+	sort.Sort(sort.IntSlice(hv))
+	stringH := ""
+	for i := range hv {
+		stringH += fmt.Sprintf("%v, ", hv[i])
+	}
+
+	fmt.Printf("%s is (len %v): %s", name, len(h), stringH)
+}
+
 func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 
 	Convey("runContainer16 `and` operation against other container types should correctly do the intersection", t, func() {

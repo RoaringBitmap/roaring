@@ -1484,3 +1484,26 @@ func (rc *runContainer16) numberOfRuns() (nr int) {
 func (rc *runContainer16) containerType() contype {
 	return run16Contype
 }
+
+func (rc *runContainer16) equals16(srb *runContainer16) bool {
+	//p("both rc16")
+	// Check if the containers are the same object.
+	if rc == srb {
+		//p("same object")
+		return true
+	}
+
+	if len(srb.iv) != len(rc.iv) {
+		//p("iv len differ")
+		return false
+	}
+
+	for i, v := range rc.iv {
+		if v != srb.iv[i] {
+			//p("differ at iv i=%v, srb.iv[i]=%v, rc.iv[i]=%v", i, srb.iv[i], rc.iv[i])
+			return false
+		}
+	}
+	//p("all intervals same, returning true")
+	return true
+}

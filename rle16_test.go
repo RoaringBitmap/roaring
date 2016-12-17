@@ -683,6 +683,17 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			//p("after Remove of 10, rc3 = %v", rc3) // 5, 6, 9, 12
 			So(it3.next(), ShouldEqual, uint16(12))
 		}
+
+		// runContainer16.equals
+		{
+			rc16 := newRunContainer16()
+			So(rc16.equals16(rc16), ShouldBeTrue)
+			rc16b := newRunContainer16()
+			So(rc16.equals16(rc16b), ShouldBeTrue)
+			rc16.Add(1)
+			rc16b.Add(2)
+			So(rc16.equals16(rc16b), ShouldBeFalse)
+		}
 	})
 }
 
