@@ -1605,6 +1605,7 @@ type twoCall func(r container) container
 type twofer struct {
 	name string
 	call twoCall
+	cn   container
 }
 
 func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
@@ -1622,20 +1623,20 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 		m := []string{"array", "run", "bitmap"}
 
 		receiver := []container{a, r, b}
-		args := []container{a2, r2, b2}
+		arg := []container{a2, r2, b2}
 		callme := []twofer{}
 
 		nCalls := 0
 		for k, c := range receiver {
-			callme = append(callme, twofer{"and", c.and})
-			callme = append(callme, twofer{"iand", c.iand})
-			callme = append(callme, twofer{"ior", c.ior})
-			callme = append(callme, twofer{"lazyOR", c.lazyOR})
-			callme = append(callme, twofer{"lazyIOR", c.lazyIOR})
-			callme = append(callme, twofer{"or", c.or})
-			callme = append(callme, twofer{"xor", c.xor})
-			callme = append(callme, twofer{"andNot", c.andNot})
-			callme = append(callme, twofer{"iandNot", c.iandNot})
+			callme = append(callme, twofer{"and", c.and, c})
+			callme = append(callme, twofer{"iand", c.iand, c})
+			callme = append(callme, twofer{"ior", c.ior, c})
+			callme = append(callme, twofer{"lazyOR", c.lazyOR, c})
+			callme = append(callme, twofer{"lazyIOR", c.lazyIOR, c})
+			callme = append(callme, twofer{"or", c.or, c})
+			callme = append(callme, twofer{"xor", c.xor, c})
+			callme = append(callme, twofer{"andNot", c.andNot, c})
+			callme = append(callme, twofer{"iandNot", c.iandNot, c})
 			if k == 0 {
 				nCalls = len(callme)
 			}
@@ -1654,11 +1655,18 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 			}
 
 			fmt.Printf("\n ========== testing calls to '%s' all match\n", c1.name)
-			for k2, a := range args {
-				//fmt.Printf("\n testing with argument of '%s'\n", m[k2])
-				res1 := c1.call(a)
-				res2 := c2.call(a)
-				res3 := c3.call(a)
+			for k2, a := range arg {
+
+				fmt.Printf("\n ------------  on arg as '%s': %s\n", m[k2], a)
+				fmt.Printf("\n prior to '%s', array receiver c1 is '%s'\n", c1.name, c1.cn)
+				fmt.Printf("\n prior to '%s', run receiver c2 is '%s'\n", c2.name, c2.cn)
+				fmt.Printf("\n prior to '%s', bitmap receiver c3 is '%s'\n", c3.name, c3.cn)
+				So(c1.cn.equals(c2.cn), ShouldBeTrue)
+				So(c1.cn.equals(c3.cn), ShouldBeTrue)
+
+				res1 := c1.call(a) // array
+				res2 := c2.call(a) // run
+				res3 := c3.call(a) // bitmap
 
 				z := c1.name
 

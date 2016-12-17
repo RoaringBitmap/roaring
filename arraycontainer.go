@@ -298,7 +298,7 @@ func (ac *arrayContainer) or(a container) container {
 	case *arrayContainer:
 		return ac.orArray(x)
 	case *bitmapContainer:
-		return a.or(ac)
+		return x.or(ac)
 	case *runContainer16:
 		return x.orArray(ac)
 	}
@@ -308,13 +308,37 @@ func (ac *arrayContainer) or(a container) container {
 func (ac *arrayContainer) ior(a container) container {
 	switch x := a.(type) {
 	case *arrayContainer:
-		return ac.orArray(x)
+		return ac.iorArray(x)
 	case *bitmapContainer:
-		return a.ior(ac)
+		return ac.iorBitmap(x)
 	case *runContainer16:
-		return x.orArray(ac) // alternative x.iorArray(ac) is unlikely to be correct
+		return ac.iorRun16(x)
 	}
 	panic("unsupported container type")
+}
+
+func (ac *arrayContainer) iorArray(ac2 *arrayContainer) container {
+
+	bc1 := ac.toBitmapContainer()
+	bc2 := ac2.toBitmapContainer()
+	bc1.iorBitmap(bc2)
+	*ac = *newArrayContainerFromBitmap(bc1)
+	return ac
+}
+
+func (ac *arrayContainer) iorBitmap(bc2 *bitmapContainer) container {
+	bc1 := ac.toBitmapContainer()
+	bc1.iorBitmap(bc2)
+	*ac = *newArrayContainerFromBitmap(bc1)
+	return ac
+}
+
+func (ac *arrayContainer) iorRun16(rc *runContainer16) container {
+	bc1 := ac.toBitmapContainer()
+	bc2 := rc.toBitmapContainer()
+	bc1.iorBitmap(bc2)
+	*ac = *newArrayContainerFromBitmap(bc1)
+	return ac
 }
 
 func (ac *arrayContainer) lazyIOR(a container) container {
@@ -748,6 +772,12 @@ func (ac *arrayContainer) loadData(bitmapContainer *bitmapContainer) {
 func newArrayContainer() *arrayContainer {
 	p := new(arrayContainer)
 	return p
+}
+
+func newArrayContainerFromBitmap(bc *bitmapContainer) *arrayContainer {
+	ac := &arrayContainer{}
+	ac.loadData(bc)
+	return ac
 }
 
 func newArrayContainerCapacity(size int) *arrayContainer {
