@@ -27,7 +27,7 @@ type container interface {
 	iaddReturnMinimized(uint16) container // may change return type to minimize storage.
 
 	//addRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
-	iaddRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
+	iaddRange(start, endx int) container // i stands for inplace, range is [firstOfRange,endx)
 
 	iremove(x uint16) bool                   // inplace, returns true if x was present.
 	iremoveReturnMinimized(uint16) container // may change return type to minimize storage.

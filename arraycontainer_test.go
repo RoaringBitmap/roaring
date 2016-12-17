@@ -326,5 +326,26 @@ func TestArrayContainerEtc070(t *testing.T) {
 		So(ac5.getCardinality(), ShouldEqual, 10)
 		ac6 := ac5.remove(5)
 		So(ac6.getCardinality(), ShouldEqual, 9)
+
+		// lazyorArray that converts to bitmap
+		ac5.iaddRange(0, arrayLazyLowerBound-1)
+		ac6.iaddRange(arrayLazyLowerBound, 2*arrayLazyLowerBound-2)
+		ac6a := ac6.(*arrayContainer)
+		bc := ac5.lazyorArray(ac6a)
+		_, isBitmap := bc.(*bitmapContainer)
+		So(isBitmap, ShouldBeTrue)
+
+		// andBitmap
+		ac = newArrayContainer()
+		ac.iaddRange(0, 10)
+		bc9 := newBitmapContainer()
+		bc9.iaddRange(0, 5)
+		and := ac.andBitmap(bc9)
+		So(and.getCardinality(), ShouldEqual, 5)
+
+		// numberOfRuns with 1 member
+		ac10 := newArrayContainer()
+		ac10.iadd(1)
+		So(ac10.numberOfRuns(), ShouldEqual, 1)
 	})
 }
