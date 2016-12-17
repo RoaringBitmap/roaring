@@ -1614,14 +1614,14 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 
 	Convey("each of the container methods that takes two containers should handle all 3x3==9 possible ways of being called -- and return results that agree with each other", t, func() {
 
-		rleVerbose = true
+		//rleVerbose = true
 
 		seed := int64(42)
 		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 10, percentFill: .7, ntrial: 1, numRandomOpsPass: 2},
+			trial{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100},
 		}
 
 		tester := func(tr trial) {
