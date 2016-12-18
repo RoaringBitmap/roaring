@@ -14,6 +14,27 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func TestSerializationOfEmptyBitmap(t *testing.T) {
+	rb := NewBitmap()
+
+	buf := &bytes.Buffer{}
+	_, err := rb.WriteTo(buf)
+	if err != nil {
+		t.Errorf("Failed writing")
+	}
+
+	newrb := NewBitmap()
+	_, err = newrb.ReadFrom(buf)
+	if err != nil {
+		t.Errorf("Failed reading: %v", err)
+	}
+	if !rb.Equals(newrb) {
+		p("rb = '%s'", rb)
+		p("but newrb = '%s'", newrb)
+		t.Errorf("Cannot retrieve serialized version; rb != newrb")
+	}
+}
+
 func TestBase64_036(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
 
