@@ -505,7 +505,7 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	var isRun container = newRunContainer16()
 	if cookie&0x0000FFFF == serialCookie {
 		haveRunContainers = true
-		size = (cookie >> 16) + 1
+		size = uint32(uint16((cookie >> 16)) + 1)
 		//p("stream contains run containers. total number of containers == size = %v", size)
 		bytesToRead := (int(size) + 7) / 8
 		//p("bytesToRead = %v", bytesToRead)
