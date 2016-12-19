@@ -185,7 +185,6 @@ func TestRleRunSearch16(t *testing.T) {
 			}
 
 			for i, v := range absent {
-				//p("absent check on i=%v, v=%v in rc=%v", i, v, rc)
 				where, present, _ = rc.search(int64(v), nil)
 				So(present, ShouldBeFalse)
 				So(where, ShouldEqual, i)
@@ -388,14 +387,9 @@ func TestRleRandomIntersection16(t *testing.T) {
 				arle.set(false, a...)
 				p("after set(false, a), arle is %v", arle)
 
-				//p("arle is %v", arle)
-				//p("brle is %v", brle)
-
 				isect := arle.intersect(brle)
 
 				p("isect is %v", isect)
-
-				//showHash("hashi", hashi)
 
 				for k := range hashi {
 					p("hashi has %v, checking in isect", k)
@@ -461,8 +455,6 @@ func TestRleRandomUnion16(t *testing.T) {
 					hashu[k] = true
 				}
 
-				//showHash("hashu", hashu)
-
 				// RunContainer's Union
 				arle := newRunContainer16()
 				for i := range a {
@@ -470,9 +462,6 @@ func TestRleRandomUnion16(t *testing.T) {
 				}
 				brle := newRunContainer16()
 				brle.set(false, b...)
-
-				//p("arle is %v", arle)
-				//p("brle is %v", brle)
 
 				union := arle.union(brle)
 
@@ -677,10 +666,8 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			it3.Next()
 			it3.Next()
 			it3.Next()
-			//p("rc3 = %v", rc3) // 5, 6, 9, 10, 12
 			So(it3.Cur(), ShouldEqual, uint16(10))
 			it3.Remove()
-			//p("after Remove of 10, rc3 = %v", rc3) // 5, 6, 9, 12
 			So(it3.Next(), ShouldEqual, uint16(12))
 		}
 	})

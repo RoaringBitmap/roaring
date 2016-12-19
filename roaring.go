@@ -59,6 +59,11 @@ func (rb *Bitmap) RunOptimize() {
 	rb.highlowcontainer.runOptimize()
 }
 
+// HasRunCompression returns true if the bitmap benefits from run compression
+func (rb *Bitmap) HasRunCompression() bool {
+	return rb.highlowcontainer.hasRunCompression()
+}
+
 // ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
 // version of this bitmap from stream
 func (rb *Bitmap) ReadFromMsgpack(stream io.Reader) (int64, error) {
@@ -135,7 +140,8 @@ func (rb *Bitmap) GetSizeInBytes() uint64 {
 
 // GetSerializedSizeInBytes computes the serialized size in bytes
 // of the Bitmap. It should correspond to the
-// number of bytes written when invoking WriteTo
+// number of bytes written when invoking WriteTo. You can expect
+// that this function is much cheaper computationally than WriteTo.
 func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }

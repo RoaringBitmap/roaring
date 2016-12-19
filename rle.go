@@ -270,7 +270,6 @@ func newRunContainer32FromArray(arr *arrayContainer) *runContainer32 {
 func (rc *runContainer32) set(alreadySorted bool, vals ...uint32) {
 
 	rc2 := newRunContainer32FromVals(alreadySorted, vals...)
-	//p("set: rc2 is %s", rc2)
 	un := rc.union(rc2)
 	rc.iv = un.iv
 	rc.card = 0
@@ -368,25 +367,19 @@ func (rc *runContainer32) union(b *runContainer32) *runContainer32 {
 		cura = rc.iv[na]
 		curb = b.iv[nb]
 
-		//p("pass=%v, cura=%v, curb=%v, merged=%v, mergedUsed=%v m=%v", pass, cura, curb, merged, mergedUsed, m)
-
 		if mergedUsed {
-			//p("mergedUsed is true")
 			mergedUpdated := false
 			if canMerge32(cura, merged) {
-				//p("canMerge32(cura=%s, merged=%s) is true", cura, merged)
 				merged = mergeInterval32s(cura, merged)
 				na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
 				mergedUpdated = true
 			}
 			if canMerge32(curb, merged) {
-				//p("canMerge32(curb=%s, merged=%s) is true", curb, merged)
 				merged = mergeInterval32s(curb, merged)
 				nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
 				mergedUpdated = true
 			}
 			if !mergedUpdated {
-				//p("!mergedUpdated")
 				// we know that merged is disjoint from cura and curb
 				m = append(m, merged)
 				mergedUsed = false
@@ -394,20 +387,16 @@ func (rc *runContainer32) union(b *runContainer32) *runContainer32 {
 			continue
 
 		} else {
-			//p("!mergedUsed")
 			// !mergedUsed
 			if !canMerge32(cura, curb) {
 				if cura.start < curb.start {
-					//p("cura is before curb")
 					m = append(m, cura)
 					na++
 				} else {
-					//p("curb is before cura")
 					m = append(m, curb)
 					nb++
 				}
 			} else {
-				//p("intervals are not disjoint, we can merge them. cura=%s, curb=%s", cura, curb)
 				merged = mergeInterval32s(cura, curb)
 				mergedUsed = true
 				na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
@@ -418,11 +407,9 @@ func (rc *runContainer32) union(b *runContainer32) *runContainer32 {
 	var aDone, bDone bool
 	if na >= alim {
 		aDone = true
-		//p("na(%v) >= alim=%v, the 'a' sequence is done, finish up on 'merged' and 'b'.", na, alim)
 	}
 	if nb >= blim {
 		bDone = true
-		//p("nb(%v) >= blim=%v, the 'b' sequence is done, finish up on 'merged' and 'a'.", nb, blim)
 	}
 	// finish by merging anything remaining into merged we can:
 	if mergedUsed {
@@ -431,7 +418,6 @@ func (rc *runContainer32) union(b *runContainer32) *runContainer32 {
 			for na < alim {
 				cura = rc.iv[na]
 				if canMerge32(cura, merged) {
-					//p("canMerge32(cura=%s, merged=%s) is true. na=%v", cura, merged, na)
 					merged = mergeInterval32s(cura, merged)
 					na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
 				} else {
@@ -446,7 +432,6 @@ func (rc *runContainer32) union(b *runContainer32) *runContainer32 {
 			for nb < blim {
 				curb = b.iv[nb]
 				if canMerge32(curb, merged) {
-					//p("canMerge32(curb=%s, merged=%s) is true. nb=%v", curb, merged, nb)
 					merged = mergeInterval32s(curb, merged)
 					nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
 				} else {
@@ -456,24 +441,16 @@ func (rc *runContainer32) union(b *runContainer32) *runContainer32 {
 
 		}
 
-		//p("mergedUsed==true, before adding merged=%s, m=%v", merged, sliceToString32(m))
 		m = append(m, merged)
-		//p("added mergedUsed, m=%v", sliceToString32(m))
 	}
 	if na < alim {
-		//p("adding the rest of a.vi[na:] = %v", sliceToString32(rc.iv[na:]))
 		m = append(m, rc.iv[na:]...)
-		//p("after the rest of a.vi[na:] to m, now m = %v", sliceToString32(m))
 	}
 	if nb < blim {
-		//p("adding the rest of b.vi[nb:] = %v", sliceToString32(b.iv[nb:]))
 		m = append(m, b.iv[nb:]...)
-		//p("after the rest of a.vi[nb:] to m, now m = %v", sliceToString32(m))
 	}
 
-	//p("making res out of m = %v", sliceToString32(m))
 	res := &runContainer32{iv: m}
-	//p("union returning %s", res)
 	return res
 }
 
@@ -498,13 +475,11 @@ func (rc *runContainer32) intersect(b *runContainer32) *runContainer32 {
 	numb := int64(len(b.iv))
 	res := &runContainer32{}
 	if numa == 0 || numb == 0 {
-		//p("intersection is empty, returning early")
 		return res
 	}
 
 	if numa == 1 && numb == 1 {
 		if !haveOverlap32(a.iv[0], b.iv[0]) {
-			//p("intersection is empty, returning early")
 			return res
 		}
 	}
@@ -524,28 +499,21 @@ func (rc *runContainer32) intersect(b *runContainer32) *runContainer32 {
 	pass := 0
 toploop:
 	for acuri < numa && bcuri < numb {
-		//p("============     top of loop, pass = %v", pass)
 		pass++
 
 		isOverlap, isLeftoverA, isLeftoverB, leftoverstart, intersection = intersectWithLeftover32(astart, int64(a.iv[acuri].last), bstart, int64(b.iv[bcuri].last))
 
-		//p("acuri=%v, astart=%v, a.iv[acuri].endx=%v,   bcuri=%v, bstart=%v, b.iv[bcuri].endx=%v, isOverlap=%v, isLeftoverA=%v, isLeftoverB=%v, leftoverstart=%v, intersection = %#v", acuri, astart, a.iv[acuri].endx, bcuri, bstart, b.iv[bcuri].endx, isOverlap, isLeftoverA, isLeftoverB, leftoverstart, intersection)
-
 		if !isOverlap {
 			switch {
 			case astart < bstart:
-				//p("no overlap, astart < bstart ... acuri = %v, key=bstart= %v", acuri, bstart)
 				acuri, done = a.findNextIntervalThatIntersectsStartingFrom(acuri+1, bstart)
-				//p("b.findNextIntervalThatIntersectsStartingFrom(startIndex=%v, key=%v) returned: acuri = %v, done=%v", acuri+1, bstart, acuri, done)
 				if done {
 					break toploop
 				}
 				astart = int64(a.iv[acuri].start)
 
 			case astart > bstart:
-				//p("no overlap, astart > bstart ... bcuri = %v, key=astart= %v", bcuri, astart)
 				bcuri, done = b.findNextIntervalThatIntersectsStartingFrom(bcuri+1, astart)
-				//p("b.findNextIntervalThatIntersectsStartingFrom(startIndex=%v, key=%v) returned: bcuri = %v, done=%v", bcuri+1, astart, bcuri, done)
 				if done {
 					break toploop
 				}
@@ -557,11 +525,9 @@ toploop:
 
 		} else {
 			// isOverlap
-			//p("isOverlap == true, intersection = %#v", intersection)
 			output = append(output, intersection)
 			switch {
 			case isLeftoverA:
-				//p("isLeftoverA true... new astart = leftoverstart = %v", leftoverstart)
 				// note that we change astart without advancing acuri,
 				// since we need to capture any 2ndary intersections with a.iv[acuri]
 				astart = leftoverstart
@@ -570,9 +536,7 @@ toploop:
 					break toploop
 				}
 				bstart = int64(b.iv[bcuri].start)
-				//p("new bstart is %v", bstart)
 			case isLeftoverB:
-				//p("isLeftoverB true... new bstart = leftoverstart = %v", leftoverstart)
 				// note that we change bstart without advancing bcuri,
 				// since we need to capture any 2ndary intersections with b.iv[bcuri]
 				bstart = leftoverstart
@@ -581,9 +545,7 @@ toploop:
 					break toploop
 				}
 				astart = int64(a.iv[acuri].start)
-				//p(" ... and new astart is %v", astart)
 			default:
-				//p("no leftovers after intersection")
 				// neither had leftover, both completely consumed
 				// optionally, assert for sanity:
 				//if a.iv[acuri].endx != b.iv[bcuri].endx {
@@ -593,7 +555,6 @@ toploop:
 				// advance to next a interval
 				acuri++
 				if acuri >= numa {
-					//p("out of 'a' elements, breaking out of loop")
 					break toploop
 				}
 				astart = int64(a.iv[acuri].start)
@@ -601,11 +562,9 @@ toploop:
 				// advance to next b interval
 				bcuri++
 				if bcuri >= numb {
-					//p("out of 'b' elements, breaking out of loop")
 					break toploop
 				}
 				bstart = int64(b.iv[bcuri].start)
-				//p("no leftovers after intersection, new acuri=%v, astart=%v, bcuri=%v, bstart=%v", acuri, astart, bcuri, bstart)
 			}
 		}
 	} // end for toploop
@@ -615,7 +574,6 @@ toploop:
 	}
 
 	res.iv = output
-	//p("intersect returning %#v", res)
 	return res
 }
 
@@ -737,7 +695,6 @@ func (rc *runContainer32) search(key int64, opts *searchOptions) (whichInterval3
 	}
 
 	// INVAR: key >= rc.iv[below-1].endx && key < rc.iv[below].start
-	//p("search, INVAR: key >= rc.iv[below-1].endx && key < rc.iv[below].start, where key=%v, below=%v, below-1=%v, rc.iv[below-1]=%v, rc.iv[below]=%v", key, below, below-1, rc.iv[below-1], rc.iv[below])
 	// leave alreadyPresent = false
 	return
 }
@@ -834,7 +791,6 @@ func (rc *runContainer32) Add(k uint32) (wasNew bool) {
 	k64 := int64(k)
 
 	index, present, _ := rc.search(k64, nil)
-	//p("search returned index=%v, present=%v", index, present)
 	if present {
 		return // already there
 	}
@@ -946,7 +902,6 @@ func (ri *RunIterator32) HasNext() bool {
 
 // Cur returns the current value pointed to by the iterator.
 func (ri *RunIterator32) Cur() uint32 {
-	//p("in Cur, curIndex=%v, curPosInIndex=%v", ri.curIndex, ri.curPosInIndex)
 	return ri.rc.iv[ri.curIndex].start + ri.curPosInIndex
 }
 
@@ -964,11 +919,8 @@ func (ri *RunIterator32) Next() uint32 {
 	} else {
 		ri.curPosInIndex++
 		if int64(ri.rc.iv[ri.curIndex].start)+int64(ri.curPosInIndex) == int64(ri.rc.iv[ri.curIndex].last)+1 {
-			//p("rolling from ri.curIndex==%v to ri.curIndex=%v", ri.curIndex, ri.curIndex+1)
 			ri.curPosInIndex = 0
 			ri.curIndex++
-		} else {
-			//p("no roll ... ri.curPosInIndex is now %v, ri.rc.iv[ri.curIndex].endx=%v", ri.curPosInIndex, ri.rc.iv[ri.curIndex].endx)
 		}
 		ri.curSeq++
 	}
@@ -1015,7 +967,6 @@ func (rc *runContainer32) deleteAt(curIndex *int64, curPosInIndex *uint32, curSe
 	// are we first, last, or in the middle of our interval32?
 	switch {
 	case pos == 0:
-		//p("pos == 0, first")
 		if int64(rc.iv[ci].start) == int64(rc.iv[ci].last) {
 			// our interval disappears
 			rc.iv = append(rc.iv[:ci], rc.iv[ci+1:]...)
@@ -1029,12 +980,9 @@ func (rc *runContainer32) deleteAt(curIndex *int64, curPosInIndex *uint32, curSe
 		// last
 		rc.iv[ci].last--
 		// our interval32 cannot disappear, else we would have been pos == 0, case first above.
-		//p("deleteAt: pos is last case, curIndex=%v, curPosInIndex=%v", *curIndex, *curPosInIndex)
 		(*curPosInIndex)--
 		// if we leave *curIndex alone, then Next() will work properly even after the delete.
-		//p("deleteAt: pos is last case, after update: curIndex=%v, curPosInIndex=%v", *curIndex, *curPosInIndex)
 	default:
-		//p("middle...split")
 		//middle
 		// split into two, adding an interval32
 		new0 := interval32{
@@ -1048,10 +996,6 @@ func (rc *runContainer32) deleteAt(curIndex *int64, curPosInIndex *uint32, curSe
 		new1 := interval32{
 			start: uint32(new1start),
 			last:  rc.iv[ci].last}
-
-		//p("new0 = %#v", new0)
-		//p("new1 = %#v", new1)
-
 		tail := append([]interval32{new0, new1}, rc.iv[ci+1:]...)
 		rc.iv = append(rc.iv[:ci], tail...)
 		// update curIndex and curPosInIndex
@@ -1211,13 +1155,9 @@ func (a interval32) isSuperSetOf(b interval32) bool {
 }
 
 func (cur interval32) subtractInterval(del interval32) (left []interval32, delcount int64) {
-	defer func() {
-		//p("returning from subtractInterval of cur - del with cur=%s and del=%s, returning left=%s, delcount=%v", cur, del, ivalString32(left), delcount)
-	}()
 	isect, isEmpty := intersectInterval32s(cur, del)
 
 	if isEmpty {
-		//p("isEmpty")
 		return nil, 0
 	}
 	if del.isSuperSetOf(cur) {
@@ -1226,16 +1166,12 @@ func (cur interval32) subtractInterval(del interval32) (left []interval32, delco
 
 	switch {
 	case isect.start > cur.start && isect.last < cur.last:
-		//p("split into two")
 		new0 := interval32{start: cur.start, last: isect.start - 1}
 		new1 := interval32{start: isect.last + 1, last: cur.last}
 		return []interval32{new0, new1}, isect.runlen()
 	case isect.start == cur.start:
-		//p("removal of only the first half or so of cur interval. isect: %s, cur: %s, del: %s", isect, cur, del)
 		return []interval32{{start: isect.last + 1, last: cur.last}}, isect.runlen()
 	default:
-		//p("isect.end == cur.end")
-		//p("removal of only the last half or so of cur interval")
 		return []interval32{{start: cur.start, last: isect.start - 1}}, isect.runlen()
 	}
 }
@@ -1243,7 +1179,6 @@ func (cur interval32) subtractInterval(del interval32) (left []interval32, delco
 func (rc *runContainer32) isubtract(del interval32) {
 	origiv := make([]interval32, len(rc.iv))
 	copy(origiv, rc.iv)
-	//p("isubtract starting, with del = %s, and rc = %s", del, rc)
 	n := int64(len(rc.iv))
 	if n == 0 {
 		return // already done.
@@ -1255,43 +1190,29 @@ func (rc *runContainer32) isubtract(del interval32) {
 			last:  rc.iv[n-1].last,
 		}, del)
 	if isEmpty {
-		//p("del=%v -> isEmpty, returning early from isubtract", del)
 		return // done
 	}
 	// INVAR there is some intersection between rc and del
 	istart, startAlready, _ := rc.search(int64(del.start), nil)
 	ilast, lastAlready, _ := rc.search(int64(del.last), nil)
 	rc.card = -1
-
-	//p("del=%v, istart = %v, startAlready = %v", del, istart, startAlready)
-	//p("del=%v, ilast = %v, lastAlready = %v", del, ilast, lastAlready)
-
 	if istart == -1 {
 		if ilast == n-1 && !lastAlready {
-			//p("discard it all")
 			rc.iv = nil
 			return
 		}
 	}
 	// some intervals will remain
-	//p("orig rc.iv = '%s'", ivalString32(rc.iv))
 	switch {
 	case startAlready && lastAlready:
-		//p("case 1: startAlready && lastAlready; istart=%v, ilast=%v. staring rc.iv='%s'", istart, ilast, ivalString32(rc.iv))
 		res0, _ := rc.iv[istart].subtractInterval(del)
 
-		//p("case 1 rc.iv[:start] = '%s', while res0='%s'", ivalString32(rc.iv[:istart]), ivalString32(res0))
 		// would overwrite values in iv b/c res0 can have len 2. so
 		// write to origiv instead.
-
-		//p("case 1 pre = '%s'", ivalString32(pre))
-		//p("orig rc.iv = '%s'", ivalString32(rc.iv))
-
 		lost := 1 + ilast - istart
 		changeSize := int64(len(res0)) - lost
 		newSize := int64(len(rc.iv)) + changeSize
 
-		//p("case 1 before suffixing with: rc.iv[ilast+1:] = '%s'", ivalString32(rc.iv[ilast+1:]))
 		//	rc.iv = append(pre, caboose...)
 		//	return
 
@@ -1326,7 +1247,6 @@ func (rc *runContainer32) isubtract(del interval32) {
 		}
 
 	case !startAlready && !lastAlready:
-		//p("case 2: !startAlready && !lastAlready")
 		// we get to discard whole intervals
 
 		// from the search() definition:
@@ -1379,7 +1299,6 @@ func (rc *runContainer32) isubtract(del interval32) {
 		// we can only shrink or stay the same size
 		// i.e. we either eliminate the whole interval,
 		// or just cut off the right side.
-		//p("case 3: startAlready && !lastAlready, rc='%s', del='%s'", rc, del)
 		res0, _ := rc.iv[istart].subtractInterval(del)
 		if len(res0) > 0 {
 			// len(res) must be 1
@@ -1396,7 +1315,6 @@ func (rc *runContainer32) isubtract(del interval32) {
 
 	case !startAlready && lastAlready:
 		// we can only shrink or stay the same size
-		//p("case 4: !startAlready && lastAlready")
 		res1, _ := rc.iv[ilast].subtractInterval(del)
 		lost := ilast - istart
 		changeSize := int64(len(res1)) - lost
@@ -1435,12 +1353,10 @@ func (rc *runContainer32) AndNotRunContainer32(b *runContainer32) *runContainer3
 	blen := len(b.iv)
 
 	for apos < alen && bpos < blen {
-		//p("top: apos = %v, alen=%v, bpos=%v, blen=%v", apos, alen, bpos, blen)
 		switch {
 		case alast < bstart:
 			// output the first run
 			dst.iv = append(dst.iv, interval32{start: uint32(astart), last: uint32(alast)})
-			//p("alast(%v) < bstart(%v), dst after adding [astart, last] is: %s", alast, bstart, dst)
 			apos++
 			if apos < alen {
 				astart = a.iv[apos].start
@@ -1460,7 +1376,6 @@ func (rc *runContainer32) AndNotRunContainer32(b *runContainer32) *runContainer3
 			// blast >= astart
 			if astart < bstart {
 				dst.iv = append(dst.iv, interval32{start: uint32(astart), last: uint32(bstart - 1)})
-				//p("astart(%v) < bstart(%v), dst after adding [astart, bstart] is: %s", astart, bstart, dst)
 			}
 			if alast > blast {
 				astart = blast + 1
