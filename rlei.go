@@ -202,9 +202,7 @@ func (rc *runContainer16) Not(firstOfRange, endx int) *runContainer16 {
 		panic(fmt.Sprintf("invalid %v = endx >= firstOfRange == %v", endx, firstOfRange))
 	}
 
-	//p("top of Not with interval [%v, %v): rc is %s", firstOfRange, endx, rc.String())
 	if firstOfRange >= endx {
-		//p("returning early with clone, first >= endx")
 		return rc.Clone()
 	}
 
@@ -216,16 +214,12 @@ func (rc *runContainer16) Not(firstOfRange, endx int) *runContainer16 {
 
 	bs := []interval16{interval16{start: uint16(firstOfRange), last: uint16(endx - 1)}}
 	b := newRunContainer16TakeOwnership(bs)
-	//p("b is %s", b)
 
 	notAintersectB := nota.intersect(b)
-	//p("notAintersectB is %s", notAintersectB)
 
 	aMinusB := a.AndNotRunContainer16(b)
-	//p("aMinusB is %s", aMinusB)
 
 	rc2 := notAintersectB.union(aMinusB)
-	//p("rc = ((!A intersect B) union (A minus B)) is %s", rc2)
 	return rc2
 }
 
@@ -238,38 +232,30 @@ func (rc *runContainer16) equals(o container) bool {
 		// maybe value instead of pointer
 		val, valok := o.(*runContainer16)
 		if valok {
-			//p("was runContainer16 value...")
 			srb = val
 			ok = true
 		}
 	}
 	if ok {
-		//p("both rc16")
 		// Check if the containers are the same object.
 		if rc == srb {
-			//p("same object")
 			return true
 		}
 
 		if len(srb.iv) != len(rc.iv) {
-			//p("iv len differ")
 			return false
 		}
 
 		for i, v := range rc.iv {
 			if v != srb.iv[i] {
-				//p("differ at iv i=%v, srb.iv[i]=%v, rc.iv[i]=%v", i, srb.iv[i], rc.iv[i])
 				return false
 			}
 		}
-		//p("all intervals same, returning true")
 		return true
 	}
 
-	//p("not both rc16; o is %T / val=%#v", o, o)
 	// use generic comparison
 	if o.getCardinality() != rc.getCardinality() {
-		//p("card differ o.card=%v, rc.card=%v", o.getCardinality(), rc.getCardinality())
 		return false
 	}
 	rit := rc.getShortIterator()
@@ -278,7 +264,6 @@ func (rc *runContainer16) equals(o container) bool {
 	//k := 0
 	for rit.hasNext() {
 		if bit.next() != rit.next() {
-			//p("differ at pos %k", k)
 			return false
 		}
 		//k++

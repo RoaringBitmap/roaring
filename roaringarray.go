@@ -374,10 +374,25 @@ func (ra *roaringArray) equals(o interface{}) bool {
 	return false
 }
 
-// this can be expensive; don't call it unnecessarily in production
+func (ra *roaringArray) headerSize() uint64 {
+	size := uint64(len(ra.keys))
+	if ra.hasRunCompression() {
+		if size < noOffsetThreshold { // for small bitmaps, we omit the offsets
+			return 4 + (size+7)/8 + 4*size
+		}
+		return 4 + (size+7)/8 + 8*size // - 4 because we pack the size with the cookie
+	} else {
+		return 4 + 4 + 8*size
+	}
+}
+
+// should be dirt cheap
 func (ra *roaringArray) serializedSizeInBytes() uint64 {
-	n, _ := ra.writeToHelper(nil, true)
-	return uint64(n)
+	answer := ra.headerSize()
+	for _, c := range ra.containers {
+		answer += uint64(c.serializedSizeInBytes())
+	}
+	return answer
 }
 
 //
@@ -387,42 +402,73 @@ func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
 	return ra.writeToHelper(out, false)
 }
 
+func (ra *roaringArray) hasRunCompression() bool {
+	for _, c := range ra.containers {
+		switch c.(type) {
+		case *runContainer16:
+			return true
+		}
+	}
+	return false
+}
+
 // if fake then `out io.Writer` won't be touched, and the number of bytes
 // that would have been written and nil will be returned
 func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
+	if len(ra.keys) > MaxUint16 {
+		panic("should be impossible to have this many keys")
+	}
 	stream := &bytes.Buffer{}
 
-	//p("roaringArray.writeTo starting")
+	hasRun := ra.hasRunCompression()
 	numKeys := len(ra.keys)
-	isRunSizeInBytes := (numKeys + 7) / 8
-
+	isRunSizeInBytes := 0
 	// compute isRun bitmap
 	var ir []byte
-	isRun := newBitmapContainer()
-	for i, c := range ra.containers {
-		switch c.(type) {
-		case *runContainer16:
-			isRun.iadd(uint16(i))
-		}
-	}
-	ir = uint64SliceAsByteSlice(isRun.bitmap)[:isRunSizeInBytes]
 
-	const cookieSize = 4
+	if hasRun {
+		isRunSizeInBytes = (numKeys + 7) / 8
+
+		isRun := newBitmapContainer()
+		for i, c := range ra.containers {
+			switch c.(type) {
+			case *runContainer16:
+				isRun.iadd(uint16(i))
+			}
+		}
+		ir = uint64SliceAsByteSlice(isRun.bitmap)[:isRunSizeInBytes]
+	}
+
+	cookieSize := 8
+	if hasRun {
+		cookieSize = 4
+	}
 	descriptiveHeaderSize := 4 * len(ra.keys)
 	preambleSize := cookieSize + isRunSizeInBytes + descriptiveHeaderSize
 
 	buf := make([]byte, preambleSize+4*len(ra.keys))
-	binary.LittleEndian.PutUint16(buf[0:], uint16(serialCookie))
-	if len(ra.keys) > MaxUint16 {
-		panic("should be impossible to have this many keys")
+
+	nw := 0
+	if hasRun {
+		binary.LittleEndian.PutUint16(buf[0:], uint16(serialCookie))
+		nw += 2
+	} else {
+		binary.LittleEndian.PutUint32(buf[0:], uint32(serialCookieNoRunContainer))
+		nw += 4
 	}
-	binary.LittleEndian.PutUint16(buf[2:], uint16(len(ra.keys)-1))
-	nw := 4
-	//p("after writing serialCookie and number of keys -1, now nw: %v", nw)
+
+	if hasRun {
+		binary.LittleEndian.PutUint16(buf[2:], uint16(len(ra.keys)-1))
+		nw += 2
+	} else {
+		binary.LittleEndian.PutUint32(buf[4:], uint32(len(ra.keys)))
+		nw += 4
+	}
 
 	// isRun bitset
-	nw += copy(buf[nw:], ir)
-	//p("after writing isRun array of len(%v), now nw: %v, this will be start of descriptive header", len(ir), nw)
+	if hasRun {
+		nw += copy(buf[nw:], ir)
+	}
 
 	// descriptive header
 	for i, key := range ra.keys {
@@ -432,11 +478,9 @@ func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
 		binary.LittleEndian.PutUint16(buf[nw:], uint16(c.getCardinality()-1))
 		nw += 2
 	}
-	//p("after writing descriptiveHeader, now nw: %v", nw)
 
 	startOffset := int64(preambleSize + 4*len(ra.keys))
-	if len(ra.keys) >= noOffsetThreshold {
-		//p("writing offset header at nw: %v", nw)
+	if !hasRun || (len(ra.keys) >= noOffsetThreshold) {
 		// offset header
 		for _, c := range ra.containers {
 			binary.LittleEndian.PutUint32(buf[nw:], uint32(startOffset))
@@ -448,8 +492,6 @@ func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
 				startOffset += int64(getSizeInBytesFromCardinality(c.getCardinality()))
 			}
 		}
-	} else {
-		//p("skiping offset header at nw %v", nw)
 	}
 
 	if !fake {
@@ -463,7 +505,6 @@ func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
 	}
 	for i, c := range ra.containers {
 		_ = i
-		//p("writeTo writing %v-th container with key %v (card: %v) at fileloc: %v / nw: %v", i, ra.keys[i], c.getCardinality(), len(stream.Bytes()), nw)
 		writ, err := c.writeTo(stream)
 		if err != nil {
 			return 0, err
@@ -505,10 +546,8 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	var isRun container = newRunContainer16()
 	if cookie&0x0000FFFF == serialCookie {
 		haveRunContainers = true
-		size = (cookie >> 16) + 1
-		//p("stream contains run containers. total number of containers == size = %v", size)
+		size = uint32(uint16((cookie >> 16)) + 1)
 		bytesToRead := (int(size) + 7) / 8
-		//p("bytesToRead = %v", bytesToRead)
 		by := make([]byte, bytesToRead)
 		nr, err := io.ReadAtLeast(stream, by, bytesToRead)
 		if err != nil {
@@ -516,7 +555,6 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 				"runContainer bit flags of length %v bytes: %v", bytesToRead, err)
 		}
 		pos += nr
-		//p("by = %#v", by)
 
 		bc := newBitmapContainer()
 		asBy := uint64SliceAsByteSlice(bc.bitmap)
@@ -524,17 +562,13 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 			asBy[i] = by[i]
 		}
 		bc.computeCardinality()
-		//p("bc = %s", bc)
 		isRun = bc
-		//p("read in isRun bitmap container ok: '%s'", bc.String())
-		//p("after read of isRun bitmap, now at pos = %v", pos)
 	} else {
 		err = binary.Read(stream, binary.LittleEndian, &size)
 		if err != nil {
 			return 0, fmt.Errorf("error in roaringArray.readFrom: when reading size, got: %s", err)
 		}
 		pos += 4
-		//p("!serialCookie, so after skip of isRun bitmap, and read of size, now at pos = %v", pos)
 	}
 
 	// descriptive header
@@ -543,9 +577,7 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	//p("got descriptive header, starting at pos %v:", pos)
 	pos += 2 * 2 * int(size)
-	//p("descriptive header ends at pos %v:", pos)
 
 	k := 0
 	for i := 0; i < len(keycard); i += 2 {
@@ -562,36 +594,27 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 
 	// offset header
 	if !haveRunContainers || size >= noOffsetThreshold {
-		//p("reading offset header of size %v at pos %v", size, pos)
 		offsets := make([]uint32, size, size)
 		err = binary.Read(stream, binary.LittleEndian, offsets)
 		if err != nil {
 			return 0, err
 		}
 		pos += 4 * int(size)
-		//p("read offset header of count %v. offsets: %v. pos after is %v", size, offsets, pos)
-	} else {
-		//p("skipping/should be no offset header, because size %v < noOffsetThreshold.  pos is now %v", size, pos)
 	}
 	//offset := int64(4 + 4 + 8*size) // probably wrong now
 	for i := uint32(0); i < size; i++ {
 		key := int(keycard[2*i])
 		card := int(keycard[2*i+1]) + 1
 		if haveRunContainers && isRun.contains(uint16(i)) {
-			//p("at key %v, filepos %v, reading a run container", key, pos)
 			nb := newRunContainer16()
 			nr, err := nb.readFrom(stream)
 			if err != nil {
 				return 0, err
 			}
-			//p("at key %v, filepos %v, read a run container: %s", key, pos, nb)
 			pos += nr
-			//offset += 2 + int64(len(nb.iv))*4
 			ra.appendContainer(uint16(key), nb, false)
 		} else {
-			//offset += int64(getSizeInBytesFromCardinality(card))
 			if card > arrayDefaultMaxSize {
-				//p("at key %v, filepos %v, reading a bitmap container", key, pos)
 
 				nb := newBitmapContainer()
 				nr, err := nb.readFrom(stream)
@@ -599,18 +622,14 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 					return 0, err
 				}
 				nb.cardinality = int(card)
-				//p("at key %v, filepos %v, read a bitmap container = %s", key, pos, nb)
 				pos += nr
 				ra.appendContainer(keycard[2*i], nb, false)
 			} else {
-				//p("at key %v, filepos %v, reading an array container with card %v", key, pos, card)
-
 				nb := newArrayContainerSize(int(card))
 				nr, err := nb.readFrom(stream)
 				if err != nil {
 					return 0, err
 				}
-				//p("at key %v, filepos %v, read an array container (card %v) = %s",key, pos, card, nb)
 				pos += nr
 				ra.appendContainer(keycard[2*i], nb, false)
 			}

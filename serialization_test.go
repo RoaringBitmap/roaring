@@ -14,6 +14,27 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func TestSerializationOfEmptyBitmap(t *testing.T) {
+	rb := NewBitmap()
+
+	buf := &bytes.Buffer{}
+	_, err := rb.WriteTo(buf)
+	if err != nil {
+		t.Errorf("Failed writing")
+	}
+
+	newrb := NewBitmap()
+	_, err = newrb.ReadFrom(buf)
+	if err != nil {
+		t.Errorf("Failed reading: %v", err)
+	}
+	if !rb.Equals(newrb) {
+		p("rb = '%s'", rb)
+		p("but newrb = '%s'", newrb)
+		t.Errorf("Cannot retrieve serialized version; rb != newrb")
+	}
+}
+
 func TestBase64_036(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
 
@@ -98,7 +119,6 @@ func TestSerializationReadRunsFromFile039(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	//p("got %v bytes", len(by))
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(bytes.NewBuffer(by))
@@ -337,7 +357,6 @@ func TestSerializationRunContainerMsgpack028(t *testing.T) {
 				a := []uint16{}
 
 				draw := int(float64(n) * tr.percentFill)
-				//p("draw is %v", draw)
 				for i := 0; i < draw; i++ {
 					r0 := rand.Intn(n)
 					a = append(a, uint16(r0))
@@ -454,21 +473,16 @@ func TestSerializationRunOnly033(t *testing.T) {
 					ma[r0] = true
 				}
 
-				//showArray16(a, "a")
-
 				ac := newRunContainer16()
 				for k := range ma {
 					ac.iadd(uint16(k))
 				}
-				//p("ac = %s", ac)
 
 				buf := &bytes.Buffer{}
 				_, err := ac.writeTo(buf)
 				panicOn(err)
 
 				ac2 := newRunContainer16()
-
-				//p("buf len %v is '%#x'", len(buf.Bytes()), buf.Bytes())
 
 				_, err = ac2.readFrom(buf)
 				panicOn(err)
@@ -525,7 +539,6 @@ func TestSerializationBitmapOnly034(t *testing.T) {
 
 				_, err = bc2.readFrom(buf)
 				panicOn(err)
-				//p("bc = '%s'.  \nbc2= '%s'.", bc, bc2)
 				So(bc2.String(), ShouldResemble, bc.String())
 				So(bc2.equals(bc), ShouldBeTrue)
 			}
@@ -620,7 +633,6 @@ func TestSerializationRunContainer32Msgpack050(t *testing.T) {
 				a := []uint32{}
 
 				draw := int(float64(n) * tr.percentFill)
-				//p("draw is %v", draw)
 				for i := 0; i < draw; i++ {
 					r0 := rand.Intn(n)
 					a = append(a, uint32(r0))

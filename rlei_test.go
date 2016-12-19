@@ -786,7 +786,6 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 
 				for k := 0; k < n; k++ {
 					if hashNotA[k] {
-						//p("hashNotA has %v, checking inv", k)
 						So(inv.contains(uint16(k)), ShouldBeTrue)
 					}
 				}
@@ -1012,28 +1011,18 @@ func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
 				// RunContainer's Not
 				rc := newRunContainer16FromVals(false, a...)
 				flp := rc.Not(begin, last+1)
-
-				//p("rc from a is %v", rc)
-				//p("rc.cardinality = %v", rc.cardinality())
-
-				//p("flp of a (has card=%v) is %v. card of our flipped hash is %v", flp.cardinality(), flp, len(flipped))
-
 				So(flp.cardinality(), ShouldEqual, len(flipped))
 
 				for k := 0; k < n; k++ {
 					if flipped[k] {
-						//p("flipped has %v, checking flp", k)
 						So(flp.contains(uint16(k)), ShouldBeTrue)
 					} else {
-						//p("flipped lacks %v, checking flp", k)
 						So(flp.contains(uint16(k)), ShouldBeFalse)
 					}
 				}
 
-				//p("checking for cardinality agreement: flp is %v, len(flipped) is %v", flp.getCardinality(), len(flipped))
 				So(flp.getCardinality(), ShouldEqual, len(flipped))
 			}
-			//p("done with randomized Not() check for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -1070,16 +1059,11 @@ func TestRleEquals022(t *testing.T) {
 				a := []uint16{}
 
 				draw := int(float64(n) * tr.percentFill)
-				//p("draw is %v", draw)
 				for i := 0; i < draw; i++ {
 					r0 := rand.Intn(n)
 					a = append(a, uint16(r0))
 					ma[r0] = true
 				}
-
-				//showArray16(a, "a")
-				// can be too big to print:
-				//showHash("hash (correct) version of flipped is:", flipped)
 
 				rc := newRunContainer16FromVals(false, a...)
 
@@ -1150,7 +1134,6 @@ func TestRleIntersects023(t *testing.T) {
 				b := []uint16{}
 
 				draw := int(float64(n) * tr.percentFill)
-				//p("draw is %v", draw)
 				for i := 0; i < draw; i++ {
 					r0 := rand.Intn(n)
 					a = append(a, uint16(r0))
@@ -1268,7 +1251,6 @@ func TestRleToEfficientContainer027(t *testing.T) {
 				a := []uint16{}
 
 				draw := int(float64(n) * tr.percentFill)
-				//p("draw is %v", draw)
 				for i := 0; i < draw; i++ {
 					r0 := rand.Intn(n)
 					a = append(a, uint16(r0))
@@ -1539,20 +1521,15 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 				for i := r0; i <= r1; i++ {
 					delete(ma, i)
 				}
-				//showHash(fmt.Sprintf("ma after add [%v,%v] and remove [%v,%v] is:", a0, a1, r0, r1), ma)
 
-				//p("before adding range: %s", rc)
 				rc.iaddRange(a0, a1+1)
-				//p("after adding [%v,%v] range: %s", a0, a1, rc)
 				rc.iremoveRange(r0, r1+1)
-				//p("after removing [%v,%v] range: %s", r0, r1, rc)
 
 				bc.iaddRange(a0, a1+1)
 				bc.iremoveRange(r0, r1+1)
 
 				ac.iaddRange(a0, a1+1)
 				ac.iremoveRange(r0, r1+1)
-				//p("for comparison, ac is: %s", ac)
 
 				So(rc.getCardinality(), ShouldEqual, len(ma))
 				So(rc.getCardinality(), ShouldEqual, ac.getCardinality())

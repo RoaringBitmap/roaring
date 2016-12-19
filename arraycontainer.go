@@ -48,50 +48,39 @@ func arrayContainerSizeInBytes(card int) int {
 
 // add the values in the range [firstOfRange,endx)
 func (ac *arrayContainer) iaddRange(firstOfRange, endx int) container {
-	//p("top of ac.iaddRange")
 	if firstOfRange >= endx {
-		//p("bailing early")
 		return ac
 	}
 	indexstart := binarySearch(ac.content, uint16(firstOfRange))
 	if indexstart < 0 {
-		//p("indexstart < 0")
 		indexstart = -indexstart - 1
 	}
 	indexend := binarySearch(ac.content, uint16(endx-1))
 	if indexend < 0 {
-		//p("indexend < 0")
 		indexend = -indexend - 1
 	} else {
-		//p("indexend >= 0")
 		indexend++
 	}
 	rangelength := endx - firstOfRange
-	//p("rangelength = %v", rangelength)
 	newcardinality := indexstart + (ac.getCardinality() - indexend) + rangelength
 	if newcardinality > arrayDefaultMaxSize {
-		//p("going to bitmap")
 		a := ac.toBitmapContainer()
 		return a.iaddRange(firstOfRange, endx)
 	}
 	if cap(ac.content) < newcardinality {
-		//p("cap < newcard")
 		tmp := make([]uint16, newcardinality, newcardinality)
 		copy(tmp[:indexstart], ac.content[:indexstart])
 		copy(tmp[indexstart+rangelength:], ac.content[indexend:])
 
 		ac.content = tmp
 	} else {
-		//p("cap >= newcard")
 		ac.content = ac.content[:newcardinality]
 		copy(ac.content[indexstart+rangelength:], ac.content[indexend:])
 
 	}
 	for k := 0; k < rangelength; k++ {
-		//p("k=%v, rangelength=%v, adding content %v", k, rangelength, uint16(firstOfRange+k))
 		ac.content[k+indexstart] = uint16(firstOfRange + k)
 	}
-	//p("at bottom")
 	return ac
 }
 
@@ -188,7 +177,6 @@ func (ac *arrayContainer) equals(o container) bool {
 
 	srb, ok := o.(*arrayContainer)
 	if ok {
-		//p("both arrays")
 		// Check if the containers are the same object.
 		if ac == srb {
 			return true
@@ -206,13 +194,10 @@ func (ac *arrayContainer) equals(o container) bool {
 		return true
 	}
 
-	//p("not both arrays")
-
 	// use generic comparison
 	bCard := o.getCardinality()
 	aCard := ac.getCardinality()
 	if bCard != aCard {
-		//p("card differs: bCard:%v on %T vs aCard:%v on %T", bCard, bc, aCard, ac)
 		return false
 	}
 	ait := ac.getShortIterator()
@@ -572,7 +557,6 @@ func (ac *arrayContainer) andNotRun16(rc *runContainer16) container {
 }
 
 func (ac *arrayContainer) iandNot(a container) container {
-	//p("arrayContainer.iandNot() starting; a is %T", a)
 	switch x := a.(type) {
 	case *arrayContainer:
 		return ac.iandNotArray(x)
@@ -585,17 +569,9 @@ func (ac *arrayContainer) iandNot(a container) container {
 }
 
 func (ac *arrayContainer) iandNotRun16(rc *runContainer16) container {
-	//p("arrayContainer.iandNotRun16() starting; rc = %s", rc)
-
 	rcb := rc.toBitmapContainer()
-	//p("rcb has size %v", rcb.getCardinality())
-
 	acb := ac.toBitmapContainer()
-	//p("acb has size %v", acb.getCardinality())
-
 	acb.iandNotBitmapSurely(rcb)
-	//p("after iandNotBit, acb has size %v", acb.getCardinality())
-
 	*ac = *(acb.toArrayContainer())
 	return ac
 }

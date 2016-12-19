@@ -185,7 +185,6 @@ func TestRleRunSearch32(t *testing.T) {
 			}
 
 			for i, v := range absent {
-				//p("absent check on i=%v, v=%v in rc=%v", i, v, rc)
 				where, present, _ = rc.search(int64(v), nil)
 				So(present, ShouldBeFalse)
 				So(where, ShouldEqual, i)
@@ -388,9 +387,6 @@ func TestRleRandomIntersection32(t *testing.T) {
 				arle.set(false, a...)
 				p("after set(false, a), arle is %v", arle)
 
-				//p("arle is %v", arle)
-				//p("brle is %v", brle)
-
 				isect := arle.intersect(brle)
 
 				p("isect is %v", isect)
@@ -470,9 +466,6 @@ func TestRleRandomUnion32(t *testing.T) {
 				}
 				brle := newRunContainer32()
 				brle.set(false, b...)
-
-				//p("arle is %v", arle)
-				//p("brle is %v", brle)
 
 				union := arle.union(brle)
 
@@ -677,10 +670,8 @@ func TestRleCoverageOddsAndEnds32(t *testing.T) {
 			it3.next()
 			it3.next()
 			it3.next()
-			//p("rc3 = %v", rc3) // 5, 6, 9, 10, 12
 			So(it3.cur(), ShouldEqual, uint32(10))
 			it3.remove()
-			//p("after Remove of 10, rc3 = %v", rc3) // 5, 6, 9, 12
 			So(it3.next(), ShouldEqual, uint32(12))
 		}
 
