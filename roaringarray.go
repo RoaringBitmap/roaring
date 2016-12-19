@@ -135,8 +135,17 @@ func (ra *roaringArray) appendWithoutCopy(sa roaringArray, startingindex int) {
 }
 
 func (ra *roaringArray) appendCopy(sa roaringArray, startingindex int) {
-	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex], true)
-	sa.setNeedsCopyOnWrite(startingindex)
+	// cow only if the two request it, or if we already have a lightweight copy
+	copyonwrite := (ra.copyOnWrite && sa.copyOnWrite) || sa.needsCopyOnWrite(startingindex)
+	if !copyonwrite {
+		// since there is no copy-on-write, we need to clone the container (this is important)
+		ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex].clone(), copyonwrite)
+	} else {
+		ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex], copyonwrite)
+		if !sa.needsCopyOnWrite(startingindex) {
+			sa.setNeedsCopyOnWrite(startingindex)
+		}
+	}
 }
 
 func (ra *roaringArray) appendWithoutCopyMany(sa roaringArray, startingindex, end int) {
@@ -152,16 +161,32 @@ func (ra *roaringArray) appendCopyMany(sa roaringArray, startingindex, end int) 
 }
 
 func (ra *roaringArray) appendCopiesUntil(sa roaringArray, stoppingKey uint16) {
+	// cow only if the two request it, or if we already have a lightweight copy
+	copyonwrite := ra.copyOnWrite && sa.copyOnWrite
+
 	for i := 0; i < sa.size(); i++ {
 		if sa.keys[i] >= stoppingKey {
 			break
 		}
-		ra.appendContainer(sa.keys[i], sa.containers[i], true)
-		sa.setNeedsCopyOnWrite(i)
+		thiscopyonewrite := copyonwrite || sa.needsCopyOnWrite(i)
+		if thiscopyonewrite {
+			ra.appendContainer(sa.keys[i], sa.containers[i], thiscopyonewrite)
+			if !sa.needsCopyOnWrite(i) {
+				sa.setNeedsCopyOnWrite(i)
+			}
+
+		} else {
+			// since there is no copy-on-write, we need to clone the container (this is important)
+			ra.appendContainer(sa.keys[i], sa.containers[i].clone(), thiscopyonewrite)
+
+		}
 	}
 }
 
 func (ra *roaringArray) appendCopiesAfter(sa roaringArray, beforeStart uint16) {
+	// cow only if the two request it, or if we already have a lightweight copy
+	copyonwrite := ra.copyOnWrite && sa.copyOnWrite
+
 	startLocation := sa.getIndex(beforeStart)
 	if startLocation >= 0 {
 		startLocation++
@@ -170,8 +195,17 @@ func (ra *roaringArray) appendCopiesAfter(sa roaringArray, beforeStart uint16) {
 	}
 
 	for i := startLocation; i < sa.size(); i++ {
-		ra.appendContainer(sa.keys[i], sa.containers[i], true)
-		sa.setNeedsCopyOnWrite(i)
+		thiscopyonewrite := copyonwrite || sa.needsCopyOnWrite(i)
+		if thiscopyonewrite {
+			ra.appendContainer(sa.keys[i], sa.containers[i], thiscopyonewrite)
+			if !sa.needsCopyOnWrite(i) {
+				sa.setNeedsCopyOnWrite(i)
+			}
+		} else {
+			// since there is no copy-on-write, we need to clone the container (this is important)
+			ra.appendContainer(sa.keys[i], sa.containers[i].clone(), thiscopyonewrite)
+
+		}
 	}
 }
 
@@ -381,9 +415,9 @@ func (ra *roaringArray) headerSize() uint64 {
 			return 4 + (size+7)/8 + 4*size
 		}
 		return 4 + (size+7)/8 + 8*size // - 4 because we pack the size with the cookie
-	} else {
-		return 4 + 4 + 8*size
 	}
+	return 4 + 4 + 8*size
+
 }
 
 // should be dirt cheap
