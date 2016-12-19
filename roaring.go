@@ -38,18 +38,29 @@ func (rb *Bitmap) FromBase64(str string) (int64, error) {
 	return rb.ReadFrom(buf)
 }
 
-// WriteTo writes a serialized version of this bitmap to stream
+// WriteTo writes a serialized version of this bitmap to stream.
+// The format is compatible with other RoaringBitmap
+// implementations (Java, C) and is documented here:
+// https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 	return rb.highlowcontainer.writeTo(stream)
 }
 
-// WriteTo writes a msgpack2/snappy-streaming compressed serialized
-// version of this bitmap to stream
+// WriteToMsgpack writes a msgpack2/snappy-streaming compressed serialized
+// version of this bitmap to stream. The format is not
+// compatible with the WriteTo() format, and is
+// experimental: it may produce smaller on disk
+// footprint and/or be faster to read, depending
+// on your content. Currently only the Go roaring
+// implementation supports this format.
 func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 	return 0, rb.highlowcontainer.writeToMsgpack(stream)
 }
 
-// ReadFrom reads a serialized version of this bitmap from stream
+// ReadFrom reads a serialized version of this bitmap from stream.
+// The format is compatible with other RoaringBitmap
+// implementations (Java, C) and is documented here:
+// https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 	return rb.highlowcontainer.readFrom(stream)
 }
@@ -65,7 +76,9 @@ func (rb *Bitmap) HasRunCompression() bool {
 }
 
 // ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
-// version of this bitmap from stream
+// version of this bitmap from stream. The format is
+// expected is that written by the WriteToMsgpack()
+// call; see additional notes there.
 func (rb *Bitmap) ReadFromMsgpack(stream io.Reader) (int64, error) {
 	return 0, rb.highlowcontainer.readFromMsgpack(stream)
 }
@@ -1154,6 +1167,7 @@ func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
 	return Flip(bm, uint64(rangeStart), uint64(rangeEnd))
 }
 
+// Statistics provides details on the container types in use.
 type Statistics struct {
 	Cardinality uint64
 	Containers  uint64
@@ -1171,23 +1185,24 @@ type Statistics struct {
 	RunContainerValues uint64
 }
 
-func (bm *Bitmap) Stats() Statistics {
+// Stats returns details on container type usage in a Statistics struct.
+func (rb *Bitmap) Stats() Statistics {
 	stats := Statistics{}
-	stats.Containers = uint64(len(bm.highlowcontainer.containers))
-	for _, c := range bm.highlowcontainer.containers {
+	stats.Containers = uint64(len(rb.highlowcontainer.containers))
+	for _, c := range rb.highlowcontainer.containers {
 		stats.Cardinality += uint64(c.getCardinality())
 
 		switch c.(type) {
 		case *arrayContainer:
-			stats.ArrayContainers += 1
+			stats.ArrayContainers++
 			stats.ArrayContainerBytes += uint64(c.getSizeInBytes())
 			stats.ArrayContainerValues += uint64(c.getCardinality())
 		case *bitmapContainer:
-			stats.BitmapContainers += 1
+			stats.BitmapContainers++
 			stats.BitmapContainerBytes += uint64(c.getSizeInBytes())
 			stats.BitmapContainerValues += uint64(c.getCardinality())
 		case *runContainer16:
-			stats.RunContainers += 1
+			stats.RunContainers++
 			stats.RunContainerBytes += uint64(c.getSizeInBytes())
 			stats.RunContainerValues += uint64(c.getCardinality())
 		}

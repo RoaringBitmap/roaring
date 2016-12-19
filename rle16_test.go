@@ -77,26 +77,26 @@ func TestRleRunIterator16(t *testing.T) {
 			_ = msg
 			p("an empty container: '%s'\n", msg)
 			So(rc.cardinality(), ShouldEqual, 0)
-			it := rc.NewRunIterator16()
-			So(it.HasNext(), ShouldBeFalse)
+			it := rc.newRunIterator16()
+			So(it.hasNext(), ShouldBeFalse)
 		}
 		{
 			rc := newRunContainer16TakeOwnership([]interval16{{start: 4, last: 4}})
 			So(rc.cardinality(), ShouldEqual, 1)
-			it := rc.NewRunIterator16()
-			So(it.HasNext(), ShouldBeTrue)
-			So(it.Next(), ShouldResemble, uint16(4))
-			So(it.Cur(), ShouldResemble, uint16(4))
+			it := rc.newRunIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			So(it.next(), ShouldResemble, uint16(4))
+			So(it.cur(), ShouldResemble, uint16(4))
 		}
 		{
 			rc := newRunContainer16CopyIv([]interval16{{start: 4, last: 9}})
 			So(rc.cardinality(), ShouldEqual, 6)
-			it := rc.NewRunIterator16()
-			So(it.HasNext(), ShouldBeTrue)
+			it := rc.newRunIterator16()
+			So(it.hasNext(), ShouldBeTrue)
 			for i := 4; i < 10; i++ {
-				So(it.Next(), ShouldEqual, uint16(i))
+				So(it.next(), ShouldEqual, uint16(i))
 			}
-			So(it.HasNext(), ShouldBeFalse)
+			So(it.hasNext(), ShouldBeFalse)
 		}
 
 		{
@@ -105,25 +105,25 @@ func TestRleRunIterator16(t *testing.T) {
 			So(card, ShouldEqual, 6)
 			//So(rc.serializedSizeInBytes(), ShouldEqual, 2+4*rc.numberOfRuns())
 
-			it := rc.NewRunIterator16()
-			So(it.HasNext(), ShouldBeTrue)
+			it := rc.newRunIterator16()
+			So(it.hasNext(), ShouldBeTrue)
 			for i := 4; i < 6; i++ {
-				So(it.Next(), ShouldEqual, uint16(i))
+				So(it.next(), ShouldEqual, uint16(i))
 			}
-			So(it.Cur(), ShouldEqual, uint16(5))
+			So(it.cur(), ShouldEqual, uint16(5))
 
 			p("before Remove of 5, rc = '%s'", rc)
 
-			So(it.Remove(), ShouldEqual, uint16(5))
+			So(it.remove(), ShouldEqual, uint16(5))
 
 			p("after Remove of 5, rc = '%s'", rc)
 			So(rc.cardinality(), ShouldEqual, 5)
 
-			it2 := rc.NewRunIterator16()
+			it2 := rc.newRunIterator16()
 			So(rc.cardinality(), ShouldEqual, 5)
-			So(it2.Next(), ShouldEqual, uint16(4))
+			So(it2.next(), ShouldEqual, uint16(4))
 			for i := 6; i < 10; i++ {
-				So(it2.Next(), ShouldEqual, uint16(i))
+				So(it2.next(), ShouldEqual, uint16(i))
 			}
 		}
 		{
@@ -141,16 +141,16 @@ func TestRleRunIterator16(t *testing.T) {
 			rc = rc.union(rc1)
 
 			So(rc.cardinality(), ShouldEqual, 8)
-			it := rc.NewRunIterator16()
-			So(it.Next(), ShouldEqual, uint16(0))
-			So(it.Next(), ShouldEqual, uint16(2))
-			So(it.Next(), ShouldEqual, uint16(4))
-			So(it.Next(), ShouldEqual, uint16(6))
-			So(it.Next(), ShouldEqual, uint16(7))
-			So(it.Next(), ShouldEqual, uint16(10))
-			So(it.Next(), ShouldEqual, uint16(11))
-			So(it.Next(), ShouldEqual, uint16(MaxUint16))
-			So(it.HasNext(), ShouldEqual, false)
+			it := rc.newRunIterator16()
+			So(it.next(), ShouldEqual, uint16(0))
+			So(it.next(), ShouldEqual, uint16(2))
+			So(it.next(), ShouldEqual, uint16(4))
+			So(it.next(), ShouldEqual, uint16(6))
+			So(it.next(), ShouldEqual, uint16(7))
+			So(it.next(), ShouldEqual, uint16(10))
+			So(it.next(), ShouldEqual, uint16(11))
+			So(it.next(), ShouldEqual, uint16(MaxUint16))
+			So(it.hasNext(), ShouldEqual, false)
 
 			rc2 := newRunContainer16TakeOwnership([]interval16{
 				{start: 0, last: MaxUint16},
@@ -625,17 +625,17 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			ra.Add(5)
 			So(ra.cardinality(), ShouldEqual, 2)
 
-			// NewRunIterator16()
+			// newRunIterator16()
 			empty := newRunContainer16()
-			it := empty.NewRunIterator16()
-			So(func() { it.Next() }, ShouldPanic)
-			it2 := ra.NewRunIterator16()
+			it := empty.newRunIterator16()
+			So(func() { it.next() }, ShouldPanic)
+			it2 := ra.newRunIterator16()
 			it2.curIndex = int64(len(it2.rc.iv))
-			So(func() { it2.Next() }, ShouldPanic)
+			So(func() { it2.next() }, ShouldPanic)
 
-			// RunIterator16.Remove()
-			emptyIt := empty.NewRunIterator16()
-			So(func() { emptyIt.Remove() }, ShouldPanic)
+			// runIterator16.remove()
+			emptyIt := empty.newRunIterator16()
+			So(func() { emptyIt.remove() }, ShouldPanic)
 
 			// newRunContainer16FromArray
 			arr := newArrayContainerRange(1, 6)
@@ -661,14 +661,25 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			rc3.Add(10)
 			rc3.Add(12)
 			So(rc3.cardinality(), ShouldEqual, 5)
-			it3 := rc3.NewRunIterator16()
-			it3.Next()
-			it3.Next()
-			it3.Next()
-			it3.Next()
-			So(it3.Cur(), ShouldEqual, uint16(10))
-			it3.Remove()
-			So(it3.Next(), ShouldEqual, uint16(12))
+			it3 := rc3.newRunIterator16()
+			it3.next()
+			it3.next()
+			it3.next()
+			it3.next()
+			So(it3.cur(), ShouldEqual, uint16(10))
+			it3.remove()
+			So(it3.next(), ShouldEqual, uint16(12))
+		}
+
+		// runContainer16.equals
+		{
+			rc16 := newRunContainer16()
+			So(rc16.equals16(rc16), ShouldBeTrue)
+			rc16b := newRunContainer16()
+			So(rc16.equals16(rc16b), ShouldBeTrue)
+			rc16.Add(1)
+			rc16b.Add(2)
+			So(rc16.equals16(rc16b), ShouldBeFalse)
 		}
 	})
 }

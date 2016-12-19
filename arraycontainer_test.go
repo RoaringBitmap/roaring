@@ -278,3 +278,74 @@ func TestArrayContainerIaddRangeNearMax068(t *testing.T) {
 
 	})
 }
+
+func TestArrayContainerEtc070(t *testing.T) {
+
+	Convey("arrayContainer rarely exercised code paths should get some coverage", t, func() {
+
+		iv := []interval16{{65525, 65527}, {65530, 65530}, {65534, 65535}}
+		rc := newRunContainer16TakeOwnership(iv)
+		ac := rc.toArrayContainer()
+
+		// not when nothing to do just returns a clone
+		So(ac.equals(ac.not(0, 0)), ShouldBeTrue)
+		So(ac.equals(ac.notClose(1, 0)), ShouldBeTrue)
+
+		// not will promote to bitmapContainer if card is big enough
+
+		ac = newArrayContainer()
+		ac.inot(0, MaxUint16+1)
+		rc = newRunContainer16Range(0, MaxUint16)
+
+		p("ac.card = %v", ac.getCardinality())
+		p("rc.card = %v", rc.getCardinality())
+		So(rc.equals(ac), ShouldBeTrue)
+
+		// comparing two array containers with different card
+		ac2 := newArrayContainer()
+		So(ac2.equals(ac), ShouldBeFalse)
+
+		// comparing two arrays with same card but different content
+		ac3 := newArrayContainer()
+		ac4 := newArrayContainer()
+		ac3.iadd(1)
+		ac3.iadd(2)
+		ac4.iadd(1)
+		So(ac3.equals(ac4), ShouldBeFalse)
+
+		// compare array vs other with different card
+		So(ac3.equals(rc), ShouldBeFalse)
+
+		// compare array vs other, same card, different content
+		rc = newRunContainer16Range(0, 0)
+		So(ac4.equals(rc), ShouldBeFalse)
+
+		// remove from middle of array
+		ac5 := newArrayContainer()
+		ac5.iaddRange(0, 10)
+		So(ac5.getCardinality(), ShouldEqual, 10)
+		ac6 := ac5.remove(5)
+		So(ac6.getCardinality(), ShouldEqual, 9)
+
+		// lazyorArray that converts to bitmap
+		ac5.iaddRange(0, arrayLazyLowerBound-1)
+		ac6.iaddRange(arrayLazyLowerBound, 2*arrayLazyLowerBound-2)
+		ac6a := ac6.(*arrayContainer)
+		bc := ac5.lazyorArray(ac6a)
+		_, isBitmap := bc.(*bitmapContainer)
+		So(isBitmap, ShouldBeTrue)
+
+		// andBitmap
+		ac = newArrayContainer()
+		ac.iaddRange(0, 10)
+		bc9 := newBitmapContainer()
+		bc9.iaddRange(0, 5)
+		and := ac.andBitmap(bc9)
+		So(and.getCardinality(), ShouldEqual, 5)
+
+		// numberOfRuns with 1 member
+		ac10 := newArrayContainer()
+		ac10.iadd(1)
+		So(ac10.numberOfRuns(), ShouldEqual, 1)
+	})
+}

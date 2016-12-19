@@ -143,7 +143,7 @@ func (rc *runContainer16) fillLeastSignificant16bits(x []uint32, i int, mask uin
 }
 
 func (rc *runContainer16) getShortIterator() shortIterable {
-	return rc.NewRunIterator16()
+	return rc.newRunIterator16()
 }
 
 // add the values in the range [firstOfRange, endx). endx
@@ -254,25 +254,21 @@ func (rc *runContainer16) equals(o container) bool {
 		return true
 	}
 
-	bc, ok := o.(container)
-	if ok {
-		// use generic comparison
-		if bc.getCardinality() != rc.getCardinality() {
+	// use generic comparison
+	if o.getCardinality() != rc.getCardinality() {
+		return false
+	}
+	rit := rc.getShortIterator()
+	bit := o.getShortIterator()
+
+	//k := 0
+	for rit.hasNext() {
+		if bit.next() != rit.next() {
 			return false
 		}
-		rit := rc.getShortIterator()
-		bit := bc.getShortIterator()
-
-		//k := 0
-		for rit.hasNext() {
-			if bit.next() != rit.next() {
-				return false
-			}
-			//k++
-		}
-		return true
+		//k++
 	}
-	return false
+	return true
 }
 
 func (rc *runContainer16) iaddReturnMinimized(x uint16) container {

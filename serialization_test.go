@@ -276,7 +276,7 @@ func TestSerializationBasic3_042(t *testing.T) {
 			case *runContainer16:
 				rc = true
 			default:
-				fmt.Errorf("Unrecognized container implementation: %T", cn)
+				panic(fmt.Errorf("Unrecognized container implementation: %T", cn))
 			}
 		}
 		if !bc {
@@ -574,7 +574,7 @@ func TestSerializationBasicMsgpack035(t *testing.T) {
 				rc = true
 				So(cn.containerType(), ShouldEqual, run16Contype)
 			default:
-				fmt.Errorf("Unrecognized container implementation: %T", cn)
+				panic(fmt.Errorf("Unrecognized container implementation: %T", cn))
 			}
 		}
 		if !bc {

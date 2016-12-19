@@ -863,34 +863,27 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	return
 }
 
-//msgp:ignore RunIterator
+//msgp:ignore runIterator
 
-// RunIterator16 advice: you must call Next() at least once
+// runIterator16 advice: you must call Next() at least once
 // before calling Cur(); and you should call HasNext()
 // before calling Next() to insure there are contents.
-type RunIterator16 struct {
+type runIterator16 struct {
 	rc            *runContainer16
 	curIndex      int64
 	curPosInIndex uint16
 	curSeq        int64
 }
 
-// NewRunIterator16 returns a new empty run container.
-func (rc *runContainer16) NewRunIterator16() *RunIterator16 {
-	return &RunIterator16{rc: rc, curIndex: -1}
-}
-
-func (ri *RunIterator16) hasNext() bool {
-	return ri.HasNext()
-}
-func (ri *RunIterator16) next() uint16 {
-	return ri.Next()
+// newRunIterator16 returns a new empty run container.
+func (rc *runContainer16) newRunIterator16() *runIterator16 {
+	return &runIterator16{rc: rc, curIndex: -1}
 }
 
 // HasNext returns false if calling Next will panic. It
 // returns true when there is at least one more value
 // available in the iteration sequence.
-func (ri *RunIterator16) HasNext() bool {
+func (ri *runIterator16) hasNext() bool {
 	if len(ri.rc.iv) == 0 {
 		return false
 	}
@@ -900,18 +893,18 @@ func (ri *RunIterator16) HasNext() bool {
 	return ri.curSeq+1 < ri.rc.cardinality()
 }
 
-// Cur returns the current value pointed to by the iterator.
-func (ri *RunIterator16) Cur() uint16 {
+// cur returns the current value pointed to by the iterator.
+func (ri *runIterator16) cur() uint16 {
 	return ri.rc.iv[ri.curIndex].start + ri.curPosInIndex
 }
 
 // Next returns the next value in the iteration sequence.
-func (ri *RunIterator16) Next() uint16 {
-	if !ri.HasNext() {
+func (ri *runIterator16) next() uint16 {
+	if !ri.hasNext() {
 		panic("no Next available")
 	}
 	if ri.curIndex >= int64(len(ri.rc.iv)) {
-		panic("RunIterator.Next() going beyond what is available")
+		panic("runIterator.Next() going beyond what is available")
 	}
 	if ri.curIndex == -1 {
 		// first time is special
@@ -924,19 +917,19 @@ func (ri *RunIterator16) Next() uint16 {
 		}
 		ri.curSeq++
 	}
-	return ri.Cur()
+	return ri.cur()
 }
 
-// Remove removes the element that the iterator
+// remove removes the element that the iterator
 // is on from the run container. You can use
 // Cur if you want to double check what is about
 // to be deleted.
-func (ri *RunIterator16) Remove() uint16 {
+func (ri *runIterator16) remove() uint16 {
 	n := ri.rc.cardinality()
 	if n == 0 {
-		panic("RunIterator.Remove called on empty runContainer16")
+		panic("runIterator.Remove called on empty runContainer16")
 	}
-	cur := ri.Cur()
+	cur := ri.cur()
 
 	ri.rc.deleteAt(&ri.curIndex, &ri.curPosInIndex, &ri.curSeq)
 	return cur
@@ -1144,36 +1137,36 @@ func (rc *runContainer16) invert() *runContainer16 {
 	return &runContainer16{iv: m}
 }
 
-func (a interval16) equal(b interval16) bool {
-	if a.start == b.start {
-		return a.last == b.last
+func (iv interval16) equal(b interval16) bool {
+	if iv.start == b.start {
+		return iv.last == b.last
 	}
 	return false
 }
 
-func (a interval16) isSuperSetOf(b interval16) bool {
-	return a.start <= b.start && b.last <= a.last
+func (iv interval16) isSuperSetOf(b interval16) bool {
+	return iv.start <= b.start && b.last <= iv.last
 }
 
-func (cur interval16) subtractInterval(del interval16) (left []interval16, delcount int64) {
-	isect, isEmpty := intersectInterval16s(cur, del)
+func (iv interval16) subtractInterval(del interval16) (left []interval16, delcount int64) {
+	isect, isEmpty := intersectInterval16s(iv, del)
 
 	if isEmpty {
 		return nil, 0
 	}
-	if del.isSuperSetOf(cur) {
-		return nil, cur.runlen()
+	if del.isSuperSetOf(iv) {
+		return nil, iv.runlen()
 	}
 
 	switch {
-	case isect.start > cur.start && isect.last < cur.last:
-		new0 := interval16{start: cur.start, last: isect.start - 1}
-		new1 := interval16{start: isect.last + 1, last: cur.last}
+	case isect.start > iv.start && isect.last < iv.last:
+		new0 := interval16{start: iv.start, last: isect.start - 1}
+		new1 := interval16{start: isect.last + 1, last: iv.last}
 		return []interval16{new0, new1}, isect.runlen()
-	case isect.start == cur.start:
-		return []interval16{{start: isect.last + 1, last: cur.last}}, isect.runlen()
+	case isect.start == iv.start:
+		return []interval16{{start: isect.last + 1, last: iv.last}}, isect.runlen()
 	default:
-		return []interval16{{start: cur.start, last: isect.start - 1}}, isect.runlen()
+		return []interval16{{start: iv.start, last: isect.start - 1}}, isect.runlen()
 	}
 }
 
@@ -1406,6 +1399,29 @@ func (rc *runContainer16) numberOfRuns() (nr int) {
 	return len(rc.iv)
 }
 
-func (bc *runContainer16) containerType() contype {
+func (rc *runContainer16) containerType() contype {
 	return run16Contype
+}
+
+func (rc *runContainer16) equals16(srb *runContainer16) bool {
+	//p("both rc16")
+	// Check if the containers are the same object.
+	if rc == srb {
+		//p("same object")
+		return true
+	}
+
+	if len(srb.iv) != len(rc.iv) {
+		//p("iv len differ")
+		return false
+	}
+
+	for i, v := range rc.iv {
+		if v != srb.iv[i] {
+			//p("differ at iv i=%v, srb.iv[i]=%v, rc.iv[i]=%v", i, srb.iv[i], rc.iv[i])
+			return false
+		}
+	}
+	//p("all intervals same, returning true")
+	return true
 }

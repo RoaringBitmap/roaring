@@ -27,13 +27,13 @@ type container interface {
 	iaddReturnMinimized(uint16) container // may change return type to minimize storage.
 
 	//addRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
-	iaddRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
+	iaddRange(start, endx int) container // i stands for inplace, range is [firstOfRange,endx)
 
 	iremove(x uint16) bool                   // inplace, returns true if x was present.
 	iremoveReturnMinimized(uint16) container // may change return type to minimize storage.
 
-	not(start, final int) container               // range is [firstOfRange,lastOfRange)
-	inot(firstOfRange, lastOfRange int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
+	not(start, final int) container        // range is [firstOfRange,lastOfRange)
+	inot(firstOfRange, endx int) container // i stands for inplace, range is [firstOfRange,endx)
 	xor(r container) container
 	getShortIterator() shortIterable
 	contains(i uint16) bool
@@ -665,7 +665,7 @@ func (ra *roaringArray) writeToMsgpack(stream io.Writer) error {
 			ra.conserz[i].t = run16Contype
 			ra.conserz[i].r = bts
 		default:
-			fmt.Errorf("Unrecognized container implementation: %T", cn)
+			panic(fmt.Errorf("Unrecognized container implementation: %T", cn))
 		}
 	}
 	w := snappy.NewWriter(stream)
