@@ -101,4 +101,6 @@ cover:
 	go tool cover -html=coverage.out
 
 fetch-real-roaring-datasets:
-	go get -d github.com/RoaringBitmap/real-roaring-datasets
+	# pull github.com/RoaringBitmap/real-roaring-datasets -> testdata/real-roaring-datasets
+	git submodule init
+	git submodule update
