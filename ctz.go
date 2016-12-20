@@ -2,8 +2,6 @@
 
 package roaring
 
-//go:noescape
-
 // countTrailingZeros counts the number of zeros
 // from the least-significant bit up to the
 // first set (1) bit. if x is 0, 64 is returned.
@@ -16,4 +14,7 @@ package roaring
 //
 // TODO: possibly use "github.com/klauspost/cpuid"
 // to check if cpuid.CPU.BMI1() is true before using the assembly version.
+//
+// The Go version is in ctz_generic.go.
+//
 func countTrailingZeros(x uint64) int
