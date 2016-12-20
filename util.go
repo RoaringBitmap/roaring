@@ -13,7 +13,21 @@ const (
 	invalidCardinality         = -1
 	serialCookie               = 12347 // runs, arrays, and bitmaps
 	noOffsetThreshold          = 4
+
+	// Compute the size _S of a Word in bytes.
+	_m    = ^word(0)
+	_logS = _m>>8&1 + _m>>16&1 + _m>>32&1
+	_S    = 1 << _logS
+
+	wordSizeInBits = _S << 3             // word size in bits
+	digitBase      = 1 << wordSizeInBits // digit base
+	digitMask      = digitBase - 1       // digit mask
 )
+
+// A word represents a single digit of a multi-precision unsigned integer.
+type word uintptr
+
+const maxWord = 1<<wordSizeInBits - 1
 
 // doesn't apply to runContainers
 func getSizeInBytesFromCardinality(card int) int {

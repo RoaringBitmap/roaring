@@ -190,8 +190,6 @@ func newRunContainer32FromVals(alreadySorted bool, vals ...uint32) *runContainer
 	return rc
 }
 
-const maxWord = 1<<_W - 1
-
 // newRunContainer32FromBitmapContainer makes a new run container from bc,
 // somewhat efficiently. For reference, see the Java
 // https://github.com/RoaringBitmap/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/RunContainer.java#L145-L192
@@ -218,7 +216,7 @@ func newRunContainer32FromBitmapContainer(bc *bitmapContainer) *runContainer32 {
 			// wrap up, no more runs
 			return rc
 		}
-		localRunStart := numberOfTrailingZeros(curWord)
+		localRunStart := countTrailingZeros(curWord)
 		runStart := localRunStart + 64*longCtr
 		// stuff 1s into number's LSBs
 		curWordWith1s := curWord | (curWord - 1)
@@ -232,12 +230,12 @@ func newRunContainer32FromBitmapContainer(bc *bitmapContainer) *runContainer32 {
 
 		if curWordWith1s == maxWord {
 			// a final unterminated run of 1s
-			runEnd = _W + longCtr*64
+			runEnd = wordSizeInBits + longCtr*64
 			rc.iv[runCount].start = uint32(runStart)
 			rc.iv[runCount].last = uint32(runEnd) - 1
 			return rc
 		}
-		localRunEnd := numberOfTrailingZeros(^curWordWith1s)
+		localRunEnd := countTrailingZeros(^curWordWith1s)
 		runEnd = localRunEnd + longCtr*64
 		rc.iv[runCount].start = uint32(runStart)
 		rc.iv[runCount].last = uint32(runEnd) - 1
@@ -247,39 +245,6 @@ func newRunContainer32FromBitmapContainer(bc *bitmapContainer) *runContainer32 {
 		// We've lathered and rinsed, so repeat...
 	}
 
-}
-func newRunContainer32FromBitmapContainerOrig(bc *bitmapContainer) *runContainer32 {
-
-	rc := &runContainer32{}
-	ah := addHelper32{rc: rc}
-
-	n := bc.getCardinality()
-	it := bc.getShortIterator()
-	var cur, prev, val uint32
-	switch {
-	case n == 0:
-		// nothing more
-	case n == 1:
-		val = uint32(it.next())
-		ah.m = append(ah.m, interval32{start: val, last: val})
-		ah.actuallyAdded++
-	default:
-		prev = uint32(it.next())
-		cur = uint32(it.next())
-		ah.runstart = prev
-		ah.actuallyAdded++
-		for i := 1; i < n; i++ {
-			ah.add(cur, prev, i)
-			if it.hasNext() {
-				prev = cur
-				cur = uint32(it.next())
-			}
-		}
-		ah.storeIval(ah.runstart, ah.runlen)
-	}
-	rc.iv = ah.m
-	rc.card = int64(ah.actuallyAdded)
-	return rc
 }
 
 //

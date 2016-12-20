@@ -629,3 +629,57 @@ func newRunContainer16FromContainer(c container) *runContainer16 {
 	}
 	panic("unsupported container type")
 }
+
+func newRunContainer16FromBitmapContainerAsm(bc *bitmapContainer) *runContainer16 {
+
+	rc := &runContainer16{}
+	nbrRuns := bc.numberOfRuns()
+	if nbrRuns == 0 {
+		return rc
+	}
+	rc.iv = make([]interval16, nbrRuns)
+
+	longCtr := 0            // index of current long in bitmap
+	curWord := bc.bitmap[0] // its value
+	runCount := 0
+	for {
+		// potentially multiword advance to first 1 bit
+		for curWord == 0 && longCtr < len(bc.bitmap)-1 {
+			longCtr++
+			curWord = bc.bitmap[longCtr]
+		}
+
+		if curWord == 0 {
+			// wrap up, no more runs
+			return rc
+		}
+		localRunStart := countTrailingZeros(curWord)
+		runStart := localRunStart + 64*longCtr
+		// stuff 1s into number's LSBs
+		curWordWith1s := curWord | (curWord - 1)
+
+		// find the next 0, potentially in a later word
+		runEnd := 0
+		for curWordWith1s == maxWord && longCtr < len(bc.bitmap)-1 {
+			longCtr++
+			curWordWith1s = bc.bitmap[longCtr]
+		}
+
+		if curWordWith1s == maxWord {
+			// a final unterminated run of 1s
+			runEnd = wordSizeInBits + longCtr*64
+			rc.iv[runCount].start = uint16(runStart)
+			rc.iv[runCount].last = uint16(runEnd) - 1
+			return rc
+		}
+		localRunEnd := countTrailingZeros(^curWordWith1s)
+		runEnd = localRunEnd + longCtr*64
+		rc.iv[runCount].start = uint16(runStart)
+		rc.iv[runCount].last = uint16(runEnd) - 1
+		runCount++
+		// now, zero out everything right of runEnd.
+		curWord = curWordWith1s & (curWordWith1s + 1)
+		// We've lathered and rinsed, so repeat...
+	}
+
+}

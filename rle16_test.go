@@ -719,3 +719,19 @@ func TestRleStoringMax16(t *testing.T) {
 
 	})
 }
+
+// go test -bench BenchmarkFromBitmap -run -
+func BenchmarkFromBitmap16(b *testing.B) {
+	b.StopTimer()
+	seed := int64(42)
+	rand.Seed(seed)
+
+	tr := trial{n: 10000, percentFill: .95, ntrial: 1, numRandomOpsPass: 100}
+	_, _, bc := getRandomSameThreeContainers(tr)
+
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		newRunContainer16FromBitmapContainer(bc)
+	}
+}

@@ -190,40 +190,61 @@ func newRunContainer16FromVals(alreadySorted bool, vals ...uint16) *runContainer
 	return rc
 }
 
-// newRunContainer16FromBitmapContainer makes a new run container from bc.
+// newRunContainer16FromBitmapContainer makes a new run container from bc,
+// somewhat efficiently. For reference, see the Java
+// https://github.com/RoaringBitmap/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/RunContainer.java#L145-L192
 func newRunContainer16FromBitmapContainer(bc *bitmapContainer) *runContainer16 {
-	// todo: this could be optimized, see https://github.com/RoaringBitmap/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/RunContainer.java#L145-L192
 
 	rc := &runContainer16{}
-	ah := addHelper16{rc: rc}
-
-	n := bc.getCardinality()
-	it := bc.getShortIterator()
-	var cur, prev, val uint16
-	switch {
-	case n == 0:
-		// nothing more
-	case n == 1:
-		val = uint16(it.next())
-		ah.m = append(ah.m, interval16{start: val, last: val})
-		ah.actuallyAdded++
-	default:
-		prev = uint16(it.next())
-		cur = uint16(it.next())
-		ah.runstart = prev
-		ah.actuallyAdded++
-		for i := 1; i < n; i++ {
-			ah.add(cur, prev, i)
-			if it.hasNext() {
-				prev = cur
-				cur = uint16(it.next())
-			}
-		}
-		ah.storeIval(ah.runstart, ah.runlen)
+	nbrRuns := bc.numberOfRuns()
+	if nbrRuns == 0 {
+		return rc
 	}
-	rc.iv = ah.m
-	rc.card = int64(ah.actuallyAdded)
-	return rc
+	rc.iv = make([]interval16, nbrRuns)
+
+	longCtr := 0            // index of current long in bitmap
+	curWord := bc.bitmap[0] // its value
+	runCount := 0
+	for {
+		// potentially multiword advance to first 1 bit
+		for curWord == 0 && longCtr < len(bc.bitmap)-1 {
+			longCtr++
+			curWord = bc.bitmap[longCtr]
+		}
+
+		if curWord == 0 {
+			// wrap up, no more runs
+			return rc
+		}
+		localRunStart := countTrailingZeros(curWord)
+		runStart := localRunStart + 64*longCtr
+		// stuff 1s into number's LSBs
+		curWordWith1s := curWord | (curWord - 1)
+
+		// find the next 0, potentially in a later word
+		runEnd := 0
+		for curWordWith1s == maxWord && longCtr < len(bc.bitmap)-1 {
+			longCtr++
+			curWordWith1s = bc.bitmap[longCtr]
+		}
+
+		if curWordWith1s == maxWord {
+			// a final unterminated run of 1s
+			runEnd = wordSizeInBits + longCtr*64
+			rc.iv[runCount].start = uint16(runStart)
+			rc.iv[runCount].last = uint16(runEnd) - 1
+			return rc
+		}
+		localRunEnd := countTrailingZeros(^curWordWith1s)
+		runEnd = localRunEnd + longCtr*64
+		rc.iv[runCount].start = uint16(runStart)
+		rc.iv[runCount].last = uint16(runEnd) - 1
+		runCount++
+		// now, zero out everything right of runEnd.
+		curWord = curWordWith1s & (curWordWith1s + 1)
+		// We've lathered and rinsed, so repeat...
+	}
+
 }
 
 //
