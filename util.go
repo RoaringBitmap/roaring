@@ -25,7 +25,6 @@ const (
 	digitMask      = digitBase - 1        // digit mask
 )
 
-// A word represents a single digit of a multi-precision unsigned integer.
 type word uintptr
 
 const maxWord = 1<<wordSizeInBits - 1

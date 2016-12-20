@@ -1,6 +1,6 @@
 // +build amd64,!appengine
 
-TEXT ·countTrailingZeros(SB),$0
+TEXT ·countTrailingZeros(SB),$0-16
 MOVQ    x+0(FP),DI
 //  TZCNTQ  DI,AX
 BYTE $0xf3; BYTE $0x48; BYTE $0x0f; BYTE $0xbc; BYTE $0xC7
