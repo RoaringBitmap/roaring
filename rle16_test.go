@@ -391,6 +391,8 @@ func TestRleRandomIntersection16(t *testing.T) {
 
 				p("isect is %v", isect)
 
+				//showHash("hashi", hashi)
+
 				for k := range hashi {
 					p("hashi has %v, checking in isect", k)
 					So(isect.contains(uint16(k)), ShouldBeTrue)
@@ -454,6 +456,8 @@ func TestRleRandomUnion16(t *testing.T) {
 				for k := range mb {
 					hashu[k] = true
 				}
+
+				//showHash("hashu", hashu)
 
 				// RunContainer's Union
 				arle := newRunContainer16()

@@ -190,9 +190,65 @@ func newRunContainer32FromVals(alreadySorted bool, vals ...uint32) *runContainer
 	return rc
 }
 
-// newRunContainer32FromBitmapContainer makes a new run container from bc.
+const maxWord = 1<<_W - 1
+
+// newRunContainer32FromBitmapContainer makes a new run container from bc,
+// somewhat efficiently. For reference, see the Java
+// https://github.com/RoaringBitmap/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/RunContainer.java#L145-L192
 func newRunContainer32FromBitmapContainer(bc *bitmapContainer) *runContainer32 {
-	// todo: this could be optimized, see https://github.com/RoaringBitmap/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/RunContainer.java#L145-L192
+
+	rc := &runContainer32{}
+	nbrRuns := bc.numberOfRuns()
+	if nbrRuns == 0 {
+		return rc
+	}
+	rc.iv = make([]interval32, nbrRuns)
+
+	longCtr := 0            // index of current long in bitmap
+	curWord := bc.bitmap[0] // its value
+	runCount := 0
+	for {
+		// potentially multiword advance to first 1 bit
+		for curWord == 0 && longCtr < len(bc.bitmap)-1 {
+			longCtr++
+			curWord = bc.bitmap[longCtr]
+		}
+
+		if curWord == 0 {
+			// wrap up, no more runs
+			return rc
+		}
+		localRunStart := numberOfTrailingZeros(curWord)
+		runStart := localRunStart + 64*longCtr
+		// stuff 1s into number's LSBs
+		curWordWith1s := curWord | (curWord - 1)
+
+		// find the next 0, potentially in a later word
+		runEnd := 0
+		for curWordWith1s == maxWord && longCtr < len(bc.bitmap)-1 {
+			longCtr++
+			curWordWith1s = bc.bitmap[longCtr]
+		}
+
+		if curWordWith1s == maxWord {
+			// a final unterminated run of 1s
+			runEnd = _W + longCtr*64
+			rc.iv[runCount].start = uint32(runStart)
+			rc.iv[runCount].last = uint32(runEnd) - 1
+			return rc
+		}
+		localRunEnd := numberOfTrailingZeros(^curWordWith1s)
+		runEnd = localRunEnd + longCtr*64
+		rc.iv[runCount].start = uint32(runStart)
+		rc.iv[runCount].last = uint32(runEnd) - 1
+		runCount++
+		// now, zero out everything right of runEnd.
+		curWord = curWordWith1s & (curWordWith1s + 1)
+		// We've lathered and rinsed, so repeat...
+	}
+
+}
+func newRunContainer32FromBitmapContainerOrig(bc *bitmapContainer) *runContainer32 {
 
 	rc := &runContainer32{}
 	ah := addHelper32{rc: rc}
@@ -766,18 +822,20 @@ func newRunContainer32TakeOwnership(iv []interval32) *runContainer32 {
 const baseRc32Size = int(unsafe.Sizeof(runContainer32{}))
 const perIntervalRc32Size = int(unsafe.Sizeof(interval32{}))
 
+const baseDiskRc32Size = int(unsafe.Sizeof(uint32(0)))
+
 // see also runContainer32SerializedSizeInBytes(numRuns int) int
 
 // getSizeInBytes returns the number of bytes of memory
 // required by this runContainer32.
 func (rc *runContainer32) getSizeInBytes() int {
-	return perIntervalRc32Size * len(rc.iv) // +  baseRc32Size
+	return perIntervalRc32Size*len(rc.iv) + baseRc32Size
 }
 
-// runContainer32SerializedSizeInBytes returns the number of bytes of memory
+// runContainer32SerializedSizeInBytes returns the number of bytes of disk
 // required to hold numRuns in a runContainer32.
 func runContainer32SerializedSizeInBytes(numRuns int) int {
-	return perIntervalRc32Size * numRuns // +  baseRc32Size
+	return perIntervalRc32Size*numRuns + baseDiskRc32Size
 }
 
 // Add adds a single value k to the set.

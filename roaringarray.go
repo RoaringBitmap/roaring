@@ -115,7 +115,7 @@ func newRoaringArray() *roaringArray {
 // runOptimize compresses the element containers to minimize space consumed.
 // Q: how does this interact with copyOnWrite and needCopyOnWrite?
 // A: since we aren't changing the logical content, just the representation,
-//    we don't both to check the needCopyOnWrite bits. We replace
+//    we don't bother to check the needCopyOnWrite bits. We replace
 //    (possibly all) elements of ra.containers in-place with space
 //    optimized versions.
 func (ra *roaringArray) runOptimize() {

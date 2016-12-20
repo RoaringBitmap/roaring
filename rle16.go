@@ -766,18 +766,20 @@ func newRunContainer16TakeOwnership(iv []interval16) *runContainer16 {
 const baseRc16Size = int(unsafe.Sizeof(runContainer16{}))
 const perIntervalRc16Size = int(unsafe.Sizeof(interval16{}))
 
+const baseDiskRc16Size = int(unsafe.Sizeof(uint16(0)))
+
 // see also runContainer16SerializedSizeInBytes(numRuns int) int
 
 // getSizeInBytes returns the number of bytes of memory
 // required by this runContainer16.
 func (rc *runContainer16) getSizeInBytes() int {
-	return perIntervalRc16Size * len(rc.iv) // +  baseRc16Size
+	return perIntervalRc16Size*len(rc.iv) + baseRc16Size
 }
 
-// runContainer16SerializedSizeInBytes returns the number of bytes of memory
+// runContainer16SerializedSizeInBytes returns the number of bytes of disk
 // required to hold numRuns in a runContainer16.
 func runContainer16SerializedSizeInBytes(numRuns int) int {
-	return perIntervalRc16Size * numRuns // +  baseRc16Size
+	return perIntervalRc16Size*numRuns + baseDiskRc16Size
 }
 
 // Add adds a single value k to the set.
@@ -989,7 +991,6 @@ func (rc *runContainer16) deleteAt(curIndex *int64, curPosInIndex *uint16, curSe
 		new1 := interval16{
 			start: uint16(new1start),
 			last:  rc.iv[ci].last}
-
 		tail := append([]interval16{new0, new1}, rc.iv[ci+1:]...)
 		rc.iv = append(rc.iv[:ci], tail...)
 		// update curIndex and curPosInIndex
@@ -1190,7 +1191,6 @@ func (rc *runContainer16) isubtract(del interval16) {
 	istart, startAlready, _ := rc.search(int64(del.start), nil)
 	ilast, lastAlready, _ := rc.search(int64(del.last), nil)
 	rc.card = -1
-
 	if istart == -1 {
 		if ilast == n-1 && !lastAlready {
 			rc.iv = nil
@@ -1204,7 +1204,6 @@ func (rc *runContainer16) isubtract(del interval16) {
 
 		// would overwrite values in iv b/c res0 can have len 2. so
 		// write to origiv instead.
-
 		lost := 1 + ilast - istart
 		changeSize := int64(len(res0)) - lost
 		newSize := int64(len(rc.iv)) + changeSize
