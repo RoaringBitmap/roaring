@@ -39,41 +39,6 @@ func getSizeInBytesFromCardinality(card int) int {
 	return 2 * card
 }
 
-// should be replaced with optimized assembly instructions
-func numberOfTrailingZeros(i uint64) int {
-	if i == 0 {
-		return 64
-	}
-	x := i
-	n := int64(63)
-	y := x << 32
-	if y != 0 {
-		n -= 32
-		x = y
-	}
-	y = x << 16
-	if y != 0 {
-		n -= 16
-		x = y
-	}
-	y = x << 8
-	if y != 0 {
-		n -= 8
-		x = y
-	}
-	y = x << 4
-	if y != 0 {
-		n -= 4
-		x = y
-	}
-	y = x << 2
-	if y != 0 {
-		n -= 2
-		x = y
-	}
-	return int(n - int64(uint64(x<<1)>>63))
-}
-
 func fill(arr []uint64, val uint64) {
 	for i := range arr {
 		arr[i] = val

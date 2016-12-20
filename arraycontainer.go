@@ -439,6 +439,7 @@ func (ac *arrayContainer) lazyorArray(value2 *arrayContainer) container {
 }
 
 func (ac *arrayContainer) and(a container) container {
+	//p("ac.and() called")
 	switch x := a.(type) {
 	case *arrayContainer:
 		return ac.andArray(x)
@@ -741,7 +742,16 @@ func min(a, b int) int {
 	}
 	return b
 }
-func (ac *arrayContainer) andArray(value2 *arrayContainer) *arrayContainer {
+func (ac *arrayContainer) andArray(value2 *arrayContainer) container {
+
+	// are bitmaps faster? nope
+	/*
+		bc1 := ac.toBitmapContainer()
+		bc2 := value2.toBitmapContainer()
+		bc1.iandBitmap(bc2)
+		return bc1
+	*/
+
 	desiredcapacity := min(ac.getCardinality(), value2.getCardinality())
 	answer := newArrayContainerCapacity(desiredcapacity)
 	length := intersection2by2(
@@ -758,7 +768,7 @@ func (ac *arrayContainer) intersectsArray(value2 *arrayContainer) bool {
 		value2.content)
 }
 
-func (ac *arrayContainer) iandArray(value2 *arrayContainer) *arrayContainer {
+func (ac *arrayContainer) iandArray(value2 *arrayContainer) container {
 	length := intersection2by2(
 		ac.content,
 		value2.content,

@@ -2,6 +2,15 @@
 
 package roaring
 
+import "github.com/klauspost/cpuid"
+
+var useSSE42 bool
+
+// Detect SSE 4.2 feature.
+func init() {
+	useSSE42 = cpuid.CPU.SSE42()
+}
+
 // countTrailingZeros counts the number of zeros
 // from the least-significant bit up to the
 // first set (1) bit. if x is 0, 64 is returned.
