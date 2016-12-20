@@ -6,5 +6,3 @@ MOVQ    x+0(FP),DI
 BYTE $0xf3; BYTE $0x48; BYTE $0x0f; BYTE $0xbc; BYTE $0xC7
 MOVQ    AX, ret+8(FP)
 RET
-
-

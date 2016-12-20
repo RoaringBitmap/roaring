@@ -14,14 +14,15 @@ const (
 	serialCookie               = 12347 // runs, arrays, and bitmaps
 	noOffsetThreshold          = 4
 
-	// Compute the size _S of a Word in bytes.
-	_m    = ^word(0)
-	_logS = _m>>8&1 + _m>>16&1 + _m>>32&1
-	_S    = 1 << _logS
+	// Compute wordSizeInBytes, the size of a word in bytes.
+	_m              = ^word(0)
+	_logS           = _m>>8&1 + _m>>16&1 + _m>>32&1
+	wordSizeInBytes = 1 << _logS
 
-	wordSizeInBits = _S << 3             // word size in bits
-	digitBase      = 1 << wordSizeInBits // digit base
-	digitMask      = digitBase - 1       // digit mask
+	// other constants used in ctz_generic.go
+	wordSizeInBits = wordSizeInBytes << 3 // word size in bits
+	digitBase      = 1 << wordSizeInBits  // digit base
+	digitMask      = digitBase - 1        // digit mask
 )
 
 // A word represents a single digit of a multi-precision unsigned integer.
