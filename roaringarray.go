@@ -283,7 +283,6 @@ func (ra *roaringArray) getContainer(x uint16) container {
 	return ra.containers[i]
 }
 
-
 func (ra *roaringArray) getContainerAtIndex(i int) container {
 	return ra.containers[i]
 }
@@ -431,22 +430,6 @@ func (ra *roaringArray) serializedSizeInBytes() uint64 {
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
 //
 func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
-	return ra.writeToHelper(out, false)
-}
-
-func (ra *roaringArray) hasRunCompression() bool {
-	for _, c := range ra.containers {
-		switch c.(type) {
-		case *runContainer16:
-			return true
-		}
-	}
-	return false
-}
-
-// if fake then `out io.Writer` won't be touched, and the number of bytes
-// that would have been written and nil will be returned
-func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
 	if len(ra.keys) > MaxUint16 {
 		panic("should be impossible to have this many keys")
 	}
@@ -481,25 +464,18 @@ func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
 	buf := make([]byte, preambleSize+4*len(ra.keys))
 
 	nw := 0
+
 	if hasRun {
 		binary.LittleEndian.PutUint16(buf[0:], uint16(serialCookie))
 		nw += 2
+		binary.LittleEndian.PutUint16(buf[2:], uint16(len(ra.keys)-1))
+		nw += 2
+		nw += copy(buf[nw:], ir)
 	} else {
 		binary.LittleEndian.PutUint32(buf[0:], uint32(serialCookieNoRunContainer))
 		nw += 4
-	}
-
-	if hasRun {
-		binary.LittleEndian.PutUint16(buf[2:], uint16(len(ra.keys)-1))
-		nw += 2
-	} else {
 		binary.LittleEndian.PutUint32(buf[4:], uint32(len(ra.keys)))
 		nw += 4
-	}
-
-	// isRun bitset
-	if hasRun {
-		nw += copy(buf[nw:], ir)
 	}
 
 	// descriptive header
@@ -526,14 +502,12 @@ func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
 		}
 	}
 
-	if !fake {
-		nsw, err := stream.Write(buf[:nw])
-		if err != nil {
-			return 0, err
-		}
-		if nsw != nw {
-			panic("short write!")
-		}
+	nsw, err := stream.Write(buf[:nw])
+	if err != nil {
+		return 0, err
+	}
+	if nsw != nw {
+		panic("short write!")
 	}
 	for i, c := range ra.containers {
 		_ = i
@@ -545,10 +519,6 @@ func (ra *roaringArray) writeToHelper(out io.Writer, fake bool) (int64, error) {
 	}
 
 	by := stream.Bytes()
-
-	if fake {
-		return int64(nw), nil
-	}
 
 	n, err := out.Write(by)
 	if err == nil && n < len(by) {
@@ -668,6 +638,16 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 		}
 	}
 	return int64(pos), nil
+}
+
+func (ra *roaringArray) hasRunCompression() bool {
+	for _, c := range ra.containers {
+		switch c.(type) {
+		case *runContainer16:
+			return true
+		}
+	}
+	return false
 }
 
 func (ra *roaringArray) writeToMsgpack(stream io.Writer) error {
