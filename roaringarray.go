@@ -262,9 +262,10 @@ func (ra *roaringArray) clone() *roaringArray {
 	return &sa
 }
 
-func (ra *roaringArray) containsKey(x uint16) bool {
-	return (ra.binarySearch(0, int64(len(ra.keys)), x) >= 0)
-}
+// unused function:
+//func (ra *roaringArray) containsKey(x uint16) bool {
+//	return (ra.binarySearch(0, int64(len(ra.keys)), x) >= 0)
+//}
 
 func (ra *roaringArray) getContainer(x uint16) container {
 	i := ra.binarySearch(0, int64(len(ra.keys)), x)
