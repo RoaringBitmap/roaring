@@ -291,8 +291,7 @@ func (rb *Bitmap) Add(x uint32) {
 	i := ra.getIndex(hb)
 	if i >= 0 {
 		var c container
-		c = ra.getWritableContainerAtIndex(i)
-		c = c.iaddReturnMinimized(lowbits(x))
+		c = ra.getWritableContainerAtIndex(i).iaddReturnMinimized(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 	} else {
 		newac := newArrayContainer()
@@ -307,8 +306,7 @@ func (rb *Bitmap) addwithptr(x uint32) (int, container) {
 	i := ra.getIndex(hb)
 	var c container
 	if i >= 0 {
-		c = ra.getWritableContainerAtIndex(i)
-		c = c.iaddReturnMinimized(lowbits(x))
+		c = ra.getWritableContainerAtIndex(i).iaddReturnMinimized(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 		return i, c
 	}
@@ -347,7 +345,7 @@ func (rb *Bitmap) Remove(x uint32) {
 	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {
 		c := rb.highlowcontainer.getWritableContainerAtIndex(i).iremoveReturnMinimized(lowbits(x))
-		rb.highlowcontainer.setContainerAtIndex(i, c.iremoveReturnMinimized(lowbits(x)))
+		rb.highlowcontainer.setContainerAtIndex(i, c)
 		if rb.highlowcontainer.getContainerAtIndex(i).getCardinality() == 0 {
 			rb.highlowcontainer.removeAtIndex(i)
 		}
@@ -975,10 +973,7 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 		i := rb.highlowcontainer.getIndex(hb)
 
 		if i >= 0 {
-			//fmt.Printf("\n\n i = %v track \n", i)
-
 			c := rb.highlowcontainer.getWritableContainerAtIndex(i).inot(int(containerStart), int(containerLast)+1)
-			//fmt.Printf("\n\n c = %v \n", c)
 			if c.getCardinality() > 0 {
 				rb.highlowcontainer.setContainerAtIndex(i, c)
 			} else {
@@ -986,7 +981,6 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 			}
 		} else { // *think* the range of ones must never be
 			// empty.
-			//fmt.Printf("\n\n empty track\n")
 			rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, rangeOfOnes(int(containerStart), int(containerLast)))
 		}
 	}

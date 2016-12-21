@@ -239,12 +239,20 @@ func (ra *roaringArray) clear() {
 
 func (ra *roaringArray) clone() *roaringArray {
 
-	// shallow copy, slices will have the same backing arrays.
-	sa := *ra
+	sa := roaringArray{}
+	sa.copyOnWrite = ra.copyOnWrite
 
 	// this is where copyOnWrite is used.
 	if ra.copyOnWrite {
+		sa.keys = make([]uint16, len(ra.keys))
+		copy(sa.keys, ra.keys)
+		sa.containers = make([]container, len(ra.containers))
+		copy(sa.containers, ra.containers)
+		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
+
 		ra.markAllAsNeedingCopyOnWrite()
+		sa.markAllAsNeedingCopyOnWrite()
+
 		// sa.needCopyOnWrite is shared
 	} else {
 		// make a full copy
