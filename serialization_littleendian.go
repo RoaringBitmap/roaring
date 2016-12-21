@@ -4,8 +4,6 @@ package roaring
 
 import (
 	"io"
-	"reflect"
-	"unsafe"
 )
 
 func (b *arrayContainer) writeTo(stream io.Writer) (int, error) {
@@ -34,26 +32,3 @@ func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
 	return n, err
 }
 
-func uint64SliceAsByteSlice(slice []uint64) []byte {
-	// make a new slice header
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
-
-	// update its capacity and length
-	header.Len *= 8
-	header.Cap *= 8
-
-	// return it
-	return *(*[]byte)(unsafe.Pointer(&header))
-}
-
-func uint16SliceAsByteSlice(slice []uint16) []byte {
-	// make a new slice header
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
-
-	// update its capacity and length
-	header.Len *= 2
-	header.Cap *= 2
-
-	// return it
-	return *(*[]byte)(unsafe.Pointer(&header))
-}

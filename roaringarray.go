@@ -8,6 +8,8 @@ import (
 
 	snappy "github.com/glycerine/go-unsnap-stream"
 	"github.com/tinylib/msgp/msgp"
+	"reflect"
+	"unsafe"
 )
 
 //go:generate msgp -unexported
@@ -71,6 +73,31 @@ const (
 	run16Contype
 	run32Contype
 )
+
+func uint64SliceAsByteSlice(slice []uint64) []byte {
+	// make a new slice header
+	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
+
+	// update its capacity and length
+	header.Len *= 8
+	header.Cap *= 8
+
+	// return it
+	return *(*[]byte)(unsafe.Pointer(&header))
+}
+
+func uint16SliceAsByteSlice(slice []uint16) []byte {
+	// make a new slice header
+	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
+
+	// update its capacity and length
+	header.Len *= 2
+	header.Cap *= 2
+
+	// return it
+	return *(*[]byte)(unsafe.Pointer(&header))
+}
+
 
 // careful: range is [firstOfRange,lastOfRange]
 func rangeOfOnes(start, last int) container {
