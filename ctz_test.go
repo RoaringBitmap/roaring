@@ -45,7 +45,7 @@ func getRandomUint64Set(n int) []uint64 {
 }
 
 func getAllOneBitUint64Set() []uint64 {
-	o := []uint64{0}
+	var o []uint64
 	for i := uint(0); i < 64; i++ {
 		o = append(o, 1<<i)
 	}
@@ -155,4 +155,21 @@ func Test101CountTrailingZerosCorrectness(t *testing.T) {
 			panic(fmt.Errorf("on r[%v]= v=%v,  a: %v, b:%v", i, v, a, b))
 		}
 	}
+	// don't do zero checks, since the Asm version can be undefined
+	// for older architectures
+	/*
+		related Intel spec:
+
+		    LZCNT is an extension of the BSR instruction. The key difference
+		    between LZCNT and BSR is that LZCNT provides operand size as output
+		    when source operand is zero, while in the case of BSR instruction,
+		    if source operand is zero, the content of destination operand are
+		    undefined. On processors that do not support LZCNT, the instruction
+		    byte encoding is executed as BSR.
+
+				if countTrailingZerosAsm(0) != countTrailingZerosDeBruijn(0) {
+					panic("disagree on zero value")
+				}
+	*/
+
 }
