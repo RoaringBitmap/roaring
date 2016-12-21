@@ -512,11 +512,10 @@ func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
 	}
 	for i, c := range ra.containers {
 		_ = i
-		writ, err := c.writeTo(stream)
+		_, err := c.writeTo(stream)
 		if err != nil {
 			return 0, err
 		}
-		nw += writ
 	}
 
 	by := stream.Bytes()
