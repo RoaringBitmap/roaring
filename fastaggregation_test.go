@@ -41,11 +41,68 @@ func TestFastAggregationsOneEmpty(t *testing.T) {
 	})
 }
 
+func TestFastAggregationsReversed3COW(t *testing.T) {
+	Convey("Fast", t, func() {
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+		rb3 := NewBitmap()
+		rb1.SetCopyOnWrite(true)
+		rb2.SetCopyOnWrite(true)
+		rb3.SetCopyOnWrite(true)
+		rb1.Add(1)
+		rb1.Add(100000)
+		rb2.Add(200000)
+		rb3.Add(1)
+		rb3.Add(300000)
+
+		So(FastAnd(rb2, rb1, rb3).GetCardinality(), ShouldEqual, 0)
+		So(FastOr(rb2, rb1, rb3).GetCardinality(), ShouldEqual, 4)
+		So(HeapXor(rb2, rb1, rb3).GetCardinality(), ShouldEqual, 3)
+	})
+}
+
+func TestFastAggregationsReversed3(t *testing.T) {
+	Convey("Fast", t, func() {
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+		rb3 := NewBitmap()
+		rb1.Add(1)
+		rb1.Add(100000)
+		rb2.Add(200000)
+		rb3.Add(1)
+		rb3.Add(300000)
+
+		So(FastAnd(rb2, rb1, rb3).GetCardinality(), ShouldEqual, 0)
+		So(FastOr(rb2, rb1, rb3).GetCardinality(), ShouldEqual, 4)
+		So(HeapXor(rb2, rb1, rb3).GetCardinality(), ShouldEqual, 3)
+	})
+}
+
 func TestFastAggregations3(t *testing.T) {
 	Convey("Fast", t, func() {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb3 := NewBitmap()
+		rb1.Add(1)
+		rb1.Add(100000)
+		rb2.Add(200000)
+		rb3.Add(1)
+		rb3.Add(300000)
+
+		So(FastAnd(rb1, rb2, rb3).GetCardinality(), ShouldEqual, 0)
+		So(FastOr(rb1, rb2, rb3).GetCardinality(), ShouldEqual, 4)
+		So(HeapXor(rb1, rb2, rb3).GetCardinality(), ShouldEqual, 3)
+	})
+}
+
+func TestFastAggregations3COW(t *testing.T) {
+	Convey("Fast", t, func() {
+		rb1 := NewBitmap()
+		rb2 := NewBitmap()
+		rb3 := NewBitmap()
+		rb1.SetCopyOnWrite(true)
+		rb2.SetCopyOnWrite(true)
+		rb3.SetCopyOnWrite(true)
 		rb1.Add(1)
 		rb1.Add(100000)
 		rb2.Add(200000)
