@@ -259,7 +259,7 @@ func getRandomPermutation(n int) []int {
 	r := make([]ph, n)
 	for i := 0; i < n; i++ {
 		r[i].orig = i
-		r[i].rand = rand.Intn(1 << 31)
+		r[i].rand = rand.Intn(1 << 29)
 	}
 	sort.Sort(pha(r))
 	m := make([]int, n)

@@ -451,7 +451,8 @@ func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
 				isRun.iadd(uint16(i))
 			}
 		}
-		ir = uint64SliceAsByteSlice(isRun.bitmap)[:isRunSizeInBytes]
+		// convert to little endian
+		ir = isRun.asLittleEndianByteSlice()[:isRunSizeInBytes]
 	}
 
 	cookieSize := 8
@@ -559,9 +560,18 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 		pos += nr
 
 		bc := newBitmapContainer()
-		asBy := uint64SliceAsByteSlice(bc.bitmap)
-		for i := range by {
-			asBy[i] = by[i]
+		var filler [8]byte
+		for i := range bc.bitmap {
+			n := len(by)
+			if n == 0 {
+				break
+			}
+			if n < 8 {
+				copy(filler[:], by)
+				by = filler[:]
+			}
+			bc.bitmap[i] = binary.LittleEndian.Uint64(by)
+			by = by[8:]
 		}
 		bc.computeCardinality()
 		isRun = bc

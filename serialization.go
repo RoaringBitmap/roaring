@@ -56,10 +56,17 @@ func (b *runContainer16) readFrom(stream io.Reader) (int, error) {
 		return 0, err
 	}
 	encRun := make([]uint16, 2*numRuns)
-	bEncRun := uint16SliceAsByteSlice(encRun)
-	err = binary.Read(stream, binary.LittleEndian, &bEncRun)
+	by := make([]byte, 4*numRuns)
+	err = binary.Read(stream, binary.LittleEndian, &by)
 	if err != nil {
 		return 0, err
+	}
+	for i := range encRun {
+		if len(by) < 2 {
+			panic("insufficient/odd number of stored bytes, corrupted stream detected")
+		}
+		encRun[i] = binary.LittleEndian.Uint16(by)
+		by = by[2:]
 	}
 	nr := int(numRuns)
 	for i := 0; i < nr; i++ {
