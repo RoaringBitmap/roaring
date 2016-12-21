@@ -190,40 +190,61 @@ func newRunContainer16FromVals(alreadySorted bool, vals ...uint16) *runContainer
 	return rc
 }
 
-// newRunContainer16FromBitmapContainer makes a new run container from bc.
+// newRunContainer16FromBitmapContainer makes a new run container from bc,
+// somewhat efficiently. For reference, see the Java
+// https://github.com/RoaringBitmap/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/RunContainer.java#L145-L192
 func newRunContainer16FromBitmapContainer(bc *bitmapContainer) *runContainer16 {
-	// todo: this could be optimized, see https://github.com/RoaringBitmap/RoaringBitmap/blob/master/src/main/java/org/roaringbitmap/RunContainer.java#L145-L192
 
 	rc := &runContainer16{}
-	ah := addHelper16{rc: rc}
-
-	n := bc.getCardinality()
-	it := bc.getShortIterator()
-	var cur, prev, val uint16
-	switch {
-	case n == 0:
-		// nothing more
-	case n == 1:
-		val = uint16(it.next())
-		ah.m = append(ah.m, interval16{start: val, last: val})
-		ah.actuallyAdded++
-	default:
-		prev = uint16(it.next())
-		cur = uint16(it.next())
-		ah.runstart = prev
-		ah.actuallyAdded++
-		for i := 1; i < n; i++ {
-			ah.add(cur, prev, i)
-			if it.hasNext() {
-				prev = cur
-				cur = uint16(it.next())
-			}
-		}
-		ah.storeIval(ah.runstart, ah.runlen)
+	nbrRuns := bc.numberOfRuns()
+	if nbrRuns == 0 {
+		return rc
 	}
-	rc.iv = ah.m
-	rc.card = int64(ah.actuallyAdded)
-	return rc
+	rc.iv = make([]interval16, nbrRuns)
+
+	longCtr := 0            // index of current long in bitmap
+	curWord := bc.bitmap[0] // its value
+	runCount := 0
+	for {
+		// potentially multiword advance to first 1 bit
+		for curWord == 0 && longCtr < len(bc.bitmap)-1 {
+			longCtr++
+			curWord = bc.bitmap[longCtr]
+		}
+
+		if curWord == 0 {
+			// wrap up, no more runs
+			return rc
+		}
+		localRunStart := countTrailingZerosDeBruijn(curWord)
+		runStart := localRunStart + 64*longCtr
+		// stuff 1s into number's LSBs
+		curWordWith1s := curWord | (curWord - 1)
+
+		// find the next 0, potentially in a later word
+		runEnd := 0
+		for curWordWith1s == maxWord && longCtr < len(bc.bitmap)-1 {
+			longCtr++
+			curWordWith1s = bc.bitmap[longCtr]
+		}
+
+		if curWordWith1s == maxWord {
+			// a final unterminated run of 1s
+			runEnd = wordSizeInBits + longCtr*64
+			rc.iv[runCount].start = uint16(runStart)
+			rc.iv[runCount].last = uint16(runEnd) - 1
+			return rc
+		}
+		localRunEnd := countTrailingZerosDeBruijn(^curWordWith1s)
+		runEnd = localRunEnd + longCtr*64
+		rc.iv[runCount].start = uint16(runStart)
+		rc.iv[runCount].last = uint16(runEnd) - 1
+		runCount++
+		// now, zero out everything right of runEnd.
+		curWord = curWordWith1s & (curWordWith1s + 1)
+		// We've lathered and rinsed, so repeat...
+	}
+
 }
 
 //
@@ -766,18 +787,20 @@ func newRunContainer16TakeOwnership(iv []interval16) *runContainer16 {
 const baseRc16Size = int(unsafe.Sizeof(runContainer16{}))
 const perIntervalRc16Size = int(unsafe.Sizeof(interval16{}))
 
+const baseDiskRc16Size = int(unsafe.Sizeof(uint16(0)))
+
 // see also runContainer16SerializedSizeInBytes(numRuns int) int
 
 // getSizeInBytes returns the number of bytes of memory
 // required by this runContainer16.
 func (rc *runContainer16) getSizeInBytes() int {
-	return perIntervalRc16Size * len(rc.iv) // +  baseRc16Size
+	return perIntervalRc16Size*len(rc.iv) + baseRc16Size
 }
 
-// runContainer16SerializedSizeInBytes returns the number of bytes of memory
+// runContainer16SerializedSizeInBytes returns the number of bytes of disk
 // required to hold numRuns in a runContainer16.
 func runContainer16SerializedSizeInBytes(numRuns int) int {
-	return perIntervalRc16Size * numRuns // +  baseRc16Size
+	return perIntervalRc16Size*numRuns + baseDiskRc16Size
 }
 
 // Add adds a single value k to the set.
@@ -989,7 +1012,6 @@ func (rc *runContainer16) deleteAt(curIndex *int64, curPosInIndex *uint16, curSe
 		new1 := interval16{
 			start: uint16(new1start),
 			last:  rc.iv[ci].last}
-
 		tail := append([]interval16{new0, new1}, rc.iv[ci+1:]...)
 		rc.iv = append(rc.iv[:ci], tail...)
 		// update curIndex and curPosInIndex
@@ -1190,7 +1212,6 @@ func (rc *runContainer16) isubtract(del interval16) {
 	istart, startAlready, _ := rc.search(int64(del.start), nil)
 	ilast, lastAlready, _ := rc.search(int64(del.last), nil)
 	rc.card = -1
-
 	if istart == -1 {
 		if ilast == n-1 && !lastAlready {
 			rc.iv = nil
@@ -1204,7 +1225,6 @@ func (rc *runContainer16) isubtract(del interval16) {
 
 		// would overwrite values in iv b/c res0 can have len 2. so
 		// write to origiv instead.
-
 		lost := 1 + ilast - istart
 		changeSize := int64(len(res0)) - lost
 		newSize := int64(len(rc.iv)) + changeSize

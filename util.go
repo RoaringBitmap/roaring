@@ -13,7 +13,21 @@ const (
 	invalidCardinality         = -1
 	serialCookie               = 12347 // runs, arrays, and bitmaps
 	noOffsetThreshold          = 4
+
+	// Compute wordSizeInBytes, the size of a word in bytes.
+	_m              = ^word(0)
+	_logS           = _m>>8&1 + _m>>16&1 + _m>>32&1
+	wordSizeInBytes = 1 << _logS
+
+	// other constants used in ctz_generic.go
+	wordSizeInBits = wordSizeInBytes << 3 // word size in bits
+	digitBase      = 1 << wordSizeInBits  // digit base
+	digitMask      = digitBase - 1        // digit mask
 )
+
+type word uintptr
+
+const maxWord = 1<<wordSizeInBits - 1
 
 // doesn't apply to runContainers
 func getSizeInBytesFromCardinality(card int) int {
@@ -23,41 +37,6 @@ func getSizeInBytesFromCardinality(card int) int {
 	}
 	// arrayContainer
 	return 2 * card
-}
-
-// should be replaced with optimized assembly instructions
-func numberOfTrailingZeros(i uint64) int {
-	if i == 0 {
-		return 64
-	}
-	x := i
-	n := int64(63)
-	y := x << 32
-	if y != 0 {
-		n -= 32
-		x = y
-	}
-	y = x << 16
-	if y != 0 {
-		n -= 16
-		x = y
-	}
-	y = x << 8
-	if y != 0 {
-		n -= 8
-		x = y
-	}
-	y = x << 4
-	if y != 0 {
-		n -= 4
-		x = y
-	}
-	y = x << 2
-	if y != 0 {
-		n -= 2
-		x = y
-	}
-	return int(n - int64(uint64(x<<1)>>63))
 }
 
 func fill(arr []uint64, val uint64) {
@@ -280,7 +259,7 @@ func getRandomPermutation(n int) []int {
 	r := make([]ph, n)
 	for i := 0; i < n; i++ {
 		r[i].orig = i
-		r[i].rand = rand.Intn(1 << 31)
+		r[i].rand = rand.Intn(1 << 29)
 	}
 	sort.Sort(pha(r))
 	m := make([]int, n)

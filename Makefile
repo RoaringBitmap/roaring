@@ -1,4 +1,4 @@
-.PHONY: help all test format fmtcheck vet lint     qa deps clean nuke rle backrle ser
+.PHONY: help all test format fmtcheck vet lint     qa deps clean nuke rle backrle ser fetch-real-roaring-datasets
 
 
 
@@ -99,3 +99,8 @@ ser: rle
 cover:
 	go test -coverprofile=coverage.out 
 	go tool cover -html=coverage.out
+
+fetch-real-roaring-datasets:
+	# pull github.com/RoaringBitmap/real-roaring-datasets -> testdata/real-roaring-datasets
+	git submodule init
+	git submodule update

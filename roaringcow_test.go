@@ -1841,7 +1841,7 @@ func TestStatsCOW(t *testing.T) {
 			BitmapContainerBytes:  0,
 
 			RunContainers:      1,
-			RunContainerBytes:  4,
+			RunContainerBytes:  52,
 			RunContainerValues: 60000,
 		}
 		rr := NewBitmap()

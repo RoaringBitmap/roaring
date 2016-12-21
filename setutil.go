@@ -270,7 +270,6 @@ func localintersect2by2(
 	s2 := set2[k2]
 mainwhile:
 	for {
-
 		if s2 < s1 {
 			for {
 				k2++

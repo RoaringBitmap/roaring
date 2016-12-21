@@ -391,6 +391,8 @@ func TestRleRandomIntersection16(t *testing.T) {
 
 				p("isect is %v", isect)
 
+				//showHash("hashi", hashi)
+
 				for k := range hashi {
 					p("hashi has %v, checking in isect", k)
 					So(isect.contains(uint16(k)), ShouldBeTrue)
@@ -454,6 +456,8 @@ func TestRleRandomUnion16(t *testing.T) {
 				for k := range mb {
 					hashu[k] = true
 				}
+
+				//showHash("hashu", hashu)
 
 				// RunContainer's Union
 				arle := newRunContainer16()
@@ -714,4 +718,20 @@ func TestRleStoringMax16(t *testing.T) {
 		So(rc.cardinality(), ShouldEqual, 2)
 
 	})
+}
+
+// go test -bench BenchmarkFromBitmap -run -
+func BenchmarkFromBitmap16(b *testing.B) {
+	b.StopTimer()
+	seed := int64(42)
+	rand.Seed(seed)
+
+	tr := trial{n: 10000, percentFill: .95, ntrial: 1, numRandomOpsPass: 100}
+	_, _, bc := getRandomSameThreeContainers(tr)
+
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		newRunContainer16FromBitmapContainer(bc)
+	}
 }

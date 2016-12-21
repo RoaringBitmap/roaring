@@ -53,12 +53,12 @@ func checkContent(c container, s []uint16) bool {
 }
 
 func TestRoaringContainer(t *testing.T) {
-	Convey("NumberOfTrailingZeros", t, func() {
+	Convey("countTrailingZeros", t, func() {
 		x := uint64(0)
-		o := numberOfTrailingZeros(x)
+		o := countTrailingZerosDeBruijn(x)
 		So(o, ShouldEqual, 64)
 		x = 1 << 3
-		o = numberOfTrailingZeros(x)
+		o = countTrailingZerosDeBruijn(x)
 		So(o, ShouldEqual, 3)
 	})
 	Convey("ArrayShortIterator", t, func() {
