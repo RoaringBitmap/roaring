@@ -283,17 +283,6 @@ func (ra *roaringArray) getContainer(x uint16) container {
 	return ra.containers[i]
 }
 
-func (ra *roaringArray) getWritableContainerContainer(x uint16) container {
-	i := ra.binarySearch(0, int64(len(ra.keys)), x)
-	if i < 0 {
-		return nil
-	}
-	if ra.needCopyOnWrite[i] {
-		ra.containers[i] = ra.containers[i].clone()
-		ra.needCopyOnWrite[i] = false
-	}
-	return ra.containers[i]
-}
 
 func (ra *roaringArray) getContainerAtIndex(i int) container {
 	return ra.containers[i]
