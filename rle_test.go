@@ -323,10 +323,10 @@ func TestRleRandomIntersection32(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .80, ntrial: 10},
-			trial{n: 1000, percentFill: .20, ntrial: 20},
-			trial{n: 10000, percentFill: .01, ntrial: 10},
-			trial{n: 1000, percentFill: .99, ntrial: 10},
+			{n: 100, percentFill: .80, ntrial: 10},
+			{n: 1000, percentFill: .20, ntrial: 20},
+			{n: 10000, percentFill: .01, ntrial: 10},
+			{n: 1000, percentFill: .99, ntrial: 10},
 		}
 
 		tester := func(tr trial) {
@@ -420,10 +420,10 @@ func TestRleRandomUnion32(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .80, ntrial: 10},
-			trial{n: 1000, percentFill: .20, ntrial: 20},
-			trial{n: 10000, percentFill: .01, ntrial: 10},
-			trial{n: 1000, percentFill: .99, ntrial: 10, percentDelete: .04},
+			{n: 100, percentFill: .80, ntrial: 10},
+			{n: 1000, percentFill: .20, ntrial: 20},
+			{n: 10000, percentFill: .01, ntrial: 10},
+			{n: 1000, percentFill: .99, ntrial: 10, percentDelete: .04},
 		}
 
 		tester := func(tr trial) {

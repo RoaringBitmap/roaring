@@ -15,7 +15,7 @@ func TestBitmapContainerNumberOfRuns024(t *testing.T) {
 			rand.Seed(seed)
 
 			trials := []trial{
-				trial{n: 1000, percentFill: .1, ntrial: 10},
+				{n: 1000, percentFill: .1, ntrial: 10},
 				/*
 					trial{n: 100, percentFill: .5, ntrial: 10},
 					trial{n: 100, percentFill: .01, ntrial: 10},

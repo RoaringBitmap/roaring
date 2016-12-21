@@ -212,7 +212,7 @@ func (rc *runContainer16) Not(firstOfRange, endx int) *runContainer16 {
 
 	nota := a.invert()
 
-	bs := []interval16{interval16{start: uint16(firstOfRange), last: uint16(endx - 1)}}
+	bs := []interval16{{start: uint16(firstOfRange), last: uint16(endx - 1)}}
 	b := newRunContainer16TakeOwnership(bs)
 
 	notAintersectB := nota.intersect(b)

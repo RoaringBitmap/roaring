@@ -833,7 +833,7 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 			}
 		}
 		// nope, k stands alone, starting the new first interval16.
-		rc.iv = append([]interval16{interval16{start: k, last: k}}, rc.iv...)
+		rc.iv = append([]interval16{{start: k, last: k}}, rc.iv...)
 		return
 	}
 
@@ -881,7 +881,7 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	}
 
 	// k makes a standalone new interval16, inserted in the middle
-	tail := append([]interval16{interval16{start: k, last: k}}, rc.iv[right:]...)
+	tail := append([]interval16{{start: k, last: k}}, rc.iv[right:]...)
 	rc.iv = append(rc.iv[:left+1], tail...)
 	return
 }

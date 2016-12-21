@@ -833,7 +833,7 @@ func (rc *runContainer32) Add(k uint32) (wasNew bool) {
 			}
 		}
 		// nope, k stands alone, starting the new first interval32.
-		rc.iv = append([]interval32{interval32{start: k, last: k}}, rc.iv...)
+		rc.iv = append([]interval32{{start: k, last: k}}, rc.iv...)
 		return
 	}
 
@@ -881,7 +881,7 @@ func (rc *runContainer32) Add(k uint32) (wasNew bool) {
 	}
 
 	// k makes a standalone new interval32, inserted in the middle
-	tail := append([]interval32{interval32{start: k, last: k}}, rc.iv[right:]...)
+	tail := append([]interval32{{start: k, last: k}}, rc.iv[right:]...)
 	rc.iv = append(rc.iv[:left+1], tail...)
 	return
 }

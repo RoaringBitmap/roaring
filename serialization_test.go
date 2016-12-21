@@ -337,9 +337,9 @@ func TestSerializationRunContainerMsgpack028(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 10, percentFill: .2, ntrial: 10},
-			trial{n: 10, percentFill: .8, ntrial: 10},
-			trial{n: 10, percentFill: .50, ntrial: 10},
+			{n: 10, percentFill: .2, ntrial: 10},
+			{n: 10, percentFill: .8, ntrial: 10},
+			{n: 10, percentFill: .50, ntrial: 10},
 			/*
 				trial{n: 10, percentFill: .01, ntrial: 10},
 				trial{n: 1000, percentFill: .50, ntrial: 10},
@@ -402,7 +402,7 @@ func TestSerializationArrayOnly032(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 101, percentFill: .50, ntrial: 10},
+			{n: 101, percentFill: .50, ntrial: 10},
 		}
 
 		tester := func(tr trial) {
@@ -457,7 +457,7 @@ func TestSerializationRunOnly033(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .50, ntrial: 1},
+			{n: 100, percentFill: .50, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -508,7 +508,7 @@ func TestSerializationBitmapOnly034(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 1010, percentFill: .50, ntrial: 10},
+			{n: 1010, percentFill: .50, ntrial: 10},
 		}
 
 		tester := func(tr trial) {
@@ -613,7 +613,7 @@ func TestSerializationRunContainer32Msgpack050(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 10, percentFill: .2, ntrial: 1},
+			{n: 10, percentFill: .2, ntrial: 1},
 			/*			trial{n: 10, percentFill: .8, ntrial: 10},
 						trial{n: 10, percentFill: .50, ntrial: 10},
 

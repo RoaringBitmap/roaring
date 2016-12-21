@@ -33,7 +33,7 @@ func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .95, ntrial: 1},
+			{n: 100, percentFill: .95, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -134,7 +134,7 @@ func TestRle16RandomUnionAgainstOtherContainers011(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .95, ntrial: 1},
+			{n: 100, percentFill: .95, ntrial: 1},
 			/*			trial{n: 100, percentFill: .01, ntrial: 10},
 						trial{n: 100, percentFill: .99, ntrial: 10},
 						trial{n: 100, percentFill: .50, ntrial: 10},
@@ -241,7 +241,7 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 10, percentFill: .95, ntrial: 1},
+			{n: 10, percentFill: .95, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -347,7 +347,7 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .95, ntrial: 1},
+			{n: 100, percentFill: .95, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -452,7 +452,7 @@ func TestRle16RemoveApi015(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .95, ntrial: 1},
+			{n: 100, percentFill: .95, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -536,7 +536,7 @@ func TestRle16RandomAndNot016(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 1000, percentFill: .95, ntrial: 2},
+			{n: 1000, percentFill: .95, ntrial: 2},
 		}
 
 		tester := func(tr trial) {
@@ -638,7 +638,7 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 1000, percentFill: .95, ntrial: 2},
+			{n: 1000, percentFill: .95, ntrial: 2},
 		}
 
 		tester := func(tr trial) {
@@ -744,7 +744,7 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 1000, percentFill: .90, ntrial: 1},
+			{n: 1000, percentFill: .90, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -838,7 +838,7 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 1000, percentFill: .90, ntrial: 1},
+			{n: 1000, percentFill: .90, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -957,7 +957,7 @@ func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .8, ntrial: 2},
+			{n: 100, percentFill: .8, ntrial: 2},
 			/*			trial{n: 10, percentFill: .01, ntrial: 10},
 						trial{n: 10, percentFill: .50, ntrial: 10},
 						trial{n: 1000, percentFill: .50, ntrial: 10},
@@ -1040,7 +1040,7 @@ func TestRleEquals022(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .2, ntrial: 10},
+			{n: 100, percentFill: .2, ntrial: 10},
 			/*
 				trial{n: 10, percentFill: .01, ntrial: 10},
 				trial{n: 10, percentFill: .50, ntrial: 10},
@@ -1113,7 +1113,7 @@ func TestRleIntersects023(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 10, percentFill: .293, ntrial: 1000},
+			{n: 10, percentFill: .293, ntrial: 1000},
 			/*
 				trial{n: 10, percentFill: .01, ntrial: 10},
 				trial{n: 10, percentFill: .50, ntrial: 10},
@@ -1231,8 +1231,8 @@ func TestRleToEfficientContainer027(t *testing.T) {
 		// 4096 or fewer integers -> array typically
 
 		trials := []trial{
-			trial{n: 8000, percentFill: .01, ntrial: 10},
-			trial{n: 8000, percentFill: .99, ntrial: 10},
+			{n: 8000, percentFill: .01, ntrial: 10},
+			{n: 8000, percentFill: .99, ntrial: 10},
 			/*
 				trial{n: 10, percentFill: .01, ntrial: 10},
 				trial{n: 10, percentFill: .50, ntrial: 10},
@@ -1320,7 +1320,7 @@ func TestRle16RandomFillLeastSignificant16bits029(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .95, ntrial: 1},
+			{n: 100, percentFill: .95, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -1390,7 +1390,7 @@ func TestRle16RandomGetShortIterator030(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .95, ntrial: 1},
+			{n: 100, percentFill: .95, ntrial: 1},
 		}
 
 		tester := func(tr trial) {
@@ -1457,7 +1457,7 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 101, percentFill: .9, ntrial: 10},
+			{n: 101, percentFill: .9, ntrial: 10},
 		}
 
 		tester := func(tr trial) {
@@ -1613,8 +1613,8 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 		rand.Seed(seed)
 
 		trials := []trial{
-			trial{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100},
-			trial{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100, srang: &interval16{MaxUint16 - 100, MaxUint16}}}
+			{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100},
+			{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100, srang: &interval16{MaxUint16 - 100, MaxUint16}}}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
