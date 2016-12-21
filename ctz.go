@@ -2,7 +2,9 @@
 
 package roaring
 
-import "github.com/klauspost/cpuid"
+import (
+	"github.com/klauspost/cpuid"
+)
 
 const deBruijn32 = 0x077CB531
 
@@ -42,18 +44,4 @@ func init() {
 //
 // The Go version is in ctz_generic.go.
 //
-func countTrailingZeros(x uint64) int
-
-// countTrailingZerosDeBruinj is the same as
-// ctz_generic countTrailingZeros;
-// it is repeated to allow benchmarking on amd64.
-func countTrailingZerosDeBruijn(x uint64) int {
-	switch wordSizeInBits {
-	case 32:
-		return int(deBruijn32Lookup[((x&-x)*deBruijn32)>>27])
-	case 64:
-		return int(deBruijn64Lookup[((x&-x)*(deBruijn64&digitMask))>>58])
-	default:
-		panic("unknown word size")
-	}
-}
+func countTrailingZerosAsm(x uint64) int

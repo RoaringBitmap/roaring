@@ -2,6 +2,7 @@ package roaring
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -10,12 +11,19 @@ import (
 
 func TestCountTrailingZeros072(t *testing.T) {
 	Convey("countTrailingZeros", t, func() {
-		So(countTrailingZeros(0), ShouldEqual, 64)
-		So(countTrailingZeros(8), ShouldEqual, 3)
-		So(countTrailingZeros(7), ShouldEqual, 0)
-		So(countTrailingZeros(1<<17), ShouldEqual, 17)
-		So(countTrailingZeros(7<<17), ShouldEqual, 17)
-		So(countTrailingZeros(255<<33), ShouldEqual, 33)
+		So(countTrailingZerosAsm(0), ShouldEqual, 64)
+		So(countTrailingZerosAsm(8), ShouldEqual, 3)
+		So(countTrailingZerosAsm(7), ShouldEqual, 0)
+		So(countTrailingZerosAsm(1<<17), ShouldEqual, 17)
+		So(countTrailingZerosAsm(7<<17), ShouldEqual, 17)
+		So(countTrailingZerosAsm(255<<33), ShouldEqual, 33)
+
+		So(countTrailingZerosDeBruijn(0), ShouldEqual, 64)
+		So(countTrailingZerosDeBruijn(8), ShouldEqual, 3)
+		So(countTrailingZerosDeBruijn(7), ShouldEqual, 0)
+		So(countTrailingZerosDeBruijn(1<<17), ShouldEqual, 17)
+		So(countTrailingZerosDeBruijn(7<<17), ShouldEqual, 17)
+		So(countTrailingZerosDeBruijn(255<<33), ShouldEqual, 33)
 
 	})
 }
@@ -34,10 +42,19 @@ func getRandomUint64Set(n int) []uint64 {
 	return o
 }
 
+func getAllOneBitUint64Set() []uint64 {
+	o := []uint64{0}
+	for i := uint(0); i < 64; i++ {
+		o = append(o, 1<<i)
+	}
+	return o
+}
+
 func Benchmark100OrigNumberOfTrailingZeros(b *testing.B) {
 	b.StopTimer()
 
-	r := getRandomUint64Set(6000)
+	r := getRandomUint64Set(64)
+	r = append(r, getAllOneBitUint64Set()...)
 
 	b.ResetTimer()
 	b.StartTimer()
@@ -51,7 +68,8 @@ func Benchmark100OrigNumberOfTrailingZeros(b *testing.B) {
 func Benchmark100CountTrailingZerosDeBruijn(b *testing.B) {
 	b.StopTimer()
 
-	r := getRandomUint64Set(6000)
+	r := getRandomUint64Set(64)
+	r = append(r, getAllOneBitUint64Set()...)
 
 	b.ResetTimer()
 	b.StartTimer()
@@ -65,18 +83,18 @@ func Benchmark100CountTrailingZerosDeBruijn(b *testing.B) {
 func Benchmark100CountTrailingZerosAsm(b *testing.B) {
 	b.StopTimer()
 
-	r := getRandomUint64Set(6000)
+	r := getRandomUint64Set(64)
+	r = append(r, getAllOneBitUint64Set()...)
 
 	b.ResetTimer()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		for i := range r {
-			countTrailingZeros(r[i])
+			countTrailingZerosAsm(r[i])
 		}
 	}
 }
 
-// should be replaced with optimized assembly instructions
 func numberOfTrailingZeros(i uint64) int {
 	if i == 0 {
 		return 64
@@ -109,4 +127,30 @@ func numberOfTrailingZeros(i uint64) int {
 		x = y
 	}
 	return int(n - int64(uint64(x<<1)>>63))
+}
+
+/*
+//
+// on an Intel(R) Core(TM) i7-5557U CPU @ 3.10GHz:
+//
+Benchmark100CountTrailingZerosDeBruijn-4   	10000000	       168 ns/op
+Benchmark100CountTrailingZerosAsm-4        	 5000000	       278 ns/op
+Benchmark100OrigNumberOfTrailingZeros-4    	 3000000	       592 ns/op
+
+// and again:
+
+Benchmark100CountTrailingZerosDeBruijn-4   	10000000	       168 ns/op
+Benchmark100CountTrailingZerosAsm-4        	 5000000	       278 ns/op
+Benchmark100OrigNumberOfTrailingZeros-4    	 3000000	       585 ns/op
+*/
+// go test -v -bench=100 -run 101
+func Test101CountTrailingZerosCorrectness(t *testing.T) {
+	r := getAllOneBitUint64Set()
+	for i, v := range r {
+		a := countTrailingZerosDeBruijn(v)
+		b := countTrailingZerosAsm(v)
+		if a != b {
+			panic(fmt.Errorf("on r[%v]= v=%v,  a: %v, b:%v", i, v, a, b))
+		}
+	}
 }

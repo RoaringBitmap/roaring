@@ -716,12 +716,12 @@ func (bc *bitmapContainer) NextSetBit(i int) int {
 	w := bc.bitmap[x]
 	w = w >> uint(i%64)
 	if w != 0 {
-		return i + countTrailingZeros(w)
+		return i + countTrailingZerosDeBruijn(w)
 	}
 	x++
 	for ; x < len(bc.bitmap); x++ {
 		if bc.bitmap[x] != 0 {
-			return (x * 64) + countTrailingZeros(bc.bitmap[x])
+			return (x * 64) + countTrailingZerosDeBruijn(bc.bitmap[x])
 		}
 	}
 	return -1
