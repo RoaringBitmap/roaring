@@ -1657,7 +1657,7 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 						perm := getRandomPermutation(nCalls)
 						kk := perm[k]
 						c1 := callme[kk]          // array receiver
-						c2 := callme[kk+nCalls]   // run reciever
+						c2 := callme[kk+nCalls]   // run receiver
 						c3 := callme[kk+2*nCalls] // bitmap receiver
 
 						if c1.name != c2.name {
