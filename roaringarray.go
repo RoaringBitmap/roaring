@@ -430,34 +430,13 @@ func (ra *roaringArray) serializedSizeInBytes() uint64 {
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
 //
 func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
-	if len(ra.keys) > MaxUint16 {
-		panic("should be impossible to have this many keys")
-	}
 	stream := &bytes.Buffer{}
-
 	hasRun := ra.hasRunCompression()
-	numKeys := len(ra.keys)
 	isRunSizeInBytes := 0
-	// compute isRun bitmap
-	var ir []byte
-
-	if hasRun {
-		isRunSizeInBytes = (numKeys + 7) / 8
-
-		isRun := newBitmapContainer()
-		for i, c := range ra.containers {
-			switch c.(type) {
-			case *runContainer16:
-				isRun.iadd(uint16(i))
-			}
-		}
-		// convert to little endian
-		ir = isRun.asLittleEndianByteSlice()[:isRunSizeInBytes]
-	}
-
 	cookieSize := 8
 	if hasRun {
 		cookieSize = 4
+		isRunSizeInBytes = (len(ra.keys) + 7) / 8
 	}
 	descriptiveHeaderSize := 4 * len(ra.keys)
 	preambleSize := cookieSize + isRunSizeInBytes + descriptiveHeaderSize
@@ -471,6 +450,19 @@ func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
 		nw += 2
 		binary.LittleEndian.PutUint16(buf[2:], uint16(len(ra.keys)-1))
 		nw += 2
+
+		// compute isRun bitmap
+		var ir []byte
+
+		isRun := newBitmapContainer()
+		for i, c := range ra.containers {
+			switch c.(type) {
+			case *runContainer16:
+				isRun.iadd(uint16(i))
+			}
+		}
+		// convert to little endian
+		ir = isRun.asLittleEndianByteSlice()[:isRunSizeInBytes]
 		nw += copy(buf[nw:], ir)
 	} else {
 		binary.LittleEndian.PutUint32(buf[0:], uint32(serialCookieNoRunContainer))
