@@ -429,7 +429,7 @@ func (ra *roaringArray) serializedSizeInBytes() uint64 {
 //
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
 //
-func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
+func (ra *roaringArray) toBytes() ([]byte, error) {
 	stream := &bytes.Buffer{}
 	hasRun := ra.hasRunCompression()
 	isRunSizeInBytes := 0
@@ -495,23 +495,29 @@ func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
 		}
 	}
 
-	nsw, err := stream.Write(buf[:nw])
+
+	_, err := stream.Write(buf[:nw])
 	if err != nil {
-		return 0, err
-	}
-	if nsw != nw {
-		panic("short write!")
+		return nil, err
 	}
 	for i, c := range ra.containers {
 		_ = i
 		_, err := c.writeTo(stream)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
+  return stream.Bytes(), nil
+}
 
-	by := stream.Bytes()
-
+//
+// spec: https://github.com/RoaringBitmap/RoaringFormatSpec
+//
+func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
+  by, err := ra.toBytes()
+	if err != nil {
+		return 0, err
+	}
 	n, err := out.Write(by)
 	if err == nil && n < len(by) {
 		err = io.ErrShortWrite

@@ -46,6 +46,12 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 	return rb.highlowcontainer.writeTo(stream)
 }
 
+// ToBytes returns an array of bytes corresponding to what is written
+// when calling WriteTo
+func (rb *Bitmap) ToBytes() ([]byte, error) {
+	return rb.highlowcontainer.toBytes()
+}
+
 // WriteToMsgpack writes a msgpack2/snappy-streaming compressed serialized
 // version of this bitmap to stream. The format is not
 // compatible with the WriteTo() format, and is

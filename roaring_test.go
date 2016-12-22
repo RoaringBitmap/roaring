@@ -16,6 +16,11 @@ func TestRoaringBitmapBitmapOf(t *testing.T) {
 		t.Errorf("length diff %d!=%d", len(array), bmp.GetCardinality())
 		t.FailNow()
 	}
+        by,_ := bmp.ToBytes()
+        if uint64(len(by)) != bmp.GetSerializedSizeInBytes() {
+                t.Errorf("bad ToBytes")
+                t.FailNow()
+        }
 }
 
 func TestRoaringBitmapAdd(t *testing.T) {
