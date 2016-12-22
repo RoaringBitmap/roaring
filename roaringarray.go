@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	snappy "github.com/glycerine/go-unsnap-stream"
 	"github.com/tinylib/msgp/msgp"
@@ -495,7 +496,6 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 		}
 	}
 
-
 	_, err := stream.Write(buf[:nw])
 	if err != nil {
 		return nil, err
@@ -507,14 +507,14 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 			return nil, err
 		}
 	}
-  return stream.Bytes(), nil
+	return stream.Bytes(), nil
 }
 
 //
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
 //
 func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
-  by, err := ra.toBytes()
+	by, err := ra.toBytes()
 	if err != nil {
 		return 0, err
 	}
@@ -526,24 +526,16 @@ func (ra *roaringArray) writeTo(out io.Writer) (int64, error) {
 }
 
 func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
-
 	pos := 0
-
 	var cookie uint32
 	err := binary.Read(stream, binary.LittleEndian, &cookie)
-
 	if err != nil {
 		return 0, fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
 	}
 	pos += 4
-
-	if cookie != serialCookieNoRunContainer && cookie&0x0000FFFF != serialCookie {
-		return 0, fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
-	}
-
 	var size uint32
 	haveRunContainers := false
-	var isRun container = newRunContainer16()
+	var isRun *bitmapContainer
 	if cookie&0x0000FFFF == serialCookie {
 		haveRunContainers = true
 		size = uint32(uint16((cookie >> 16)) + 1)
@@ -556,9 +548,9 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 		}
 		pos += nr
 
-		bc := newBitmapContainer()
+		isRun = newBitmapContainer()
 		var filler [8]byte
-		for i := range bc.bitmap {
+		for i := range isRun.bitmap {
 			n := len(by)
 			if n == 0 {
 				break
@@ -567,17 +559,17 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 				copy(filler[:], by)
 				by = filler[:]
 			}
-			bc.bitmap[i] = binary.LittleEndian.Uint64(by)
+			isRun.bitmap[i] = binary.LittleEndian.Uint64(by)
 			by = by[8:]
 		}
-		bc.computeCardinality()
-		isRun = bc
-	} else {
+	} else if cookie == serialCookieNoRunContainer {
 		err = binary.Read(stream, binary.LittleEndian, &size)
 		if err != nil {
 			return 0, fmt.Errorf("error in roaringArray.readFrom: when reading size, got: %s", err)
 		}
 		pos += 4
+	} else {
+		return 0, fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
 	}
 
 	// descriptive header
@@ -588,29 +580,11 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	}
 	pos += 2 * 2 * int(size)
 
-	k := 0
-	for i := 0; i < len(keycard); i += 2 {
-		if rleVerbose {
-			// debug stuff here:
-			yesRun := false
-			if isRun.contains(uint16(k)) {
-				yesRun = true
-			}
-			fmt.Printf("\n    descriptive header: key %x:  card %v   isRun: %v\n", keycard[i], int(keycard[i+1])+1, yesRun)
-		}
-		k++
-	}
-
 	// offset header
 	if !haveRunContainers || size >= noOffsetThreshold {
-		offsets := make([]uint32, size, size)
-		err = binary.Read(stream, binary.LittleEndian, offsets)
-		if err != nil {
-			return 0, err
-		}
+		io.CopyN(ioutil.Discard, stream, 4*int64(size)) // we never skip ahead so this data can be ignored
 		pos += 4 * int(size)
 	}
-	//offset := int64(4 + 4 + 8*size) // probably wrong now
 	for i := uint32(0); i < size; i++ {
 		key := int(keycard[2*i])
 		card := int(keycard[2*i+1]) + 1
@@ -622,26 +596,23 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 			}
 			pos += nr
 			ra.appendContainer(uint16(key), nb, false)
-		} else {
-			if card > arrayDefaultMaxSize {
-
-				nb := newBitmapContainer()
-				nr, err := nb.readFrom(stream)
-				if err != nil {
-					return 0, err
-				}
-				nb.cardinality = int(card)
-				pos += nr
-				ra.appendContainer(keycard[2*i], nb, false)
-			} else {
-				nb := newArrayContainerSize(int(card))
-				nr, err := nb.readFrom(stream)
-				if err != nil {
-					return 0, err
-				}
-				pos += nr
-				ra.appendContainer(keycard[2*i], nb, false)
+		} else if card > arrayDefaultMaxSize {
+			nb := newBitmapContainer()
+			nr, err := nb.readFrom(stream)
+			if err != nil {
+				return 0, err
 			}
+			nb.cardinality = int(card)
+			pos += nr
+			ra.appendContainer(keycard[2*i], nb, false)
+		} else {
+			nb := newArrayContainerSize(int(card))
+			nr, err := nb.readFrom(stream)
+			if err != nil {
+				return 0, err
+			}
+			pos += nr
+			ra.appendContainer(keycard[2*i], nb, false)
 		}
 	}
 	return int64(pos), nil
