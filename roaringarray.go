@@ -540,25 +540,17 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 		haveRunContainers = true
 		size = uint32(uint16((cookie >> 16)) + 1)
 		bytesToRead := (int(size) + 7) / 8
-		by := make([]byte, bytesToRead)
-		nr, err := io.ReadAtLeast(stream, by, bytesToRead)
+		numwords := (bytesToRead + 7) / 8
+		by := make([]byte, bytesToRead, numwords*8)
+		nr, err := io.ReadFull(stream, by)
 		if err != nil {
 			return 8 + int64(nr), fmt.Errorf("error in readFrom: could not read the "+
 				"runContainer bit flags of length %v bytes: %v", bytesToRead, err)
 		}
-		pos += nr
-
+		pos += bytesToRead
+		by = by[:cap(by)]
 		isRun = newBitmapContainer()
-		var filler [8]byte
-		for i := range isRun.bitmap {
-			n := len(by)
-			if n == 0 {
-				break
-			}
-			if n < 8 {
-				copy(filler[:], by)
-				by = filler[:]
-			}
+		for i := 0; i < numwords; i++ {
 			isRun.bitmap[i] = binary.LittleEndian.Uint64(by)
 			by = by[8:]
 		}
@@ -571,7 +563,6 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 	} else {
 		return 0, fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
 	}
-
 	// descriptive header
 	keycard := make([]uint16, 2*size, 2*size)
 	err = binary.Read(stream, binary.LittleEndian, keycard)
@@ -579,7 +570,6 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 		return 0, err
 	}
 	pos += 2 * 2 * int(size)
-
 	// offset header
 	if !haveRunContainers || size >= noOffsetThreshold {
 		io.CopyN(ioutil.Discard, stream, 4*int64(size)) // we never skip ahead so this data can be ignored
