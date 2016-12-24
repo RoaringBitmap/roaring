@@ -8,10 +8,10 @@ Druid.io (http://druid.io/), Whoosh (https://pypi.python.org/pypi/Whoosh/)
 and  Apache Lucene (http://lucene.apache.org/) (as well as supporting systems
 such as Solr and Elastic).
 
-The original java version can be found at https://github.com/RoaringBitmap/RoaringBitmap
+The original java version can be found at https://github.com/RoaringBitmap/RoaringBitmap and there is a C/C++ version at  https://github.com/RoaringBitmap/roaring
 
-The Java and Go version are meant to be binary compatible: you can save bitmaps
-from a Java program and load them back in Go, and vice versa.
+The Java, C, C++ and Go version are binary compatible: e.g,  you can save bitmaps
+from a Java program and load them back in Go, and vice versa. The format specification can be found at https://github.com/RoaringBitmap/RoaringFormatSpec
 
 
 This code is licensed under Apache License, Version 2.0 (ASL2.0).
@@ -188,10 +188,6 @@ You can help us test further the library with fuzzy testing:
 Let it run, and if the # of crashers is > 0, check out the reports in
 the workdir where you should be able to find the panic goroutine stack
 traces.
-
-### Compatibility with Java RoaringBitmap library
-
-You can read bitmaps in Go (resp. Java) that have been serialized in Java (resp. Go).
 
 ### Alternative in Go
 
