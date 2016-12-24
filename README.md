@@ -8,7 +8,7 @@ Druid.io (http://druid.io/), Whoosh (https://pypi.python.org/pypi/Whoosh/)
 and  Apache Lucene (http://lucene.apache.org/) (as well as supporting systems
 such as Solr and Elastic).
 
-The original java version can be found at https://github.com/RoaringBitmap/RoaringBitmap and there is a C/C++ version at  https://github.com/RoaringBitmap/roaring
+The original java version can be found at https://github.com/RoaringBitmap/RoaringBitmap and there is a C/C++ version at  https://github.com/RoaringBitmap/CRoaring
 
 The Java, C, C++ and Go version are binary compatible: e.g,  you can save bitmaps
 from a Java program and load them back in Go, and vice versa. The format specification can be found at https://github.com/RoaringBitmap/RoaringFormatSpec
