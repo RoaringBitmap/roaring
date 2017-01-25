@@ -3,8 +3,7 @@ roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https
 
 This is a go port of the Roaring bitmap data structure.
 
-Roaring is  used by Apache Spark (https://spark.apache.org/), Apache Kylin (http://kylin.io),
-Druid.io (http://druid.io/), Whoosh (https://pypi.python.org/pypi/Whoosh/)
+Roaring is  used by Apache Spark (https://spark.apache.org/), Apache Kylin (http://kylin.io),  [Netflix Atlas](https://github.com/Netflix/atlas), [LinkedIn Pinot](https://github.com/linkedin/pinot/wiki), Druid.io (http://druid.io/), Whoosh (https://pypi.python.org/pypi/Whoosh/)
 and  Apache Lucene (http://lucene.apache.org/) (as well as supporting systems
 such as Solr and Elastic).
 
