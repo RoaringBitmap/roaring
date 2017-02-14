@@ -488,10 +488,10 @@ func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) container {
 	pos := 0
 	c := ac.getCardinality()
 	for k := 0; k < c; k++ {
-		if bc.contains(ac.content[k]) {
-			ac.content[pos] = ac.content[k]
-			pos++
-		}
+		// branchless
+		v := ac.content[k]
+		ac.content[pos] = v
+		pos += int(bc.bitValue(v))
 	}
 	ac.content = ac.content[:pos]
 	return ac
@@ -598,10 +598,8 @@ func (ac *arrayContainer) andNotBitmap(value2 *bitmapContainer) container {
 	answer.content = answer.content[:desiredcapacity]
 	pos := 0
 	for _, v := range ac.content {
-		if !value2.contains(v) {
-			answer.content[pos] = v
-			pos++
-		}
+		answer.content[pos] = v
+		pos += 1 - int(value2.bitValue(v))
 	}
 	answer.content = answer.content[:pos]
 	return answer
@@ -613,10 +611,8 @@ func (ac *arrayContainer) andBitmap(value2 *bitmapContainer) container {
 	answer.content = answer.content[:desiredcapacity]
 	pos := 0
 	for _, v := range ac.content {
-		if value2.contains(v) {
-			answer.content[pos] = v
-			pos++
-		}
+		answer.content[pos] = v
+		pos += int(value2.bitValue(v))
 	}
 	answer.content = answer.content[:pos]
 	return answer
@@ -625,10 +621,8 @@ func (ac *arrayContainer) andBitmap(value2 *bitmapContainer) container {
 func (ac *arrayContainer) iandNotBitmap(value2 *bitmapContainer) container {
 	pos := 0
 	for _, v := range ac.content {
-		if !value2.contains(v) {
-			ac.content[pos] = v
-			pos++
-		}
+		ac.content[pos] = v
+		pos += 1 - int(value2.bitValue(v))
 	}
 	ac.content = ac.content[:pos]
 	return ac

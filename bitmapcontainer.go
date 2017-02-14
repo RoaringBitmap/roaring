@@ -509,13 +509,16 @@ func (bc *bitmapContainer) iandArray(ac *arrayContainer) container {
 
 func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
 	answer := newArrayContainerCapacity(len(value2.content))
+	answer.content = answer.content[:cap(answer.content)]
 	c := value2.getCardinality()
+  pos := 0
 	for k := 0; k < c; k++ {
 		v := value2.content[k]
-		if bc.contains(v) {
-			answer.content = append(answer.content, v)
-		}
+		answer.content[pos] = v
+		pos += int(bc.bitValue(v))
 	}
+	answer.content = answer.content[:pos]
+
 	return answer
 }
 
@@ -652,28 +655,17 @@ func (bc *bitmapContainer) iandNotBitmapSurely(value2 *bitmapContainer) *bitmapC
 	return bc
 }
 
-// warning, this function may not actually modify the bc array in place!
-// TODO: delete? Mostly replaced with iandNotBitmapSurely
-/*
-func (bc *bitmapContainer) iandNotBitmapSCARY(value2 *bitmapContainer) container {
-	newCardinality := int(popcntMaskSlice(bc.bitmap, value2.bitmap))
-	if newCardinality > arrayDefaultMaxSize {
-		for k := 0; k < len(bc.bitmap); k++ {
-			bc.bitmap[k] = bc.bitmap[k] &^ value2.bitmap[k]
-		}
-		bc.cardinality = newCardinality
-		return bc
-	}
-	ac := newArrayContainerSize(newCardinality)
-	fillArrayANDNOT(ac.content, bc.bitmap, value2.bitmap)
-	return ac
-}
-*/
-
 func (bc *bitmapContainer) contains(i uint16) bool { //testbit
-	x := int(i)
-	mask := uint64(1) << uint(x%64)
-	return (bc.bitmap[x/64] & mask) != 0
+	x := uint(i)
+	w := bc.bitmap[x>>6]
+	mask := uint64(1) << uint(x&63)
+	return (w & mask) != 0
+}
+
+func (bc *bitmapContainer) bitValue(i uint16) uint64 {
+	x := uint(i)
+	w := bc.bitmap[x>>6]
+	return (w >> (x & 63)) & 1
 }
 
 func (bc *bitmapContainer) loadData(arrayContainer *arrayContainer) {
