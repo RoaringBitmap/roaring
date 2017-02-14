@@ -169,6 +169,12 @@ func (bc *bitmapContainer) iremoveReturnMinimized(i uint16) container {
 
 // iremove returns true if i was found.
 func (bc *bitmapContainer) iremove(i uint16) bool {
+	/* branchless code
+	  w := bc.bitmap[i>>6]
+		mask := uint64(1) << (i % 64)
+		neww := w &^ mask
+		bc.cardinality -= int((w ^ neww) >> (i % 64))
+		bc.bitmap[i>>6] = neww */
 	if bc.contains(i) {
 		bc.cardinality--
 		bc.bitmap[i/64] &^= (uint64(1) << (i % 64))
@@ -196,27 +202,6 @@ func (bc *bitmapContainer) iaddRange(firstOfRange, lastOfRange int) container {
 	bc.cardinality += setBitmapRangeAndCardinalityChange(bc.bitmap, firstOfRange, lastOfRange)
 	return bc
 }
-
-// add all values in range [firstOfRange,lastOfRange)
-// unused code
-/*func (bc *bitmapContainer) addRange(firstOfRange, lastOfRange int) container {
-	answer := &bitmapContainer{bc.cardinality, make([]uint64, len(bc.bitmap))}
-	copy(answer.bitmap, bc.bitmap[:])
-	answer.cardinality += setBitmapRangeAndCardinalityChange(answer.bitmap, firstOfRange, lastOfRange)
-	return answer
-}*/
-
-// remove all values in range [firstOfRange,lastOfRange)
-// unused code
-/*func (bc *bitmapContainer) removeRange(firstOfRange, lastOfRange int) container {
-	answer := &bitmapContainer{bc.cardinality, make([]uint64, len(bc.bitmap))}
-	copy(answer.bitmap, bc.bitmap[:])
-	answer.cardinality += resetBitmapRangeAndCardinalityChange(answer.bitmap, firstOfRange, lastOfRange)
-	if answer.getCardinality() <= arrayDefaultMaxSize {
-		return answer.toArrayContainer()
-	}
-	return answer
-}*/
 
 // remove all values in range [firstOfRange,lastOfRange)
 func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container {
@@ -511,7 +496,7 @@ func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
 	answer := newArrayContainerCapacity(len(value2.content))
 	answer.content = answer.content[:cap(answer.content)]
 	c := value2.getCardinality()
-  pos := 0
+	pos := 0
 	for k := 0; k < c; k++ {
 		v := value2.content[k]
 		answer.content[pos] = v
