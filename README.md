@@ -3,14 +3,16 @@ roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https
 
 This is a go port of the Roaring bitmap data structure.
 
-Roaring is  used by Apache Spark (https://spark.apache.org/), Apache Kylin (http://kylin.io),  [Netflix Atlas](https://github.com/Netflix/atlas), [LinkedIn Pinot](https://github.com/linkedin/pinot/wiki), Druid.io (http://druid.io/), Whoosh (https://pypi.python.org/pypi/Whoosh/)
-and  Apache Lucene (http://lucene.apache.org/) (as well as supporting systems
+Roaring is  used by [Apache Spark](https://spark.apache.org/), [Apache Kylin](http://kylin.io),  [Netflix Atlas](https://github.com/Netflix/atlas), [LinkedIn Pinot](https://github.com/linkedin/pinot/wiki), [Druid.io](http://druid.io/), [Whoosh](https://pypi.python.org/pypi/Whoosh/)
+and  [Apache Lucene](http://lucene.apache.org/) (as well as supporting systems
 such as Solr and Elastic).
 
-The original java version can be found at https://github.com/RoaringBitmap/RoaringBitmap and there is a C/C++ version at  https://github.com/RoaringBitmap/CRoaring
+The ``roaring`` Go library is used by
+* [Cloud Torrent](https://github.com/jpillora/cloud-torrent): a self-hosted remote torrent client
+* [runv](https://github.com/hyperhq/runv): an Hypervisor-based runtime for the Open Containers Initiative
 
-The Java, C, C++ and Go version are binary compatible: e.g,  you can save bitmaps
-from a Java program and load them back in Go, and vice versa. The format specification can be found at https://github.com/RoaringBitmap/RoaringFormatSpec
+There are also  [Java](https://github.com/RoaringBitmap/RoaringBitmap) and [C/C++](https://github.com/RoaringBitmap/CRoaring) versions.  The Java, C, C++ and Go version are binary compatible: e.g,  you can save bitmaps
+from a Java program and load them back in Go, and vice versa. We have a [format specification](https://github.com/RoaringBitmap/RoaringFormatSpec).
 
 
 This code is licensed under Apache License, Version 2.0 (ASL2.0).
