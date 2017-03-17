@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func testFirstLast(t *testing.T) {
+func TestFirstLast(t *testing.T) {
 	bm := New()
 	bm.AddInt(2)
 	bm.AddInt(4)
@@ -23,14 +23,14 @@ func testFirstLast(t *testing.T) {
 		t.FailNow()
 	}
 	i := 1 << 5
-	for ; i < (1 << 14); i += 1 {
+	for ; i < (1 << 17); i += 1 {
 		bm.AddInt(i)
 		if 2 != bm.Minimum() {
 			t.Errorf("bad minimum")
 			t.FailNow()
 		}
 		if uint32(i) != bm.Maximum() {
-			t.Errorf("bad maximum")
+			t.Errorf("bad maximum",i,bm.Maximum())
 			t.FailNow()
 		}
 	}
@@ -39,8 +39,8 @@ func testFirstLast(t *testing.T) {
 		t.Errorf("bad minimum")
 		t.FailNow()
 	}
-	if uint32(i) != bm.Maximum() {
-		t.Errorf("bad maximum")
+	if uint32(i-1) != bm.Maximum() {
+		t.Errorf("bad maximum",i,bm.Maximum())
 		t.FailNow()
 	}
 }
