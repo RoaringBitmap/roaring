@@ -368,6 +368,9 @@ func (ac *arrayContainer) lazyIOR(a container) container {
 	case *bitmapContainer:
 		return ac.lazyIorBitmap(x)
 	case *runContainer16:
+		if x.isFull() {
+			return x.clone()
+		}
 		return ac.lazyIorRun16(x)
 
 	}
@@ -396,6 +399,9 @@ func (ac *arrayContainer) lazyOR(a container) container {
 	case *bitmapContainer:
 		return a.lazyOR(ac)
 	case *runContainer16:
+		if x.isFull() {
+			return x.clone()
+		}
 		return x.orArray(ac)
 	}
 	panic("unsupported container type")

@@ -295,6 +295,9 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 	case *bitmapContainer:
 		return bc.lazyIORBitmap(x)
 	case *runContainer16:
+		if x.isFull() {
+			return x.clone()
+		}
 		// TODO : implement efficient in-place lazy OR to bitmap
 		for i := range x.iv {
 			setBitmapRange(bc.bitmap, int(x.iv[i].start), int(x.iv[i].last)+1)
@@ -313,6 +316,9 @@ func (bc *bitmapContainer) lazyOR(a container) container {
 	case *bitmapContainer:
 		return bc.lazyORBitmap(x)
 	case *runContainer16:
+		if x.isFull() {
+			return x.clone()
+		}
 		// TODO: implement lazy OR
 		return x.orBitmapContainer(bc)
 

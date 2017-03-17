@@ -470,7 +470,6 @@ func (rc *runContainer16) iorArray(ac *arrayContainer) container {
 // trick does is minimize memory allocations.
 //
 func (rc *runContainer16) lazyIOR(a container) container {
-
 	// not lazy at the moment
 	// TODO: make it lazy
 	return rc.ior(a)
