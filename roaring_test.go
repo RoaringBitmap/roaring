@@ -9,6 +9,42 @@ import (
 	"testing"
 )
 
+func testFirstLast(t *testing.T) {
+	bm := New()
+	bm.AddInt(2)
+	bm.AddInt(4)
+	bm.AddInt(8)
+	if 2 != bm.Minimum() {
+		t.Errorf("bad minimum")
+		t.FailNow()
+	}
+	if 8 != bm.Maximum() {
+		t.Errorf("bad maximum")
+		t.FailNow()
+	}
+	i := 1 << 5
+	for ; i < (1 << 14); i += 1 {
+		bm.AddInt(i)
+		if 2 != bm.Minimum() {
+			t.Errorf("bad minimum")
+			t.FailNow()
+		}
+		if uint32(i) != bm.Maximum() {
+			t.Errorf("bad maximum")
+			t.FailNow()
+		}
+	}
+	bm.RunOptimize()
+	if 2 != bm.Minimum() {
+		t.Errorf("bad minimum")
+		t.FailNow()
+	}
+	if uint32(i) != bm.Maximum() {
+		t.Errorf("bad maximum")
+		t.FailNow()
+	}
+}
+
 func TestRoaringBitmapBitmapOf(t *testing.T) {
 	array := []uint32{5580, 33722, 44031, 57276, 83097}
 	bmp := BitmapOf(array...)

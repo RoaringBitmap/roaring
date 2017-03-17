@@ -29,6 +29,14 @@ func (ac *arrayContainer) getShortIterator() shortIterable {
 	return &shortIterator{ac.content, 0}
 }
 
+func (ac *arrayContainer) minimum() uint16 {
+	return ac.content[0] // assume not empty
+}
+
+func (ac *arrayContainer) maximum() uint16 {
+	return ac.content[len(ac.content)-1] // assume not empty
+}
+
 // unsafe.Sizeof calculates the memory used by the top level of the slice
 // descriptor - not including the size of the memory referenced by the slice.
 // http://golang.org/pkg/unsafe/#Sizeof

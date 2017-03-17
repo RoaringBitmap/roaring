@@ -17,6 +17,14 @@ func (rc *runContainer16) clone() container {
 	return newRunContainer16CopyIv(rc.iv)
 }
 
+func (rc *runContainer16) minimum() uint16 {
+	return rc.iv[0].start // assume not empty
+}
+
+func (rc *runContainer16) maximum() uint16 {
+	return rc.iv[len(rc.iv)-1].last // assume not empty
+}
+
 func (rc *runContainer16) isFull() bool {
 	return (len(rc.iv) == 1) && ((rc.iv[0].start == 0) && (rc.iv[0].last == MaxUint16))
 }

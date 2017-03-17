@@ -47,6 +47,55 @@ func newBitmapContainerwithRange(firstOfRun, lastOfRun int) *bitmapContainer {
 	return bc
 }
 
+func (bc *bitmapContainer) minimum() uint16 {
+	for i := 0; i < len(bc.bitmap); i += 1 {
+		w := bc.bitmap[i]
+		if w != 0 {
+			r := countTrailingZerosDeBruijn(w)
+			return uint16(r + i*64)
+		}
+	}
+	return MaxUint16
+}
+
+// i should be non-zero
+func clz(i uint64) int {
+	n := 1
+	x := uint32(i >> 32)
+	if x == 0 {
+		n += 32
+		x = uint32(i)
+	}
+	if x>>16 == 0 {
+		n += 16
+		x = x << 16
+	}
+	if x>>24 == 0 {
+		n += 8
+		x = x << 8
+	}
+	if x>>28 == 0 {
+		n += 4
+		x = x << 4
+	}
+	if x>>30 == 0 {
+		n += 2
+		x = x << 2
+	}
+	return n - int(x >> 31)
+}
+
+func (bc *bitmapContainer) maximum() uint16 {
+	for i := len(bc.bitmap) - 1; i > 0; i += 1 {
+		w := bc.bitmap[i]
+		if w != 0 {
+			r := clz(w)
+			return uint16(i*64 + 63 - r)
+		}
+	}
+	return uint16(0)
+}
+
 type bitmapContainerShortIterator struct {
 	ptr *bitmapContainer
 	i   int

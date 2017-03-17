@@ -39,6 +39,8 @@ type container interface {
 	xor(r container) container
 	getShortIterator() shortIterable
 	contains(i uint16) bool
+	maximum() uint16
+	minimum() uint16
 
 	// equals is now logical equals; it does not require the
 	// same underlying container types, but compares across
