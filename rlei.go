@@ -17,7 +17,14 @@ func (rc *runContainer16) clone() container {
 	return newRunContainer16CopyIv(rc.iv)
 }
 
+func (rc *runContainer16) isFull() bool {
+	return (len(rc.iv) == 1) && ((rc.iv[0].start == 0) && (rc.iv[0].last == MaxUint16))
+}
+
 func (rc *runContainer16) and(a container) container {
+	if rc.isFull() {
+		return a.clone()
+	}
 	switch c := a.(type) {
 	case *runContainer16:
 		return rc.intersect(c)
@@ -29,6 +36,18 @@ func (rc *runContainer16) and(a container) container {
 	panic("unsupported container type")
 }
 
+func (rc *runContainer16) andCardinality(a container) int {
+	switch c := a.(type) {
+	case *runContainer16:
+		return int(rc.intersectCardinality(c))
+	case *arrayContainer:
+		return rc.andArrayCardinality(c)
+	case *bitmapContainer:
+		return rc.andBitmapContainerCardinality(c)
+	}
+	panic("unsupported container type")
+}
+
 // andBitmapContainer finds the intersection of rc and b.
 func (rc *runContainer16) andBitmapContainer(bc *bitmapContainer) container {
 	bc2 := newBitmapContainerFromRun(rc)
@@ -36,27 +55,44 @@ func (rc *runContainer16) andBitmapContainer(bc *bitmapContainer) container {
 }
 
 func (rc *runContainer16) andArray(ac *arrayContainer) container {
-
-	// is this faster?
 	bc1 := ac.toBitmapContainer()
 	bc2 := newBitmapContainerFromRun(rc)
 	return bc2.andBitmap(bc1)
+}
 
-	// than below? below seemed to hang a test run...
-	/*
-		out := newRunContainer16()
-		for _, p := range rc.iv {
-			for i := p.start; i <= p.last; i++ {
-				if ac.contains(i) {
-					out.Add(i)
-				}
+func (rc *runContainer16) andArrayCardinality(ac *arrayContainer) int {
+	pos := 0
+	answer := 0
+	maxpos := ac.getCardinality()
+	if maxpos == 0 {
+		return 0 // won't happen in actual code
+	}
+	v := ac.content[pos]
+mainloop:
+	for _, p := range rc.iv {
+		for v < p.start {
+			pos += 1
+			if pos == maxpos {
+				break mainloop
 			}
+			v = ac.content[pos]
 		}
-		return out
-	*/
+		for v <= p.last {
+			answer += 1
+			pos += 1
+			if pos == maxpos {
+				break mainloop
+			}
+			v = ac.content[pos]
+		}
+	}
+	return answer
 }
 
 func (rc *runContainer16) iand(a container) container {
+	if rc.isFull() {
+		return a.clone()
+	}
 	switch c := a.(type) {
 	case *runContainer16:
 		return rc.inplaceIntersect(c)
@@ -290,6 +326,9 @@ func (rc *runContainer16) iremove(x uint16) bool {
 }
 
 func (rc *runContainer16) or(a container) container {
+	if rc.isFull() {
+		return rc.clone()
+	}
 	switch c := a.(type) {
 	case *runContainer16:
 		return rc.union(c)
@@ -301,10 +340,35 @@ func (rc *runContainer16) or(a container) container {
 	panic("unsupported container type")
 }
 
+func (rc *runContainer16) orCardinality(a container) int {
+	switch c := a.(type) {
+	case *runContainer16:
+		return int(rc.unionCardinality(c))
+	case *arrayContainer:
+		return rc.orArrayCardinality(c)
+	case *bitmapContainer:
+		return rc.orBitmapContainerCardinality(c)
+	}
+	panic("unsupported container type")
+}
+
 // orBitmapContainer finds the union of rc and bc.
 func (rc *runContainer16) orBitmapContainer(bc *bitmapContainer) container {
 	bc2 := newBitmapContainerFromRun(rc)
 	return bc2.iorBitmap(bc)
+}
+
+func (rc *runContainer16) andBitmapContainerCardinality(bc *bitmapContainer) int {
+	answer := 0
+	for i := range rc.iv {
+		answer += bc.getCardinalityInRange(uint(rc.iv[i].start), uint(rc.iv[i].last)+1)
+	}
+	//bc.computeCardinality()
+	return answer
+}
+
+func (rc *runContainer16) orBitmapContainerCardinality(bc *bitmapContainer) int {
+	return rc.getCardinality() + bc.getCardinality() - rc.andBitmapContainerCardinality(bc)
 }
 
 // orArray finds the union of rc and ac.
@@ -312,18 +376,17 @@ func (rc *runContainer16) orArray(ac *arrayContainer) container {
 	bc1 := newBitmapContainerFromRun(rc)
 	bc2 := ac.toBitmapContainer()
 	return bc1.orBitmap(bc2)
-	/*
-		out := ac.clone()
-		for _, p := range rc.iv {
-			for i := p.start; i <= p.last; i++ {
-				out.iadd(i)
-			}
-		}
-		return out
-	*/
+}
+
+// orArray finds the union of rc and ac.
+func (rc *runContainer16) orArrayCardinality(ac *arrayContainer) int {
+	return ac.getCardinality() + rc.getCardinality() - rc.andArrayCardinality(ac)
 }
 
 func (rc *runContainer16) ior(a container) container {
+	if rc.isFull() {
+		return rc
+	}
 	switch c := a.(type) {
 	case *runContainer16:
 		return rc.inplaceUnion(c)

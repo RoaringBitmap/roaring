@@ -475,6 +475,122 @@ func (rc *runContainer32) union(b *runContainer32) *runContainer32 {
 	return res
 }
 
+// unionCardinality returns the cardinality of the merger of two runContainer32s,  the union of rc and b.
+func (rc *runContainer32) unionCardinality(b *runContainer32) uint64 {
+
+	// rc is also known as 'a' here, but golint insisted we
+	// call it rc for consistency with the rest of the methods.
+	answer := uint64(0)
+
+	alim := int64(len(rc.iv))
+	blim := int64(len(b.iv))
+
+	var na int64 // next from a
+	var nb int64 // next from b
+
+	// merged holds the current merge output, which might
+	// get additional merges before being appended to m.
+	var merged interval32
+	var mergedUsed bool // is merged being used at the moment?
+
+	var cura interval32 // currently considering this interval32 from a
+	var curb interval32 // currently considering this interval32 from b
+
+	pass := 0
+	for na < alim && nb < blim {
+		pass++
+		cura = rc.iv[na]
+		curb = b.iv[nb]
+
+		if mergedUsed {
+			mergedUpdated := false
+			if canMerge32(cura, merged) {
+				merged = mergeInterval32s(cura, merged)
+				na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
+				mergedUpdated = true
+			}
+			if canMerge32(curb, merged) {
+				merged = mergeInterval32s(curb, merged)
+				nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+				mergedUpdated = true
+			}
+			if !mergedUpdated {
+				// we know that merged is disjoint from cura and curb
+				//m = append(m, merged)
+				answer += uint64(merged.last) - uint64(merged.start) + 1
+				mergedUsed = false
+			}
+			continue
+
+		} else {
+			// !mergedUsed
+			if !canMerge32(cura, curb) {
+				if cura.start < curb.start {
+					answer += uint64(cura.last) - uint64(cura.start) + 1
+					//m = append(m, cura)
+					na++
+				} else {
+					answer += uint64(curb.last) - uint64(curb.start) + 1
+					//m = append(m, curb)
+					nb++
+				}
+			} else {
+				merged = mergeInterval32s(cura, curb)
+				mergedUsed = true
+				na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
+				nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+			}
+		}
+	}
+	var aDone, bDone bool
+	if na >= alim {
+		aDone = true
+	}
+	if nb >= blim {
+		bDone = true
+	}
+	// finish by merging anything remaining into merged we can:
+	if mergedUsed {
+		if !aDone {
+		aAdds:
+			for na < alim {
+				cura = rc.iv[na]
+				if canMerge32(cura, merged) {
+					merged = mergeInterval32s(cura, merged)
+					na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
+				} else {
+					break aAdds
+				}
+			}
+
+		}
+
+		if !bDone {
+		bAdds:
+			for nb < blim {
+				curb = b.iv[nb]
+				if canMerge32(curb, merged) {
+					merged = mergeInterval32s(curb, merged)
+					nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+				} else {
+					break bAdds
+				}
+			}
+
+		}
+
+		//m = append(m, merged)
+		answer += uint64(merged.last) - uint64(merged.start) + 1
+	}
+	for _, r := range rc.iv[na:] {
+		answer += uint64(r.last) - uint64(r.start) + 1
+	}
+	for _, r := range b.iv[nb:] {
+		answer += uint64(r.last) - uint64(r.start) + 1
+	}
+	return answer
+}
+
 // indexOfIntervalAtOrAfter is a helper for union.
 func (rc *runContainer32) indexOfIntervalAtOrAfter(key int64, startIndex int64) int64 {
 	rc.myOpts.startIndex = startIndex
@@ -596,6 +712,110 @@ toploop:
 
 	res.iv = output
 	return res
+}
+
+// intersectCardinality returns the cardinality of  the
+// intersection of rc (also known as 'a')  and b.
+func (rc *runContainer32) intersectCardinality(b *runContainer32) int64 {
+	answer := int64(0)
+
+	a := rc
+	numa := int64(len(a.iv))
+	numb := int64(len(b.iv))
+	if numa == 0 || numb == 0 {
+		return 0
+	}
+
+	if numa == 1 && numb == 1 {
+		if !haveOverlap32(a.iv[0], b.iv[0]) {
+			return 0
+		}
+	}
+
+	var acuri int64
+	var bcuri int64
+
+	astart := int64(a.iv[acuri].start)
+	bstart := int64(b.iv[bcuri].start)
+
+	var intersection interval32
+	var leftoverstart int64
+	var isOverlap, isLeftoverA, isLeftoverB bool
+	var done bool
+	pass := 0
+toploop:
+	for acuri < numa && bcuri < numb {
+		pass++
+
+		isOverlap, isLeftoverA, isLeftoverB, leftoverstart, intersection = intersectWithLeftover32(astart, int64(a.iv[acuri].last), bstart, int64(b.iv[bcuri].last))
+
+		if !isOverlap {
+			switch {
+			case astart < bstart:
+				acuri, done = a.findNextIntervalThatIntersectsStartingFrom(acuri+1, bstart)
+				if done {
+					break toploop
+				}
+				astart = int64(a.iv[acuri].start)
+
+			case astart > bstart:
+				bcuri, done = b.findNextIntervalThatIntersectsStartingFrom(bcuri+1, astart)
+				if done {
+					break toploop
+				}
+				bstart = int64(b.iv[bcuri].start)
+
+				//default:
+				//	panic("impossible that astart == bstart, since !isOverlap")
+			}
+
+		} else {
+			// isOverlap
+			answer += int64(intersection.last) - int64(intersection.start) + 1
+			switch {
+			case isLeftoverA:
+				// note that we change astart without advancing acuri,
+				// since we need to capture any 2ndary intersections with a.iv[acuri]
+				astart = leftoverstart
+				bcuri++
+				if bcuri >= numb {
+					break toploop
+				}
+				bstart = int64(b.iv[bcuri].start)
+			case isLeftoverB:
+				// note that we change bstart without advancing bcuri,
+				// since we need to capture any 2ndary intersections with b.iv[bcuri]
+				bstart = leftoverstart
+				acuri++
+				if acuri >= numa {
+					break toploop
+				}
+				astart = int64(a.iv[acuri].start)
+			default:
+				// neither had leftover, both completely consumed
+				// optionally, assert for sanity:
+				//if a.iv[acuri].endx != b.iv[bcuri].endx {
+				//	panic("huh? should only be possible that endx agree now!")
+				//}
+
+				// advance to next a interval
+				acuri++
+				if acuri >= numa {
+					break toploop
+				}
+				astart = int64(a.iv[acuri].start)
+
+				// advance to next b interval
+				bcuri++
+				if bcuri >= numb {
+					break toploop
+				}
+				bstart = int64(b.iv[bcuri].start)
+			}
+		}
+	} // end for toploop
+
+	return answer
 }
 
 // get returns true iff key is in the container.

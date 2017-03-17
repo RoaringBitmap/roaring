@@ -111,6 +111,8 @@ func (x1 *Bitmap) repairAfterLazy() {
 				c.(*bitmapContainer).computeCardinality()
 				if c.(*bitmapContainer).getCardinality() <= arrayDefaultMaxSize {
 					x1.highlowcontainer.setContainerAtIndex(pos, c.(*bitmapContainer).toArrayContainer())
+				} else if c.(*bitmapContainer).isFull() {
+					x1.highlowcontainer.setContainerAtIndex(pos, newRunContainer16Range(0, MaxUint16))
 				}
 			}
 		}
