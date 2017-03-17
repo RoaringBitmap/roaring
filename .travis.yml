@@ -11,10 +11,16 @@ go:
 - 1.7
 - 1.8
 - tip
+
+# Next lines seem to fail horribly
+#- go test -v -covermode=count -coverprofile=coverage.out
+#- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken KOlKyOXz0qSjAqvfTF28RzNlr3unxjrLh -ignore arraycontainer_gen.go,bitmapcontainer_gen.go,rle16_gen.go,rle_gen.go,roaringarray_gen.go,rle.go
+
+
+
 script:
+- go test
 - go test -race -run TestConcurrent*
-- go test -v -covermode=count -coverprofile=coverage.out
-- $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken KOlKyOXz0qSjAqvfTF28RzNlr3unxjrLh -ignore arraycontainer_gen.go,bitmapcontainer_gen.go,rle16_gen.go,rle_gen.go,roaringarray_gen.go,rle.go
 - GOARCH=arm64 go build
 - GOARCH=386 go build
 - GOARCH=arm go build
