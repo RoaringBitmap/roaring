@@ -559,8 +559,7 @@ main:
 				if s1 == s2 {
 					c1 := rb.highlowcontainer.getContainerAtIndex(pos1)
 					c2 := x2.highlowcontainer.getContainerAtIndex(pos2)
-					diff := c1.and(c2)
-					answer += uint64(diff.getCardinality()) // TODO: could be faster if we did not have to compute diff
+					answer += uint64(c1.andCardinality(c2))
 					pos1++
 					pos2++
 					if (pos1 == length1) || (pos2 == length2) {
