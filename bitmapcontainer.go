@@ -82,12 +82,12 @@ func clz(i uint64) int {
 		n += 2
 		x = x << 2
 	}
-	return n - int(x >> 31)
+	return n - int(x>>31)
 }
 
 func (bc *bitmapContainer) maximum() uint16 {
-	for i := len(bc.bitmap) ; i > 0; i -= 1 {
-		w := bc.bitmap[i - 1]
+	for i := len(bc.bitmap); i > 0; i -= 1 {
+		w := bc.bitmap[i-1]
 		if w != 0 {
 			r := clz(w)
 			return uint16((i-1)*64 + 63 - r)

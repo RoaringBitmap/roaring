@@ -2,7 +2,6 @@ package roaring
 
 import (
 	"fmt"
-	"unsafe"
 )
 
 //go:generate msgp -unexported
@@ -36,11 +35,6 @@ func (ac *arrayContainer) minimum() uint16 {
 func (ac *arrayContainer) maximum() uint16 {
 	return ac.content[len(ac.content)-1] // assume not empty
 }
-
-// unsafe.Sizeof calculates the memory used by the top level of the slice
-// descriptor - not including the size of the memory referenced by the slice.
-// http://golang.org/pkg/unsafe/#Sizeof
-const arrayBaseSize = int(unsafe.Sizeof([]uint16{}))
 
 func (ac *arrayContainer) getSizeInBytes() int {
 	return ac.getCardinality() * 2
@@ -208,9 +202,9 @@ func (ac *arrayContainer) equals(o container) bool {
 	if bCard != aCard {
 		return false
 	}
+
 	ait := ac.getShortIterator()
 	bit := o.getShortIterator()
-
 	for ait.hasNext() {
 		if bit.next() != ait.next() {
 			return false
@@ -346,7 +340,6 @@ func (ac *arrayContainer) ior(a container) container {
 }
 
 func (ac *arrayContainer) iorArray(ac2 *arrayContainer) container {
-
 	bc1 := ac.toBitmapContainer()
 	bc2 := ac2.toBitmapContainer()
 	bc1.iorBitmap(bc2)

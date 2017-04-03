@@ -30,7 +30,7 @@ func TestFirstLast(t *testing.T) {
 			t.FailNow()
 		}
 		if uint32(i) != bm.Maximum() {
-			t.Errorf("bad maximum",i,bm.Maximum())
+			t.Errorf("bad maximum", i, bm.Maximum())
 			t.FailNow()
 		}
 	}
@@ -40,7 +40,7 @@ func TestFirstLast(t *testing.T) {
 		t.FailNow()
 	}
 	if uint32(i-1) != bm.Maximum() {
-		t.Errorf("bad maximum",i,bm.Maximum())
+		t.Errorf("bad maximum", i, bm.Maximum())
 		t.FailNow()
 	}
 }
