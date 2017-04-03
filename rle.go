@@ -296,7 +296,7 @@ func (rc *runContainer32) set(alreadySorted bool, vals ...uint32) {
 	rc.card = 0
 }
 
-// canMerge returns true iff the intervals
+// canMerge returns true if the intervals
 // a and b either overlap or they are
 // contiguous and so can be merged into
 // a single interval.
@@ -818,7 +818,7 @@ toploop:
 	return answer
 }
 
-// get returns true iff key is in the container.
+// get returns true if key is in the container.
 func (rc *runContainer32) contains(key uint32) bool {
 	_, in, _ := rc.search(int64(key), nil)
 	return in
