@@ -87,6 +87,29 @@ func BenchmarkIntersectionRoaring(b *testing.B) {
 	}
 }
 
+// go test -bench BenchmarkIntersectionCardinalityRoaring -run -
+func BenchmarkIntersectionCardinalityRoaring(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	s1 := NewBitmap()
+	sz := 150000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		s1.Add(uint32(r.Int31n(int32(sz))))
+	}
+	s2 := NewBitmap()
+	sz = 100000000
+	initsize = 65000
+	for i := 0; i < initsize; i++ {
+		s2.Add(uint32(r.Int31n(int32(sz))))
+	}
+	b.StartTimer()
+	card := uint64(0)
+	for j := 0; j < b.N; j++ {
+		card += s1.AndCardinality(s2)
+	}
+}
+
 // go test -bench BenchmarkUnion -run -
 func BenchmarkUnionBitset(b *testing.B) {
 	b.StopTimer()
