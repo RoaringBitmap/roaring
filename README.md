@@ -7,6 +7,11 @@ Roaring is  used by [Apache Spark](https://spark.apache.org/), [Apache Kylin](ht
 and  [Apache Lucene](http://lucene.apache.org/) (as well as supporting systems
 such as Solr and Elastic).
 
+Roaring bitmaps are found to work well in many important applications:
+
+> Use Roaring for bitmap compression whenever possible. Do not use other bitmap compression methods ([Wang et al., SIGMOD 2017](http://db.ucsd.edu/wp-content/uploads/2017/03/sidm338-wangA.pdf))
+
+
 The ``roaring`` Go library is used by
 * [Cloud Torrent](https://github.com/jpillora/cloud-torrent): a self-hosted remote torrent client
 * [runv](https://github.com/hyperhq/runv): an Hypervisor-based runtime for the Open Containers Initiative
