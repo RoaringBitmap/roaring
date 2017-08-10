@@ -3,9 +3,23 @@ roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https
 
 This is a go port of the Roaring bitmap data structure.
 
-Roaring is  used by [Apache Spark](https://spark.apache.org/), [Apache Kylin](http://kylin.io),  [Netflix Atlas](https://github.com/Netflix/atlas), [LinkedIn Pinot](https://github.com/linkedin/pinot/wiki), [Druid.io](http://druid.io/), [Whoosh](https://pypi.python.org/pypi/Whoosh/), [Pilosa](https://www.pilosa.com/),
-and  [Apache Lucene](http://lucene.apache.org/) (as well as supporting systems
-such as Solr and Elastic).
+
+Roaring bitmaps are used by several major systems such as [Apache Lucene][lucene] and derivative systems such as [Solr][solr] and
+[Elasticsearch][elasticsearch], [Metamarkets' Druid][druid], [LinkedIn Pinot][pinot], [Netflix Atlas][atlas],  [Apache Spark][spark], [OpenSearchServer][opensearchserver], [Cloud Torrent][cloudtorrent], [Whoosh][whoosh],  [Pilosa][pilosa],  [Microsoft Visual Studio Team Services (VSTS)][vsts], and eBay's [Apache Kylin][kylin].
+
+[lucene]: https://lucene.apache.org/
+[solr]: https://lucene.apache.org/solr/
+[elasticsearch]: https://www.elastic.co/products/elasticsearch
+[druid]: http://druid.io/
+[spark]: https://spark.apache.org/
+[opensearchserver]: http://www.opensearchserver.com
+[cloudtorrent]: https://github.com/jpillora/cloud-torrent
+[whoosh]: https://bitbucket.org/mchaput/whoosh/wiki/Home
+[pilosa]: https://www.pilosa.com/
+[kylin]: http://kylin.apache.org/
+[pinot]: http://github.com/linkedin/pinot/wiki
+[vsts]: https://www.visualstudio.com/team-services/
+[atlas]: https://github.com/Netflix/atlas
 
 Roaring bitmaps are found to work well in many important applications:
 
