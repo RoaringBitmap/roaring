@@ -1,3 +1,5 @@
+// +build go1.9
+
 package roaring
 
 import "math/bits"
