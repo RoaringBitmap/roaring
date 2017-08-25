@@ -1,4 +1,4 @@
-// +build amd64,!appengine
+// +build amd64,!appengine,!go1.9
 
 // This file tests the popcnt functions
 
@@ -74,17 +74,5 @@ func TestPopcntXorSlice(t *testing.T) {
 	res := popcntXorSlice(s, m)
 	if res != resGo {
 		t.Errorf("The implementations are different")
-	}
-}
-
-func BenchmarkPopcount(b *testing.B) {
-	b.StopTimer()
-
-	r := getRandomUint64Set(64)
-
-	b.ResetTimer()
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		popcntSlice(r)
 	}
 }
