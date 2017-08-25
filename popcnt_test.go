@@ -76,3 +76,15 @@ func TestPopcntXorSlice(t *testing.T) {
 		t.Errorf("The implementations are different")
 	}
 }
+
+func BenchmarkPopcount(b *testing.B) {
+	b.StopTimer()
+
+	r := getRandomUint64Set(64)
+
+	b.ResetTimer()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		popcntSlice(r)
+	}
+}
