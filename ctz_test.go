@@ -64,7 +64,7 @@ func Benchmark100OrigNumberOfTrailingZeros(b *testing.B) {
 	}
 }
 
-func Benchmark100CountTrailingZerosDeBruijn(b *testing.B) {
+func Benchmark100CountTrailingZeros(b *testing.B) {
 	b.StopTimer()
 
 	r := getRandomUint64Set(64)
