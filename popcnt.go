@@ -1,41 +1,11 @@
+// +build go1.9
+// "go1.9", from Go version 1.9 onward
+// See https://golang.org/pkg/go/build/#hdr-Build_Constraints
+
 package roaring
 
-func popcntSliceGo(s []uint64) uint64 {
-	cnt := uint64(0)
-	for _, x := range s {
-		cnt += popcount(x)
-	}
-	return cnt
-}
+import "math/bits"
 
-func popcntMaskSliceGo(s, m []uint64) uint64 {
-	cnt := uint64(0)
-	for i := range s {
-		cnt += popcount(s[i] &^ m[i])
-	}
-	return cnt
-}
-
-func popcntAndSliceGo(s, m []uint64) uint64 {
-	cnt := uint64(0)
-	for i := range s {
-		cnt += popcount(s[i] & m[i])
-	}
-	return cnt
-}
-
-func popcntOrSliceGo(s, m []uint64) uint64 {
-	cnt := uint64(0)
-	for i := range s {
-		cnt += popcount(s[i] | m[i])
-	}
-	return cnt
-}
-
-func popcntXorSliceGo(s, m []uint64) uint64 {
-	cnt := uint64(0)
-	for i := range s {
-		cnt += popcount(s[i] ^ m[i])
-	}
-	return cnt
+func popcount(x uint64) uint64 {
+	return uint64(bits.OnesCount64(x))
 }
