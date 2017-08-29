@@ -17,12 +17,12 @@ func TestCountTrailingZeros072(t *testing.T) {
 		So(numberOfTrailingZeros(7<<17), ShouldEqual, 17)
 		So(numberOfTrailingZeros(255<<33), ShouldEqual, 33)
 
-		So(countTrailingZerosDeBruijn(0), ShouldEqual, 64)
-		So(countTrailingZerosDeBruijn(8), ShouldEqual, 3)
-		So(countTrailingZerosDeBruijn(7), ShouldEqual, 0)
-		So(countTrailingZerosDeBruijn(1<<17), ShouldEqual, 17)
-		So(countTrailingZerosDeBruijn(7<<17), ShouldEqual, 17)
-		So(countTrailingZerosDeBruijn(255<<33), ShouldEqual, 33)
+		So(countTrailingZeros(0), ShouldEqual, 64)
+		So(countTrailingZeros(8), ShouldEqual, 3)
+		So(countTrailingZeros(7), ShouldEqual, 0)
+		So(countTrailingZeros(1<<17), ShouldEqual, 17)
+		So(countTrailingZeros(7<<17), ShouldEqual, 17)
+		So(countTrailingZeros(255<<33), ShouldEqual, 33)
 
 	})
 }
@@ -64,7 +64,7 @@ func Benchmark100OrigNumberOfTrailingZeros(b *testing.B) {
 	}
 }
 
-func Benchmark100CountTrailingZerosDeBruijn(b *testing.B) {
+func Benchmark100CountTrailingZeros(b *testing.B) {
 	b.StopTimer()
 
 	r := getRandomUint64Set(64)
@@ -74,7 +74,7 @@ func Benchmark100CountTrailingZerosDeBruijn(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		for i := range r {
-			countTrailingZerosDeBruijn(r[i])
+			countTrailingZeros(r[i])
 		}
 	}
 }
