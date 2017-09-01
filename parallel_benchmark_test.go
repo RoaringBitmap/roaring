@@ -1,10 +1,9 @@
 package roaring
 
 import (
-	"runtime"
-	"sort"
-	"testing"
 	"math/rand"
+	"runtime"
+	"testing"
 )
 
 type parOp int
@@ -18,12 +17,14 @@ var defaultWorkerCount int = runtime.NumCPU()
 
 var GlobalParAggregator = NewParAggregator()
 
+// TODO figure out what would be a good default
 const defaultTaskQueueLength = 4096
 
 type ParAggregator struct {
 	taskQueue chan parTask
 }
 
+// TODO parameterize with task queue length and number of workers
 func NewParAggregator() ParAggregator {
 	agg := ParAggregator{
 		make(chan parTask, defaultTaskQueueLength),
@@ -47,11 +48,13 @@ func (aggregator ParAggregator) worker() {
 		if resultContainer.getCardinality() > 0 {
 			task.result <- parResult{
 				key:       task.key,
+				pos:       task.pos,
 				container: resultContainer,
 			}
 		} else {
 			task.result <- parResult{
 				key:   task.key,
+				pos:   task.pos,
 				empty: true,
 			}
 		}
@@ -67,28 +70,16 @@ func (aggregator ParAggregator) Shutdown() {
 type parTask struct {
 	op          parOp
 	key         uint16
+	pos         int
 	left, right container
 	result      chan<- parResult
 }
 
 type parResult struct {
 	key       uint16
+	pos       int
 	container container
 	empty     bool
-}
-
-type parResultSlice []parResult
-
-func (s parResultSlice) Len() int {
-	return len(s)
-}
-
-func (s parResultSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s parResultSlice) Less(i, j int) bool {
-	return s[i].key < s[j].key
 }
 
 func (aggregator ParAggregator) And(x1, x2 *Bitmap) *Bitmap {
@@ -99,7 +90,7 @@ func (aggregator ParAggregator) And(x1, x2 *Bitmap) *Bitmap {
 	length2 := x2.highlowcontainer.size()
 
 	resultChan := make(chan parResult, 64)
-	expectedResults := 0
+	resultCount := 0
 
 main:
 	for pos1 < length1 && pos2 < length2 {
@@ -109,13 +100,14 @@ main:
 			if s1 == s2 {
 				C := x1.highlowcontainer.getContainerAtIndex(pos1)
 
-				expectedResults++
 				aggregator.taskQueue <- parTask{
 					op:     opAnd,
+					pos:    resultCount,
 					left:   C,
 					right:  x2.highlowcontainer.getContainerAtIndex(pos2),
 					result: resultChan,
 				}
+				resultCount++
 
 				pos1++
 				pos2++
@@ -141,22 +133,21 @@ main:
 	}
 	// main loop end
 
-	results := make([]parResult, 0, expectedResults)
+	results := make([]parResult, resultCount)
 
 	for result := range resultChan {
-		if !result.empty {
-			results = append(results, result)
-		}
-		expectedResults--
-		if expectedResults == 0 {
+		results[result.pos] = result
+		resultCount--
+		if resultCount == 0 {
 			close(resultChan)
 			break
 		}
 	}
-	sort.Sort(parResultSlice(results))
 
 	for _, result := range results {
-		answer.highlowcontainer.appendContainer(result.key, result.container, false)
+		if !result.empty {
+			answer.highlowcontainer.appendContainer(result.key, result.container, false)
+		}
 	}
 
 	return answer
