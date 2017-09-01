@@ -45,19 +45,18 @@ func (aggregator ParAggregator) worker() {
 			resultContainer = task.left.and(task.right)
 		}
 
-		if resultContainer.getCardinality() > 0 {
-			task.result <- parResult{
-				key:       task.key,
-				pos:       task.pos,
-				container: resultContainer,
-			}
-		} else {
-			task.result <- parResult{
-				key:   task.key,
-				pos:   task.pos,
-				empty: true,
-			}
+		result := parResult{
+			key: task.key,
+			pos: task.pos,
 		}
+
+		if resultContainer.getCardinality() > 0 {
+			result.container = resultContainer
+		} else {
+			result.empty = true
+		}
+
+		task.result <- result
 	}
 }
 
