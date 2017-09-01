@@ -9,8 +9,10 @@ import (
 type parOp int
 
 const (
-	opAnd parOp = iota
-	opOr
+	parOpAnd parOp = iota
+	parOpOr
+	parOpXor
+	parOpAndNot
 )
 
 var defaultWorkerCount int = runtime.NumCPU()
@@ -41,7 +43,7 @@ func (aggregator ParAggregator) worker() {
 	for task := range aggregator.taskQueue {
 		var resultContainer container
 		switch task.op {
-		case opAnd:
+		case parOpAnd:
 			resultContainer = task.left.and(task.right)
 		}
 
@@ -100,7 +102,7 @@ main:
 				C := x1.highlowcontainer.getContainerAtIndex(pos1)
 
 				aggregator.taskQueue <- parTask{
-					op:     opAnd,
+					op:     parOpAnd,
 					pos:    resultCount,
 					left:   C,
 					right:  x2.highlowcontainer.getContainerAtIndex(pos2),
