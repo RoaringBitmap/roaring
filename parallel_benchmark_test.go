@@ -4,6 +4,7 @@ import (
 	"runtime"
 	"sort"
 	"testing"
+	"math/rand"
 )
 
 type parOp int
@@ -13,20 +14,67 @@ const (
 	opOr
 )
 
+var defaultWorkerCount int = runtime.NumCPU()
+
+var GlobalParAggregator = NewParAggregator()
+
+const defaultTaskQueueLength = 4096
+
+type ParAggregator struct {
+	taskQueue chan parTask
+}
+
+func NewParAggregator() ParAggregator {
+	agg := ParAggregator{
+		make(chan parTask, defaultTaskQueueLength),
+	}
+
+	for i := 0; i < defaultWorkerCount; i++ {
+		go agg.worker()
+	}
+
+	return agg
+}
+
+func (aggregator ParAggregator) worker() {
+	for task := range aggregator.taskQueue {
+		var resultContainer container
+		switch task.op {
+		case opAnd:
+			resultContainer = task.left.and(task.right)
+		}
+
+		if resultContainer.getCardinality() > 0 {
+			task.result <- parResult{
+				key:       task.key,
+				container: resultContainer,
+			}
+		} else {
+			task.result <- parResult{
+				key:   task.key,
+				empty: true,
+			}
+		}
+	}
+}
+
+func (aggregator ParAggregator) Shutdown() {
+	close(aggregator.taskQueue)
+}
+
 // TODO check if using pointer types for containers is possible
 // As I understand Golang this would result in one less copy
 type parTask struct {
 	op          parOp
 	key         uint16
 	left, right container
-	passReady   bool
 	result      chan<- parResult
 }
 
 type parResult struct {
 	key       uint16
 	container container
-	ready     bool
+	empty     bool
 }
 
 type parResultSlice []parResult
@@ -43,39 +91,7 @@ func (s parResultSlice) Less(i, j int) bool {
 	return s[i].key < s[j].key
 }
 
-var workerCount int = runtime.NumCPU()
-
-const taskQueueLength = 4096
-
-var taskQueue chan parTask = make(chan parTask, taskQueueLength)
-
-func init() {
-	for i := 0; i < workerCount; i++ {
-		go worker()
-	}
-}
-
-func worker() {
-	for task := range taskQueue {
-		var resultContainer container
-		if task.passReady {
-			task.result <- parResult{ready: true,}
-		} else {
-			switch task.op {
-			case opAnd:
-				resultContainer = task.left.and(task.right)
-			}
-			if resultContainer.getCardinality() > 0 {
-				task.result <- parResult{
-					key:       task.key,
-					container: resultContainer,
-				}
-			}
-		}
-	}
-}
-
-func parAnd(x1, x2 *Bitmap) *Bitmap {
+func (aggregator ParAggregator) And(x1, x2 *Bitmap) *Bitmap {
 	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
@@ -83,7 +99,7 @@ func parAnd(x1, x2 *Bitmap) *Bitmap {
 	length2 := x2.highlowcontainer.size()
 
 	resultChan := make(chan parResult, 64)
-	maxExpectedResults := 0
+	expectedResults := 0
 
 main:
 	for pos1 < length1 && pos2 < length2 {
@@ -93,8 +109,8 @@ main:
 			if s1 == s2 {
 				C := x1.highlowcontainer.getContainerAtIndex(pos1)
 
-				maxExpectedResults++
-				taskQueue <- parTask{
+				expectedResults++
+				aggregator.taskQueue <- parTask{
 					op:     opAnd,
 					left:   C,
 					right:  x2.highlowcontainer.getContainerAtIndex(pos2),
@@ -125,14 +141,16 @@ main:
 	}
 	// main loop end
 
-	taskQueue <- parTask{passReady: true}
-	results := make([]parResult, 0, maxExpectedResults)
+	results := make([]parResult, 0, expectedResults)
 
 	for result := range resultChan {
-		if result.ready {
-			break
-		} else {
+		if !result.empty {
 			results = append(results, result)
+		}
+		expectedResults--
+		if expectedResults == 0 {
+			close(resultChan)
+			break
 		}
 	}
 	sort.Sort(parResultSlice(results))
@@ -147,9 +165,59 @@ main:
 func TestParAnd(t *testing.T) {
 	left := BitmapOf(1, 2)
 	right := BitmapOf(1)
-	result := parAnd(left, right)
+	result := GlobalParAggregator.And(left, right)
 
 	if !result.Equals(right) {
-		t.Errorf("Result bitmap differs from expected")
+		t.Errorf("Result bitmap differs from expected: %v != %v", left, right)
+	}
+}
+
+func BenchmarkIntersectionSparseParallel(b *testing.B) {
+	b.StopTimer()
+	initsize := 650000
+	r := rand.New(rand.NewSource(0))
+
+	s1 := NewBitmap()
+	sz := 150 * 1000 * 1000
+	for i := 0; i < initsize; i++ {
+		s1.Add(uint32(r.Int31n(int32(sz))))
+	}
+
+	s2 := NewBitmap()
+	sz = 100 * 1000 * 1000
+	for i := 0; i < initsize; i++ {
+		s2.Add(uint32(r.Int31n(int32(sz))))
+	}
+
+	b.StartTimer()
+	card := uint64(0)
+	for j := 0; j < b.N; j++ {
+		s3 := GlobalParAggregator.And(s1, s2)
+		card = card + s3.GetCardinality()
+	}
+}
+
+func BenchmarkIntersectionSparseRoaring(b *testing.B) {
+	b.StopTimer()
+	initsize := 650000
+	r := rand.New(rand.NewSource(0))
+
+	s1 := NewBitmap()
+	sz := 150 * 1000 * 1000
+	for i := 0; i < initsize; i++ {
+		s1.Add(uint32(r.Int31n(int32(sz))))
+	}
+
+	s2 := NewBitmap()
+	sz = 100 * 1000 * 1000
+	for i := 0; i < initsize; i++ {
+		s2.Add(uint32(r.Int31n(int32(sz))))
+	}
+
+	b.StartTimer()
+	card := uint64(0)
+	for j := 0; j < b.N; j++ {
+		s3 := And(s1, s2)
+		card = card + s3.GetCardinality()
 	}
 }

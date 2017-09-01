@@ -79,10 +79,11 @@ func BenchmarkIntersectionRoaring(b *testing.B) {
 	for i := 0; i < initsize; i++ {
 		s2.Add(uint32(r.Int31n(int32(sz))))
 	}
+
 	b.StartTimer()
 	card := uint64(0)
 	for j := 0; j < b.N; j++ {
-		s3 := And(s1, s2)
+		s3 := GlobalParAggregator.And(s1, s2)
 		card = card + s3.GetCardinality()
 	}
 }
