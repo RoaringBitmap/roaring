@@ -17,8 +17,6 @@ const (
 
 var defaultWorkerCount int = runtime.NumCPU()
 
-var GlobalParAggregator = NewParAggregator()
-
 // TODO figure out what would be a good default
 const defaultTaskQueueLength = 4096
 
@@ -163,9 +161,12 @@ main:
 }
 
 func TestParAnd(t *testing.T) {
+	parAggregator := NewParAggregator()
+	defer parAggregator.Shutdown()
+
 	left := BitmapOf(1, 2)
 	right := BitmapOf(1)
-	result := GlobalParAggregator.And(left, right)
+	result := parAggregator.And(left, right)
 
 	if !result.Equals(right) {
 		t.Errorf("Result bitmap differs from expected: %v != %v", left, right)
@@ -174,6 +175,10 @@ func TestParAnd(t *testing.T) {
 
 func BenchmarkIntersectionSparseParallel(b *testing.B) {
 	b.StopTimer()
+
+	parAggregator := NewParAggregator()
+	defer parAggregator.Shutdown()
+
 	initsize := 650000
 	r := rand.New(rand.NewSource(0))
 
@@ -192,7 +197,7 @@ func BenchmarkIntersectionSparseParallel(b *testing.B) {
 	b.StartTimer()
 	card := uint64(0)
 	for j := 0; j < b.N; j++ {
-		s3 := GlobalParAggregator.And(s1, s2)
+		s3 := parAggregator.And(s1, s2)
 		card = card + s3.GetCardinality()
 	}
 }
