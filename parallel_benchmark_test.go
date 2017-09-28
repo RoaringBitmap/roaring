@@ -17,24 +17,26 @@ const (
 
 var defaultWorkerCount int = runtime.NumCPU()
 
-// TODO figure out what would be a good default
 const defaultTaskQueueLength = 4096
 
 type ParAggregator struct {
 	taskQueue chan parTask
 }
 
-// TODO parameterize with task queue length and number of workers
-func NewParAggregator() ParAggregator {
+func NewParAggregator(taskQueueLength, workerCount int) ParAggregator {
 	agg := ParAggregator{
-		make(chan parTask, defaultTaskQueueLength),
+		make(chan parTask, taskQueueLength),
 	}
 
-	for i := 0; i < defaultWorkerCount; i++ {
+	for i := 0; i < workerCount; i++ {
 		go agg.worker()
 	}
 
 	return agg
+}
+
+func NewParAggregatorWithDefaults() ParAggregator {
+	return NewParAggregator(defaultTaskQueueLength, defaultWorkerCount)
 }
 
 func (aggregator ParAggregator) worker() {
@@ -161,7 +163,7 @@ main:
 }
 
 func TestParAnd(t *testing.T) {
-	parAggregator := NewParAggregator()
+	parAggregator := NewParAggregatorWithDefaults()
 	defer parAggregator.Shutdown()
 
 	left := BitmapOf(1, 2)
@@ -176,7 +178,7 @@ func TestParAnd(t *testing.T) {
 func BenchmarkIntersectionSparseParallel(b *testing.B) {
 	b.StopTimer()
 
-	parAggregator := NewParAggregator()
+	parAggregator := NewParAggregatorWithDefaults()
 	defer parAggregator.Shutdown()
 
 	initsize := 650000
