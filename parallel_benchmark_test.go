@@ -66,8 +66,6 @@ func (aggregator ParAggregator) Shutdown() {
 	close(aggregator.taskQueue)
 }
 
-// TODO check if using pointer types for containers is possible
-// As I understand Golang this would result in one less copy
 type parTask struct {
 	op          parOp
 	key         uint16
