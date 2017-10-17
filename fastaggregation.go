@@ -32,8 +32,17 @@ main:
 				}
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
+				c1 := x1.highlowcontainer.getContainerAtIndex(pos1)
+				switch t := c1.(type) {
+				case *arrayContainer:
+					c1 = t.toBitmapContainer()
+				case *runContainer16:
+					if !t.isFull() {
+						c1 = t.toBitmapContainer()
+					}
+				}
 
-				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).lazyOR(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
+				answer.highlowcontainer.appendContainer(s1, c1.lazyOR(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {
@@ -80,8 +89,17 @@ main:
 				}
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
+				c1 := x1.highlowcontainer.getContainerAtIndex(pos1)
+				switch t := c1.(type) {
+				case *arrayContainer:
+					c1 = t.toBitmapContainer()
+				case *runContainer16:
+					if !t.isFull() {
+						c1 = t.toBitmapContainer()
+					}
+				}
 
-				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getWritableContainerAtIndex(pos1).lazyIOR(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
+				answer.highlowcontainer.appendContainer(s1, c1.lazyIOR(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {
