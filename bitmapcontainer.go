@@ -352,6 +352,7 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 			setBitmapRange(bc.bitmap, int(x.iv[i].start), int(x.iv[i].last)+1)
 			//bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
 		}
+		bc.cardinality = invalidCardinality
 		//bc.computeCardinality()
 		return bc
 	}
