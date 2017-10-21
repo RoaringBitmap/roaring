@@ -26,7 +26,7 @@ func BenchmarkIntersectionLargeParallel(b *testing.B) {
 	b.StartTimer()
 	card := uint64(0)
 	for j := 0; j < b.N; j++ {
-		s3 := ParAnd(s1, s2)
+		s3 := ParAnd(0, s1, s2)
 		card = card + s3.GetCardinality()
 	}
 }

@@ -176,12 +176,16 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 	bitmapChan <- answer
 }
 
-func ParOr(bitmaps ...*Bitmap) *Bitmap {
+func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	bitmapCount := len(bitmaps)
 	if bitmapCount == 0 {
 		return NewBitmap()
 	} else if bitmapCount == 1 {
 		return bitmaps[0].Clone()
+	}
+
+	if parallelism == 0 {
+		parallelism = defaultWorkerCount
 	}
 
 	h := newBitmapContainerHeap(bitmaps...)
@@ -210,7 +214,7 @@ func ParOr(bitmaps ...*Bitmap) *Bitmap {
 
 	go appenderRoutine(bitmapChan, resultChan, expectedKeysChan)
 
-	for i := 0; i < defaultWorkerCount; i++ {
+	for i := 0; i < parallelism; i++ {
 		go orFunc()
 	}
 
@@ -240,12 +244,16 @@ func ParOr(bitmaps ...*Bitmap) *Bitmap {
 	return bitmap
 }
 
-func ParAnd(bitmaps ...*Bitmap) *Bitmap {
+func ParAnd(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	bitmapCount := len(bitmaps)
 	if bitmapCount == 0 {
 		return NewBitmap()
 	} else if bitmapCount == 1 {
 		return bitmaps[0].Clone()
+	}
+
+	if parallelism == 0 {
+		parallelism = defaultWorkerCount
 	}
 
 	h := newBitmapContainerHeap(bitmaps...)
@@ -273,7 +281,7 @@ func ParAnd(bitmaps ...*Bitmap) *Bitmap {
 
 	go appenderRoutine(bitmapChan, resultChan, expectedKeysChan)
 
-	for i := 0; i < defaultWorkerCount; i++ {
+	for i := 0; i < parallelism; i++ {
 		go andFunc()
 	}
 
