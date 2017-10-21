@@ -185,6 +185,7 @@ func ParOr(bitmaps ...*Bitmap) *Bitmap {
 	expectedKeysChan := make(chan int)
 
 	orFunc := func() {
+		// Assumes only structs with >=2 containers are passed
 		for input := range inputChan {
 			c := toBitmapContainer(input.containers[0]).lazyOR(input.containers[1])
 			for _, next := range input.containers[2:] {
@@ -243,6 +244,7 @@ func ParAnd(bitmaps ...*Bitmap) *Bitmap {
 	expectedKeysChan := make(chan int)
 
 	andFunc := func() {
+		// Assumes only structs with >=2 containers are passed
 		for input := range inputChan {
 			c := input.containers[0].and(input.containers[1])
 			for _, next := range input.containers[2:] {
