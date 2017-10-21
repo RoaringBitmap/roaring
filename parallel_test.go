@@ -26,6 +26,15 @@ func TestParAggregationsNothing(t *testing.T) {
 	})
 }
 
+func TestParAggregationsOneBitmap(t *testing.T) {
+	Convey("Par", t, func() {
+		rb := BitmapOf(1, 2, 3)
+
+		So(ParAnd(rb).GetCardinality(), ShouldEqual, 3)
+		So(ParOr(rb).GetCardinality(), ShouldEqual, 3)
+	})
+}
+
 func TestParAggregationsOneEmpty(t *testing.T) {
 	Convey("Par", t, func() {
 		rb1 := NewBitmap()

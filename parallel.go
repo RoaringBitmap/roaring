@@ -177,6 +177,13 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 }
 
 func ParOr(bitmaps ...*Bitmap) *Bitmap {
+	bitmapCount := len(bitmaps)
+	if bitmapCount == 0 {
+		return NewBitmap()
+	} else if bitmapCount == 1 {
+		return bitmaps[0].Clone()
+	}
+
 	h := newBitmapContainerHeap(bitmaps...)
 
 	bitmapChan := make(chan *Bitmap)
@@ -235,6 +242,11 @@ func ParOr(bitmaps ...*Bitmap) *Bitmap {
 
 func ParAnd(bitmaps ...*Bitmap) *Bitmap {
 	bitmapCount := len(bitmaps)
+	if bitmapCount == 0 {
+		return NewBitmap()
+	} else if bitmapCount == 1 {
+		return bitmaps[0].Clone()
+	}
 
 	h := newBitmapContainerHeap(bitmaps...)
 
