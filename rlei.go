@@ -79,15 +79,15 @@ func (rc *runContainer16) andArrayCardinality(ac *arrayContainer) int {
 mainloop:
 	for _, p := range rc.iv {
 		for v < p.start {
-			pos += 1
+			pos++
 			if pos == maxpos {
 				break mainloop
 			}
 			v = ac.content[pos]
 		}
 		for v <= p.last {
-			answer += 1
-			pos += 1
+			answer++
+			pos++
 			if pos == maxpos {
 				break mainloop
 			}

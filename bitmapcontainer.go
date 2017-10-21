@@ -48,7 +48,7 @@ func newBitmapContainerwithRange(firstOfRun, lastOfRun int) *bitmapContainer {
 }
 
 func (bc *bitmapContainer) minimum() uint16 {
-	for i := 0; i < len(bc.bitmap); i += 1 {
+	for i := 0; i < len(bc.bitmap); i++ {
 		w := bc.bitmap[i]
 		if w != 0 {
 			r := countTrailingZeros(w)
@@ -86,7 +86,7 @@ func clz(i uint64) int {
 }
 
 func (bc *bitmapContainer) maximum() uint16 {
-	for i := len(bc.bitmap); i > 0; i -= 1 {
+	for i := len(bc.bitmap); i > 0; i-- {
 		w := bc.bitmap[i-1]
 		if w != 0 {
 			r := clz(w)

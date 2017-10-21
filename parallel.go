@@ -155,7 +155,7 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 			keys[item.idx] = item.key
 			containers[item.idx] = item.container
 
-			appendedKeys += 1
+			appendedKeys++
 		case msg := <-expectedKeysChan:
 			expectedKeys = msg
 		}
@@ -176,6 +176,9 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 	bitmapChan <- answer
 }
 
+// ParOr computes the union (OR) of all provided bitmaps in parallel,
+// where the parameter "parallelism" determines how many workers are to be used
+// (if it is set to 0, a default number of workers is chosen)
 func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	bitmapCount := len(bitmaps)
 	if bitmapCount == 0 {
@@ -244,6 +247,9 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	return bitmap
 }
 
+// ParAnd computes the intersection (AND) of all provided bitmaps in parallel,
+// where the parameter "parallelism" determines how many workers are to be used
+// (if it is set to 0, a default number of workers is chosen)
 func ParAnd(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	bitmapCount := len(bitmaps)
 	if bitmapCount == 0 {
