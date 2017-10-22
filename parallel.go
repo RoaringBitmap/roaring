@@ -170,7 +170,9 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 		},
 	}
 	for i := range keys {
-		answer.highlowcontainer.appendContainer(keys[i], containers[i], false)
+		if containers[i] != nil { // in case a resulting container was empty, see ParAnd function
+			answer.highlowcontainer.appendContainer(keys[i], containers[i], false)
+		}
 	}
 
 	bitmapChan <- answer
@@ -274,8 +276,17 @@ func ParAnd(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 		for input := range inputChan {
 			c := input.containers[0].and(input.containers[1])
 			for _, next := range input.containers[2:] {
+				if c.getCardinality() == 0 {
+					break
+				}
 				c = c.iand(next)
 			}
+
+			// Send a nil explicitly if the result of the intersection is an empty container
+			if c.getCardinality() == 0 {
+				c = nil
+			}
+
 			kx := keyedContainer{
 				input.key,
 				c,

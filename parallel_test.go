@@ -46,6 +46,15 @@ func TestParAggregationsOneEmpty(t *testing.T) {
 	})
 }
 
+func TestParAggregationsDisjointSetIntersection(t *testing.T) {
+	Convey("Par", t, func() {
+		rb1 := BitmapOf(1)
+		rb2 := BitmapOf(2)
+
+		So(ParAnd(0, rb1, rb2).Stats().Containers, ShouldEqual, 0)
+	})
+}
+
 func TestParAggregationsReversed3COW(t *testing.T) {
 	Convey("Par", t, func() {
 		rb1 := NewBitmap()
