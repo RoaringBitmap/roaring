@@ -827,3 +827,119 @@ func TestByteSliceAsInterval16Slice(t *testing.T) {
 	})
 
 }
+
+func TestBitmap_FromBuffer(t *testing.T) {
+	t.Run("empty bitmap", func(t *testing.T) {
+		rb := NewBitmap()
+
+		buf := &bytes.Buffer{}
+		_, err := rb.WriteTo(buf)
+		if err != nil {
+			t.Fatalf("Failed writing")
+		}
+
+		newRb := NewBitmap()
+		newRb.FromBuffer(buf.Bytes())
+
+		if err != nil {
+			t.Errorf("Failed reading: %v", err)
+		}
+		if !rb.Equals(newRb) {
+			t.Errorf("Cannot retrieve serialized version; rb != newRb")
+		}
+	})
+
+	t.Run("basic bitmap of 7 elements", func(t *testing.T) {
+		rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
+
+		buf := &bytes.Buffer{}
+		_, err := rb.WriteTo(buf)
+		if err != nil {
+			t.Fatalf("Failed writing")
+		}
+
+		newRb := NewBitmap()
+		_, err = newRb.FromBuffer(buf.Bytes())
+		if err != nil {
+			t.Errorf("Failed reading")
+		}
+		if !rb.Equals(newRb) {
+			t.Errorf("Cannot retrieve serialized version; rb != newRb")
+		}
+	})
+
+	t.Run("bitmap with runs", func(t *testing.T) {
+		file := "testdata/bitmapwithruns.bin"
+
+		buf, err := ioutil.ReadFile(file)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+
+		rb := NewBitmap()
+		_, err = rb.FromBuffer(buf)
+
+		if err != nil {
+			t.Errorf("Failed reading %s: %s", file, err)
+		}
+		if rb.Stats().RunContainers != 3 {
+			t.Errorf("Bitmap should contain 3 run containers, was: %d", rb.Stats().RunContainers)
+		}
+		if rb.Stats().Containers != 11 {
+			t.Errorf("Bitmap should contain a total of 11 containers, was %d", rb.Stats().Containers)
+		}
+	})
+
+	t.Run("bitmap without runs", func(t *testing.T) {
+		fn := "testdata/bitmapwithruns.bin"
+
+		buf, err := ioutil.ReadFile(fn)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+
+		rb := NewBitmap()
+		_, err = rb.FromBuffer(buf)
+		if err != nil {
+			t.Errorf("Failed reading %s: %s", fn, err)
+		}
+	})
+
+	t.Run("all3.classic bitmap", func(t *testing.T) {
+		file := "testdata/all3.classic"
+
+		buf, err := ioutil.ReadFile(file)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+
+		rb := NewBitmap()
+		_, err = rb.FromBuffer(buf)
+		if err != nil {
+			t.Errorf("Failed reading %s: %s", file, err)
+		}
+	})
+
+	t.Run("marking all containers as requiring COW", func(t *testing.T) {
+		file := "testdata/bitmapwithruns.bin"
+
+		buf, err := ioutil.ReadFile(file)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+
+		rb := NewBitmap()
+		_, err = rb.FromBuffer(buf)
+
+		if err != nil {
+			t.Fatalf("Failed reading %s: %s", file, err)
+		}
+
+		for i, cow := range rb.highlowcontainer.needCopyOnWrite {
+			if !cow {
+				t.Errorf("Container at pos %d was not marked as needs-copy-on-write", i)
+			}
+		}
+	})
+
+}

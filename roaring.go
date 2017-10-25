@@ -71,6 +71,20 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 	return rb.highlowcontainer.readFrom(stream)
 }
 
+// FromBuffer creates a bitmap from its serialized version stored in buffer
+//
+// The format specification is available here:
+// https://github.com/RoaringBitmap/RoaringFormatSpec
+//
+// The function makes the best effort attempt not to copy data
+// You should take care not to modify the buffer as it will
+// likely result in unexpected program behavior.
+//
+// Resulting bitmaps are effectively immutable (a copy-on-write marker is used)
+func (rb *Bitmap) FromBuffer(buf []byte) (int64, error) {
+	return rb.highlowcontainer.fromBuffer(buf)
+}
+
 // RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
 func (rb *Bitmap) RunOptimize() {
 	rb.highlowcontainer.runOptimize()
