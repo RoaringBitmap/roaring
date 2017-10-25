@@ -203,7 +203,7 @@ func (bc *bitmapContainer) iadd(i uint16) bool {
 	mask := uint64(1) << (uint(x) % 64)
 	newb := previous | mask
 	bc.bitmap[x/64] = newb
-	bc.cardinality += int(uint64(previous^newb) >> (uint(x) % 64))
+	bc.cardinality += int((previous ^ newb) >> (uint(x) % 64))
 	return newb != previous
 }
 
@@ -530,7 +530,7 @@ func (bc *bitmapContainer) selectInt(x uint16) int {
 	for k := 0; k < len(bc.bitmap); k++ {
 		w := popcount(bc.bitmap[k])
 		if uint16(w) > remaining {
-			return int(k*64 + selectBitPosition(bc.bitmap[k], int(remaining)))
+			return k*64 + selectBitPosition(bc.bitmap[k], int(remaining))
 		}
 		remaining -= uint16(w)
 	}
@@ -763,7 +763,7 @@ func (bc *bitmapContainer) andNotArray(value2 *arrayContainer) container {
 		oldv := answer.bitmap[i]
 		newv := oldv &^ (uint64(1) << (vc % 64))
 		answer.bitmap[i] = newv
-		answer.cardinality -= int(uint64(oldv^newv) >> (vc % 64))
+		answer.cardinality -= int((oldv ^ newv) >> (vc % 64))
 	}
 	if answer.cardinality <= arrayDefaultMaxSize {
 		return answer.toArrayContainer()
@@ -798,7 +798,7 @@ func (bc *bitmapContainer) iandNotBitmapSurely(value2 *bitmapContainer) *bitmapC
 func (bc *bitmapContainer) contains(i uint16) bool { //testbit
 	x := uint(i)
 	w := bc.bitmap[x>>6]
-	mask := uint64(1) << uint(x&63)
+	mask := uint64(1) << (x & 63)
 	return (w & mask) != 0
 }
 
@@ -892,7 +892,7 @@ func (bc *bitmapContainer) toEfficientContainer() container {
 
 	sizeAsRunContainer := runContainer16SerializedSizeInBytes(numRuns)
 	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
-	card := int(bc.getCardinality())
+	card := bc.getCardinality()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
 
 	if sizeAsRunContainer <= min(sizeAsBitmapContainer, sizeAsArrayContainer) {

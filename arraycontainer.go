@@ -923,7 +923,7 @@ func (ac *arrayContainer) toEfficientContainer() container {
 
 	sizeAsRunContainer := runContainer16SerializedSizeInBytes(numRuns)
 	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
-	card := int(ac.getCardinality())
+	card := ac.getCardinality()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
 
 	if sizeAsRunContainer <= min(sizeAsBitmapContainer, sizeAsArrayContainer) {

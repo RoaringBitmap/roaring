@@ -307,7 +307,7 @@ func (ra *roaringArray) getIndex(x uint16) int {
 	if (size == 0) || (ra.keys[size-1] == x) {
 		return size - 1
 	}
-	return int(ra.binarySearch(0, int64(size), x))
+	return ra.binarySearch(0, int64(size), x)
 }
 
 func (ra *roaringArray) getKeyAtIndex(i int) uint16 {
@@ -479,7 +479,7 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 
 	// descriptive header
 	for i, key := range ra.keys {
-		binary.LittleEndian.PutUint16(buf[nw:], uint16(key))
+		binary.LittleEndian.PutUint16(buf[nw:], key)
 		nw += 2
 		c := ra.containers[i]
 		binary.LittleEndian.PutUint16(buf[nw:], uint16(c.getCardinality()-1))
@@ -597,11 +597,11 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 			if err != nil {
 				return 0, err
 			}
-			nb.cardinality = int(card)
+			nb.cardinality = card
 			pos += nr
 			ra.appendContainer(keycard[2*i], nb, false)
 		} else {
-			nb := newArrayContainerSize(int(card))
+			nb := newArrayContainerSize(card)
 			nr, err := nb.readFrom(stream)
 			if err != nil {
 				return 0, err
