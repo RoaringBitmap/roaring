@@ -598,9 +598,9 @@ func (rc *runContainer32) indexOfIntervalAtOrAfter(key int64, startIndex int64) 
 
 	w, already, _ := rc.search(key, &rc.myOpts)
 	if already {
-		return int64(w)
+		return w
 	}
-	return int64(w) + 1
+	return w + 1
 }
 
 // intersect returns a new runContainer32 holding the
@@ -863,7 +863,7 @@ func (rc *runContainer32) search(key int64, opts *searchOptions) (whichInterval3
 	}
 
 	startIndex := int64(0)
-	endxIndex := int64(n)
+	endxIndex := n
 	if opts != nil {
 		startIndex = opts.startIndex
 
@@ -903,7 +903,7 @@ func (rc *runContainer32) search(key int64, opts *searchOptions) (whichInterval3
 			return key < rc.iv[i].start
 		})
 	*/
-	whichInterval32 = int64(below) - 1
+	whichInterval32 = below - 1
 
 	if below == n {
 		// all falses => key is >= start of all interval32s
@@ -953,7 +953,7 @@ func (rc *runContainer32) cardinality() int64 {
 	// have to compute it
 	var n int64
 	for _, p := range rc.iv {
-		n += int64(p.runlen())
+		n += p.runlen()
 	}
 	rc.card = n // cache it
 	return n
@@ -965,7 +965,7 @@ func (rc *runContainer32) AsSlice() []uint32 {
 	j := 0
 	for _, p := range rc.iv {
 		for i := p.start; i <= p.last; i++ {
-			s[j] = uint32(i)
+			s[j] = i
 			j++
 		}
 	}
@@ -1242,10 +1242,10 @@ func (rc *runContainer32) deleteAt(curIndex *int64, curPosInIndex *uint32, curSe
 }
 
 func have4Overlap32(astart, alast, bstart, blast int64) bool {
-	if int64(alast)+1 <= bstart {
+	if alast+1 <= bstart {
 		return false
 	}
-	return int64(blast)+1 > astart
+	return blast+1 > astart
 }
 
 func intersectWithLeftover32(astart, alast, bstart, blast int64) (isOverlap, isLeftoverA, isLeftoverB bool, leftoverstart int64, intersection interval32) {
@@ -1263,11 +1263,11 @@ func intersectWithLeftover32(astart, alast, bstart, blast int64) (isOverlap, isL
 	switch {
 	case blast < alast:
 		isLeftoverA = true
-		leftoverstart = int64(blast) + 1
+		leftoverstart = blast + 1
 		intersection.last = uint32(blast)
 	case alast < blast:
 		isLeftoverB = true
-		leftoverstart = int64(alast) + 1
+		leftoverstart = alast + 1
 		intersection.last = uint32(alast)
 	default:
 		// alast == blast
@@ -1592,7 +1592,7 @@ func (rc *runContainer32) AndNotRunContainer32(b *runContainer32) *runContainer3
 		switch {
 		case alast < bstart:
 			// output the first run
-			dst.iv = append(dst.iv, interval32{start: uint32(astart), last: uint32(alast)})
+			dst.iv = append(dst.iv, interval32{start: astart, last: alast})
 			apos++
 			if apos < alen {
 				astart = a.iv[apos].start
@@ -1611,7 +1611,7 @@ func (rc *runContainer32) AndNotRunContainer32(b *runContainer32) *runContainer3
 			// alast >= bstart
 			// blast >= astart
 			if astart < bstart {
-				dst.iv = append(dst.iv, interval32{start: uint32(astart), last: uint32(bstart - 1)})
+				dst.iv = append(dst.iv, interval32{start: astart, last: bstart - 1})
 			}
 			if alast > blast {
 				astart = blast + 1
@@ -1625,7 +1625,7 @@ func (rc *runContainer32) AndNotRunContainer32(b *runContainer32) *runContainer3
 		}
 	}
 	if apos < alen {
-		dst.iv = append(dst.iv, interval32{start: uint32(astart), last: uint32(alast)})
+		dst.iv = append(dst.iv, interval32{start: astart, last: alast})
 		apos++
 		if apos < alen {
 			dst.iv = append(dst.iv, a.iv[apos:]...)

@@ -263,14 +263,14 @@ func newRunContainer16FromArray(arr *arrayContainer) *runContainer16 {
 	case n == 0:
 		// nothing more
 	case n == 1:
-		ah.m = append(ah.m, interval16{start: uint16(arr.content[0]), last: uint16(arr.content[0])})
+		ah.m = append(ah.m, interval16{start: arr.content[0], last: arr.content[0]})
 		ah.actuallyAdded++
 	default:
-		ah.runstart = uint16(arr.content[0])
+		ah.runstart = arr.content[0]
 		ah.actuallyAdded++
 		for i := 1; i < n; i++ {
-			prev = uint16(arr.content[i-1])
-			cur = uint16(arr.content[i])
+			prev = arr.content[i-1]
+			cur = arr.content[i]
 			ah.add(cur, prev, i)
 		}
 		ah.storeIval(ah.runstart, ah.runlen)
@@ -598,9 +598,9 @@ func (rc *runContainer16) indexOfIntervalAtOrAfter(key int64, startIndex int64) 
 
 	w, already, _ := rc.search(key, &rc.myOpts)
 	if already {
-		return int64(w)
+		return w
 	}
-	return int64(w) + 1
+	return w + 1
 }
 
 // intersect returns a new runContainer16 holding the
@@ -863,7 +863,7 @@ func (rc *runContainer16) search(key int64, opts *searchOptions) (whichInterval1
 	}
 
 	startIndex := int64(0)
-	endxIndex := int64(n)
+	endxIndex := n
 	if opts != nil {
 		startIndex = opts.startIndex
 
@@ -903,7 +903,7 @@ func (rc *runContainer16) search(key int64, opts *searchOptions) (whichInterval1
 			return key < rc.iv[i].start
 		})
 	*/
-	whichInterval16 = int64(below) - 1
+	whichInterval16 = below - 1
 
 	if below == n {
 		// all falses => key is >= start of all interval16s
@@ -953,7 +953,7 @@ func (rc *runContainer16) cardinality() int64 {
 	// have to compute it
 	var n int64
 	for _, p := range rc.iv {
-		n += int64(p.runlen())
+		n += p.runlen()
 	}
 	rc.card = n // cache it
 	return n
@@ -965,7 +965,7 @@ func (rc *runContainer16) AsSlice() []uint16 {
 	j := 0
 	for _, p := range rc.iv {
 		for i := p.start; i <= p.last; i++ {
-			s[j] = uint16(i)
+			s[j] = i
 			j++
 		}
 	}
@@ -1242,10 +1242,10 @@ func (rc *runContainer16) deleteAt(curIndex *int64, curPosInIndex *uint16, curSe
 }
 
 func have4Overlap16(astart, alast, bstart, blast int64) bool {
-	if int64(alast)+1 <= bstart {
+	if alast+1 <= bstart {
 		return false
 	}
-	return int64(blast)+1 > astart
+	return blast+1 > astart
 }
 
 func intersectWithLeftover16(astart, alast, bstart, blast int64) (isOverlap, isLeftoverA, isLeftoverB bool, leftoverstart int64, intersection interval16) {
@@ -1263,11 +1263,11 @@ func intersectWithLeftover16(astart, alast, bstart, blast int64) (isOverlap, isL
 	switch {
 	case blast < alast:
 		isLeftoverA = true
-		leftoverstart = int64(blast) + 1
+		leftoverstart = blast + 1
 		intersection.last = uint16(blast)
 	case alast < blast:
 		isLeftoverB = true
-		leftoverstart = int64(alast) + 1
+		leftoverstart = alast + 1
 		intersection.last = uint16(alast)
 	default:
 		// alast == blast
@@ -1592,7 +1592,7 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 		switch {
 		case alast < bstart:
 			// output the first run
-			dst.iv = append(dst.iv, interval16{start: uint16(astart), last: uint16(alast)})
+			dst.iv = append(dst.iv, interval16{start: astart, last: alast})
 			apos++
 			if apos < alen {
 				astart = a.iv[apos].start
@@ -1611,7 +1611,7 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 			// alast >= bstart
 			// blast >= astart
 			if astart < bstart {
-				dst.iv = append(dst.iv, interval16{start: uint16(astart), last: uint16(bstart - 1)})
+				dst.iv = append(dst.iv, interval16{start: astart, last: bstart - 1})
 			}
 			if alast > blast {
 				astart = blast + 1
@@ -1625,7 +1625,7 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 		}
 	}
 	if apos < alen {
-		dst.iv = append(dst.iv, interval16{start: uint16(astart), last: uint16(alast)})
+		dst.iv = append(dst.iv, interval16{start: astart, last: alast})
 		apos++
 		if apos < alen {
 			dst.iv = append(dst.iv, a.iv[apos:]...)
