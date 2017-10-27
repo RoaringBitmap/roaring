@@ -57,3 +57,31 @@ func (bc *bitmapContainer) asLittleEndianByteSlice() []byte {
 	}
 	return by
 }
+
+func byteSliceAsUint16Slice(slice []byte) []uint16 {
+	if len(slice)%2 != 0 {
+		panic("Slice size should be divisible by 2")
+	}
+
+	b := make([]uint16, len(slice), len(slice))
+
+	for i := range b {
+		b[i] = binary.LittleEndian.Uint16(slice[2*i:])
+	}
+
+	return b
+}
+
+func byteSliceAsUint64Slice(slice []byte) []uint64 {
+	if len(slice)%8 != 0 {
+		panic("Slice size should be divisible by 8")
+	}
+
+	b := make([]uint64, len(slice), len(slice))
+
+	for i := range b {
+		b[i] = binary.LittleEndian.Uint64(slice[8*i:])
+	}
+
+	return b
+}

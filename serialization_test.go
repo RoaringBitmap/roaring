@@ -4,6 +4,7 @@ package roaring
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"io/ioutil"
@@ -677,4 +678,152 @@ func TestSerializationRunContainer32Msgpack050(t *testing.T) {
 		}
 
 	})
+}
+
+func TestByteSliceAsUint16Slice(t *testing.T) {
+	t.Run("valid slice", func(t *testing.T) {
+		expectedSize := 2
+		slice := make([]byte, 4)
+		binary.LittleEndian.PutUint16(slice, 42)
+		binary.LittleEndian.PutUint16(slice[2:], 43)
+
+		uint16Slice := byteSliceAsUint16Slice(slice)
+
+		if len(uint16Slice) != expectedSize {
+			t.Errorf("Expected output slice length %d, got %d", expectedSize, len(uint16Slice))
+		}
+		if cap(uint16Slice) != expectedSize {
+			t.Errorf("Expected output slice cap %d, got %d", expectedSize, cap(uint16Slice))
+		}
+
+		if uint16Slice[0] != 42 || uint16Slice[1] != 43 {
+			t.Errorf("Unexpected value found in result slice")
+		}
+	})
+
+	t.Run("empty slice", func(t *testing.T) {
+		slice := make([]byte, 0, 0)
+
+		uint16Slice := byteSliceAsUint16Slice(slice)
+		if len(uint16Slice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(uint16Slice))
+		}
+		if cap(uint16Slice) != 0 {
+			t.Errorf("Expected output slice cap 0, got %d", len(uint16Slice))
+		}
+	})
+
+	t.Run("invalid slice size", func(t *testing.T) {
+		defer func() {
+			// All fine
+			_ = recover()
+		}()
+
+		slice := make([]byte, 1, 1)
+
+		byteSliceAsUint16Slice(slice)
+
+		t.Errorf("byteSliceAsUint16Slice should panic on invalid slice size")
+	})
+}
+
+func TestByteSliceAsUint64Slice(t *testing.T) {
+	t.Run("valid slice", func(t *testing.T) {
+		expectedSize := 2
+		slice := make([]byte, 16)
+		binary.LittleEndian.PutUint64(slice, 42)
+		binary.LittleEndian.PutUint64(slice[8:], 43)
+
+		uint64Slice := byteSliceAsUint64Slice(slice)
+
+		if len(uint64Slice) != expectedSize {
+			t.Errorf("Expected output slice length %d, got %d", expectedSize, len(uint64Slice))
+		}
+		if cap(uint64Slice) != expectedSize {
+			t.Errorf("Expected output slice cap %d, got %d", expectedSize, cap(uint64Slice))
+		}
+
+		if uint64Slice[0] != 42 || uint64Slice[1] != 43 {
+			t.Errorf("Unexpected value found in result slice")
+		}
+	})
+
+	t.Run("empty slice", func(t *testing.T) {
+		slice := make([]byte, 0, 0)
+
+		uint64Slice := byteSliceAsUint64Slice(slice)
+		if len(uint64Slice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(uint64Slice))
+		}
+		if len(uint64Slice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(uint64Slice))
+		}
+	})
+
+	t.Run("invalid slice size", func(t *testing.T) {
+		defer func() {
+			// All fine
+			_ = recover()
+		}()
+
+		slice := make([]byte, 1, 1)
+
+		byteSliceAsUint64Slice(slice)
+
+		t.Errorf("byteSliceAsUint64Slice should panic on invalid slice size")
+	})
+}
+
+func TestByteSliceAsInterval16Slice(t *testing.T) {
+	t.Run("valid slice", func(t *testing.T) {
+		expectedSize := 2
+		slice := make([]byte, 8)
+		binary.LittleEndian.PutUint16(slice, 10)
+		binary.LittleEndian.PutUint16(slice[2:], 2)
+		binary.LittleEndian.PutUint16(slice[4:], 20)
+		binary.LittleEndian.PutUint16(slice[6:], 2)
+
+		intervalSlice := byteSliceAsInterval16Slice(slice)
+
+		if len(intervalSlice) != expectedSize {
+			t.Errorf("Expected output slice length %d, got %d", expectedSize, len(intervalSlice))
+		}
+
+		if cap(intervalSlice) != expectedSize {
+			t.Errorf("Expected output slice cap %d, got %d", expectedSize, len(intervalSlice))
+		}
+
+		i1 := interval16{10, 12}
+		i2 := interval16{20, 22}
+		if intervalSlice[0] != i1 || intervalSlice[1] != i2 {
+			t.Errorf("Unexpected items in result slice")
+		}
+	})
+
+	t.Run("empty slice", func(t *testing.T) {
+		slice := make([]byte, 0, 0)
+
+		intervalSlice := byteSliceAsInterval16Slice(slice)
+		if len(intervalSlice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(intervalSlice))
+		}
+		if len(intervalSlice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(intervalSlice))
+		}
+	})
+
+	t.Run("invalid slice length", func(t *testing.T) {
+		defer func() {
+			// All fine
+			_ = recover()
+		}()
+
+		slice := make([]byte, 1, 1)
+
+		byteSliceAsInterval16Slice(slice)
+
+		t.Errorf("byteSliceAsInterval16Slice should panic on invalid slice size")
+
+	})
+
 }
