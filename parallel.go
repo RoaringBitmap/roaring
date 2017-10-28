@@ -57,7 +57,7 @@ func (h *bitmapContainerHeap) PopIncrementing() bitmapContainerKey {
 	if newIdx < k.bitmap.highlowcontainer.size() {
 		newKey := bitmapContainerKey{
 			k.bitmap,
-			k.bitmap.highlowcontainer.getWritableContainerAtIndex(newIdx),
+			k.bitmap.highlowcontainer.containers[newIdx],
 			k.bitmap.highlowcontainer.keys[newIdx],
 			newIdx,
 		}
@@ -98,7 +98,7 @@ func newBitmapContainerHeap(bitmaps ...*Bitmap) bitmapContainerHeap {
 		if !bitmap.IsEmpty() {
 			key := bitmapContainerKey{
 				bitmap,
-				bitmap.highlowcontainer.getWritableContainerAtIndex(0),
+				bitmap.highlowcontainer.containers[0],
 				bitmap.highlowcontainer.keys[0],
 				0,
 			}
