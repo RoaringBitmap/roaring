@@ -137,7 +137,8 @@ func (ra *roaringArray) appendContainer(key uint16, value container, mustCopyOnW
 }
 
 func (ra *roaringArray) appendWithoutCopy(sa roaringArray, startingindex int) {
-	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex], false)
+	mustCopyOnWrite := sa.needCopyOnWrite[startingindex]
+	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex], mustCopyOnWrite)
 }
 
 func (ra *roaringArray) appendCopy(sa roaringArray, startingindex int) {

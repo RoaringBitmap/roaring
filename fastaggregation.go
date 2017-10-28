@@ -97,6 +97,8 @@ main:
 					if !t.isFull() {
 						c1 = t.toBitmapContainer()
 					}
+				case *bitmapContainer:
+					c1 = x1.highlowcontainer.getWritableContainerAtIndex(pos1)
 				}
 
 				answer.highlowcontainer.appendContainer(s1, c1.lazyIOR(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
