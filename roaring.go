@@ -76,11 +76,17 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 // The format specification is available here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 //
-// The function makes the best effort attempt not to copy data
-// You should take care not to modify the buffer as it will
+// The provided byte array (buf) is expected to be a constant.
+// The function makes the best effort attempt not to copy data.
+// You should take care not to modify buff as it will
 // likely result in unexpected program behavior.
 //
-// Resulting bitmaps are effectively immutable (a copy-on-write marker is used)
+// Resulting bitmaps are effectively immutable in the following sense:
+// a copy-on-write marker is used so that when you modify the resulting
+// bitmap, copies of selected data (containers) are made.
+// You should *not* change the copy-on-write status of the resulting
+// bitmaps (SetCopyOnWrite).
+//
 func (rb *Bitmap) FromBuffer(buf []byte) (int64, error) {
 	return rb.highlowcontainer.fromBuffer(buf)
 }
@@ -1177,6 +1183,7 @@ func Flip(bm *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 // SetCopyOnWrite sets this bitmap to use copy-on-write so that copies are fast and memory conscious
 // if the parameter is true, otherwise we leave the default where hard copies are made
 // (copy-on-write requires extra care in a threaded context).
+// Calling SetCopyOnWrite(true) on a bitmap created with FromBuffer is unsafe.
 func (rb *Bitmap) SetCopyOnWrite(val bool) {
 	rb.highlowcontainer.copyOnWrite = val
 }

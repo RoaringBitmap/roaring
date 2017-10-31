@@ -103,6 +103,12 @@ func main() {
 
     rb3.Or(rb1)
 
+    // computes union of the three bitmaps in parallel using 4 workers  
+    ParOr(4, rb1, rb2, rb3)
+    // computes intersection of the three bitmaps in parallel using 4 workers  
+    ParAnd(4, rb1, rb2, rb3)
+
+
     // prints 1, 3, 4, 5, 1000
     i := rb3.Iterator()
     for i.HasNext() {
