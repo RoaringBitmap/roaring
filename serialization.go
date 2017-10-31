@@ -78,3 +78,29 @@ func (b *runContainer16) readFrom(stream io.Reader) (int, error) {
 	}
 	return 0, err
 }
+
+// Converts a byte slice to a interval16 slice.
+// The function assumes that the slice byte buffer is run container data
+// encoded according to Roaring Format Spec
+func byteSliceAsInterval16Slice(byteSlice []byte) []interval16 {
+	// Since interval16 is currently implemented as a start-last pair
+	// whereas the Roaring Spec Format says the data is serialized as start-length
+	// To compensate for this mismatch we have to copy the slice and re-calculate the values
+
+	if len(byteSlice)%4 != 0 {
+		panic("Slice size should be divisible by 4")
+	}
+
+	encSlice := byteSliceAsUint16Slice(byteSlice)
+
+	intervalSlice := make([]interval16, len(byteSlice)/4)
+
+	for i := range intervalSlice {
+		intervalSlice[i] = interval16{
+			start: encSlice[2*i],
+			last:  encSlice[2*i] + encSlice[i*2+1],
+		}
+	}
+
+	return intervalSlice
+}

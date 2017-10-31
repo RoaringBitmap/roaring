@@ -4,6 +4,7 @@ package roaring
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"io/ioutil"
@@ -677,4 +678,268 @@ func TestSerializationRunContainer32Msgpack050(t *testing.T) {
 		}
 
 	})
+}
+
+func TestByteSliceAsUint16Slice(t *testing.T) {
+	t.Run("valid slice", func(t *testing.T) {
+		expectedSize := 2
+		slice := make([]byte, 4)
+		binary.LittleEndian.PutUint16(slice, 42)
+		binary.LittleEndian.PutUint16(slice[2:], 43)
+
+		uint16Slice := byteSliceAsUint16Slice(slice)
+
+		if len(uint16Slice) != expectedSize {
+			t.Errorf("Expected output slice length %d, got %d", expectedSize, len(uint16Slice))
+		}
+		if cap(uint16Slice) != expectedSize {
+			t.Errorf("Expected output slice cap %d, got %d", expectedSize, cap(uint16Slice))
+		}
+
+		if uint16Slice[0] != 42 || uint16Slice[1] != 43 {
+			t.Errorf("Unexpected value found in result slice")
+		}
+	})
+
+	t.Run("empty slice", func(t *testing.T) {
+		slice := make([]byte, 0, 0)
+
+		uint16Slice := byteSliceAsUint16Slice(slice)
+		if len(uint16Slice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(uint16Slice))
+		}
+		if cap(uint16Slice) != 0 {
+			t.Errorf("Expected output slice cap 0, got %d", len(uint16Slice))
+		}
+	})
+
+	t.Run("invalid slice size", func(t *testing.T) {
+		defer func() {
+			// All fine
+			_ = recover()
+		}()
+
+		slice := make([]byte, 1, 1)
+
+		byteSliceAsUint16Slice(slice)
+
+		t.Errorf("byteSliceAsUint16Slice should panic on invalid slice size")
+	})
+}
+
+func TestByteSliceAsUint64Slice(t *testing.T) {
+	t.Run("valid slice", func(t *testing.T) {
+		expectedSize := 2
+		slice := make([]byte, 16)
+		binary.LittleEndian.PutUint64(slice, 42)
+		binary.LittleEndian.PutUint64(slice[8:], 43)
+
+		uint64Slice := byteSliceAsUint64Slice(slice)
+
+		if len(uint64Slice) != expectedSize {
+			t.Errorf("Expected output slice length %d, got %d", expectedSize, len(uint64Slice))
+		}
+		if cap(uint64Slice) != expectedSize {
+			t.Errorf("Expected output slice cap %d, got %d", expectedSize, cap(uint64Slice))
+		}
+
+		if uint64Slice[0] != 42 || uint64Slice[1] != 43 {
+			t.Errorf("Unexpected value found in result slice")
+		}
+	})
+
+	t.Run("empty slice", func(t *testing.T) {
+		slice := make([]byte, 0, 0)
+
+		uint64Slice := byteSliceAsUint64Slice(slice)
+		if len(uint64Slice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(uint64Slice))
+		}
+		if len(uint64Slice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(uint64Slice))
+		}
+	})
+
+	t.Run("invalid slice size", func(t *testing.T) {
+		defer func() {
+			// All fine
+			_ = recover()
+		}()
+
+		slice := make([]byte, 1, 1)
+
+		byteSliceAsUint64Slice(slice)
+
+		t.Errorf("byteSliceAsUint64Slice should panic on invalid slice size")
+	})
+}
+
+func TestByteSliceAsInterval16Slice(t *testing.T) {
+	t.Run("valid slice", func(t *testing.T) {
+		expectedSize := 2
+		slice := make([]byte, 8)
+		binary.LittleEndian.PutUint16(slice, 10)
+		binary.LittleEndian.PutUint16(slice[2:], 2)
+		binary.LittleEndian.PutUint16(slice[4:], 20)
+		binary.LittleEndian.PutUint16(slice[6:], 2)
+
+		intervalSlice := byteSliceAsInterval16Slice(slice)
+
+		if len(intervalSlice) != expectedSize {
+			t.Errorf("Expected output slice length %d, got %d", expectedSize, len(intervalSlice))
+		}
+
+		if cap(intervalSlice) != expectedSize {
+			t.Errorf("Expected output slice cap %d, got %d", expectedSize, len(intervalSlice))
+		}
+
+		i1 := interval16{10, 12}
+		i2 := interval16{20, 22}
+		if intervalSlice[0] != i1 || intervalSlice[1] != i2 {
+			t.Errorf("Unexpected items in result slice")
+		}
+	})
+
+	t.Run("empty slice", func(t *testing.T) {
+		slice := make([]byte, 0, 0)
+
+		intervalSlice := byteSliceAsInterval16Slice(slice)
+		if len(intervalSlice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(intervalSlice))
+		}
+		if len(intervalSlice) != 0 {
+			t.Errorf("Expected output slice length 0, got %d", len(intervalSlice))
+		}
+	})
+
+	t.Run("invalid slice length", func(t *testing.T) {
+		defer func() {
+			// All fine
+			_ = recover()
+		}()
+
+		slice := make([]byte, 1, 1)
+
+		byteSliceAsInterval16Slice(slice)
+
+		t.Errorf("byteSliceAsInterval16Slice should panic on invalid slice size")
+
+	})
+
+}
+
+func TestBitmap_FromBuffer(t *testing.T) {
+	t.Run("empty bitmap", func(t *testing.T) {
+		rb := NewBitmap()
+
+		buf := &bytes.Buffer{}
+		_, err := rb.WriteTo(buf)
+		if err != nil {
+			t.Fatalf("Failed writing")
+		}
+
+		newRb := NewBitmap()
+		newRb.FromBuffer(buf.Bytes())
+
+		if err != nil {
+			t.Errorf("Failed reading: %v", err)
+		}
+		if !rb.Equals(newRb) {
+			t.Errorf("Cannot retrieve serialized version; rb != newRb")
+		}
+	})
+
+	t.Run("basic bitmap of 7 elements", func(t *testing.T) {
+		rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
+
+		buf := &bytes.Buffer{}
+		_, err := rb.WriteTo(buf)
+		if err != nil {
+			t.Fatalf("Failed writing")
+		}
+
+		newRb := NewBitmap()
+		_, err = newRb.FromBuffer(buf.Bytes())
+		if err != nil {
+			t.Errorf("Failed reading")
+		}
+		if !rb.Equals(newRb) {
+			t.Errorf("Cannot retrieve serialized version; rb != newRb")
+		}
+	})
+
+	t.Run("bitmap with runs", func(t *testing.T) {
+		file := "testdata/bitmapwithruns.bin"
+
+		buf, err := ioutil.ReadFile(file)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+
+		rb := NewBitmap()
+		_, err = rb.FromBuffer(buf)
+
+		if err != nil {
+			t.Errorf("Failed reading %s: %s", file, err)
+		}
+		if rb.Stats().RunContainers != 3 {
+			t.Errorf("Bitmap should contain 3 run containers, was: %d", rb.Stats().RunContainers)
+		}
+		if rb.Stats().Containers != 11 {
+			t.Errorf("Bitmap should contain a total of 11 containers, was %d", rb.Stats().Containers)
+		}
+	})
+
+	t.Run("bitmap without runs", func(t *testing.T) {
+		fn := "testdata/bitmapwithruns.bin"
+
+		buf, err := ioutil.ReadFile(fn)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+
+		rb := NewBitmap()
+		_, err = rb.FromBuffer(buf)
+		if err != nil {
+			t.Errorf("Failed reading %s: %s", fn, err)
+		}
+	})
+
+	t.Run("all3.classic bitmap", func(t *testing.T) {
+		file := "testdata/all3.classic"
+
+		buf, err := ioutil.ReadFile(file)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+
+		rb := NewBitmap()
+		_, err = rb.FromBuffer(buf)
+		if err != nil {
+			t.Errorf("Failed reading %s: %s", file, err)
+		}
+	})
+
+	t.Run("marking all containers as requiring COW", func(t *testing.T) {
+		file := "testdata/bitmapwithruns.bin"
+
+		buf, err := ioutil.ReadFile(file)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+
+		rb := NewBitmap()
+		_, err = rb.FromBuffer(buf)
+
+		if err != nil {
+			t.Fatalf("Failed reading %s: %s", file, err)
+		}
+
+		for i, cow := range rb.highlowcontainer.needCopyOnWrite {
+			if !cow {
+				t.Errorf("Container at pos %d was not marked as needs-copy-on-write", i)
+			}
+		}
+	})
+
 }
