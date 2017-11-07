@@ -819,7 +819,7 @@ func (bc *bitmapContainer) loadData(arrayContainer *arrayContainer) {
 }
 
 func (bc *bitmapContainer) toArrayContainer() *arrayContainer {
-	ac := newArrayContainerCapacity(bc.cardinality)
+	ac := &arrayContainer{}
 	ac.loadData(bc)
 	return ac
 }
