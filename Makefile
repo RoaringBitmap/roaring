@@ -29,8 +29,8 @@ help:
 
 # Alias for help target
 all: help
-test: 
-	go test 
+test:
+	go test
 	go test -race -run TestConcurrent*
 # Format the source code
 format:
@@ -55,18 +55,21 @@ lint:
 
 
 # Alias to run all quality-assurance checks
-qa: fmtcheck test vet lint    
+qa: fmtcheck test vet lint
 
 # --- INSTALL ---
 
 # Get the dependencies
 deps:
 	GOPATH=$(GOPATH) go get github.com/smartystreets/goconvey/convey
-	GOPATH=$(GOPATH) go get github.com/willf/bitset 
+	GOPATH=$(GOPATH) go get github.com/willf/bitset
 	GOPATH=$(GOPATH) go get github.com/golang/lint/golint
 	GOPATH=$(GOPATH) go get github.com/mschoch/smat
 	GOPATH=$(GOPATH) go get github.com/dvyukov/go-fuzz/go-fuzz
 	GOPATH=$(GOPATH) go get github.com/dvyukov/go-fuzz/go-fuzz-build
+	GOPATH=$(GOPATH) go get github.com/glycerine/go-unsnap-stream
+	GOPATH=$(GOPATH) go get github.com/philhofer/fwd
+	GOPATH=$(GOPATH) go get github.com/jtolds/gls
 
 fuzz:
 	go test -tags=gofuzz -run=TestGenerateSmatCorpus
@@ -97,7 +100,7 @@ ser: rle
 	go generate
 
 cover:
-	go test -coverprofile=coverage.out 
+	go test -coverprofile=coverage.out
 	go tool cover -html=coverage.out
 
 fetch-real-roaring-datasets:

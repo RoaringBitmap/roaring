@@ -335,6 +335,22 @@ func TestBitmap(t *testing.T) {
 
 		So(rb1.Contains(10), ShouldBeTrue)
 	})
+	Convey("Test run array not equal", t, func() {
+		rb := NewBitmap()
+		rb2 := NewBitmap()
+		rb.AddRange(0, 1<<16)
+		for i := 0; i < 10; i ++ {
+			rb2.AddInt(i)
+		}
+		So(rb.GetCardinality(), ShouldEqual, 1<<16)
+		So(rb2.GetCardinality(), ShouldEqual, 10)
+		So(rb.Equals(rb2), ShouldEqual, false)
+		rb.RunOptimize()
+		rb2.RunOptimize()
+		So(rb.GetCardinality(), ShouldEqual, 1<<16)
+		So(rb2.GetCardinality(), ShouldEqual, 10)
+		So(rb.Equals(rb2), ShouldEqual, false)
+	})
 
 	Convey("Test ANDNOT4", t, func() {
 		rb := NewBitmap()
