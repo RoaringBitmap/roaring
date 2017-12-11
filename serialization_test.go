@@ -793,8 +793,8 @@ func TestByteSliceAsInterval16Slice(t *testing.T) {
 			t.Errorf("Expected output slice cap %d, got %d", expectedSize, len(intervalSlice))
 		}
 
-		i1 := interval16{10, 12}
-		i2 := interval16{20, 22}
+		i1 := newInterval16Range(10, 12)
+		i2 := newInterval16Range(20, 22)
 		if intervalSlice[0] != i1 || intervalSlice[1] != i2 {
 			t.Errorf("Unexpected items in result slice")
 		}

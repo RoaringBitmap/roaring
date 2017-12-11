@@ -201,6 +201,7 @@ func (rc *runContainer16) iaddRange(firstOfRange, endx int) container {
 		{
 			start: uint16(firstOfRange),
 			last:  uint16(endx - 1),
+			length: uint16(endx - 1 - firstOfRange),
 		},
 	})
 	*rc = *rc.union(addme)
@@ -214,7 +215,7 @@ func (rc *runContainer16) iremoveRange(firstOfRange, endx int) container {
 			" nothing to do.", firstOfRange, endx))
 		//return rc
 	}
-	x := interval16{start: uint16(firstOfRange), last: uint16(endx - 1)}
+	x := interval16{start: uint16(firstOfRange), last: uint16(endx - 1), length: uint16(endx - 1 - firstOfRange)}
 	rc.isubtract(x)
 	return rc
 }
@@ -256,7 +257,7 @@ func (rc *runContainer16) Not(firstOfRange, endx int) *runContainer16 {
 
 	nota := a.invert()
 
-	bs := []interval16{{start: uint16(firstOfRange), last: uint16(endx - 1)}}
+	bs := []interval16{{start: uint16(firstOfRange), last: uint16(endx - 1), length: uint16(endx - 1 - firstOfRange)}}
 	b := newRunContainer16TakeOwnership(bs)
 
 	notAintersectB := nota.intersect(b)

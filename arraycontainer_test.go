@@ -261,7 +261,9 @@ func TestArrayContainerIaddRangeNearMax068(t *testing.T) {
 
 	Convey("arrayContainer iaddRange should work near MaxUint16", t, func() {
 
-		iv := []interval16{{65525, 65527}, {65530, 65530}, {65534, 65535}}
+		iv := []interval16{newInterval16Range(65525, 65527),
+			newInterval16Range(65530, 65530),
+			newInterval16Range(65534, 65535)}
 		rc := newRunContainer16TakeOwnership(iv)
 
 		ac2 := rc.toArrayContainer()
@@ -283,7 +285,9 @@ func TestArrayContainerEtc070(t *testing.T) {
 
 	Convey("arrayContainer rarely exercised code paths should get some coverage", t, func() {
 
-		iv := []interval16{{65525, 65527}, {65530, 65530}, {65534, 65535}}
+		iv := []interval16{newInterval16Range(65525, 65527),
+			newInterval16Range(65530, 65530),
+			newInterval16Range(65534, 65535)}
 		rc := newRunContainer16TakeOwnership(iv)
 		ac := rc.toArrayContainer()
 

@@ -809,26 +809,26 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 	Convey("runContainer `subtract` operation removes an interval in-place", t, func() {
 		// basics
 
-		i22 := interval16{start: 2, last: 2}
+		i22 := newInterval16Range(2, 2)
 		left, _ := i22.subtractInterval(i22)
 		So(len(left), ShouldResemble, 0)
 
-		v := interval16{start: 1, last: 6}
-		left, _ = v.subtractInterval(interval16{start: 3, last: 4})
+		v := newInterval16Range(1, 6)
+		left, _ = v.subtractInterval(newInterval16Range(3, 4))
 		So(len(left), ShouldResemble, 2)
 		So(left[0].start, ShouldEqual, 1)
 		So(left[0].last, ShouldEqual, 2)
 		So(left[1].start, ShouldEqual, 5)
 		So(left[1].last, ShouldEqual, 6)
 
-		v = interval16{start: 1, last: 6}
-		left, _ = v.subtractInterval(interval16{start: 4, last: 10})
+		v = newInterval16Range(1, 6)
+		left, _ = v.subtractInterval(newInterval16Range(4, 10))
 		So(len(left), ShouldResemble, 1)
 		So(left[0].start, ShouldEqual, 1)
 		So(left[0].last, ShouldEqual, 3)
 
-		v = interval16{start: 5, last: 10}
-		left, _ = v.subtractInterval(interval16{start: 0, last: 7})
+		v = newInterval16Range(5, 10)
+		left, _ = v.subtractInterval(newInterval16Range(0, 7))
 		So(len(left), ShouldResemble, 1)
 		So(left[0].start, ShouldEqual, 8)
 		So(left[0].last, ShouldEqual, 10)
@@ -1612,9 +1612,10 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 		p("seed is %v", seed)
 		rand.Seed(seed)
 
+		srang := newInterval16Range(MaxUint16-100, MaxUint16)
 		trials := []trial{
 			{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100},
-			{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100, srang: &interval16{MaxUint16 - 100, MaxUint16}}}
+			{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100, srang: &srang}}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {

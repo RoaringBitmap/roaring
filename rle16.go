@@ -57,21 +57,38 @@ type runContainer16 struct {
 }
 
 // interval16 is the internal to runContainer16
-// structure that maintains the individual [Start, last]
+// structure that maintains the individual [start, last]
 // closed intervals.
 type interval16 struct {
-	start uint16
-	last  uint16
+	start  uint16
+	last   uint16
+	length uint16 // length minus 1
+}
+
+func newInterval16Range(start, last uint16) interval16 {
+	if last < start {
+		panic("last cannot be smaller than start")
+	}
+
+	return interval16{
+		start,
+		last,
+		last - start,
+	}
 }
 
 // runlen returns the count of integers in the interval.
 func (iv interval16) runlen() int64 {
-	return 1 + int64(iv.last) - int64(iv.start)
+	return int64(iv.length) + 1
+}
+
+func (iv interval16) end() uint16 {
+	return iv.start + iv.length
 }
 
 // String produces a human viewable string of the contents.
 func (iv interval16) String() string {
-	return fmt.Sprintf("[%d, %d]", iv.start, iv.last)
+	return fmt.Sprintf("[%d, %d]", iv.start, iv.length)
 }
 
 func ivalString16(iv []interval16) string {
@@ -117,7 +134,7 @@ type addHelper16 struct {
 }
 
 func (ah *addHelper16) storeIval(runstart, runlen uint16) {
-	mi := interval16{start: runstart, last: runstart + runlen}
+	mi := interval16{start: runstart, last: runstart + runlen, length: runlen}
 	ah.m = append(ah.m, mi)
 }
 
@@ -145,7 +162,7 @@ func (ah *addHelper16) add(cur, prev uint16, i int) {
 // newRunContainerRange makes a new container made of just the specified closed interval [rangestart,rangelast]
 func newRunContainer16Range(rangestart uint16, rangelast uint16) *runContainer16 {
 	rc := &runContainer16{}
-	rc.iv = append(rc.iv, interval16{start: rangestart, last: rangelast})
+	rc.iv = append(rc.iv, newInterval16Range(rangestart, rangelast))
 	return rc
 }
 
@@ -239,6 +256,7 @@ func newRunContainer16FromBitmapContainer(bc *bitmapContainer) *runContainer16 {
 		runEnd = localRunEnd + longCtr*64
 		rc.iv[runCount].start = uint16(runStart)
 		rc.iv[runCount].last = uint16(runEnd) - 1
+		rc.iv[runCount].length = uint16(runEnd) - 1 - uint16(runStart)
 		runCount++
 		// now, zero out everything right of runEnd.
 		curWord = curWordWith1s & (curWordWith1s + 1)
@@ -263,7 +281,7 @@ func newRunContainer16FromArray(arr *arrayContainer) *runContainer16 {
 	case n == 0:
 		// nothing more
 	case n == 1:
-		ah.m = append(ah.m, interval16{start: arr.content[0], last: arr.content[0]})
+		ah.m = append(ah.m, newInterval16Range(arr.content[0], arr.content[0]))
 		ah.actuallyAdded++
 	default:
 		ah.runstart = arr.content[0]
@@ -301,10 +319,13 @@ func (rc *runContainer16) set(alreadySorted bool, vals ...uint16) {
 // contiguous and so can be merged into
 // a single interval.
 func canMerge16(a, b interval16) bool {
-	if int64(a.last)+1 < int64(b.start) {
+	alast := a.end()
+	blast := b.end()
+
+	if int64(alast)+1 < int64(b.start) {
 		return false
 	}
-	return int64(b.last)+1 >= int64(a.start)
+	return int64(blast)+1 >= int64(a.start)
 }
 
 // haveOverlap differs from canMerge in that
@@ -325,16 +346,20 @@ func mergeInterval16s(a, b interval16) (res interval16) {
 	if !canMerge16(a, b) {
 		panic(fmt.Sprintf("cannot merge %#v and %#v", a, b))
 	}
+
 	if b.start < a.start {
 		res.start = b.start
 	} else {
 		res.start = a.start
 	}
-	if b.last > a.last {
+
+	if b.end() > a.end() {
 		res.last = b.last
 	} else {
 		res.last = a.last
 	}
+
+	res.length = res.last - res.start
 	return
 }
 
@@ -351,11 +376,18 @@ func intersectInterval16s(a, b interval16) (res interval16, isEmpty bool) {
 	} else {
 		res.start = a.start
 	}
-	if b.last < a.last {
-		res.last = b.last
+
+	bEnd := b.start + b.length + 1
+	aEnd := a.start + a.length + 1
+	var resEnd uint16
+
+	if bEnd < aEnd {
+		resEnd = b.last
 	} else {
-		res.last = a.last
+		resEnd = a.last
 	}
+	res.length = resEnd - res.start
+	res.last = resEnd
 	return
 }
 
@@ -633,10 +665,8 @@ func (rc *runContainer16) intersect(b *runContainer16) *runContainer16 {
 	var leftoverstart int64
 	var isOverlap, isLeftoverA, isLeftoverB bool
 	var done bool
-	pass := 0
 toploop:
 	for acuri < numa && bcuri < numb {
-		pass++
 
 		isOverlap, isLeftoverA, isLeftoverB, leftoverstart, intersection = intersectWithLeftover16(astart, int64(a.iv[acuri].last), bstart, int64(b.iv[bcuri].last))
 
@@ -1049,6 +1079,7 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 		if n > 0 {
 			if rc.iv[0].start == k+1 {
 				rc.iv[0].start = k
+				rc.iv[0].length++
 				return
 			}
 		}
@@ -1061,6 +1092,7 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	if index >= n-1 {
 		if int64(rc.iv[n-1].last)+1 == k64 {
 			rc.iv[n-1].last++
+			rc.iv[n-1].length++
 			return
 		}
 		rc.iv = append(rc.iv, interval16{start: k, last: k})
@@ -1081,6 +1113,7 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	if int64(rc.iv[left].last)+1 == k64 && int64(rc.iv[right].start) == k64+1 {
 		// fuse into left
 		rc.iv[left].last = rc.iv[right].last
+		rc.iv[left].length = rc.iv[right].last - rc.iv[left].start
 		// remove redundant right
 		rc.iv = append(rc.iv[:left+1], rc.iv[right+1:]...)
 		return
@@ -1090,6 +1123,7 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	if int64(rc.iv[left].last)+1 == k64 {
 		// yes
 		rc.iv[left].last++
+		rc.iv[left].length++
 		return
 	}
 
@@ -1097,6 +1131,7 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	if int64(rc.iv[right].start) == k64+1 {
 		// yes
 		rc.iv[right].start = k
+		rc.iv[right].length++
 		return
 	}
 
@@ -1260,19 +1295,24 @@ func intersectWithLeftover16(astart, alast, bstart, blast int64) (isOverlap, isL
 	} else {
 		intersection.start = uint16(astart)
 	}
+
 	switch {
 	case blast < alast:
 		isLeftoverA = true
 		leftoverstart = blast + 1
+		intersection.length = uint16(blast) - intersection.start
 		intersection.last = uint16(blast)
 	case alast < blast:
 		isLeftoverB = true
 		leftoverstart = alast + 1
-		intersection.last = uint16(alast)
+		intersection.length = uint16(alast) - intersection.start
 	default:
 		// alast == blast
-		intersection.last = uint16(alast)
+		intersection.length = uint16(alast) - intersection.start
 	}
+
+	// fixup last
+	intersection.last = intersection.end()
 
 	return
 }
@@ -1331,15 +1371,15 @@ func (rc *runContainer16) invertlastInterval(origin uint16, lastIdx int) []inter
 		if cur.start == origin {
 			return nil // empty container
 		}
-		return []interval16{{start: origin, last: cur.start - 1}}
+		return []interval16{{start: origin, last: cur.start - 1, length: cur.start - 1 - origin}}
 	}
 	if cur.start == origin {
-		return []interval16{{start: cur.last + 1, last: MaxUint16}}
+		return []interval16{{start: cur.last + 1, last: MaxUint16, length: MaxUint16 - cur.last + 1}}
 	}
 	// invert splits
 	return []interval16{
-		{start: origin, last: cur.start - 1},
-		{start: cur.last + 1, last: MaxUint16},
+		newInterval16Range(origin, cur.start - 1),
+		newInterval16Range(cur.last + 1, MaxUint16),
 	}
 }
 
@@ -1351,7 +1391,7 @@ func (rc *runContainer16) invert() *runContainer16 {
 	var m []interval16
 	switch ni {
 	case 0:
-		return &runContainer16{iv: []interval16{{0, MaxUint16}}}
+		return &runContainer16{iv: []interval16{newInterval16Range(0, MaxUint16)}}
 	case 1:
 		return &runContainer16{iv: rc.invertlastInterval(0, 0)}
 	}
@@ -1372,7 +1412,7 @@ func (rc *runContainer16) invert() *runContainer16 {
 		//
 		// Now: we add interval (a); but if (a) is empty, for cur.start==0, we skip it.
 		if cur.start > 0 {
-			m = append(m, interval16{start: uint16(invstart), last: cur.start - 1})
+			m = append(m, newInterval16Range(uint16(invstart), cur.start - 1))
 		}
 		invstart = int64(cur.last + 1)
 	}
@@ -1402,13 +1442,13 @@ func (iv interval16) subtractInterval(del interval16) (left []interval16, delcou
 
 	switch {
 	case isect.start > iv.start && isect.last < iv.last:
-		new0 := interval16{start: iv.start, last: isect.start - 1}
-		new1 := interval16{start: isect.last + 1, last: iv.last}
+		new0 := newInterval16Range(iv.start, isect.start-1)
+		new1 := newInterval16Range(isect.last+1, iv.last)
 		return []interval16{new0, new1}, isect.runlen()
 	case isect.start == iv.start:
-		return []interval16{{start: isect.last + 1, last: iv.last}}, isect.runlen()
+		return []interval16{newInterval16Range(isect.last + 1, iv.last)}, isect.runlen()
 	default:
-		return []interval16{{start: iv.start, last: isect.start - 1}}, isect.runlen()
+		return []interval16{newInterval16Range(iv.start, isect.start - 1)}, isect.runlen()
 	}
 }
 
@@ -1422,8 +1462,9 @@ func (rc *runContainer16) isubtract(del interval16) {
 
 	_, isEmpty := intersectInterval16s(
 		interval16{
-			start: rc.iv[0].start,
-			last:  rc.iv[n-1].last,
+			start:  rc.iv[0].start,
+			last:   rc.iv[n-1].last,
+			length: rc.iv[n-1].last - rc.iv[0].start,
 		}, del)
 	if isEmpty {
 		return // done
@@ -1592,7 +1633,7 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 		switch {
 		case alast < bstart:
 			// output the first run
-			dst.iv = append(dst.iv, interval16{start: astart, last: alast})
+			dst.iv = append(dst.iv, interval16{start: astart, last: alast, length: alast - astart})
 			apos++
 			if apos < alen {
 				astart = a.iv[apos].start
@@ -1611,7 +1652,7 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 			// alast >= bstart
 			// blast >= astart
 			if astart < bstart {
-				dst.iv = append(dst.iv, interval16{start: astart, last: bstart - 1})
+				dst.iv = append(dst.iv, interval16{start: astart, last: bstart - 1, length: bstart - 1 - astart})
 			}
 			if alast > blast {
 				astart = blast + 1
@@ -1625,7 +1666,7 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 		}
 	}
 	if apos < alen {
-		dst.iv = append(dst.iv, interval16{start: astart, last: alast})
+		dst.iv = append(dst.iv, interval16{start: astart, last: alast, length: alast - astart})
 		apos++
 		if apos < alen {
 			dst.iv = append(dst.iv, a.iv[apos:]...)
