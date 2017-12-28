@@ -81,7 +81,7 @@ func TestRleRunIterator16(t *testing.T) {
 			So(it.hasNext(), ShouldBeFalse)
 		}
 		{
-			rc := newRunContainer16TakeOwnership([]interval16{{start: 4, last: 4}})
+			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 4)})
 			So(rc.cardinality(), ShouldEqual, 1)
 			it := rc.newRunIterator16()
 			So(it.hasNext(), ShouldBeTrue)
@@ -151,9 +151,8 @@ func TestRleRunIterator16(t *testing.T) {
 			So(it.next(), ShouldEqual, uint16(MaxUint16))
 			So(it.hasNext(), ShouldEqual, false)
 
-			rc2 := newRunContainer16TakeOwnership([]interval16{
-				{start: 0, last: MaxUint16},
-			})
+			newInterval16Range(0, MaxUint16)
+			rc2 := newRunContainer16TakeOwnership([]interval16{newInterval16Range(0, MaxUint16)})
 
 			p("union with a full [0,2^16-1] container should yield that same single interval run container")
 			rc2 = rc2.union(rc)
@@ -264,7 +263,8 @@ func TestRleIntersection16(t *testing.T) {
 			So(isect.contains(6), ShouldBeTrue)
 			So(isect.contains(8), ShouldBeTrue)
 
-			d := newRunContainer16TakeOwnership([]interval16{{start: 0, last: MaxUint16}})
+			newInterval16Range(0, MaxUint16)
+			d := newRunContainer16TakeOwnership([]interval16{newInterval16Range(0, MaxUint16)})
 
 			isect = isect.intersect(d)
 			p("isect is %v", isect)
@@ -529,9 +529,9 @@ func TestRleAndOrXor16(t *testing.T) {
 	Convey("RunContainer And, Or, Xor tests", t, func() {
 		{
 			rc := newRunContainer16TakeOwnership([]interval16{
-				{start: 0, last: 0},
-				{start: 2, last: 2},
-				{start: 4, last: 4},
+				newInterval16Range(0, 0),
+				newInterval16Range(2, 2),
+				newInterval16Range(4, 4),
 			})
 			b0 := NewBitmap()
 			b0.Add(2)

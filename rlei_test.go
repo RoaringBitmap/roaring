@@ -817,21 +817,21 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 		left, _ = v.subtractInterval(newInterval16Range(3, 4))
 		So(len(left), ShouldResemble, 2)
 		So(left[0].start, ShouldEqual, 1)
-		So(left[0].last, ShouldEqual, 2)
+		So(left[0].last(), ShouldEqual, 2)
 		So(left[1].start, ShouldEqual, 5)
-		So(left[1].last, ShouldEqual, 6)
+		So(left[1].last(), ShouldEqual, 6)
 
 		v = newInterval16Range(1, 6)
 		left, _ = v.subtractInterval(newInterval16Range(4, 10))
 		So(len(left), ShouldResemble, 1)
 		So(left[0].start, ShouldEqual, 1)
-		So(left[0].last, ShouldEqual, 3)
+		So(left[0].last(), ShouldEqual, 3)
 
 		v = newInterval16Range(5, 10)
 		left, _ = v.subtractInterval(newInterval16Range(0, 7))
 		So(len(left), ShouldResemble, 1)
 		So(left[0].start, ShouldEqual, 8)
-		So(left[0].last, ShouldEqual, 10)
+		So(left[0].last(), ShouldEqual, 10)
 
 		seed := int64(42)
 		p("seed is %v", seed)
@@ -887,7 +887,7 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 				it := rcb.newRunIterator16()
 				for it.hasNext() {
 					nx := it.next()
-					rc.isubtract(interval16{start: nx, last: nx})
+					rc.isubtract(newInterval16Range(nx, nx))
 				}
 
 				// also check full interval subtraction
@@ -1767,11 +1767,11 @@ func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *
 	if tr.srang != nil {
 		samp = *tr.srang
 	} else {
-		samp.start = 0
 		if n-1 > MaxUint16 {
 			panic(fmt.Errorf("n out of range: %v", n))
 		}
-		samp.last = uint16(n - 1)
+		samp.start = 0
+		samp.length = uint16(n - 2)
 	}
 
 	draw := int(float64(n) * tr.percentFill)
