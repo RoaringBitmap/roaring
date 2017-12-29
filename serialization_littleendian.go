@@ -95,3 +95,19 @@ func byteSliceAsUint64Slice(slice []byte) []uint64 {
 	// return it
 	return *(*[]uint64)(unsafe.Pointer(&header))
 }
+
+func byteSliceAsInterval16Slice(slice []byte) []interval16 {
+	if len(slice)%4 != 0 {
+		panic("Slice size should be divisible by 4")
+	}
+
+	// make a new slice header
+	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
+
+	// update its capacity and length
+	header.Len /= 4
+	header.Cap /= 4
+
+	// return it
+	return *(*[]interval16)(unsafe.Pointer(&header))
+}
