@@ -539,7 +539,7 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 
 	cookie := binary.LittleEndian.Uint32(buf)
 	pos += 4
-	var size uint32
+	var size uint32 // number of containers
 	haveRunContainers := false
 	var isRun *bitmapContainer
 
@@ -550,7 +550,7 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 
 		// create is-run-container bitmap
 		bytesToRead := (int(size) + 7) / 8
-		by := buf[pos: pos+bytesToRead]
+		by := buf[pos : pos+bytesToRead]
 		pos += bytesToRead
 		isRun = newBitmapContainer()
 		i := 0
@@ -572,12 +572,17 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 
 	// descriptive header
 	// keycard - is {key, cardinality} tuple slice
-	keycard := byteSliceAsUint16Slice(buf[pos: pos+2*2*int(size)])
+	keycard := byteSliceAsUint16Slice(buf[pos : pos+2*2*int(size)])
 	pos += 2 * 2 * int(size)
 
 	if !haveRunContainers || size >= noOffsetThreshold {
 		pos += 4 * int(size)
 	}
+
+	// Allocate slices upfront as number of containers is known
+	ra.containers = make([]container, 0, size)
+	ra.keys = make([]uint16, 0, size)
+	ra.needCopyOnWrite = make([]bool, 0, size)
 
 	for i := uint32(0); i < size; i++ {
 		key := uint16(keycard[2*i])
@@ -587,7 +592,7 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 			nr := binary.LittleEndian.Uint16(buf[pos:])
 			pos += 2
 			nb := runContainer16{
-				iv:   byteSliceAsInterval16Slice(buf[pos: pos+int(nr)*4]),
+				iv:   byteSliceAsInterval16Slice(buf[pos : pos+int(nr)*4]),
 				card: int64(card),
 			}
 			pos += int(nr) * 4
@@ -596,14 +601,14 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 			// bitmap container
 			nb := bitmapContainer{
 				cardinality: card,
-				bitmap:      byteSliceAsUint64Slice(buf[pos:pos+arrayDefaultMaxSize*2]),
+				bitmap:      byteSliceAsUint64Slice(buf[pos : pos+arrayDefaultMaxSize*2]),
 			}
 			pos += arrayDefaultMaxSize * 2
 			ra.appendContainer(key, &nb, true)
 		} else {
 			// array container
 			nb := arrayContainer{
-				byteSliceAsUint16Slice(buf[pos:pos+card*2]),
+				byteSliceAsUint16Slice(buf[pos : pos+card*2]),
 			}
 			pos += card * 2
 			ra.appendContainer(key, &nb, true)
