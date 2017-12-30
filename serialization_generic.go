@@ -47,6 +47,7 @@ func (b *bitmapContainer) readFrom(stream io.Reader) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	b.computeCardinality()
 	return 8 * len(b.bitmap), nil
 }
 
