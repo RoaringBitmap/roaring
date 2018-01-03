@@ -517,17 +517,9 @@ func (ac *arrayContainer) iand(a container) container {
 		if x.isFull() {
 			return ac.clone()
 		}
-		return ac.iandRun16(x)
+		return x.andArray(ac)
 	}
 	panic("unsupported container type")
-}
-
-func (ac *arrayContainer) iandRun16(rc *runContainer16) container {
-	bc1 := ac.toBitmapContainer()
-	bc2 := newBitmapContainerFromRun(rc)
-	bc2.iandBitmap(bc1)
-	*ac = *newArrayContainerFromBitmap(bc2)
-	return ac
 }
 
 func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) container {
