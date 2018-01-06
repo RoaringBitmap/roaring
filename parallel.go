@@ -3,6 +3,7 @@ package roaring
 import (
 	"container/heap"
 	"runtime"
+	"sync"
 )
 
 var defaultWorkerCount = runtime.NumCPU()
@@ -42,7 +43,7 @@ func (h *bitmapContainerHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	x := old[n-1]
-	*h = old[0 : n-1]
+	*h = old[0: n-1]
 	return x
 }
 
@@ -50,38 +51,39 @@ func (h bitmapContainerHeap) Peek() bitmapContainerKey {
 	return h[0]
 }
 
-func (h *bitmapContainerHeap) PopIncrementing() bitmapContainerKey {
+func (h *bitmapContainerHeap) popIncrementing() (key uint16, container container) {
 	k := h.Peek()
+	key = k.key
+	container = k.container
 
 	newIdx := k.idx + 1
 	if newIdx < k.bitmap.highlowcontainer.size() {
-		newKey := bitmapContainerKey{
+		k = bitmapContainerKey{
 			k.bitmap,
 			k.bitmap.highlowcontainer.containers[newIdx],
 			k.bitmap.highlowcontainer.keys[newIdx],
 			newIdx,
 		}
-		(*h)[0] = newKey
+		(*h)[0] = k
 		heap.Fix(h, 0)
 	} else {
 		heap.Pop(h)
 	}
-	return k
+
+	return
 }
 
-func (h *bitmapContainerHeap) PopNextContainers() multipleContainers {
+func (h *bitmapContainerHeap) Next(containers []container) multipleContainers {
 	if h.Len() == 0 {
 		return multipleContainers{}
 	}
 
-	containers := make([]container, 0, 4)
-	bk := h.PopIncrementing()
-	containers = append(containers, bk.container)
-	key := bk.key
+	key, container := h.popIncrementing()
+	containers = append(containers, container)
 
 	for h.Len() > 0 && key == h.Peek().key {
-		bk = h.PopIncrementing()
-		containers = append(containers, bk.container)
+		_, container = h.popIncrementing()
+		containers = append(containers, container)
 	}
 
 	return multipleContainers{
@@ -182,6 +184,7 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 // where the parameter "parallelism" determines how many workers are to be used
 // (if it is set to 0, a default number of workers is chosen)
 func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
+
 	bitmapCount := len(bitmaps)
 	if bitmapCount == 0 {
 		return NewBitmap()
@@ -200,6 +203,12 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	resultChan := make(chan keyedContainer, 32)
 	expectedKeysChan := make(chan int)
 
+	pool := sync.Pool{
+		New: func() interface{} {
+			return make([]container, 0, len(bitmaps))
+		},
+	}
+
 	orFunc := func() {
 		// Assumes only structs with >=2 containers are passed
 		for input := range inputChan {
@@ -214,6 +223,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 				input.idx,
 			}
 			resultChan <- kx
+			pool.Put(input.containers[:0])
 		}
 	}
 
@@ -225,13 +235,14 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 
 	idx := 0
 	for h.Len() > 0 {
-		ck := h.PopNextContainers()
+		ck := h.Next(pool.Get().([]container))
 		if len(ck.containers) == 1 {
 			resultChan <- keyedContainer{
 				ck.key,
 				ck.containers[0],
 				idx,
 			}
+			pool.Put(ck.containers[:0])
 		} else {
 			ck.idx = idx
 			inputChan <- ck
@@ -304,7 +315,7 @@ func ParAnd(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 
 	idx := 0
 	for h.Len() > 0 {
-		ck := h.PopNextContainers()
+		ck := h.Next(make([]container, 0, 4))
 		if len(ck.containers) == bitmapCount {
 			ck.idx = idx
 			inputChan <- ck
