@@ -342,7 +342,7 @@ func TestBitmap(t *testing.T) {
 		rb := NewBitmap()
 		rb2 := NewBitmap()
 		rb.AddRange(0, 1<<16)
-		for i := 0; i < 10; i ++ {
+		for i := 0; i < 10; i++ {
 			rb2.AddInt(i)
 		}
 		So(rb.GetCardinality(), ShouldEqual, 1<<16)
