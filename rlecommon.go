@@ -31,7 +31,6 @@ const MaxUint16 = 65535
 // prior knowledge of (mostly lower) bounds. This is used by Union
 // and Intersect.
 type searchOptions struct {
-
 	// start here instead of at 0
 	startIndex int64
 
@@ -105,7 +104,8 @@ type trial struct {
 func (rc *runContainer16) And(b *Bitmap) *Bitmap {
 	out := NewBitmap()
 	for _, p := range rc.iv {
-		for i := p.start; i <= p.last; i++ {
+		plast := p.last()
+		for i := p.start; i <= plast; i++ {
 			if b.Contains(uint32(i)) {
 				out.Add(uint32(i))
 			}
@@ -118,7 +118,8 @@ func (rc *runContainer16) And(b *Bitmap) *Bitmap {
 func (rc *runContainer16) Xor(b *Bitmap) *Bitmap {
 	out := b.Clone()
 	for _, p := range rc.iv {
-		for v := p.start; v <= p.last; v++ {
+		plast := p.last()
+		for v := p.start; v <= plast; v++ {
 			w := uint32(v)
 			if out.Contains(w) {
 				out.RemoveRange(uint64(w), uint64(w+1))
@@ -134,7 +135,8 @@ func (rc *runContainer16) Xor(b *Bitmap) *Bitmap {
 func (rc *runContainer16) Or(b *Bitmap) *Bitmap {
 	out := b.Clone()
 	for _, p := range rc.iv {
-		for v := p.start; v <= p.last; v++ {
+		plast := p.last()
+		for v := p.start; v <= plast; v++ {
 			out.Add(uint32(v))
 		}
 	}

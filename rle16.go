@@ -57,21 +57,36 @@ type runContainer16 struct {
 }
 
 // interval16 is the internal to runContainer16
-// structure that maintains the individual [Start, last]
+// structure that maintains the individual [start, last]
 // closed intervals.
 type interval16 struct {
-	start uint16
-	last  uint16
+	start  uint16
+	length uint16 // length minus 1
+}
+
+func newInterval16Range(start, last uint16) interval16 {
+	if last < start {
+		panic(fmt.Sprintf("last (%d) cannot be smaller than start (%d)", last, start))
+	}
+
+	return interval16{
+		start,
+		last - start,
+	}
 }
 
 // runlen returns the count of integers in the interval.
 func (iv interval16) runlen() int64 {
-	return 1 + int64(iv.last) - int64(iv.start)
+	return int64(iv.length) + 1
+}
+
+func (iv interval16) last() uint16 {
+	return iv.start + iv.length
 }
 
 // String produces a human viewable string of the contents.
 func (iv interval16) String() string {
-	return fmt.Sprintf("[%d, %d]", iv.start, iv.last)
+	return fmt.Sprintf("[%d, %d]", iv.start, iv.length)
 }
 
 func ivalString16(iv []interval16) string {
@@ -79,7 +94,7 @@ func ivalString16(iv []interval16) string {
 	var j int
 	var p interval16
 	for j, p = range iv {
-		s += fmt.Sprintf("%v:[%d, %d], ", j, p.start, p.last)
+		s += fmt.Sprintf("%v:[%d, %d], ", j, p.start, p.last())
 	}
 	return s
 }
@@ -117,7 +132,7 @@ type addHelper16 struct {
 }
 
 func (ah *addHelper16) storeIval(runstart, runlen uint16) {
-	mi := interval16{start: runstart, last: runstart + runlen}
+	mi := interval16{start: runstart, length: runlen}
 	ah.m = append(ah.m, mi)
 }
 
@@ -145,7 +160,7 @@ func (ah *addHelper16) add(cur, prev uint16, i int) {
 // newRunContainerRange makes a new container made of just the specified closed interval [rangestart,rangelast]
 func newRunContainer16Range(rangestart uint16, rangelast uint16) *runContainer16 {
 	rc := &runContainer16{}
-	rc.iv = append(rc.iv, interval16{start: rangestart, last: rangelast})
+	rc.iv = append(rc.iv, newInterval16Range(rangestart, rangelast))
 	return rc
 }
 
@@ -173,7 +188,7 @@ func newRunContainer16FromVals(alreadySorted bool, vals ...uint16) *runContainer
 	case n == 0:
 		// nothing more
 	case n == 1:
-		ah.m = append(ah.m, interval16{start: vals[0], last: vals[0]})
+		ah.m = append(ah.m, newInterval16Range(vals[0], vals[0]))
 		ah.actuallyAdded++
 	default:
 		ah.runstart = vals[0]
@@ -232,13 +247,13 @@ func newRunContainer16FromBitmapContainer(bc *bitmapContainer) *runContainer16 {
 			// a final unterminated run of 1s
 			runEnd = wordSizeInBits + longCtr*64
 			rc.iv[runCount].start = uint16(runStart)
-			rc.iv[runCount].last = uint16(runEnd) - 1
+			rc.iv[runCount].length = uint16(runEnd) - uint16(runStart) - 1
 			return rc
 		}
 		localRunEnd := countTrailingZeros(^curWordWith1s)
 		runEnd = localRunEnd + longCtr*64
 		rc.iv[runCount].start = uint16(runStart)
-		rc.iv[runCount].last = uint16(runEnd) - 1
+		rc.iv[runCount].length = uint16(runEnd) - 1 - uint16(runStart)
 		runCount++
 		// now, zero out everything right of runEnd.
 		curWord = curWordWith1s & (curWordWith1s + 1)
@@ -263,7 +278,7 @@ func newRunContainer16FromArray(arr *arrayContainer) *runContainer16 {
 	case n == 0:
 		// nothing more
 	case n == 1:
-		ah.m = append(ah.m, interval16{start: arr.content[0], last: arr.content[0]})
+		ah.m = append(ah.m, newInterval16Range(arr.content[0], arr.content[0]))
 		ah.actuallyAdded++
 	default:
 		ah.runstart = arr.content[0]
@@ -301,10 +316,10 @@ func (rc *runContainer16) set(alreadySorted bool, vals ...uint16) {
 // contiguous and so can be merged into
 // a single interval.
 func canMerge16(a, b interval16) bool {
-	if int64(a.last)+1 < int64(b.start) {
+	if int64(a.last())+1 < int64(b.start) {
 		return false
 	}
-	return int64(b.last)+1 >= int64(a.start)
+	return int64(b.last())+1 >= int64(a.start)
 }
 
 // haveOverlap differs from canMerge in that
@@ -313,10 +328,10 @@ func canMerge16(a, b interval16) bool {
 // it would be the empty set, and we return
 // false).
 func haveOverlap16(a, b interval16) bool {
-	if int64(a.last)+1 <= int64(b.start) {
+	if int64(a.last())+1 <= int64(b.start) {
 		return false
 	}
-	return int64(b.last)+1 > int64(a.start)
+	return int64(b.last())+1 > int64(a.start)
 }
 
 // mergeInterval16s joins a and b into a
@@ -325,16 +340,19 @@ func mergeInterval16s(a, b interval16) (res interval16) {
 	if !canMerge16(a, b) {
 		panic(fmt.Sprintf("cannot merge %#v and %#v", a, b))
 	}
+
 	if b.start < a.start {
 		res.start = b.start
 	} else {
 		res.start = a.start
 	}
-	if b.last > a.last {
-		res.last = b.last
+
+	if b.last() > a.last() {
+		res.length = b.last() - res.start
 	} else {
-		res.last = a.last
+		res.length = a.last() - res.start
 	}
+
 	return
 }
 
@@ -351,11 +369,17 @@ func intersectInterval16s(a, b interval16) (res interval16, isEmpty bool) {
 	} else {
 		res.start = a.start
 	}
-	if b.last < a.last {
-		res.last = b.last
+
+	bEnd := b.last()
+	aEnd := a.last()
+	var resEnd uint16
+
+	if bEnd < aEnd {
+		resEnd = bEnd
 	} else {
-		res.last = a.last
+		resEnd = aEnd
 	}
+	res.length = resEnd - res.start
 	return
 }
 
@@ -392,12 +416,12 @@ func (rc *runContainer16) union(b *runContainer16) *runContainer16 {
 			mergedUpdated := false
 			if canMerge16(cura, merged) {
 				merged = mergeInterval16s(cura, merged)
-				na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
+				na = rc.indexOfIntervalAtOrAfter(int64(merged.last())+1, na+1)
 				mergedUpdated = true
 			}
 			if canMerge16(curb, merged) {
 				merged = mergeInterval16s(curb, merged)
-				nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+				nb = b.indexOfIntervalAtOrAfter(int64(merged.last())+1, nb+1)
 				mergedUpdated = true
 			}
 			if !mergedUpdated {
@@ -420,8 +444,8 @@ func (rc *runContainer16) union(b *runContainer16) *runContainer16 {
 			} else {
 				merged = mergeInterval16s(cura, curb)
 				mergedUsed = true
-				na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
-				nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+				na = rc.indexOfIntervalAtOrAfter(int64(merged.last())+1, na+1)
+				nb = b.indexOfIntervalAtOrAfter(int64(merged.last())+1, nb+1)
 			}
 		}
 	}
@@ -440,7 +464,7 @@ func (rc *runContainer16) union(b *runContainer16) *runContainer16 {
 				cura = rc.iv[na]
 				if canMerge16(cura, merged) {
 					merged = mergeInterval16s(cura, merged)
-					na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
+					na = rc.indexOfIntervalAtOrAfter(int64(merged.last())+1, na+1)
 				} else {
 					break aAdds
 				}
@@ -454,7 +478,7 @@ func (rc *runContainer16) union(b *runContainer16) *runContainer16 {
 				curb = b.iv[nb]
 				if canMerge16(curb, merged) {
 					merged = mergeInterval16s(curb, merged)
-					nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+					nb = b.indexOfIntervalAtOrAfter(int64(merged.last())+1, nb+1)
 				} else {
 					break bAdds
 				}
@@ -506,18 +530,18 @@ func (rc *runContainer16) unionCardinality(b *runContainer16) uint64 {
 			mergedUpdated := false
 			if canMerge16(cura, merged) {
 				merged = mergeInterval16s(cura, merged)
-				na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
+				na = rc.indexOfIntervalAtOrAfter(int64(merged.last())+1, na+1)
 				mergedUpdated = true
 			}
 			if canMerge16(curb, merged) {
 				merged = mergeInterval16s(curb, merged)
-				nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+				nb = b.indexOfIntervalAtOrAfter(int64(merged.last())+1, nb+1)
 				mergedUpdated = true
 			}
 			if !mergedUpdated {
 				// we know that merged is disjoint from cura and curb
 				//m = append(m, merged)
-				answer += uint64(merged.last) - uint64(merged.start) + 1
+				answer += uint64(merged.last()) - uint64(merged.start) + 1
 				mergedUsed = false
 			}
 			continue
@@ -526,19 +550,19 @@ func (rc *runContainer16) unionCardinality(b *runContainer16) uint64 {
 			// !mergedUsed
 			if !canMerge16(cura, curb) {
 				if cura.start < curb.start {
-					answer += uint64(cura.last) - uint64(cura.start) + 1
+					answer += uint64(cura.last()) - uint64(cura.start) + 1
 					//m = append(m, cura)
 					na++
 				} else {
-					answer += uint64(curb.last) - uint64(curb.start) + 1
+					answer += uint64(curb.last()) - uint64(curb.start) + 1
 					//m = append(m, curb)
 					nb++
 				}
 			} else {
 				merged = mergeInterval16s(cura, curb)
 				mergedUsed = true
-				na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
-				nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+				na = rc.indexOfIntervalAtOrAfter(int64(merged.last())+1, na+1)
+				nb = b.indexOfIntervalAtOrAfter(int64(merged.last())+1, nb+1)
 			}
 		}
 	}
@@ -557,7 +581,7 @@ func (rc *runContainer16) unionCardinality(b *runContainer16) uint64 {
 				cura = rc.iv[na]
 				if canMerge16(cura, merged) {
 					merged = mergeInterval16s(cura, merged)
-					na = rc.indexOfIntervalAtOrAfter(int64(merged.last)+1, na+1)
+					na = rc.indexOfIntervalAtOrAfter(int64(merged.last())+1, na+1)
 				} else {
 					break aAdds
 				}
@@ -571,7 +595,7 @@ func (rc *runContainer16) unionCardinality(b *runContainer16) uint64 {
 				curb = b.iv[nb]
 				if canMerge16(curb, merged) {
 					merged = mergeInterval16s(curb, merged)
-					nb = b.indexOfIntervalAtOrAfter(int64(merged.last)+1, nb+1)
+					nb = b.indexOfIntervalAtOrAfter(int64(merged.last())+1, nb+1)
 				} else {
 					break bAdds
 				}
@@ -580,13 +604,13 @@ func (rc *runContainer16) unionCardinality(b *runContainer16) uint64 {
 		}
 
 		//m = append(m, merged)
-		answer += uint64(merged.last) - uint64(merged.start) + 1
+		answer += uint64(merged.last()) - uint64(merged.start) + 1
 	}
 	for _, r := range rc.iv[na:] {
-		answer += uint64(r.last) - uint64(r.start) + 1
+		answer += uint64(r.last()) - uint64(r.start) + 1
 	}
 	for _, r := range b.iv[nb:] {
-		answer += uint64(r.last) - uint64(r.start) + 1
+		answer += uint64(r.last()) - uint64(r.start) + 1
 	}
 	return answer
 }
@@ -633,12 +657,11 @@ func (rc *runContainer16) intersect(b *runContainer16) *runContainer16 {
 	var leftoverstart int64
 	var isOverlap, isLeftoverA, isLeftoverB bool
 	var done bool
-	pass := 0
 toploop:
 	for acuri < numa && bcuri < numb {
-		pass++
 
-		isOverlap, isLeftoverA, isLeftoverB, leftoverstart, intersection = intersectWithLeftover16(astart, int64(a.iv[acuri].last), bstart, int64(b.iv[bcuri].last))
+		isOverlap, isLeftoverA, isLeftoverB, leftoverstart, intersection =
+			intersectWithLeftover16(astart, int64(a.iv[acuri].last()), bstart, int64(b.iv[bcuri].last()))
 
 		if !isOverlap {
 			switch {
@@ -747,7 +770,8 @@ toploop:
 	for acuri < numa && bcuri < numb {
 		pass++
 
-		isOverlap, isLeftoverA, isLeftoverB, leftoverstart, intersection = intersectWithLeftover16(astart, int64(a.iv[acuri].last), bstart, int64(b.iv[bcuri].last))
+		isOverlap, isLeftoverA, isLeftoverB, leftoverstart, intersection =
+			intersectWithLeftover16(astart, int64(a.iv[acuri].last()), bstart, int64(b.iv[bcuri].last()))
 
 		if !isOverlap {
 			switch {
@@ -771,7 +795,7 @@ toploop:
 
 		} else {
 			// isOverlap
-			answer += int64(intersection.last) - int64(intersection.start) + 1
+			answer += int64(intersection.last()) - int64(intersection.start) + 1
 			switch {
 			case isLeftoverA:
 				// note that we change astart without advancing acuri,
@@ -908,7 +932,7 @@ func (rc *runContainer16) search(key int64, opts *searchOptions) (whichInterval1
 	if below == n {
 		// all falses => key is >= start of all interval16s
 		// ... so does it belong to the last interval16?
-		if key < int64(rc.iv[n-1].last)+1 {
+		if key < int64(rc.iv[n-1].last())+1 {
 			// yes, it belongs to the last interval16
 			alreadyPresent = true
 			return
@@ -929,7 +953,7 @@ func (rc *runContainer16) search(key int64, opts *searchOptions) (whichInterval1
 	//        key is <  rc.iv[below].start
 
 	// is key in below-1 interval16?
-	if key >= int64(rc.iv[below-1].start) && key < int64(rc.iv[below-1].last)+1 {
+	if key >= int64(rc.iv[below-1].start) && key < int64(rc.iv[below-1].last())+1 {
 		// yes, it is. key is in below-1 interval16.
 		alreadyPresent = true
 		return
@@ -964,7 +988,7 @@ func (rc *runContainer16) AsSlice() []uint16 {
 	s := make([]uint16, rc.cardinality())
 	j := 0
 	for _, p := range rc.iv {
-		for i := p.start; i <= p.last; i++ {
+		for i := p.start; i <= p.last(); i++ {
 			s[j] = i
 			j++
 		}
@@ -1049,21 +1073,22 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 		if n > 0 {
 			if rc.iv[0].start == k+1 {
 				rc.iv[0].start = k
+				rc.iv[0].length++
 				return
 			}
 		}
 		// nope, k stands alone, starting the new first interval16.
-		rc.iv = append([]interval16{{start: k, last: k}}, rc.iv...)
+		rc.iv = append([]interval16{newInterval16Range(k, k)}, rc.iv...)
 		return
 	}
 
 	// are we off the end? handle both index == n and index == n-1:
 	if index >= n-1 {
-		if int64(rc.iv[n-1].last)+1 == k64 {
-			rc.iv[n-1].last++
+		if int64(rc.iv[n-1].last())+1 == k64 {
+			rc.iv[n-1].length++
 			return
 		}
-		rc.iv = append(rc.iv, interval16{start: k, last: k})
+		rc.iv = append(rc.iv, newInterval16Range(k, k))
 		return
 	}
 
@@ -1078,18 +1103,18 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	right := index + 1
 
 	// are we fusing left and right by adding k?
-	if int64(rc.iv[left].last)+1 == k64 && int64(rc.iv[right].start) == k64+1 {
+	if int64(rc.iv[left].last())+1 == k64 && int64(rc.iv[right].start) == k64+1 {
 		// fuse into left
-		rc.iv[left].last = rc.iv[right].last
+		rc.iv[left].length = rc.iv[right].last() - rc.iv[left].start
 		// remove redundant right
 		rc.iv = append(rc.iv[:left+1], rc.iv[right+1:]...)
 		return
 	}
 
 	// are we an addition to left?
-	if int64(rc.iv[left].last)+1 == k64 {
+	if int64(rc.iv[left].last())+1 == k64 {
 		// yes
-		rc.iv[left].last++
+		rc.iv[left].length++
 		return
 	}
 
@@ -1097,11 +1122,12 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	if int64(rc.iv[right].start) == k64+1 {
 		// yes
 		rc.iv[right].start = k
+		rc.iv[right].length++
 		return
 	}
 
 	// k makes a standalone new interval16, inserted in the middle
-	tail := append([]interval16{{start: k, last: k}}, rc.iv[right:]...)
+	tail := append([]interval16{newInterval16Range(k, k)}, rc.iv[right:]...)
 	rc.iv = append(rc.iv[:left+1], tail...)
 	return
 }
@@ -1154,7 +1180,7 @@ func (ri *runIterator16) next() uint16 {
 		ri.curIndex = 0
 	} else {
 		ri.curPosInIndex++
-		if int64(ri.rc.iv[ri.curIndex].start)+int64(ri.curPosInIndex) == int64(ri.rc.iv[ri.curIndex].last)+1 {
+		if int64(ri.rc.iv[ri.curIndex].start)+int64(ri.curPosInIndex) == int64(ri.rc.iv[ri.curIndex].last())+1 {
 			ri.curPosInIndex = 0
 			ri.curIndex++
 		}
@@ -1196,14 +1222,14 @@ func (rc *runContainer16) removeKey(key uint16) (wasPresent bool) {
 
 func (rc *runContainer16) deleteAt(curIndex *int64, curPosInIndex *uint16, curSeq *int64) {
 	rc.card--
-	(*curSeq)--
+	*curSeq--
 	ci := *curIndex
 	pos := *curPosInIndex
 
 	// are we first, last, or in the middle of our interval16?
 	switch {
 	case pos == 0:
-		if int64(rc.iv[ci].start) == int64(rc.iv[ci].last) {
+		if int64(rc.iv[ci].length) == 0 {
 			// our interval disappears
 			rc.iv = append(rc.iv[:ci], rc.iv[ci+1:]...)
 			// curIndex stays the same, since the delete did
@@ -1211,31 +1237,28 @@ func (rc *runContainer16) deleteAt(curIndex *int64, curPosInIndex *uint16, curSe
 			*curPosInIndex = 0
 		} else {
 			rc.iv[ci].start++ // no longer overflowable
+			rc.iv[ci].length--
 		}
-	case int64(pos) == rc.iv[ci].runlen()-1:
-		// last
-		rc.iv[ci].last--
+	case pos == rc.iv[ci].length:
+		// length
+		rc.iv[ci].length--
 		// our interval16 cannot disappear, else we would have been pos == 0, case first above.
-		(*curPosInIndex)--
+		*curPosInIndex--
 		// if we leave *curIndex alone, then Next() will work properly even after the delete.
 	default:
 		//middle
 		// split into two, adding an interval16
-		new0 := interval16{
-			start: rc.iv[ci].start,
-			last:  rc.iv[ci].start + *curPosInIndex - 1}
+		new0 := newInterval16Range(rc.iv[ci].start, rc.iv[ci].start+*curPosInIndex-1)
 
-		new1start := int64(rc.iv[ci].start) + int64(*curPosInIndex) + 1
+		new1start := int64(rc.iv[ci].start+*curPosInIndex) + 1
 		if new1start > int64(MaxUint16) {
 			panic("overflow?!?!")
 		}
-		new1 := interval16{
-			start: uint16(new1start),
-			last:  rc.iv[ci].last}
+		new1 := newInterval16Range(uint16(new1start), rc.iv[ci].last())
 		tail := append([]interval16{new0, new1}, rc.iv[ci+1:]...)
 		rc.iv = append(rc.iv[:ci], tail...)
 		// update curIndex and curPosInIndex
-		(*curIndex)++
+		*curIndex++
 		*curPosInIndex = 0
 	}
 
@@ -1260,18 +1283,19 @@ func intersectWithLeftover16(astart, alast, bstart, blast int64) (isOverlap, isL
 	} else {
 		intersection.start = uint16(astart)
 	}
+
 	switch {
 	case blast < alast:
 		isLeftoverA = true
 		leftoverstart = blast + 1
-		intersection.last = uint16(blast)
+		intersection.length = uint16(blast) - intersection.start
 	case alast < blast:
 		isLeftoverB = true
 		leftoverstart = alast + 1
-		intersection.last = uint16(alast)
+		intersection.length = uint16(alast) - intersection.start
 	default:
 		// alast == blast
-		intersection.last = uint16(alast)
+		intersection.length = uint16(alast) - intersection.start
 	}
 
 	return
@@ -1327,19 +1351,19 @@ func (rc *runContainer16) selectInt16(j uint16) int {
 // helper for invert
 func (rc *runContainer16) invertlastInterval(origin uint16, lastIdx int) []interval16 {
 	cur := rc.iv[lastIdx]
-	if cur.last == MaxUint16 {
+	if cur.last() == MaxUint16 {
 		if cur.start == origin {
 			return nil // empty container
 		}
-		return []interval16{{start: origin, last: cur.start - 1}}
+		return []interval16{newInterval16Range(origin, cur.start-1)}
 	}
 	if cur.start == origin {
-		return []interval16{{start: cur.last + 1, last: MaxUint16}}
+		return []interval16{newInterval16Range(cur.last()+1, MaxUint16)}
 	}
 	// invert splits
 	return []interval16{
-		{start: origin, last: cur.start - 1},
-		{start: cur.last + 1, last: MaxUint16},
+		newInterval16Range(origin, cur.start-1),
+		newInterval16Range(cur.last()+1, MaxUint16),
 	}
 }
 
@@ -1351,7 +1375,7 @@ func (rc *runContainer16) invert() *runContainer16 {
 	var m []interval16
 	switch ni {
 	case 0:
-		return &runContainer16{iv: []interval16{{0, MaxUint16}}}
+		return &runContainer16{iv: []interval16{newInterval16Range(0, MaxUint16)}}
 	case 1:
 		return &runContainer16{iv: rc.invertlastInterval(0, 0)}
 	}
@@ -1372,22 +1396,19 @@ func (rc *runContainer16) invert() *runContainer16 {
 		//
 		// Now: we add interval (a); but if (a) is empty, for cur.start==0, we skip it.
 		if cur.start > 0 {
-			m = append(m, interval16{start: uint16(invstart), last: cur.start - 1})
+			m = append(m, newInterval16Range(uint16(invstart), cur.start-1))
 		}
-		invstart = int64(cur.last + 1)
+		invstart = int64(cur.last() + 1)
 	}
 	return &runContainer16{iv: m}
 }
 
 func (iv interval16) equal(b interval16) bool {
-	if iv.start == b.start {
-		return iv.last == b.last
-	}
-	return false
+	return iv.start == b.start && iv.length == b.length
 }
 
 func (iv interval16) isSuperSetOf(b interval16) bool {
-	return iv.start <= b.start && b.last <= iv.last
+	return iv.start <= b.start && b.last() <= iv.last()
 }
 
 func (iv interval16) subtractInterval(del interval16) (left []interval16, delcount int64) {
@@ -1401,14 +1422,14 @@ func (iv interval16) subtractInterval(del interval16) (left []interval16, delcou
 	}
 
 	switch {
-	case isect.start > iv.start && isect.last < iv.last:
-		new0 := interval16{start: iv.start, last: isect.start - 1}
-		new1 := interval16{start: isect.last + 1, last: iv.last}
+	case isect.start > iv.start && isect.last() < iv.last():
+		new0 := newInterval16Range(iv.start, isect.start-1)
+		new1 := newInterval16Range(isect.last()+1, iv.last())
 		return []interval16{new0, new1}, isect.runlen()
 	case isect.start == iv.start:
-		return []interval16{{start: isect.last + 1, last: iv.last}}, isect.runlen()
+		return []interval16{newInterval16Range(isect.last()+1, iv.last())}, isect.runlen()
 	default:
-		return []interval16{{start: iv.start, last: isect.start - 1}}, isect.runlen()
+		return []interval16{newInterval16Range(iv.start, isect.start-1)}, isect.runlen()
 	}
 }
 
@@ -1420,17 +1441,14 @@ func (rc *runContainer16) isubtract(del interval16) {
 		return // already done.
 	}
 
-	_, isEmpty := intersectInterval16s(
-		interval16{
-			start: rc.iv[0].start,
-			last:  rc.iv[n-1].last,
-		}, del)
+	_, isEmpty := intersectInterval16s(newInterval16Range(rc.iv[0].start, rc.iv[n-1].last()), del)
 	if isEmpty {
 		return // done
 	}
+
 	// INVAR there is some intersection between rc and del
 	istart, startAlready, _ := rc.search(int64(del.start), nil)
-	ilast, lastAlready, _ := rc.search(int64(del.last), nil)
+	ilast, lastAlready, _ := rc.search(int64(del.last()), nil)
 	rc.card = -1
 	if istart == -1 {
 		if ilast == n-1 && !lastAlready {
@@ -1581,9 +1599,9 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 	a := rc
 
 	astart := a.iv[apos].start
-	alast := a.iv[apos].last
+	alast := a.iv[apos].last()
 	bstart := b.iv[bpos].start
-	blast := b.iv[bpos].last
+	blast := b.iv[bpos].last()
 
 	alen := len(a.iv)
 	blen := len(b.iv)
@@ -1592,18 +1610,18 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 		switch {
 		case alast < bstart:
 			// output the first run
-			dst.iv = append(dst.iv, interval16{start: astart, last: alast})
+			dst.iv = append(dst.iv, newInterval16Range(astart, alast))
 			apos++
 			if apos < alen {
 				astart = a.iv[apos].start
-				alast = a.iv[apos].last
+				alast = a.iv[apos].last()
 			}
 		case blast < astart:
 			// exit the second run
 			bpos++
 			if bpos < blen {
 				bstart = b.iv[bpos].start
-				blast = b.iv[bpos].last
+				blast = b.iv[bpos].last()
 			}
 		default:
 			//   a: [             ]
@@ -1611,7 +1629,7 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 			// alast >= bstart
 			// blast >= astart
 			if astart < bstart {
-				dst.iv = append(dst.iv, interval16{start: astart, last: bstart - 1})
+				dst.iv = append(dst.iv, newInterval16Range(astart, bstart-1))
 			}
 			if alast > blast {
 				astart = blast + 1
@@ -1619,13 +1637,13 @@ func (rc *runContainer16) AndNotRunContainer16(b *runContainer16) *runContainer1
 				apos++
 				if apos < alen {
 					astart = a.iv[apos].start
-					alast = a.iv[apos].last
+					alast = a.iv[apos].last()
 				}
 			}
 		}
 	}
 	if apos < alen {
-		dst.iv = append(dst.iv, interval16{start: astart, last: alast})
+		dst.iv = append(dst.iv, newInterval16Range(astart, alast))
 		apos++
 		if apos < alen {
 			dst.iv = append(dst.iv, a.iv[apos:]...)

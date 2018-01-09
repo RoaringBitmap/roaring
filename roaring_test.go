@@ -22,6 +22,7 @@ func TestFirstLast(t *testing.T) {
 		t.Errorf("bad maximum")
 		t.FailNow()
 	}
+
 	i := 1 << 5
 	for ; i < (1 << 17); i++ {
 		bm.AddInt(i)
@@ -34,7 +35,9 @@ func TestFirstLast(t *testing.T) {
 			t.FailNow()
 		}
 	}
+
 	bm.RunOptimize()
+
 	if 2 != bm.Minimum() {
 		t.Errorf("bad minimum")
 		t.FailNow()

@@ -67,7 +67,8 @@ func (z *addHelper16) DecodeMsg(dc *msgp.Reader) (err error) {
 							return
 						}
 					case "last":
-						z.m[zxvk].last, err = dc.ReadUint16()
+						z.m[zxvk].length, err = dc.ReadUint16()
+						z.m[zxvk].length -= z.m[zxvk].start
 						if err != nil {
 							return
 						}
@@ -132,7 +133,8 @@ func (z *addHelper16) DecodeMsg(dc *msgp.Reader) (err error) {
 										return
 									}
 								case "last":
-									z.rc.iv[zbzg].last, err = dc.ReadUint16()
+									z.rc.iv[zbzg].length, err = dc.ReadUint16()
+									z.rc.iv[zbzg].length -= z.rc.iv[zbzg].start
 									if err != nil {
 										return
 									}
@@ -222,7 +224,7 @@ func (z *addHelper16) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return err
 		}
-		err = en.WriteUint16(z.m[zxvk].last)
+		err = en.WriteUint16(z.m[zxvk].last())
 		if err != nil {
 			return
 		}
@@ -264,7 +266,7 @@ func (z *addHelper16) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return err
 			}
-			err = en.WriteUint16(z.rc.iv[zbzg].last)
+			err = en.WriteUint16(z.rc.iv[zbzg].last())
 			if err != nil {
 				return
 			}
@@ -305,7 +307,7 @@ func (z *addHelper16) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendUint16(o, z.m[zxvk].start)
 		// string "last"
 		o = append(o, 0xa4, 0x6c, 0x61, 0x73, 0x74)
-		o = msgp.AppendUint16(o, z.m[zxvk].last)
+		o = msgp.AppendUint16(o, z.m[zxvk].last())
 	}
 	// string "rc"
 	o = append(o, 0xa2, 0x72, 0x63)
@@ -323,7 +325,7 @@ func (z *addHelper16) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendUint16(o, z.rc.iv[zbzg].start)
 			// string "last"
 			o = append(o, 0xa4, 0x6c, 0x61, 0x73, 0x74)
-			o = msgp.AppendUint16(o, z.rc.iv[zbzg].last)
+			o = msgp.AppendUint16(o, z.rc.iv[zbzg].last())
 		}
 		// string "card"
 		o = append(o, 0xa4, 0x63, 0x61, 0x72, 0x64)
@@ -393,7 +395,8 @@ func (z *addHelper16) UnmarshalMsg(bts []byte) (o []byte, err error) {
 							return
 						}
 					case "last":
-						z.m[zxvk].last, bts, err = msgp.ReadUint16Bytes(bts)
+						z.m[zxvk].length, bts, err = msgp.ReadUint16Bytes(bts)
+						z.m[zxvk].length -= z.m[zxvk].start
 						if err != nil {
 							return
 						}
@@ -458,7 +461,8 @@ func (z *addHelper16) UnmarshalMsg(bts []byte) (o []byte, err error) {
 										return
 									}
 								case "last":
-									z.rc.iv[zbzg].last, bts, err = msgp.ReadUint16Bytes(bts)
+									z.rc.iv[zbzg].length, bts, err = msgp.ReadUint16Bytes(bts)
+									z.rc.iv[zbzg].length -= z.rc.iv[zbzg].start
 									if err != nil {
 										return
 									}
@@ -527,7 +531,8 @@ func (z *interval16) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "last":
-			z.last, err = dc.ReadUint16()
+			z.length, err = dc.ReadUint16()
+			z.length = -z.start
 			if err != nil {
 				return
 			}
@@ -558,7 +563,7 @@ func (z interval16) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	err = en.WriteUint16(z.last)
+	err = en.WriteUint16(z.last())
 	if err != nil {
 		return
 	}
@@ -574,7 +579,7 @@ func (z interval16) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendUint16(o, z.start)
 	// string "last"
 	o = append(o, 0xa4, 0x6c, 0x61, 0x73, 0x74)
-	o = msgp.AppendUint16(o, z.last)
+	o = msgp.AppendUint16(o, z.last())
 	return
 }
 
@@ -600,7 +605,8 @@ func (z *interval16) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "last":
-			z.last, bts, err = msgp.ReadUint16Bytes(bts)
+			z.length, bts, err = msgp.ReadUint16Bytes(bts)
+			z.length -= z.start
 			if err != nil {
 				return
 			}
@@ -667,7 +673,8 @@ func (z *runContainer16) DecodeMsg(dc *msgp.Reader) (err error) {
 							return
 						}
 					case "last":
-						z.iv[zxpk].last, err = dc.ReadUint16()
+						z.iv[zxpk].length, err = dc.ReadUint16()
+						z.iv[zxpk].length -= z.iv[zxpk].start
 						if err != nil {
 							return
 						}
@@ -722,7 +729,7 @@ func (z *runContainer16) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return err
 		}
-		err = en.WriteUint16(z.iv[zxpk].last)
+		err = en.WriteUint16(z.iv[zxpk].last())
 		if err != nil {
 			return
 		}
@@ -753,7 +760,7 @@ func (z *runContainer16) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendUint16(o, z.iv[zxpk].start)
 		// string "last"
 		o = append(o, 0xa4, 0x6c, 0x61, 0x73, 0x74)
-		o = msgp.AppendUint16(o, z.iv[zxpk].last)
+		o = msgp.AppendUint16(o, z.iv[zxpk].last())
 	}
 	// string "card"
 	o = append(o, 0xa4, 0x63, 0x61, 0x72, 0x64)
@@ -807,7 +814,8 @@ func (z *runContainer16) UnmarshalMsg(bts []byte) (o []byte, err error) {
 							return
 						}
 					case "last":
-						z.iv[zxpk].last, bts, err = msgp.ReadUint16Bytes(bts)
+						z.iv[zxpk].length, bts, err = msgp.ReadUint16Bytes(bts)
+						z.iv[zxpk].length -= z.iv[zxpk].start
 						if err != nil {
 							return
 						}

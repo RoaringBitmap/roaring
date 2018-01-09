@@ -326,7 +326,7 @@ func (bc *bitmapContainer) ior(a container) container {
 			return x.clone()
 		}
 		for i := range x.iv {
-			bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
+			bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last())+1)
 		}
 		if bc.isFull() {
 			return newRunContainer16Range(0, MaxUint16)
@@ -349,7 +349,7 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 		}
 		// TODO : implement efficient in-place lazy OR to bitmap
 		for i := range x.iv {
-			setBitmapRange(bc.bitmap, int(x.iv[i].start), int(x.iv[i].last)+1)
+			setBitmapRange(bc.bitmap, int(x.iv[i].start), int(x.iv[i].last())+1)
 			//bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
 		}
 		bc.cardinality = invalidCardinality
@@ -907,14 +907,13 @@ func (bc *bitmapContainer) toEfficientContainer() container {
 func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
 
 	if len(rc.iv) == 1 {
-		return newBitmapContainerwithRange(int(rc.iv[0].start), int(rc.iv[0].last))
+		return newBitmapContainerwithRange(int(rc.iv[0].start), int(rc.iv[0].last()))
 	}
 
 	bc := newBitmapContainer()
 	for i := range rc.iv {
-		setBitmapRange(bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last)+1)
-		bc.cardinality += int(rc.iv[i].last) + 1 - int(rc.iv[i].start)
-		//bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last)+1)
+		setBitmapRange(bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		bc.cardinality += int(rc.iv[i].last()) + 1 - int(rc.iv[i].start)
 	}
 	//bc.computeCardinality()
 	return bc
