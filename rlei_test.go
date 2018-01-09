@@ -402,13 +402,13 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 				// vs runContainer
 				rcb := newRunContainer16FromVals(false, b...)
 
-				rcVsBcIsect := rc.Clone()
-				rcVsAcIsect := rc.Clone()
-				rcVsRcbIsect := rc.Clone()
+				var rcVsBcIsect container = rc.Clone()
+				var rcVsAcIsect container = rc.Clone()
+				var rcVsRcbIsect container = rc.Clone()
 
-				rcVsBcIsect.iand(bc)
-				rcVsAcIsect.iand(ac)
-				rcVsRcbIsect.iand(rcb)
+				rcVsBcIsect = rcVsBcIsect.iand(bc)
+				rcVsAcIsect = rcVsAcIsect.iand(ac)
+				rcVsRcbIsect = rcVsRcbIsect.iand(rcb)
 
 				p("rcVsBcIsect is %v", rcVsBcIsect)
 				p("rcVsAcIsect is %v", rcVsAcIsect)
@@ -1603,7 +1603,6 @@ type twofer struct {
 }
 
 func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
-
 	Convey("each of the container methods that takes two containers should handle all 3x3==9 possible ways of being called -- and return results that agree with each other", t, func() {
 
 		//rleVerbose = true
@@ -1687,6 +1686,14 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 							res3 := c3.call(a) // bitmap
 
 							z := c1.name
+
+							// In-place operation are best effort
+							// User should not assume the receiver is modified, returned container has to be used
+							if strings.HasPrefix(z, "i") {
+								c1.cn = res1
+								c2.cn = res2
+								c3.cn = res3
+							}
 
 							if strings.HasPrefix(z, "lazy") {
 								// on purpose, the lazy functions

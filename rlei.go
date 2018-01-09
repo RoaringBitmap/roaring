@@ -62,12 +62,6 @@ func (rc *runContainer16) andBitmapContainer(bc *bitmapContainer) container {
 	return bc2.andBitmap(bc)
 }
 
-func (rc *runContainer16) andArray(ac *arrayContainer) container {
-	bc1 := ac.toBitmapContainer()
-	bc2 := newBitmapContainerFromRun(rc)
-	return bc2.andBitmap(bc1)
-}
-
 func (rc *runContainer16) andArrayCardinality(ac *arrayContainer) int {
 	pos := 0
 	answer := 0
@@ -105,7 +99,7 @@ func (rc *runContainer16) iand(a container) container {
 	case *runContainer16:
 		return rc.inplaceIntersect(c)
 	case *arrayContainer:
-		return rc.iandArray(c)
+		return rc.andArray(c)
 	case *bitmapContainer:
 		return rc.iandBitmapContainer(c)
 	}
@@ -127,38 +121,34 @@ func (rc *runContainer16) iandBitmapContainer(bc *bitmapContainer) container {
 	return rc
 }
 
-func (rc *runContainer16) iandArray(ac *arrayContainer) container {
-
-	bc1 := newBitmapContainerFromRun(rc)
-	bc2 := ac.toBitmapContainer()
-	and := bc1.andBitmap(bc2)
-	var rc2 *runContainer16
-	switch x := and.(type) {
-	case *bitmapContainer:
-		rc2 = newRunContainer16FromBitmapContainer(x)
-	case *arrayContainer:
-		rc2 = newRunContainer16FromArray(x)
-	case *runContainer16:
-		rc2 = x
-	default:
-		panic("unknown container type")
+func (rc *runContainer16) andArray(ac *arrayContainer) container {
+	if len(rc.iv) == 0 {
+		return newArrayContainer()
 	}
-	*rc = *rc2
-	return rc
 
-	/*
-		// TODO: optimize by doing less allocation, possibly?
-		out := newRunContainer16()
-		for _, p := range rc.iv {
-			for i := p.start; i <= p.last; i++ {
-				if ac.contains(i) {
-					out.Add(i)
-				}
+	acCardinality := ac.getCardinality()
+	c := newArrayContainerCapacity(acCardinality)
+
+	for rlePos, arrayPos := 0, 0; arrayPos < acCardinality; {
+		iv := rc.iv[rlePos]
+		arrayVal := ac.content[arrayPos]
+
+		for iv.last() < arrayVal {
+			rlePos++
+			if rlePos == len(rc.iv) {
+				return c
 			}
+			iv = rc.iv[rlePos]
 		}
-		*rc = *out
-		return rc
-	*/
+
+		if iv.start > arrayVal {
+			arrayPos = advanceUntil(ac.content, arrayPos, len(ac.content), iv.start)
+		} else {
+			c.content = append(c.content, arrayVal)
+			arrayPos++
+		}
+	}
+	return c
 }
 
 func (rc *runContainer16) andNot(a container) container {
