@@ -9,10 +9,9 @@ import (
 var defaultWorkerCount = runtime.NumCPU()
 
 type bitmapContainerKey struct {
-	bitmap    *Bitmap
-	container container
-	key       uint16
-	idx       int
+	key    uint16
+	idx    int
+	bitmap *Bitmap
 }
 
 type multipleContainers struct {
@@ -43,7 +42,7 @@ func (h *bitmapContainerHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	x := old[n-1]
-	*h = old[0: n-1]
+	*h = old[0 : n-1]
 	return x
 }
 
@@ -54,15 +53,14 @@ func (h bitmapContainerHeap) Peek() bitmapContainerKey {
 func (h *bitmapContainerHeap) popIncrementing() (key uint16, container container) {
 	k := h.Peek()
 	key = k.key
-	container = k.container
+	container = k.bitmap.highlowcontainer.containers[k.idx]
 
 	newIdx := k.idx + 1
 	if newIdx < k.bitmap.highlowcontainer.size() {
 		k = bitmapContainerKey{
-			k.bitmap,
-			k.bitmap.highlowcontainer.containers[newIdx],
 			k.bitmap.highlowcontainer.keys[newIdx],
 			newIdx,
+			k.bitmap,
 		}
 		(*h)[0] = k
 		heap.Fix(h, 0)
@@ -99,10 +97,9 @@ func newBitmapContainerHeap(bitmaps ...*Bitmap) bitmapContainerHeap {
 	for _, bitmap := range bitmaps {
 		if !bitmap.IsEmpty() {
 			key := bitmapContainerKey{
-				bitmap,
-				bitmap.highlowcontainer.containers[0],
 				bitmap.highlowcontainer.keys[0],
 				0,
+				bitmap,
 			}
 			h = append(h, key)
 		}
