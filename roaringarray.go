@@ -553,16 +553,7 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 		by := buf[pos : pos+bytesToRead]
 		pos += bytesToRead
 		isRun = newBitmapContainer()
-		i := 0
-		for ; len(by) >= 8; i++ {
-			isRun.bitmap[i] = binary.LittleEndian.Uint64(by)
-			by = by[8:]
-		}
-		if len(by) > 0 {
-			bx := make([]byte, 8)
-			copy(bx, by)
-			isRun.bitmap[i] = binary.LittleEndian.Uint64(bx)
-		}
+		copy(uint64SliceAsByteSlice(isRun.bitmap), by)
 	} else if cookie == serialCookieNoRunContainer {
 		size = binary.LittleEndian.Uint32(buf[pos:])
 		pos += 4
