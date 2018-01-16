@@ -571,13 +571,16 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 	}
 
 	// Allocate slices upfront as number of containers is known
-	ra.containers = make([]container, 0, size)
-	ra.keys = make([]uint16, 0, size)
-	ra.needCopyOnWrite = make([]bool, 0, size)
+	ra.containers = make([]container, size)
+	ra.keys = make([]uint16, size)
+	ra.needCopyOnWrite = make([]bool, size)
 
 	for i := uint32(0); i < size; i++ {
 		key := uint16(keycard[2*i])
 		card := int(keycard[2*i+1]) + 1
+		ra.keys[i] = key
+		ra.needCopyOnWrite[i] = true
+
 		if haveRunContainers && isRun.contains(uint16(i)) {
 			// run container
 			nr := binary.LittleEndian.Uint16(buf[pos:])
@@ -587,7 +590,7 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 				card: int64(card),
 			}
 			pos += int(nr) * 4
-			ra.appendContainer(key, &nb, true)
+			ra.containers[i] = &nb
 		} else if card > arrayDefaultMaxSize {
 			// bitmap container
 			nb := bitmapContainer{
@@ -595,14 +598,14 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 				bitmap:      byteSliceAsUint64Slice(buf[pos : pos+arrayDefaultMaxSize*2]),
 			}
 			pos += arrayDefaultMaxSize * 2
-			ra.appendContainer(key, &nb, true)
+			ra.containers[i] = &nb
 		} else {
 			// array container
 			nb := arrayContainer{
 				byteSliceAsUint16Slice(buf[pos : pos+card*2]),
 			}
 			pos += card * 2
-			ra.appendContainer(key, &nb, true)
+			ra.containers[i] = &nb
 		}
 	}
 
