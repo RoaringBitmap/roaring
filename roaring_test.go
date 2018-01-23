@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"strconv"
 	"testing"
+	"unsafe"
 )
 
 func TestFirstLast(t *testing.T) {
@@ -1834,6 +1835,14 @@ func TestStats(t *testing.T) {
 
 	Convey("Test Stats with run Container", t, func() {
 		// Given that we should have a single run container
+		intSize := int(unsafe.Sizeof(int(0)))
+		var runContainerBytes uint64
+		if intSize == 4 {
+			runContainerBytes = 40
+		} else {
+			runContainerBytes = 52
+		}
+
 		expectedStats := Statistics{
 			Cardinality: 60000,
 			Containers:  1,
@@ -1843,7 +1852,7 @@ func TestStats(t *testing.T) {
 			BitmapContainerBytes:  0,
 
 			RunContainers:      1,
-			RunContainerBytes:  52,
+			RunContainerBytes:  runContainerBytes,
 			RunContainerValues: 60000,
 		}
 		rr := NewBitmap()
