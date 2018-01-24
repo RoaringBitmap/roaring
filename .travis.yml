@@ -27,6 +27,7 @@ script:
 - go test -race -run TestConcurrent*
 - GOARCH=arm64 go build
 - GOARCH=386 go build
+- GOARCH=386 go test
 - GOARCH=arm go build
 matrix:
   allow_failures:
