@@ -541,7 +541,7 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 	pos += 4
 	var size uint32 // number of containers
 	haveRunContainers := false
-	var isRun *bitmapContainer
+	var isRunBitmap []byte
 
 	// cookie header
 	if cookie&0x0000FFFF == serialCookie {
@@ -549,20 +549,9 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 		size = uint32(uint16(cookie>>16) + 1) // number of containers
 
 		// create is-run-container bitmap
-		bytesToRead := (int(size) + 7) / 8
-		by := buf[pos : pos+bytesToRead]
-		pos += bytesToRead
-		isRun = newBitmapContainer()
-		i := 0
-		for ; len(by) >= 8; i++ {
-			isRun.bitmap[i] = binary.LittleEndian.Uint64(by)
-			by = by[8:]
-		}
-		if len(by) > 0 {
-			bx := make([]byte, 8)
-			copy(bx, by)
-			isRun.bitmap[i] = binary.LittleEndian.Uint64(bx)
-		}
+		isRunBitmapSize := (int(size) + 7) / 8
+		isRunBitmap = buf[pos : pos+isRunBitmapSize]
+		pos += isRunBitmapSize
 	} else if cookie == serialCookieNoRunContainer {
 		size = binary.LittleEndian.Uint32(buf[pos:])
 		pos += 4
@@ -590,7 +579,7 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 		ra.keys[i] = key
 		ra.needCopyOnWrite[i] = true
 
-		if haveRunContainers && isRun.contains(uint16(i)) {
+		if haveRunContainers && isRunBitmap[i/8]&(1<<(i%8)) != 0 {
 			// run container
 			nr := binary.LittleEndian.Uint16(buf[pos:])
 			pos += 2
