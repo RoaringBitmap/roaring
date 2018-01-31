@@ -1,62 +1,74 @@
 package roaring
 
-// to run just these tests: go test -run TestParAggregations*
+// to run just these tests: go test -run TestParAggregations
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 func TestParAggregations(t *testing.T) {
-	Convey("Par", t, func() {
+	t.Run("simple case", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb1.Add(1)
 		rb2.Add(2)
 
-		So(ParAnd(0, rb1, rb2).GetCardinality(), ShouldEqual, 0)
-		So(ParOr(0, rb1, rb2).GetCardinality(), ShouldEqual, 2)
+		if ParAnd(0, rb1, rb2).GetCardinality() != 0 {
+			t.Fail()
+		}
+		if ParOr(0, rb1, rb2).GetCardinality() != 2 {
+			t.Fail()
+		}
 	})
-}
 
-func TestParAggregationsNothing(t *testing.T) {
-	Convey("Par", t, func() {
-		So(ParAnd(0).GetCardinality(), ShouldEqual, 0)
-		So(ParOr(0).GetCardinality(), ShouldEqual, 0)
+	t.Run("aggregate nothing", func(t *testing.T) {
+		if ParAnd(0).GetCardinality() != 0 {
+			t.Fail()
+		}
+
+		if ParOr(0).GetCardinality() != 0 {
+			t.Fail()
+		}
 	})
-}
 
-func TestParAggregationsOneBitmap(t *testing.T) {
-	Convey("Par", t, func() {
+	t.Run("single bitmap", func(t *testing.T) {
 		rb := BitmapOf(1, 2, 3)
 
-		So(ParAnd(0, rb).GetCardinality(), ShouldEqual, 3)
-		So(ParOr(0, rb).GetCardinality(), ShouldEqual, 3)
-	})
-}
+		if ParAnd(0, rb).GetCardinality() != 3 {
+			t.Fail()
+		}
 
-func TestParAggregationsOneEmpty(t *testing.T) {
-	Convey("Par", t, func() {
+		if ParOr(0, rb).GetCardinality() != 3 {
+			t.Fail()
+		}
+	})
+
+	t.Run("empty and single elem bitmaps", func(t *testing.T) {
 		rb1 := NewBitmap()
-		rb2 := NewBitmap()
-		rb1.Add(1)
+		rb2 := BitmapOf(1)
 
-		So(ParAnd(0, rb1, rb2).GetCardinality(), ShouldEqual, 0)
-		So(ParOr(0, rb1, rb2).GetCardinality(), ShouldEqual, 1)
+		if ParAnd(0, rb1, rb2).GetCardinality() != 0 {
+			t.Fail()
+		}
+		if ParOr(0, rb1, rb2).GetCardinality() != 1 {
+			t.Fail()
+		}
 	})
-}
 
-func TestParAggregationsDisjointSetIntersection(t *testing.T) {
-	Convey("Par", t, func() {
+	t.Run("two single elem disjoint sets", func(t *testing.T) {
 		rb1 := BitmapOf(1)
 		rb2 := BitmapOf(2)
 
-		So(ParAnd(0, rb1, rb2).Stats().Containers, ShouldEqual, 0)
-	})
-}
+		if ParAnd(0, rb1, rb2).Stats().Containers != 0 {
+			t.Fail()
+		}
 
-func TestParAggregationsReversed3COW(t *testing.T) {
-	Convey("Par", t, func() {
+		if ParOr(0, rb1, rb2).GetCardinality() != 2 {
+			t.Fail()
+		}
+	})
+
+	t.Run("3 bitmaps with CoW set (not in order of definition)", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb3 := NewBitmap()
@@ -69,13 +81,16 @@ func TestParAggregationsReversed3COW(t *testing.T) {
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		So(ParAnd(0, rb2, rb1, rb3).GetCardinality(), ShouldEqual, 0)
-		So(ParOr(0, rb2, rb1, rb3).GetCardinality(), ShouldEqual, 4)
-	})
-}
+		if ParAnd(0, rb2, rb1, rb3).GetCardinality() != 0 {
+			t.Fail()
+		}
 
-func TestParAggregationsReversed3(t *testing.T) {
-	Convey("Par", t, func() {
+		if ParOr(0, rb2, rb1, rb3).GetCardinality() != 4 {
+			t.Fail()
+		}
+	})
+
+	t.Run("3 bitmaps (not in order of definition)", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb3 := NewBitmap()
@@ -85,13 +100,16 @@ func TestParAggregationsReversed3(t *testing.T) {
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		So(ParAnd(0, rb2, rb1, rb3).GetCardinality(), ShouldEqual, 0)
-		So(ParOr(0, rb2, rb1, rb3).GetCardinality(), ShouldEqual, 4)
-	})
-}
+		if ParAnd(0, rb2, rb1, rb3).GetCardinality() != 0 {
+			t.Fail()
+		}
 
-func TestParAggregations3(t *testing.T) {
-	Convey("Par", t, func() {
+		if ParOr(0, rb2, rb1, rb3).GetCardinality() != 4 {
+			t.Fail()
+		}
+	})
+
+	t.Run("3 bitmaps", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb3 := NewBitmap()
@@ -101,13 +119,16 @@ func TestParAggregations3(t *testing.T) {
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		So(ParAnd(0, rb1, rb2, rb3).GetCardinality(), ShouldEqual, 0)
-		So(ParOr(0, rb1, rb2, rb3).GetCardinality(), ShouldEqual, 4)
-	})
-}
+		if ParAnd(0, rb1, rb2, rb3).GetCardinality() != 0 {
+			t.Fail()
+		}
 
-func TestParAggregations3COW(t *testing.T) {
-	Convey("Par", t, func() {
+		if ParOr(0, rb1, rb2, rb3).GetCardinality() != 4 {
+			t.Fail()
+		}
+	})
+
+	t.Run("3 bitmaps with CoW set", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb3 := NewBitmap()
@@ -120,13 +141,16 @@ func TestParAggregations3COW(t *testing.T) {
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		So(ParAnd(0, rb1, rb2, rb3).GetCardinality(), ShouldEqual, 0)
-		So(ParOr(0, rb1, rb2, rb3).GetCardinality(), ShouldEqual, 4)
-	})
-}
+		if ParAnd(0, rb1, rb2, rb3).GetCardinality() != 0 {
+			t.Fail()
+		}
 
-func TestParAggregationsAdvanced(t *testing.T) {
-	Convey("Par", t, func() {
+		if ParOr(0, rb1, rb2, rb3).GetCardinality() != 4 {
+			t.Fail()
+		}
+	})
+
+	t.Run("advanced case", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb3 := NewBitmap()
@@ -148,16 +172,21 @@ func TestParAggregationsAdvanced(t *testing.T) {
 		for i := uint32(1000000); i < 2000000; i += 7 {
 			rb3.Add(i)
 		}
+
 		rb1.Or(rb2)
 		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
-		So(ParOr(0, rb1, rb2, rb3).Equals(rb1), ShouldEqual, true)
-		So(ParAnd(0, rb1, rb2, rb3).Equals(bigand), ShouldEqual, true)
-	})
-}
 
-func TestParAggregationsAdvanced_run(t *testing.T) {
-	Convey("Par", t, func() {
+		if !ParOr(0, rb1, rb2, rb3).Equals(rb1) {
+			t.Fail()
+		}
+
+		if !ParAnd(0, rb1, rb2, rb3).Equals(bigand) {
+			t.Fail()
+		}
+	})
+
+	t.Run("advanced case with runs", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb3 := NewBitmap()
@@ -183,7 +212,12 @@ func TestParAggregationsAdvanced_run(t *testing.T) {
 		rb1.Or(rb2)
 		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
-		So(ParOr(0, rb1, rb2, rb3).Equals(rb1), ShouldEqual, true)
-		So(ParAnd(0, rb1, rb2, rb3).Equals(bigand), ShouldEqual, true)
+		if !ParOr(0, rb1, rb2, rb3).Equals(rb1) {
+			t.Fail()
+		}
+
+		if !ParAnd(0, rb1, rb2, rb3).Equals(bigand) {
+			t.Fail()
+		}
 	})
 }
