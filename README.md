@@ -187,6 +187,14 @@ https://coveralls.io/github/RoaringBitmap/roaring?branch=master
 Type
 
          go test -bench Benchmark -run -
+         
+To run benchmarks on [Real Roaring Datasets](https://github.com/RoaringBitmap/real-roaring-datasets)
+run the following:
+
+```sh
+go get github.com/RoaringBitmap/real-roaring-datasets
+BENCH_REAL_DATA=1 go test -bench BenchmarkRealData -run -
+```
 
 ### Iterative use
 
