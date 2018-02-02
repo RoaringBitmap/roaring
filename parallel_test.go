@@ -6,27 +6,31 @@ import (
 	"testing"
 )
 
-func TestParAggregations(t *testing.T) {
+func testAggregations(t *testing.T,
+	and func(bitmaps ... *Bitmap) *Bitmap,
+	or func(bitmaps ... *Bitmap) *Bitmap,
+	xor func(bitmaps ... *Bitmap) *Bitmap) {
+
 	t.Run("simple case", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
 		rb1.Add(1)
 		rb2.Add(2)
 
-		if ParAnd(0, rb1, rb2).GetCardinality() != 0 {
+		if and != nil && and(rb1, rb2).GetCardinality() != 0 {
 			t.Fail()
 		}
-		if ParOr(0, rb1, rb2).GetCardinality() != 2 {
+		if and != nil && or(rb1, rb2).GetCardinality() != 2 {
 			t.Fail()
 		}
 	})
 
 	t.Run("aggregate nothing", func(t *testing.T) {
-		if ParAnd(0).GetCardinality() != 0 {
+		if and != nil && and().GetCardinality() != 0 {
 			t.Fail()
 		}
 
-		if ParOr(0).GetCardinality() != 0 {
+		if or != nil && or().GetCardinality() != 0 {
 			t.Fail()
 		}
 	})
@@ -34,11 +38,11 @@ func TestParAggregations(t *testing.T) {
 	t.Run("single bitmap", func(t *testing.T) {
 		rb := BitmapOf(1, 2, 3)
 
-		if ParAnd(0, rb).GetCardinality() != 3 {
+		if and != nil && and(rb).GetCardinality() != 3 {
 			t.Fail()
 		}
 
-		if ParOr(0, rb).GetCardinality() != 3 {
+		if or != nil && or(rb).GetCardinality() != 3 {
 			t.Fail()
 		}
 	})
@@ -47,10 +51,10 @@ func TestParAggregations(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := BitmapOf(1)
 
-		if ParAnd(0, rb1, rb2).GetCardinality() != 0 {
+		if and != nil && and(rb1, rb2).GetCardinality() != 0 {
 			t.Fail()
 		}
-		if ParOr(0, rb1, rb2).GetCardinality() != 1 {
+		if or != nil &&  or(rb1, rb2).GetCardinality() != 1 {
 			t.Fail()
 		}
 	})
@@ -59,11 +63,11 @@ func TestParAggregations(t *testing.T) {
 		rb1 := BitmapOf(1)
 		rb2 := BitmapOf(2)
 
-		if ParAnd(0, rb1, rb2).Stats().Containers != 0 {
+		if and != nil && and(rb1, rb2).Stats().Containers != 0 {
 			t.Fail()
 		}
 
-		if ParOr(0, rb1, rb2).GetCardinality() != 2 {
+		if or != nil && or(rb1, rb2).GetCardinality() != 2 {
 			t.Fail()
 		}
 	})
@@ -81,11 +85,11 @@ func TestParAggregations(t *testing.T) {
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		if ParAnd(0, rb2, rb1, rb3).GetCardinality() != 0 {
+		if and != nil && and(rb2, rb1, rb3).GetCardinality() != 0 {
 			t.Fail()
 		}
 
-		if ParOr(0, rb2, rb1, rb3).GetCardinality() != 4 {
+		if or != nil && or(rb2, rb1, rb3).GetCardinality() != 4 {
 			t.Fail()
 		}
 	})
@@ -100,11 +104,11 @@ func TestParAggregations(t *testing.T) {
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		if ParAnd(0, rb2, rb1, rb3).GetCardinality() != 0 {
+		if and != nil && and(rb2, rb1, rb3).GetCardinality() != 0 {
 			t.Fail()
 		}
 
-		if ParOr(0, rb2, rb1, rb3).GetCardinality() != 4 {
+		if or != nil && or(rb2, rb1, rb3).GetCardinality() != 4 {
 			t.Fail()
 		}
 	})
@@ -119,11 +123,11 @@ func TestParAggregations(t *testing.T) {
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		if ParAnd(0, rb1, rb2, rb3).GetCardinality() != 0 {
+		if and != nil && and(rb1, rb2, rb3).GetCardinality() != 0 {
 			t.Fail()
 		}
 
-		if ParOr(0, rb1, rb2, rb3).GetCardinality() != 4 {
+		if or != nil && or(rb1, rb2, rb3).GetCardinality() != 4 {
 			t.Fail()
 		}
 	})
@@ -141,11 +145,11 @@ func TestParAggregations(t *testing.T) {
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		if ParAnd(0, rb1, rb2, rb3).GetCardinality() != 0 {
+		if and != nil && and(rb1, rb2, rb3).GetCardinality() != 0 {
 			t.Fail()
 		}
 
-		if ParOr(0, rb1, rb2, rb3).GetCardinality() != 4 {
+		if or != nil && or(rb1, rb2, rb3).GetCardinality() != 4 {
 			t.Fail()
 		}
 	})
@@ -177,11 +181,11 @@ func TestParAggregations(t *testing.T) {
 		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
 
-		if !ParOr(0, rb1, rb2, rb3).Equals(rb1) {
+		if or != nil && !or(rb1, rb2, rb3).Equals(rb1) {
 			t.Fail()
 		}
 
-		if !ParAnd(0, rb1, rb2, rb3).Equals(bigand) {
+		if and != nil && !and(rb1, rb2, rb3).Equals(bigand) {
 			t.Fail()
 		}
 	})
@@ -212,12 +216,23 @@ func TestParAggregations(t *testing.T) {
 		rb1.Or(rb2)
 		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
-		if !ParOr(0, rb1, rb2, rb3).Equals(rb1) {
+		if or != nil && !or(rb1, rb2, rb3).Equals(rb1) {
 			t.Fail()
 		}
 
-		if !ParAnd(0, rb1, rb2, rb3).Equals(bigand) {
+		if and != nil && !and(rb1, rb2, rb3).Equals(bigand) {
 			t.Fail()
 		}
 	})
+}
+
+func TestParAggregations(t *testing.T) {
+	andFunc := func(bitmaps ... *Bitmap) *Bitmap {
+		return ParAnd(0, bitmaps...)
+	}
+	orFunc := func(bitmaps ... *Bitmap) *Bitmap {
+		return ParOr(0, bitmaps...)
+	}
+
+	testAggregations(t, andFunc, orFunc, nil)
 }
