@@ -18,20 +18,27 @@ func testAggregations(t *testing.T,
 		rb2.Add(2)
 
 		if and != nil && and(rb1, rb2).GetCardinality() != 0 {
-			t.Fail()
+			t.Error()
 		}
 		if and != nil && or(rb1, rb2).GetCardinality() != 2 {
-			t.Fail()
+			t.Error()
+		}
+		if xor != nil && xor(rb1, rb2).GetCardinality() != 2 {
+			t.Error()
 		}
 	})
 
 	t.Run("aggregate nothing", func(t *testing.T) {
 		if and != nil && and().GetCardinality() != 0 {
-			t.Fail()
+			t.Error()
 		}
 
 		if or != nil && or().GetCardinality() != 0 {
-			t.Fail()
+			t.Error()
+		}
+
+		if xor != nil && xor().GetCardinality() != 0 {
+			t.Error()
 		}
 	})
 
@@ -39,11 +46,15 @@ func testAggregations(t *testing.T,
 		rb := BitmapOf(1, 2, 3)
 
 		if and != nil && and(rb).GetCardinality() != 3 {
-			t.Fail()
+			t.Error()
 		}
 
 		if or != nil && or(rb).GetCardinality() != 3 {
-			t.Fail()
+			t.Error()
+		}
+
+		if xor != nil && xor(rb).GetCardinality() != 3 {
+			t.Error()
 		}
 	})
 
@@ -52,10 +63,15 @@ func testAggregations(t *testing.T,
 		rb2 := BitmapOf(1)
 
 		if and != nil && and(rb1, rb2).GetCardinality() != 0 {
-			t.Fail()
+			t.Error()
 		}
-		if or != nil &&  or(rb1, rb2).GetCardinality() != 1 {
-			t.Fail()
+
+		if or != nil && or(rb1, rb2).GetCardinality() != 1 {
+			t.Error()
+		}
+
+		if xor != nil && xor(rb1, rb2).GetCardinality() != 1 {
+			t.Error()
 		}
 	})
 
@@ -64,11 +80,11 @@ func testAggregations(t *testing.T,
 		rb2 := BitmapOf(2)
 
 		if and != nil && and(rb1, rb2).Stats().Containers != 0 {
-			t.Fail()
+			t.Error()
 		}
 
 		if or != nil && or(rb1, rb2).GetCardinality() != 2 {
-			t.Fail()
+			t.Error()
 		}
 	})
 
@@ -86,11 +102,15 @@ func testAggregations(t *testing.T,
 		rb3.Add(300000)
 
 		if and != nil && and(rb2, rb1, rb3).GetCardinality() != 0 {
-			t.Fail()
+			t.Error()
 		}
 
 		if or != nil && or(rb2, rb1, rb3).GetCardinality() != 4 {
-			t.Fail()
+			t.Error()
+		}
+
+		if xor != nil && xor(rb2, rb1, rb3).GetCardinality() != 3 {
+			t.Error()
 		}
 	})
 
@@ -105,11 +125,15 @@ func testAggregations(t *testing.T,
 		rb3.Add(300000)
 
 		if and != nil && and(rb2, rb1, rb3).GetCardinality() != 0 {
-			t.Fail()
+			t.Error()
 		}
 
 		if or != nil && or(rb2, rb1, rb3).GetCardinality() != 4 {
-			t.Fail()
+			t.Error()
+		}
+
+		if xor != nil && xor(rb2, rb1, rb3).GetCardinality() != 3 {
+			t.Error()
 		}
 	})
 
@@ -124,11 +148,15 @@ func testAggregations(t *testing.T,
 		rb3.Add(300000)
 
 		if and != nil && and(rb1, rb2, rb3).GetCardinality() != 0 {
-			t.Fail()
+			t.Error()
 		}
 
 		if or != nil && or(rb1, rb2, rb3).GetCardinality() != 4 {
-			t.Fail()
+			t.Error()
+		}
+
+		if xor != nil && xor(rb1, rb2, rb3).GetCardinality() != 3 {
+			t.Error()
 		}
 	})
 
@@ -146,11 +174,15 @@ func testAggregations(t *testing.T,
 		rb3.Add(300000)
 
 		if and != nil && and(rb1, rb2, rb3).GetCardinality() != 0 {
-			t.Fail()
+			t.Error()
 		}
 
 		if or != nil && or(rb1, rb2, rb3).GetCardinality() != 4 {
-			t.Fail()
+			t.Error()
+		}
+
+		if xor != nil && xor(rb1, rb2, rb3).GetCardinality() != 3 {
+			t.Error()
 		}
 	})
 
@@ -180,13 +212,18 @@ func testAggregations(t *testing.T,
 		rb1.Or(rb2)
 		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
+		bigxor := Xor(Xor(rb1, rb2), rb3)
 
 		if or != nil && !or(rb1, rb2, rb3).Equals(rb1) {
-			t.Fail()
+			t.Error()
 		}
 
 		if and != nil && !and(rb1, rb2, rb3).Equals(bigand) {
-			t.Fail()
+			t.Error()
+		}
+
+		if xor != nil && !xor(rb1, rb2, rb3).Equals(bigxor) {
+			t.Error()
 		}
 	})
 
@@ -213,15 +250,22 @@ func testAggregations(t *testing.T,
 			rb3.Add(i)
 		}
 		rb1.RunOptimize()
+
 		rb1.Or(rb2)
 		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
+		bigxor := Xor(Xor(rb1, rb2), rb3)
+
 		if or != nil && !or(rb1, rb2, rb3).Equals(rb1) {
-			t.Fail()
+			t.Error()
 		}
 
 		if and != nil && !and(rb1, rb2, rb3).Equals(bigand) {
-			t.Fail()
+			t.Error()
+		}
+
+		if xor != nil && !xor(rb1, rb2, rb3).Equals(bigxor) {
+			t.Error()
 		}
 	})
 }
@@ -235,4 +279,12 @@ func TestParAggregations(t *testing.T) {
 	}
 
 	testAggregations(t, andFunc, orFunc, nil)
+}
+
+func TestFastAggregations(t *testing.T) {
+	testAggregations(t, FastAnd, FastOr, nil)
+}
+
+func TestHeapAggregations(t *testing.T) {
+	testAggregations(t, nil, HeapOr, HeapXor)
 }
