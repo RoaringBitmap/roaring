@@ -1248,7 +1248,7 @@ func (ri *manyRunIterator16) nextMany(hs uint32, buf []uint32) int {
 			continue
 		}
 		// add as many as you can from this seq
-		moreVals := min(int(ri.rc.iv[ri.curIndex].length-ri.curPosInIndex), len(buf)-n)
+		moreVals := minOfInt(int(ri.rc.iv[ri.curIndex].length-ri.curPosInIndex), len(buf)-n)
 
 		base := uint32(ri.rc.iv[ri.curIndex].start+ri.curPosInIndex+1) | hs
 
