@@ -803,19 +803,12 @@ func (ac *arrayContainer) negateRange(buffer []uint16, startIndex, lastIndex, st
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func (ac *arrayContainer) isFull() bool {
 	return false
 }
 
 func (ac *arrayContainer) andArray(value2 *arrayContainer) container {
-	desiredcapacity := min(ac.getCardinality(), value2.getCardinality())
+	desiredcapacity := minOfInt(ac.getCardinality(), value2.getCardinality())
 	answer := newArrayContainerCapacity(desiredcapacity)
 	length := intersection2by2(
 		ac.content,
@@ -953,7 +946,7 @@ func (ac *arrayContainer) toEfficientContainer() container {
 	card := ac.getCardinality()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
 
-	if sizeAsRunContainer <= min(sizeAsBitmapContainer, sizeAsArrayContainer) {
+	if sizeAsRunContainer <= minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
 		return newRunContainer16FromArray(ac)
 	}
 	if card <= arrayDefaultMaxSize {
