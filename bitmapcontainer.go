@@ -347,13 +347,28 @@ func (bc *bitmapContainer) lazyIOR(a container) container {
 		if x.isFull() {
 			return x.clone()
 		}
-		// TODO : implement efficient in-place lazy OR to bitmap
-		for i := range x.iv {
-			setBitmapRange(bc.bitmap, int(x.iv[i].start), int(x.iv[i].last())+1)
-			//bc.iaddRange(int(x.iv[i].start), int(x.iv[i].last)+1)
+
+		// Manually inlined setBitmapRange function
+		bitmap := bc.bitmap
+		for _, iv := range x.iv {
+			start := int(iv.start)
+			end := int(iv.last()) + 1
+			if start >= end {
+				continue
+			}
+			firstword := start / 64
+			endword := (end - 1) / 64
+			if firstword == endword {
+				bitmap[firstword] |= (^uint64(0) << uint(start%64)) & (^uint64(0) >> (uint(-end) % 64))
+				continue
+			}
+			bitmap[firstword] |= ^uint64(0) << uint(start%64)
+			for i := firstword + 1; i < endword; i++ {
+				bitmap[i] = ^uint64(0)
+			}
+			bitmap[endword] |= ^uint64(0) >> (uint(-end) % 64)
 		}
 		bc.cardinality = invalidCardinality
-		//bc.computeCardinality()
 		return bc
 	}
 	panic("unsupported container type")
