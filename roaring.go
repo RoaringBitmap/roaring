@@ -138,12 +138,12 @@ func (rb *Bitmap) UnmarshalBinary(data []byte) error {
 
 // NewBitmap creates a new empty Bitmap (see also New)
 func NewBitmap() *Bitmap {
-	return &Bitmap{*newRoaringArray()}
+	return &Bitmap{}
 }
 
 // New creates a new empty Bitmap (same as NewBitmap)
 func New() *Bitmap {
-	return &Bitmap{*newRoaringArray()}
+	return &Bitmap{}
 }
 
 // Clear removes all content from the Bitmap and frees the memory

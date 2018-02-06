@@ -12,6 +12,22 @@ import (
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
 
+var Rb *Bitmap
+
+func BenchmarkNewBitmap(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Rb = New()
+	}
+}
+
+var emptyArray []byte
+
+func BenchmarkEmptyArray(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		emptyArray = make([]byte, 0)
+	}
+}
+
 var c9 uint
 
 // go test -bench BenchmarkMemoryUsage -run -
