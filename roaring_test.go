@@ -4,11 +4,44 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/willf/bitset"
 	"log"
+	"math"
 	"math/rand"
 	"strconv"
 	"testing"
 	"unsafe"
 )
+
+func TestRoaringRangeEnd(t *testing.T) {
+	r := New()
+	r.Add(MaxUint32)
+	if 1 != r.GetCardinality() {
+		t.FailNow()
+	}
+	r.RemoveRange(0, MaxUint32)
+	if 1 != r.GetCardinality() {
+		t.FailNow()
+	}
+	r.RemoveRange(0, math.MaxUint64)
+	if 0 != r.GetCardinality() {
+		t.FailNow()
+	}
+	r.Add(MaxUint32)
+	if 1 != r.GetCardinality() {
+		t.FailNow()
+	}
+	r.RemoveRange(0, 0x100000001)
+	if 0 != r.GetCardinality() {
+		t.FailNow()
+	}
+	r.Add(MaxUint32)
+	if 1 != r.GetCardinality() {
+		t.FailNow()
+	}
+	r.RemoveRange(0, 0x100000000)
+	if 0 != r.GetCardinality() {
+		t.FailNow()
+	}
+}
 
 func TestFirstLast(t *testing.T) {
 	bm := New()

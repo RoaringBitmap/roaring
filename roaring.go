@@ -1034,7 +1034,9 @@ func (rb *Bitmap) AddRange(rangeStart, rangeEnd uint64) {
 	if rangeStart >= rangeEnd {
 		return
 	}
-
+	if rangeEnd-1 > MaxUint32 {
+		panic("rangeEnd-1 > MaxUint32")
+	}
 	hbStart := uint32(highbits(uint32(rangeStart)))
 	lbStart := uint32(lowbits(uint32(rangeStart)))
 	hbLast := uint32(highbits(uint32(rangeEnd - 1)))
@@ -1070,7 +1072,12 @@ func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint64) {
 	if rangeStart >= rangeEnd {
 		return
 	}
-
+	if rangeEnd-1 > MaxUint32 {
+		// logically, we should assume that the user wants to
+		// remove all values from rangeStart to infinity
+		// see https://github.com/RoaringBitmap/roaring/issues/141
+		rangeEnd = uint64(0x100000000)
+	}
 	hbStart := uint32(highbits(uint32(rangeStart)))
 	lbStart := uint32(lowbits(uint32(rangeStart)))
 	hbLast := uint32(highbits(uint32(rangeEnd - 1)))
