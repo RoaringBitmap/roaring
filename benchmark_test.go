@@ -50,8 +50,7 @@ func BenchmarkMemoryUsage(b *testing.B) {
 
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
-	fmt.Printf("\nHeapInUse %d\n", stats.HeapInuse)
-	fmt.Printf("HeapObjects %d\n", stats.HeapObjects)
+	b.Logf("HeapInUse: %d, HeapObjects: %d", stats.HeapInuse, stats.HeapObjects)
 	b.StartTimer()
 }
 
