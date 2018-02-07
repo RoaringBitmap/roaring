@@ -11,7 +11,7 @@ var defaultWorkerCount = runtime.NumCPU()
 type bitmapContainerKey struct {
 	key    uint16
 	idx    int
-	bitmap *Bitmap
+	bitmap Bitmap
 }
 
 type multipleContainers struct {
@@ -91,7 +91,7 @@ func (h *bitmapContainerHeap) Next(containers []container) multipleContainers {
 	}
 }
 
-func newBitmapContainerHeap(bitmaps ...*Bitmap) bitmapContainerHeap {
+func newBitmapContainerHeap(bitmaps ...Bitmap) bitmapContainerHeap {
 	// Initialize heap
 	var h bitmapContainerHeap = make([]bitmapContainerKey, 0, len(bitmaps))
 	for _, bitmap := range bitmaps {
@@ -139,7 +139,7 @@ func toBitmapContainer(c container) container {
 	return c
 }
 
-func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer, expectedKeysChan <-chan int) {
+func appenderRoutine(bitmapChan chan<- Bitmap, resultChan <-chan keyedContainer, expectedKeysChan <-chan int) {
 	expectedKeys := -1
 	appendedKeys := 0
 	keys := make([]uint16, 0)
@@ -159,7 +159,7 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 			expectedKeys = msg
 		}
 	}
-	answer := &Bitmap{
+	answer := Bitmap{
 		roaringArray{
 			make([]uint16, 0, expectedKeys),
 			make([]container, 0, expectedKeys),
@@ -180,7 +180,7 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 // ParOr computes the union (OR) of all provided bitmaps in parallel,
 // where the parameter "parallelism" determines how many workers are to be used
 // (if it is set to 0, a default number of workers is chosen)
-func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
+func ParOr(parallelism int, bitmaps ...Bitmap) Bitmap {
 
 	bitmapCount := len(bitmaps)
 	if bitmapCount == 0 {
@@ -195,7 +195,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 
 	h := newBitmapContainerHeap(bitmaps...)
 
-	bitmapChan := make(chan *Bitmap)
+	bitmapChan := make(chan Bitmap)
 	inputChan := make(chan multipleContainers, 128)
 	resultChan := make(chan keyedContainer, 32)
 	expectedKeysChan := make(chan int)
@@ -260,7 +260,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 // ParAnd computes the intersection (AND) of all provided bitmaps in parallel,
 // where the parameter "parallelism" determines how many workers are to be used
 // (if it is set to 0, a default number of workers is chosen)
-func ParAnd(parallelism int, bitmaps ...*Bitmap) *Bitmap {
+func ParAnd(parallelism int, bitmaps ...Bitmap) Bitmap {
 	bitmapCount := len(bitmaps)
 	if bitmapCount == 0 {
 		return NewBitmap()
@@ -274,7 +274,7 @@ func ParAnd(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 
 	h := newBitmapContainerHeap(bitmaps...)
 
-	bitmapChan := make(chan *Bitmap)
+	bitmapChan := make(chan Bitmap)
 	inputChan := make(chan multipleContainers, 128)
 	resultChan := make(chan keyedContainer, 32)
 	expectedKeysChan := make(chan int)

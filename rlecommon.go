@@ -43,7 +43,7 @@ type searchOptions struct {
 }
 
 // And finds the intersection of rc and b.
-func (rc *runContainer32) And(b *Bitmap) *Bitmap {
+func (rc *runContainer32) And(b Bitmap) Bitmap {
 	out := NewBitmap()
 	for _, p := range rc.iv {
 		for i := p.start; i <= p.last; i++ {
@@ -56,7 +56,7 @@ func (rc *runContainer32) And(b *Bitmap) *Bitmap {
 }
 
 // Xor returns the exclusive-or of rc and b.
-func (rc *runContainer32) Xor(b *Bitmap) *Bitmap {
+func (rc *runContainer32) Xor(b Bitmap) Bitmap {
 	out := b.Clone()
 	for _, p := range rc.iv {
 		for v := p.start; v <= p.last; v++ {
@@ -71,7 +71,7 @@ func (rc *runContainer32) Xor(b *Bitmap) *Bitmap {
 }
 
 // Or returns the union of rc and b.
-func (rc *runContainer32) Or(b *Bitmap) *Bitmap {
+func (rc *runContainer32) Or(b Bitmap) Bitmap {
 	out := b.Clone()
 	for _, p := range rc.iv {
 		for v := p.start; v <= p.last; v++ {
@@ -101,7 +101,7 @@ type trial struct {
 }
 
 // And finds the intersection of rc and b.
-func (rc *runContainer16) And(b *Bitmap) *Bitmap {
+func (rc *runContainer16) And(b Bitmap) Bitmap {
 	out := NewBitmap()
 	for _, p := range rc.iv {
 		plast := p.last()
@@ -115,7 +115,7 @@ func (rc *runContainer16) And(b *Bitmap) *Bitmap {
 }
 
 // Xor returns the exclusive-or of rc and b.
-func (rc *runContainer16) Xor(b *Bitmap) *Bitmap {
+func (rc *runContainer16) Xor(b Bitmap) Bitmap {
 	out := b.Clone()
 	for _, p := range rc.iv {
 		plast := p.last()
@@ -132,7 +132,7 @@ func (rc *runContainer16) Xor(b *Bitmap) *Bitmap {
 }
 
 // Or returns the union of rc and b.
-func (rc *runContainer16) Or(b *Bitmap) *Bitmap {
+func (rc *runContainer16) Or(b Bitmap) Bitmap {
 	out := b.Clone()
 	for _, p := range rc.iv {
 		plast := p.last()

@@ -6,11 +6,12 @@ import (
 	"testing"
 )
 
-func testAggregations(t *testing.T,
-	and func(bitmaps ... *Bitmap) *Bitmap,
-	or func(bitmaps ... *Bitmap) *Bitmap,
-	xor func(bitmaps ... *Bitmap) *Bitmap) {
-
+func testAggregations(
+	t *testing.T,
+	and func(bitmaps ...Bitmap) Bitmap,
+	or func(bitmaps ...Bitmap) Bitmap,
+	xor func(bitmaps ...Bitmap) Bitmap,
+) {
 	t.Run("simple case", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := NewBitmap()
@@ -271,10 +272,10 @@ func testAggregations(t *testing.T,
 }
 
 func TestParAggregations(t *testing.T) {
-	andFunc := func(bitmaps ... *Bitmap) *Bitmap {
+	andFunc := func(bitmaps ...Bitmap) Bitmap {
 		return ParAnd(0, bitmaps...)
 	}
-	orFunc := func(bitmaps ... *Bitmap) *Bitmap {
+	orFunc := func(bitmaps ...Bitmap) Bitmap {
 		return ParOr(0, bitmaps...)
 	}
 

@@ -5,7 +5,7 @@ import (
 )
 
 // Or function that requires repairAfterLazy
-func lazyOR(x1, x2 *Bitmap) *Bitmap {
+func lazyOR(x1, x2 Bitmap) Bitmap {
 	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
@@ -62,7 +62,7 @@ main:
 }
 
 // In-place Or function that requires repairAfterLazy
-func (x1 *Bitmap) lazyOR(x2 *Bitmap) *Bitmap {
+func (x1 Bitmap) lazyOR(x2 Bitmap) Bitmap {
 	pos1 := 0
 	pos2 := 0
 	length1 := x1.highlowcontainer.size()
@@ -120,7 +120,7 @@ main:
 }
 
 // to be called after lazy aggregates
-func (x1 *Bitmap) repairAfterLazy() {
+func (x1 Bitmap) repairAfterLazy() {
 	for pos := 0; pos < x1.highlowcontainer.size(); pos++ {
 		c := x1.highlowcontainer.getContainerAtIndex(pos)
 		switch c.(type) {
@@ -141,7 +141,7 @@ func (x1 *Bitmap) repairAfterLazy() {
 // FastAnd computes the intersection between many bitmaps quickly
 // Compared to the And function, it can take many bitmaps as input, thus saving the trouble
 // of manually calling "And" many times.
-func FastAnd(bitmaps ...*Bitmap) *Bitmap {
+func FastAnd(bitmaps ...Bitmap) Bitmap {
 	if len(bitmaps) == 0 {
 		return NewBitmap()
 	} else if len(bitmaps) == 1 {
@@ -156,7 +156,7 @@ func FastAnd(bitmaps ...*Bitmap) *Bitmap {
 
 // FastOr computes the union between many bitmaps quickly, as opposed to having to call Or repeatedly.
 // It might also be faster than calling Or repeatedly.
-func FastOr(bitmaps ...*Bitmap) *Bitmap {
+func FastOr(bitmaps ...Bitmap) Bitmap {
 	if len(bitmaps) == 0 {
 		return NewBitmap()
 	} else if len(bitmaps) == 1 {
@@ -173,7 +173,7 @@ func FastOr(bitmaps ...*Bitmap) *Bitmap {
 
 // HeapOr computes the union between many bitmaps quickly using a heap.
 // It might be faster than calling Or repeatedly.
-func HeapOr(bitmaps ...*Bitmap) *Bitmap {
+func HeapOr(bitmaps ...Bitmap) Bitmap {
 	if len(bitmaps) == 0 {
 		return NewBitmap()
 	}
@@ -195,7 +195,7 @@ func HeapOr(bitmaps ...*Bitmap) *Bitmap {
 // HeapXor computes the symmetric difference between many bitmaps quickly (as opposed to calling Xor repeated).
 // Internally, this function uses a heap.
 // It might be faster than calling Xor repeatedly.
-func HeapXor(bitmaps ...*Bitmap) *Bitmap {
+func HeapXor(bitmaps ...Bitmap) Bitmap {
 	if len(bitmaps) == 0 {
 		return NewBitmap()
 	}

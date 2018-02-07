@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSerializationOfEmptyBitmap(t *testing.T) {
@@ -310,7 +312,7 @@ func TestSerializationBasic3_042(t *testing.T) {
 
 func TestGobcoding043(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
-
+	require.EqualValues(t, 7, rb.GetCardinality())
 	buf := new(bytes.Buffer)
 	encoder := gob.NewEncoder(buf)
 	err := encoder.Encode(rb)
@@ -324,6 +326,7 @@ func TestGobcoding043(t *testing.T) {
 	if err != nil {
 		t.Errorf("Gob decoding failed")
 	}
+	assert.EqualValues(t, 7, b.GetCardinality())
 
 	if !b.Equals(rb) {
 		t.Errorf("Decoded bitmap does not equal input bitmap")

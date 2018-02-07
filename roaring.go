@@ -8,6 +8,7 @@ package roaring
 import (
 	"bufio"
 	"bytes"
+	"encoding"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -19,8 +20,12 @@ type Bitmap struct {
 	highlowcontainer roaringArray
 }
 
+var _ interface {
+	encoding.BinaryUnmarshaler
+} = (*Bitmap)(nil)
+
 // ToBase64 serializes a bitmap as Base64
-func (rb *Bitmap) ToBase64() (string, error) {
+func (rb Bitmap) ToBase64() (string, error) {
 	buf := new(bytes.Buffer)
 	_, err := rb.WriteTo(buf)
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), err
@@ -42,13 +47,13 @@ func (rb *Bitmap) FromBase64(str string) (int64, error) {
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
-func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
+func (rb Bitmap) WriteTo(stream io.Writer) (int64, error) {
 	return rb.highlowcontainer.writeTo(stream)
 }
 
 // ToBytes returns an array of bytes corresponding to what is written
 // when calling WriteTo
-func (rb *Bitmap) ToBytes() ([]byte, error) {
+func (rb Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
@@ -59,7 +64,7 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 // footprint and/or be faster to read, depending
 // on your content. Currently only the Go roaring
 // implementation supports this format.
-func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
+func (rb Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 	return 0, rb.highlowcontainer.writeToMsgpack(stream)
 }
 
@@ -92,12 +97,12 @@ func (rb *Bitmap) FromBuffer(buf []byte) (int64, error) {
 }
 
 // RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
-func (rb *Bitmap) RunOptimize() {
+func (rb Bitmap) RunOptimize() {
 	rb.highlowcontainer.runOptimize()
 }
 
 // HasRunCompression returns true if the bitmap benefits from run compression
-func (rb *Bitmap) HasRunCompression() bool {
+func (rb Bitmap) HasRunCompression() bool {
 	return rb.highlowcontainer.hasRunCompression()
 }
 
@@ -110,7 +115,7 @@ func (rb *Bitmap) ReadFromMsgpack(stream io.Reader) (int64, error) {
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for the bitmap
-func (rb *Bitmap) MarshalBinary() ([]byte, error) {
+func (rb Bitmap) MarshalBinary() ([]byte, error) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
 	_, err := rb.WriteTo(writer)
@@ -137,13 +142,13 @@ func (rb *Bitmap) UnmarshalBinary(data []byte) error {
 }
 
 // NewBitmap creates a new empty Bitmap (see also New)
-func NewBitmap() *Bitmap {
-	return &Bitmap{}
+func NewBitmap() Bitmap {
+	return Bitmap{}
 }
 
 // New creates a new empty Bitmap (same as NewBitmap)
-func New() *Bitmap {
-	return &Bitmap{}
+func New() Bitmap {
+	return Bitmap{}
 }
 
 // Clear removes all content from the Bitmap and frees the memory
@@ -152,7 +157,7 @@ func (rb *Bitmap) Clear() {
 }
 
 // ToArray creates a new slice containing all of the integers stored in the Bitmap in sorted order
-func (rb *Bitmap) ToArray() []uint32 {
+func (rb Bitmap) ToArray() []uint32 {
 	array := make([]uint32, rb.GetCardinality())
 	pos := 0
 	pos2 := 0
@@ -169,7 +174,7 @@ func (rb *Bitmap) ToArray() []uint32 {
 
 // GetSizeInBytes estimates the memory usage of the Bitmap. Note that this
 // might differ slightly from the amount of bytes required for persistent storage
-func (rb *Bitmap) GetSizeInBytes() uint64 {
+func (rb Bitmap) GetSizeInBytes() uint64 {
 	size := uint64(8)
 	for _, c := range rb.highlowcontainer.containers {
 		size += uint64(2) + uint64(c.getSizeInBytes())
@@ -181,7 +186,7 @@ func (rb *Bitmap) GetSizeInBytes() uint64 {
 // of the Bitmap. It should correspond to the
 // number of bytes written when invoking WriteTo. You can expect
 // that this function is much cheaper computationally than WriteTo.
-func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
+func (rb Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }
 
@@ -243,7 +248,7 @@ func (ii *intIterator) Next() uint32 {
 	return x
 }
 
-func newIntIterator(a *Bitmap) *intIterator {
+func newIntIterator(a Bitmap) *intIterator {
 	p := new(intIterator)
 	p.pos = 0
 	p.highlowcontainer = &a.highlowcontainer
@@ -252,7 +257,7 @@ func newIntIterator(a *Bitmap) *intIterator {
 }
 
 // String creates a string representation of the Bitmap
-func (rb *Bitmap) String() string {
+func (rb Bitmap) String() string {
 	// inspired by https://github.com/fzandona/goroar/
 	var buffer bytes.Buffer
 	start := []byte("{")
@@ -278,47 +283,42 @@ func (rb *Bitmap) String() string {
 }
 
 // Iterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order
-func (rb *Bitmap) Iterator() IntIterable {
+func (rb Bitmap) Iterator() IntIterable {
 	return newIntIterator(rb)
 }
 
 // Clone creates a copy of the Bitmap
-func (rb *Bitmap) Clone() *Bitmap {
-	ptr := new(Bitmap)
-	ptr.highlowcontainer = *rb.highlowcontainer.clone()
-	return ptr
+func (rb Bitmap) Clone() (ret Bitmap) {
+	ret.highlowcontainer = *rb.highlowcontainer.clone()
+	return
 }
 
 // Minimum get the smallest value stored in this roaring bitmap, assumes that it is not empty
-func (rb *Bitmap) Minimum() uint32 {
+func (rb Bitmap) Minimum() uint32 {
 	return uint32(rb.highlowcontainer.containers[0].minimum()) | (uint32(rb.highlowcontainer.keys[0]) << 16)
 }
 
 // Maximum get the largest value stored in this roaring bitmap, assumes that it is not empty
-func (rb *Bitmap) Maximum() uint32 {
+func (rb Bitmap) Maximum() uint32 {
 	lastindex := len(rb.highlowcontainer.containers) - 1
 	return uint32(rb.highlowcontainer.containers[lastindex].maximum()) | (uint32(rb.highlowcontainer.keys[lastindex]) << 16)
 }
 
 // Contains returns true if the integer is contained in the bitmap
-func (rb *Bitmap) Contains(x uint32) bool {
+func (rb Bitmap) Contains(x uint32) bool {
 	hb := highbits(x)
 	c := rb.highlowcontainer.getContainer(hb)
 	return c != nil && c.contains(lowbits(x))
 }
 
 // ContainsInt returns true if the integer is contained in the bitmap (this is a convenience method, the parameter is casted to uint32 and Contains is called)
-func (rb *Bitmap) ContainsInt(x int) bool {
+func (rb Bitmap) ContainsInt(x int) bool {
 	return rb.Contains(uint32(x))
 }
 
 // Equals returns true if the two bitmaps contain the same integers
-func (rb *Bitmap) Equals(o interface{}) bool {
-	srb, ok := o.(*Bitmap)
-	if ok {
-		return srb.highlowcontainer.equals(rb.highlowcontainer)
-	}
-	return false
+func (rb Bitmap) Equals(srb Bitmap) bool {
+	return srb.highlowcontainer.equals(rb.highlowcontainer)
 }
 
 // Add the integer x to the bitmap
@@ -354,7 +354,7 @@ func (rb *Bitmap) addwithptr(x uint32) (int, container) {
 }
 
 // CheckedAdd adds the integer x to the bitmap and return true  if it was added (false if the integer was already present)
-func (rb *Bitmap) CheckedAdd(x uint32) bool {
+func (rb Bitmap) CheckedAdd(x uint32) bool {
 	// TODO: add unit tests for this method
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
@@ -390,7 +390,7 @@ func (rb *Bitmap) Remove(x uint32) {
 }
 
 // CheckedRemove removes the integer x from the bitmap and return true if the integer was effectively remove (and false if the integer was not present)
-func (rb *Bitmap) CheckedRemove(x uint32) bool {
+func (rb Bitmap) CheckedRemove(x uint32) bool {
 	// TODO: add unit tests for this method
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
@@ -410,12 +410,12 @@ func (rb *Bitmap) CheckedRemove(x uint32) bool {
 }
 
 // IsEmpty returns true if the Bitmap is empty (it is faster than doing (GetCardinality() == 0))
-func (rb *Bitmap) IsEmpty() bool {
+func (rb Bitmap) IsEmpty() bool {
 	return rb.highlowcontainer.size() == 0
 }
 
 // GetCardinality returns the number of integers contained in the bitmap
-func (rb *Bitmap) GetCardinality() uint64 {
+func (rb Bitmap) GetCardinality() uint64 {
 	size := uint64(0)
 	for _, c := range rb.highlowcontainer.containers {
 		size += uint64(c.getCardinality())
@@ -424,7 +424,7 @@ func (rb *Bitmap) GetCardinality() uint64 {
 }
 
 // Rank returns the number of integers that are smaller or equal to x (Rank(infinity) would be GetCardinality())
-func (rb *Bitmap) Rank(x uint32) uint64 {
+func (rb Bitmap) Rank(x uint32) uint64 {
 	size := uint64(0)
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
 		key := rb.highlowcontainer.getKeyAtIndex(i)
@@ -441,7 +441,7 @@ func (rb *Bitmap) Rank(x uint32) uint64 {
 }
 
 // Select returns the xth integer in the bitmap
-func (rb *Bitmap) Select(x uint32) (uint32, error) {
+func (rb Bitmap) Select(x uint32) (uint32, error) {
 	if rb.GetCardinality() <= uint64(x) {
 		return 0, fmt.Errorf("can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
 	}
@@ -460,7 +460,7 @@ func (rb *Bitmap) Select(x uint32) (uint32, error) {
 }
 
 // And computes the intersection between two bitmaps and stores the result in the current bitmap
-func (rb *Bitmap) And(x2 *Bitmap) {
+func (rb *Bitmap) And(x2 Bitmap) {
 	pos1 := 0
 	pos2 := 0
 	intersectionsize := 0
@@ -510,7 +510,7 @@ main:
 }
 
 // OrCardinality  returns the cardinality of the union between two bitmaps, bitmaps are not modified
-func (rb *Bitmap) OrCardinality(x2 *Bitmap) uint64 {
+func (rb Bitmap) OrCardinality(x2 Bitmap) uint64 {
 	pos1 := 0
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
@@ -563,7 +563,7 @@ main:
 }
 
 // AndCardinality returns the cardinality of the intersection between two bitmaps, bitmaps are not modified
-func (rb *Bitmap) AndCardinality(x2 *Bitmap) uint64 {
+func (rb Bitmap) AndCardinality(x2 Bitmap) uint64 {
 	pos1 := 0
 	pos2 := 0
 	answer := uint64(0)
@@ -609,7 +609,7 @@ main:
 }
 
 // Intersects checks whether two bitmap intersects, bitmaps are not modified
-func (rb *Bitmap) Intersects(x2 *Bitmap) bool {
+func (rb Bitmap) Intersects(x2 Bitmap) bool {
 	pos1 := 0
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
@@ -656,7 +656,7 @@ main:
 }
 
 // Xor computes the symmetric difference between two bitmaps and stores the result in the current bitmap
-func (rb *Bitmap) Xor(x2 *Bitmap) {
+func (rb *Bitmap) Xor(x2 Bitmap) {
 	pos1 := 0
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
@@ -698,13 +698,13 @@ func (rb *Bitmap) Xor(x2 *Bitmap) {
 }
 
 // Or computes the union between two bitmaps and stores the result in the current bitmap
-func (rb *Bitmap) Or(x2 *Bitmap) {
-	results := Or(rb, x2) // Todo: could be computed in-place for reduced memory usage
+func (rb *Bitmap) Or(x2 Bitmap) {
+	results := Or(*rb, x2) // Todo: could be computed in-place for reduced memory usage
 	rb.highlowcontainer = results.highlowcontainer
 }
 
 // AndNot computes the difference between two bitmaps and stores the result in the current bitmap
-func (rb *Bitmap) AndNot(x2 *Bitmap) {
+func (rb *Bitmap) AndNot(x2 Bitmap) {
 	pos1 := 0
 	pos2 := 0
 	intersectionsize := 0
@@ -767,7 +767,7 @@ main:
 }
 
 // Or computes the union between two bitmaps and returns the result
-func Or(x1, x2 *Bitmap) *Bitmap {
+func Or(x1, x2 Bitmap) Bitmap {
 	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
@@ -815,7 +815,7 @@ main:
 }
 
 // And computes the intersection between two bitmaps and returns the result
-func And(x1, x2 *Bitmap) *Bitmap {
+func And(x1, x2 Bitmap) Bitmap {
 	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
@@ -859,7 +859,7 @@ main:
 }
 
 // Xor computes the symmetric difference between two bitmaps and returns the result
-func Xor(x1, x2 *Bitmap) *Bitmap {
+func Xor(x1, x2 Bitmap) Bitmap {
 	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
@@ -896,7 +896,7 @@ func Xor(x1, x2 *Bitmap) *Bitmap {
 }
 
 // AndNot computes the difference between two bitmaps and returns the result
-func AndNot(x1, x2 *Bitmap) *Bitmap {
+func AndNot(x1, x2 Bitmap) Bitmap {
 	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
@@ -967,7 +967,7 @@ func (rb *Bitmap) AddMany(dat []uint32) {
 }
 
 // BitmapOf generates a new bitmap filled with the specified integers
-func BitmapOf(dat ...uint32) *Bitmap {
+func BitmapOf(dat ...uint32) Bitmap {
 	ans := NewBitmap()
 	ans.AddMany(dat)
 	return ans
@@ -1134,7 +1134,7 @@ func (rb *Bitmap) RemoveRange(rangeStart, rangeEnd uint64) {
 // the current bitmap unchanged.
 // The function uses 64-bit parameters even though a Bitmap stores 32-bit values because it is allowed and meaningful to use [0,uint64(0x100000000)) as a range
 // while uint64(0x100000000) cannot be represented as a 32-bit value.
-func Flip(bm *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
+func Flip(bm Bitmap, rangeStart, rangeEnd uint64) Bitmap {
 	if rangeStart >= rangeEnd {
 		return bm.Clone()
 	}
@@ -1196,12 +1196,12 @@ func (rb *Bitmap) SetCopyOnWrite(val bool) {
 }
 
 // GetCopyOnWrite gets this bitmap's copy-on-write property
-func (rb *Bitmap) GetCopyOnWrite() (val bool) {
+func (rb Bitmap) GetCopyOnWrite() (val bool) {
 	return rb.highlowcontainer.copyOnWrite
 }
 
 // FlipInt calls Flip after casting the parameters (convenience method)
-func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
+func FlipInt(bm Bitmap, rangeStart, rangeEnd int) Bitmap {
 	return Flip(bm, uint64(rangeStart), uint64(rangeEnd))
 }
 
@@ -1224,7 +1224,7 @@ type Statistics struct {
 }
 
 // Stats returns details on container type usage in a Statistics struct.
-func (rb *Bitmap) Stats() Statistics {
+func (rb Bitmap) Stats() Statistics {
 	stats := Statistics{}
 	stats.Containers = uint64(len(rb.highlowcontainer.containers))
 	for _, c := range rb.highlowcontainer.containers {

@@ -12,7 +12,7 @@ import (
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
 
-var Rb *Bitmap
+var Rb Bitmap
 
 func BenchmarkNewBitmap(b *testing.B) {
 	b.ReportAllocs()
@@ -34,7 +34,7 @@ var c9 uint
 // go test -bench BenchmarkMemoryUsage -run -
 func BenchmarkMemoryUsage(b *testing.B) {
 	b.StopTimer()
-	bitmaps := make([]*Bitmap, 0, 10)
+	bitmaps := make([]Bitmap, 0, 10)
 
 	incr := uint32(1 << 16)
 	max := uint32(1<<32 - 1)
@@ -524,7 +524,8 @@ func BenchmarkXor(b *testing.B) {
 	b.StartTimer()
 
 	for j := 0; j < b.N; j++ {
-		s.Clone().Xor(x2)
+		bm := s.Clone()
+		bm.Xor(x2)
 	}
 }
 
@@ -546,6 +547,7 @@ func BenchmarkXorLopsided(b *testing.B) {
 	b.StartTimer()
 
 	for j := 0; j < b.N; j++ {
-		s.Clone().Xor(x2)
+		bm := s.Clone()
+		bm.Xor(x2)
 	}
 }

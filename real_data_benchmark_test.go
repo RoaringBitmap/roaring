@@ -30,7 +30,7 @@ func init() {
 	}
 }
 
-func retrieveRealDataBitmaps(datasetName string, optimize bool) ([]*Bitmap, error) {
+func retrieveRealDataBitmaps(datasetName string, optimize bool) ([]Bitmap, error) {
 	gopath, ok := os.LookupEnv("GOPATH")
 	if !ok {
 		return nil, fmt.Errorf("GOPATH not set. It's required to locate real-roaring-datasets. Set GOPATH or disable BENCH_REAL_DATA")
@@ -61,7 +61,7 @@ func retrieveRealDataBitmaps(datasetName string, optimize bool) ([]*Bitmap, erro
 		}
 	}
 
-	bitmaps := make([]*Bitmap, len(zipFile.File))
+	bitmaps := make([]Bitmap, len(zipFile.File))
 	buf := make([]byte, largestFileSize)
 	var bufStep uint64 = 32768 // apparently the largest buffer zip can read
 	for i, f := range zipFile.File {
@@ -117,7 +117,7 @@ func retrieveRealDataBitmaps(datasetName string, optimize bool) ([]*Bitmap, erro
 	return bitmaps, nil
 }
 
-func benchmarkRealDataAggregate(b *testing.B, aggregator func(b []*Bitmap) uint64) {
+func benchmarkRealDataAggregate(b *testing.B, aggregator func(b []Bitmap) uint64) {
 	if !benchRealData {
 		b.SkipNow()
 	}
@@ -138,13 +138,13 @@ func benchmarkRealDataAggregate(b *testing.B, aggregator func(b []*Bitmap) uint6
 }
 
 func BenchmarkRealDataParOr(b *testing.B) {
-	benchmarkRealDataAggregate(b, func(bitmaps []*Bitmap) uint64 {
+	benchmarkRealDataAggregate(b, func(bitmaps []Bitmap) uint64 {
 		return ParOr(0, bitmaps...).GetCardinality()
 	})
 }
 
 func BenchmarkRealDataFastOr(b *testing.B) {
-	benchmarkRealDataAggregate(b, func(bitmaps []*Bitmap) uint64 {
+	benchmarkRealDataAggregate(b, func(bitmaps []Bitmap) uint64 {
 		return FastOr(bitmaps...).GetCardinality()
 	})
 }

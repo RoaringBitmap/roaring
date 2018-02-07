@@ -1,13 +1,14 @@
 package roaring
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/willf/bitset"
 	"log"
 	"math/rand"
 	"strconv"
 	"testing"
 	"unsafe"
+
+	. "github.com/smartystreets/goconvey/convey"
+	"github.com/willf/bitset"
 )
 
 func TestCloneOfCOW(t *testing.T) {
@@ -1632,7 +1633,7 @@ func TestFlipBigACOW(t *testing.T) {
 			}
 
 			if float64(i) > checkTime {
-				var rb *Bitmap
+				var rb Bitmap
 
 				if (i & 1) == 0 {
 					rb = rb2

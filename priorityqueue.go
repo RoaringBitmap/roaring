@@ -7,7 +7,7 @@ import "container/heap"
 ////////////
 
 type item struct {
-	value *Bitmap
+	value Bitmap
 	index int
 }
 
@@ -41,7 +41,7 @@ func (pq *priorityQueue) Pop() interface{} {
 	return item
 }
 
-func (pq *priorityQueue) update(item *item, value *Bitmap) {
+func (pq *priorityQueue) update(item *item, value Bitmap) {
 	item.value = value
 	heap.Fix(pq, item.index)
 }
@@ -51,7 +51,7 @@ func (pq *priorityQueue) update(item *item, value *Bitmap) {
 ////////////
 
 type containeritem struct {
-	value    *Bitmap
+	value    Bitmap
 	keyindex int
 	index    int
 }

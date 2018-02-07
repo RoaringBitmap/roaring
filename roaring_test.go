@@ -1,14 +1,15 @@
 package roaring
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/willf/bitset"
 	"log"
 	"math"
 	"math/rand"
 	"strconv"
 	"testing"
 	"unsafe"
+
+	. "github.com/smartystreets/goconvey/convey"
+	"github.com/willf/bitset"
 )
 
 func TestRoaringRangeEnd(t *testing.T) {
@@ -1515,7 +1516,7 @@ func rTest(N int) {
 	}
 }
 
-func equalsBitSet(a *bitset.BitSet, b *Bitmap) bool {
+func equalsBitSet(a *bitset.BitSet, b Bitmap) bool {
 	for i, e := a.NextSet(0); e; i, e = a.NextSet(i + 1) {
 		if !b.ContainsInt(int(i)) {
 			return false
@@ -1530,7 +1531,7 @@ func equalsBitSet(a *bitset.BitSet, b *Bitmap) bool {
 	return true
 }
 
-func equalsArray(a []int, b *Bitmap) bool {
+func equalsArray(a []int, b Bitmap) bool {
 	if uint64(len(a)) != b.GetCardinality() {
 		return false
 	}
@@ -1684,7 +1685,7 @@ func TestFlipBigA(t *testing.T) {
 			}
 
 			if float64(i) > checkTime {
-				var rb *Bitmap
+				var rb Bitmap
 
 				if (i & 1) == 0 {
 					rb = rb2

@@ -92,7 +92,7 @@ type smatContext struct {
 }
 
 type smatPair struct {
-	bm *Bitmap
+	bm Bitmap
 	bs *bitset.BitSet
 }
 
@@ -358,7 +358,7 @@ func (p *smatPair) checkEquals() {
 	}
 }
 
-func (p *smatPair) equalsBitSet(a *bitset.BitSet, b *Bitmap) bool {
+func (p *smatPair) equalsBitSet(a *bitset.BitSet, b Bitmap) bool {
 	for i, e := a.NextSet(0); e; i, e = a.NextSet(i + 1) {
 		if !b.ContainsInt(int(i)) {
 			fmt.Printf("in a bitset, not b bitmap, i: %d\n", i)
