@@ -186,7 +186,7 @@ func (rb Bitmap) GetSizeInBytes() uint64 {
 // of the Bitmap. It should correspond to the
 // number of bytes written when invoking WriteTo. You can expect
 // that this function is much cheaper computationally than WriteTo.
-func (rb Bitmap) GetSerializedSizeInBytes() uint64 {
+func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }
 
@@ -305,14 +305,14 @@ func (rb Bitmap) Maximum() uint32 {
 }
 
 // Contains returns true if the integer is contained in the bitmap
-func (rb Bitmap) Contains(x uint32) bool {
+func (rb *Bitmap) Contains(x uint32) bool {
 	hb := highbits(x)
 	c := rb.highlowcontainer.getContainer(hb)
 	return c != nil && c.contains(lowbits(x))
 }
 
 // ContainsInt returns true if the integer is contained in the bitmap (this is a convenience method, the parameter is casted to uint32 and Contains is called)
-func (rb Bitmap) ContainsInt(x int) bool {
+func (rb *Bitmap) ContainsInt(x int) bool {
 	return rb.Contains(uint32(x))
 }
 
@@ -390,7 +390,7 @@ func (rb *Bitmap) Remove(x uint32) {
 }
 
 // CheckedRemove removes the integer x from the bitmap and return true if the integer was effectively remove (and false if the integer was not present)
-func (rb Bitmap) CheckedRemove(x uint32) bool {
+func (rb *Bitmap) CheckedRemove(x uint32) bool {
 	// TODO: add unit tests for this method
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
