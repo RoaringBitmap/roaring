@@ -15,6 +15,7 @@ import (
 var Rb *Bitmap
 
 func BenchmarkNewBitmap(b *testing.B) {
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		Rb = New()
 	}
@@ -50,8 +51,7 @@ func BenchmarkMemoryUsage(b *testing.B) {
 
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
-	fmt.Printf("\nHeapInUse %d\n", stats.HeapInuse)
-	fmt.Printf("HeapObjects %d\n", stats.HeapObjects)
+	b.Logf("HeapInUse: %d, HeapObjects: %d", stats.HeapInuse, stats.HeapObjects)
 	b.StartTimer()
 }
 
