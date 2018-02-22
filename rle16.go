@@ -1204,6 +1204,68 @@ func (ri *runIterator16) remove() uint16 {
 	return cur
 }
 
+type manyRunIterator16 struct {
+	rc            *runContainer16
+	curIndex      int64
+	curPosInIndex uint16
+	curSeq        int64
+}
+
+func (rc *runContainer16) newManyRunIterator16() *manyRunIterator16 {
+	return &manyRunIterator16{rc: rc, curIndex: -1}
+}
+
+func (ri *manyRunIterator16) hasNext() bool {
+	if len(ri.rc.iv) == 0 {
+		return false
+	}
+	if ri.curIndex == -1 {
+		return true
+	}
+	return ri.curSeq+1 < ri.rc.cardinality()
+}
+
+// hs are the high bits to include to avoid needing to reiterate over the buffer in NextMany
+func (ri *manyRunIterator16) nextMany(hs uint32, buf []uint32) int {
+	n := 0
+	if !ri.hasNext() {
+		return n
+	}
+	// start and end are inclusive
+	for n < len(buf) {
+		if ri.curIndex == -1 || int(ri.rc.iv[ri.curIndex].length-ri.curPosInIndex) <= 0 {
+			ri.curPosInIndex = 0
+			ri.curIndex++
+			if ri.curIndex == int64(len(ri.rc.iv)) {
+				break
+			}
+			buf[n] = uint32(ri.rc.iv[ri.curIndex].start) | hs
+			if ri.curIndex != 0 {
+				ri.curSeq += 1
+			}
+			n += 1
+			// not strictly necessarily due to len(buf)-n min check, but saves some work
+			continue
+		}
+		// add as many as you can from this seq
+		moreVals := min(int(ri.rc.iv[ri.curIndex].length-ri.curPosInIndex), len(buf)-n)
+
+		base := uint32(ri.rc.iv[ri.curIndex].start+ri.curPosInIndex+1) | hs
+
+		// allows BCE
+		buf2 := buf[n : n+moreVals]
+		for i := range buf2 {
+			buf2[i] = base + uint32(i)
+		}
+
+		// update values
+		ri.curPosInIndex += uint16(moreVals) //moreVals always fits in uint16
+		ri.curSeq += int64(moreVals)
+		n += moreVals
+	}
+	return n
+}
+
 // remove removes key from the container.
 func (rc *runContainer16) removeKey(key uint16) (wasPresent bool) {
 

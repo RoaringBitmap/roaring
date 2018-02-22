@@ -497,13 +497,100 @@ func BenchmarkEqualsClone(b *testing.B) {
 	}
 }
 
-func BenchmarkSequentialAdd(b *testing.B) {
-	for j := 0; j < b.N; j++ {
-		s := NewBitmap()
-		for i := 0; i < 10000000; i += 16 {
-			s.Add(uint32(i))
+// go test -bench BenchmarkNexts -benchmem -run -
+func BenchmarkNexts(b *testing.B) {
+
+	for _, gap := range []uint32{1, 2, 4, 8, 16, 32, 64, 256, 1024, 8096} {
+
+		rrs := make([]uint32, 500000)
+		v := uint32(0)
+		for i := range rrs {
+			rrs[i] = v
+			v += gap
+		}
+
+		bm := NewBitmap()
+		bm.AddMany(rrs)
+
+		var totnext uint64
+		var totnextmany uint64
+
+		density := float32(100) / float32(gap)
+
+		density_str := fmt.Sprintf("__%f%%", density)
+
+		b.Run("next"+density_str, func(b *testing.B) {
+			for n := 0; n < b.N; n++ {
+				totnext = 0
+				iter := bm.Iterator()
+				for iter.HasNext() {
+					v := iter.Next()
+					totnext += uint64(v)
+				}
+			}
+			b.StopTimer()
+		})
+
+		b.Run("nextmany"+density_str, func(b *testing.B) {
+			for n := 0; n < b.N; n++ {
+				totnextmany = 0
+				iter := bm.ManyIterator()
+				// worst case, in practice will reuse buffers across many roars
+				buf := make([]uint32, 4096)
+				for j := iter.NextMany(buf); j != 0; j = iter.NextMany(buf) {
+					for i := 0; i < j; i++ {
+						totnextmany += uint64(buf[i])
+					}
+				}
+			}
+			b.StopTimer()
+		})
+
+		if totnext != totnextmany {
+			b.Fatalf("Cardinalities don't match: %d, %d", totnext, totnextmany)
 		}
 	}
+}
+
+// go test -bench BenchmarkRLENexts -benchmem -run -
+func BenchmarkNextsRLE(b *testing.B) {
+
+	var totadd uint64
+	var totaddmany uint64
+
+	bm := NewBitmap()
+	bm.AddRange(0, 1000000)
+
+	b.Run("next", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			totadd = 0
+			iter := bm.Iterator()
+			for iter.HasNext() {
+				v := iter.Next()
+				totadd += uint64(v)
+			}
+		}
+		b.StopTimer()
+	})
+
+	b.Run("nextmany", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			totaddmany = 0
+			iter := bm.ManyIterator()
+			// worst case, in practice will reuse buffers across many roars
+			buf := make([]uint32, 2048)
+			for j := iter.NextMany(buf); j != 0; j = iter.NextMany(buf) {
+				for i := 0; i < j; i++ {
+					totaddmany += uint64(buf[i])
+				}
+			}
+		}
+		b.StopTimer()
+	})
+	if totadd != totaddmany {
+		b.Fatalf("Cardinalities don't match: %d, %d", totadd, totaddmany)
+	}
+
 }
 
 func BenchmarkXor(b *testing.B) {

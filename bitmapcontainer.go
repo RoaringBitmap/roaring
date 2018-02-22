@@ -109,11 +109,54 @@ func (bcsi *bitmapContainerShortIterator) next() uint16 {
 func (bcsi *bitmapContainerShortIterator) hasNext() bool {
 	return bcsi.i >= 0
 }
+
 func newBitmapContainerShortIterator(a *bitmapContainer) *bitmapContainerShortIterator {
 	return &bitmapContainerShortIterator{a, a.NextSetBit(0)}
 }
+
 func (bc *bitmapContainer) getShortIterator() shortIterable {
 	return newBitmapContainerShortIterator(bc)
+}
+
+type bitmapContainerManyIterator struct {
+	ptr    *bitmapContainer
+	base   int
+	bitset uint64
+}
+
+func (bcmi *bitmapContainerManyIterator) nextMany(hs uint32, buf []uint32) int {
+	n := 0
+	base := bcmi.base
+	bitset := bcmi.bitset
+
+	for n < len(buf) {
+		if bitset == 0 {
+			base += 1
+			if base >= len(bcmi.ptr.bitmap) {
+				bcmi.base = base
+				bcmi.bitset = bitset
+				return n
+			}
+			bitset = bcmi.ptr.bitmap[base]
+			continue
+		}
+		t := bitset & -bitset
+		buf[n] = uint32(((base * 64) + int(popcount(t-1)))) | hs
+		n = n + 1
+		bitset ^= t
+	}
+
+	bcmi.base = base
+	bcmi.bitset = bitset
+	return n
+}
+
+func newBitmapContainerManyIterator(a *bitmapContainer) *bitmapContainerManyIterator {
+	return &bitmapContainerManyIterator{a, -1, 0}
+}
+
+func (bc *bitmapContainer) getManyIterator() manyIterable {
+	return newBitmapContainerManyIterator(bc)
 }
 
 func (bc *bitmapContainer) getSizeInBytes() int {
