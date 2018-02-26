@@ -100,6 +100,107 @@ func TestRleRunIterator16(t *testing.T) {
 		}
 
 		{
+			// basic nextMany test
+			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
+			So(rc.cardinality(), ShouldEqual, 6)
+			it := rc.newManyRunIterator16()
+
+			buf := make([]uint32, 10)
+			n := it.nextMany(0, buf)
+			So(n, ShouldEqual, 6)
+			expected := []uint32{4, 5, 6, 7, 8, 9, 0, 0, 0, 0}
+			for i, e := range expected {
+				So(buf[i], ShouldEqual, e)
+			}
+		}
+
+		{
+			// nextMany with len(buf) == 0
+			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
+			So(rc.cardinality(), ShouldEqual, 6)
+			it := rc.newManyRunIterator16()
+
+			buf := make([]uint32, 0)
+			n := it.nextMany(0, buf)
+			So(n, ShouldEqual, 0)
+		}
+
+		{
+			// basic nextMany test across ranges
+			rc := newRunContainer16CopyIv([]interval16{
+				newInterval16Range(4, 7),
+				newInterval16Range(11, 13),
+				newInterval16Range(18, 21)})
+			So(rc.cardinality(), ShouldEqual, 11)
+			it := rc.newManyRunIterator16()
+
+			buf := make([]uint32, 15)
+			n := it.nextMany(0, buf)
+			So(n, ShouldEqual, 11)
+			expected := []uint32{4, 5, 6, 7, 11, 12, 13, 18, 19, 20, 21, 0, 0, 0, 0}
+			for i, e := range expected {
+				So(buf[i], ShouldEqual, e)
+			}
+		}
+		{
+			// basic nextMany test across ranges with different buffer sizes
+			rc := newRunContainer16CopyIv([]interval16{
+				newInterval16Range(4, 7),
+				newInterval16Range(11, 13),
+				newInterval16Range(18, 21)})
+			expectedCard := 11
+			expectedVals := []uint32{4, 5, 6, 7, 11, 12, 13, 18, 19, 20, 21}
+			hs := uint32(1 << 16)
+
+			So(rc.cardinality(), ShouldEqual, expectedCard)
+
+			for bufSize := 2; bufSize < 15; bufSize++ {
+				buf := make([]uint32, bufSize)
+				seen := 0
+				it := rc.newManyRunIterator16()
+				for n := it.nextMany(hs, buf); n != 0; n = it.nextMany(hs, buf) {
+					// catch runaway iteration
+					So(seen+n, ShouldBeLessThanOrEqualTo, expectedCard)
+
+					for i, e := range expectedVals[seen : seen+n] {
+						So(buf[i], ShouldEqual, e+hs)
+					}
+					seen += n
+					// if we have more values to return then we shouldn't leave empty slots in the buffer
+					if seen < expectedCard {
+						So(n, ShouldEqual, bufSize)
+					}
+				}
+				So(seen, ShouldEqual, expectedCard)
+			}
+		}
+
+		{
+			// basic nextMany interaction with hasNext
+			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 4)})
+			So(rc.cardinality(), ShouldEqual, 1)
+			it := rc.newManyRunIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+
+			buf := make([]uint32, 4)
+
+			n := it.nextMany(0, buf)
+			So(n, ShouldEqual, 1)
+			expected := []uint32{4, 0, 0, 0}
+			for i, e := range expected {
+				So(buf[i], ShouldEqual, e)
+			}
+			So(it.hasNext(), ShouldBeFalse)
+
+			buf = make([]uint32, 4)
+			n = it.nextMany(0, buf)
+			So(n, ShouldEqual, 0)
+			expected = []uint32{0, 0, 0, 0}
+			for i, e := range expected {
+				So(buf[i], ShouldEqual, e)
+			}
+		}
+		{
 			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 9)})
 			card := rc.cardinality()
 			So(card, ShouldEqual, 6)

@@ -251,6 +251,53 @@ func newIntIterator(a *Bitmap) *intIterator {
 	return p
 }
 
+// ManyIntIterable allows you to iterate over the values in a Bitmap
+type ManyIntIterable interface {
+	// pass in a buffer to fill up with values, returns how many values were returned
+	NextMany([]uint32) int
+}
+
+type manyIntIterator struct {
+	pos              int
+	hs               uint32
+	iter             manyIterable
+	highlowcontainer *roaringArray
+}
+
+func (ii *manyIntIterator) init() {
+	if ii.highlowcontainer.size() > ii.pos {
+		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getManyIterator()
+		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+	} else {
+		ii.iter = nil
+	}
+}
+
+func (ii *manyIntIterator) NextMany(buf []uint32) int {
+	n := 0
+	for n < len(buf) {
+		if ii.iter == nil {
+			break
+		}
+		moreN := ii.iter.nextMany(ii.hs, buf[n:])
+		n += moreN
+		if moreN == 0 {
+			ii.pos = ii.pos + 1
+			ii.init()
+		}
+	}
+
+	return n
+}
+
+func newManyIntIterator(a *Bitmap) *manyIntIterator {
+	p := new(manyIntIterator)
+	p.pos = 0
+	p.highlowcontainer = &a.highlowcontainer
+	p.init()
+	return p
+}
+
 // String creates a string representation of the Bitmap
 func (rb *Bitmap) String() string {
 	// inspired by https://github.com/fzandona/goroar/
@@ -280,6 +327,11 @@ func (rb *Bitmap) String() string {
 // Iterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order
 func (rb *Bitmap) Iterator() IntIterable {
 	return newIntIterator(rb)
+}
+
+// Iterator creates a new ManyIntIterable to iterate over the integers contained in the bitmap, in sorted order
+func (rb *Bitmap) ManyIterator() ManyIntIterable {
+	return newManyIntIterator(rb)
 }
 
 // Clone creates a copy of the Bitmap

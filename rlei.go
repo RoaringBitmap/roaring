@@ -180,6 +180,10 @@ func (rc *runContainer16) getShortIterator() shortIterable {
 	return rc.newRunIterator16()
 }
 
+func (rc *runContainer16) getManyIterator() manyIterable {
+	return rc.newManyRunIterator16()
+}
+
 // add the values in the range [firstOfRange, endx). endx
 // is still abe to express 2^16 because it is an int not an uint16.
 func (rc *runContainer16) iaddRange(firstOfRange, endx int) container {

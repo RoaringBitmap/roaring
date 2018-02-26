@@ -1,14 +1,15 @@
 package roaring
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/willf/bitset"
 	"log"
 	"math"
 	"math/rand"
 	"strconv"
 	"testing"
 	"unsafe"
+
+	. "github.com/smartystreets/goconvey/convey"
+	"github.com/willf/bitset"
 )
 
 func TestRoaringRangeEnd(t *testing.T) {
@@ -1453,6 +1454,42 @@ func TestXORtest4(t *testing.T) {
 	//need to add the massives
 }
 
+func TestNextMany(t *testing.T) {
+	Convey("NextMany test", t, func() {
+		count := 70000
+		for _, gap := range []uint32{1, 8, 32, 128} {
+			expected := make([]uint32, count)
+			{
+				v := uint32(0)
+				for i, _ := range expected {
+					expected[i] = v
+					v += gap
+				}
+			}
+			bm := BitmapOf(expected...)
+			for _, bufSize := range []int{1, 64, 4096, count} {
+				buf := make([]uint32, bufSize)
+				it := bm.ManyIterator()
+				cur := 0
+				for n := it.NextMany(buf); n != 0; n = it.NextMany(buf) {
+					// much faster tests... (10s -> 5ms)
+					if cur+n > count {
+						So(cur+n, ShouldBeLessThanOrEqualTo, count)
+					}
+					for i, v := range buf[:n] {
+						// much faster tests...
+						if v != expected[cur+i] {
+							So(v, ShouldEqual, expected[cur+i])
+						}
+					}
+					cur += n
+				}
+				So(cur, ShouldEqual, count)
+			}
+		}
+	})
+}
+
 func TestBigRandom(t *testing.T) {
 	Convey("randomTest", t, func() {
 		rTest(15)
@@ -1695,6 +1732,36 @@ func TestFlipBigA(t *testing.T) {
 				checkTime *= 1.5
 			}
 		}
+	})
+}
+
+func TestNextManyOfAddRangeAcrossContainers(t *testing.T) {
+	Convey("NextManyOfAddRangeAcrossContainers ", t, func() {
+		rb := NewBitmap()
+		rb.AddRange(65530, 65540)
+		expectedCard := 10
+		expected := []uint32{65530, 65531, 65532, 65533, 65534, 65535, 65536, 65537, 65538, 65539, 0}
+
+		// test where all values can be returned in a single buffer
+		it := rb.ManyIterator()
+		buf := make([]uint32, 11)
+		n := it.NextMany(buf)
+		So(n, ShouldEqual, expectedCard)
+		for i, e := range expected {
+			So(buf[i], ShouldEqual, e)
+		}
+
+		// test where buf is size 1, so many iterations
+		it = rb.ManyIterator()
+		n = 0
+		buf = make([]uint32, 1)
+		for i := 0; i < expectedCard; i++ {
+			n = it.NextMany(buf)
+			So(n, ShouldEqual, 1)
+			So(buf[0], ShouldEqual, expected[i])
+		}
+		n = it.NextMany(buf)
+		So(n, ShouldEqual, 0)
 	})
 }
 

@@ -28,6 +28,10 @@ func (ac *arrayContainer) getShortIterator() shortIterable {
 	return &shortIterator{ac.content, 0}
 }
 
+func (ac *arrayContainer) getManyIterator() manyIterable {
+	return &manyIterator{ac.content, 0}
+}
+
 func (ac *arrayContainer) minimum() uint16 {
 	return ac.content[0] // assume not empty
 }
