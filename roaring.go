@@ -751,9 +751,53 @@ func (rb *Bitmap) Xor(x2 *Bitmap) {
 
 // Or computes the union between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) Or(x2 *Bitmap) {
+	pos1 := 0
+	pos2 := 0
+	length1 := rb.highlowcontainer.size()
+	length2 := x2.highlowcontainer.size()
+main:
+	for (pos1 < length1) && (pos2 < length2) {
+		s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
+		s2 := x2.highlowcontainer.getKeyAtIndex(pos2)
+
+		for {
+			if s1 < s2 {
+				pos1++
+				if pos1 == length1 {
+					break main
+				}
+				s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
+			} else if s1 > s2 {
+				rb.highlowcontainer.insertNewKeyValueAt(pos1, s2, x2.highlowcontainer.getContainerAtIndex(pos2).clone())
+				pos1++
+				length1++
+				pos2++
+				if pos2 == length2 {
+					break main
+				}
+				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+			} else {
+				mustCopyOnWrite := rb.highlowcontainer.needsCopyOnWrite(pos1)
+				rb.highlowcontainer.replaceKeyAndContainerAtIndex(pos1, s1, rb.highlowcontainer.getContainerAtIndex(pos1).ior(x2.highlowcontainer.getContainerAtIndex(pos2)), mustCopyOnWrite)
+				pos1++
+				pos2++
+				if (pos1 == length1) || (pos2 == length2) {
+					break main
+				}
+				s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
+				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+			}
+		}
+	}
+	if pos1 == length1 {
+		rb.highlowcontainer.appendCopyMany(x2.highlowcontainer, pos2, length2)
+	}
+}
+
+/*func (rb *Bitmap) Or(x2 *Bitmap) {
 	results := Or(rb, x2) // Todo: could be computed in-place for reduced memory usage
 	rb.highlowcontainer = results.highlowcontainer
-}
+}*/
 
 // AndNot computes the difference between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) AndNot(x2 *Bitmap) {

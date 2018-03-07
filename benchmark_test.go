@@ -28,7 +28,7 @@ func BenchmarkOrs(b *testing.B) {
 		}
 		bms = append(bms, newBm)
 	}
-
+	var twotwocard uint64
 	var fastcard uint64
 	var nextcard uint64
 
@@ -38,7 +38,7 @@ func BenchmarkOrs(b *testing.B) {
 			for _, bm := range bms {
 				newBm.Or(bm)
 			}
-			nextcard = newBm.GetCardinality()
+			twotwocard = newBm.GetCardinality()
 		}
 		b.StopTimer()
 	})
@@ -67,6 +67,9 @@ func BenchmarkOrs(b *testing.B) {
 	})
 	if fastcard != nextcard {
 		b.Fatalf("Cardinalities don't match: %d, %d, %d", fastcard, nextcard)
+	}
+	if fastcard != twotwocard {
+		b.Fatalf("Cardinalities don't match: %d, %d, %d", fastcard, twotwocard)
 	}
 }
 

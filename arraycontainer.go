@@ -333,7 +333,8 @@ func (ac *arrayContainer) ior(a container) container {
 	case *arrayContainer:
 		return ac.iorArray(x)
 	case *bitmapContainer:
-		return ac.iorBitmap(x)
+		return a.(*bitmapContainer).orArray(ac)
+		//return ac.iorBitmap(x) // note: this does not make sense
 	case *runContainer16:
 		if x.isFull() {
 			return x.clone()
@@ -343,14 +344,44 @@ func (ac *arrayContainer) ior(a container) container {
 	panic("unsupported container type")
 }
 
-func (ac *arrayContainer) iorArray(ac2 *arrayContainer) container {
-	bc1 := ac.toBitmapContainer()
-	bc2 := ac2.toBitmapContainer()
-	bc1.iorBitmap(bc2)
-	*ac = *newArrayContainerFromBitmap(bc1)
+func (ac *arrayContainer) iorArray(value2 *arrayContainer) container {
+	value1 := ac
+	len1 := value1.getCardinality()
+	len2 := value2.getCardinality()
+	maxPossibleCardinality := len1 + len2
+	if maxPossibleCardinality > arrayDefaultMaxSize { // it could be a bitmap!
+		bc := newBitmapContainer()
+		for k := 0; k < len(value2.content); k++ {
+			v := value2.content[k]
+			i := uint(v) >> 6
+			mask := uint64(1) << (v % 64)
+			bc.bitmap[i] |= mask
+		}
+		for k := 0; k < len(ac.content); k++ {
+			v := ac.content[k]
+			i := uint(v) >> 6
+			mask := uint64(1) << (v % 64)
+			bc.bitmap[i] |= mask
+		}
+		bc.cardinality = int(popcntSlice(bc.bitmap))
+		if bc.cardinality <= arrayDefaultMaxSize {
+			return bc.toArrayContainer()
+		}
+		return bc
+	}
+	if maxPossibleCardinality > cap(value1.content) {
+		newcontent := make([]uint16, 0, maxPossibleCardinality)
+		copy(newcontent[len2:maxPossibleCardinality], ac.content[0:len1])
+		ac.content = newcontent
+	} else {
+		copy(ac.content[len2:maxPossibleCardinality], ac.content[0:len1])
+	}
+	nl := union2by2(value1.content[len2:maxPossibleCardinality], value2.content, ac.content)
+	ac.content = ac.content[:nl] // reslice to match actual used capacity
 	return ac
 }
 
+// Note: such code does not make practical sense, except for lazy evaluations
 func (ac *arrayContainer) iorBitmap(bc2 *bitmapContainer) container {
 	bc1 := ac.toBitmapContainer()
 	bc1.iorBitmap(bc2)
