@@ -12,6 +12,64 @@ import (
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
 
+// go test -bench BenchmarkOrs -benchmem -run -
+func BenchmarkOrs(b *testing.B) {
+
+	bms := []*Bitmap{}
+	maxCount := 50
+	domain := 100000000
+	bitmapCount := 100
+	for i := 0; i < bitmapCount; i++ {
+		newBm := NewBitmap()
+		count := rand.Intn(maxCount) + 5
+		for j := 0; j < count; j++ {
+			v := uint32(rand.Intn(domain))
+			newBm.Add(v)
+		}
+		bms = append(bms, newBm)
+	}
+
+	var fastcard uint64
+	var nextcard uint64
+
+	b.Run("two-by-two", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			newBm := NewBitmap()
+			for _, bm := range bms {
+				newBm.Or(bm)
+			}
+			nextcard = newBm.GetCardinality()
+		}
+		b.StopTimer()
+	})
+
+	b.Run("fast", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			newBm := FastOr(bms...)
+			fastcard = newBm.GetCardinality()
+		}
+		b.StopTimer()
+	})
+
+	b.Run("next/add", func(b *testing.B) {
+		buf := make([]uint32, 100)
+		for n := 0; n < b.N; n++ {
+			newBm := NewBitmap()
+			for _, bm := range bms {
+				iter := bm.ManyIterator()
+				for vs := iter.NextMany(buf); vs != 0; vs = iter.NextMany(buf) {
+					newBm.AddMany(buf[:vs])
+				}
+			}
+			nextcard = newBm.GetCardinality()
+		}
+		b.StopTimer()
+	})
+	if fastcard != nextcard {
+		b.Fatalf("Cardinalities don't match: %d, %d, %d", fastcard, nextcard)
+	}
+}
+
 var Rb *Bitmap
 
 func BenchmarkNewBitmap(b *testing.B) {
