@@ -777,8 +777,7 @@ main:
 				}
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
-				mustCopyOnWrite := rb.highlowcontainer.needsCopyOnWrite(pos1)
-				rb.highlowcontainer.replaceKeyAndContainerAtIndex(pos1, s1, rb.highlowcontainer.getContainerAtIndex(pos1).ior(x2.highlowcontainer.getContainerAtIndex(pos2)), mustCopyOnWrite)
+				rb.highlowcontainer.replaceKeyAndContainerAtIndex(pos1, s1, rb.highlowcontainer.getWritableContainerAtIndex(pos1).ior(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {
