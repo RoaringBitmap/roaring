@@ -242,7 +242,9 @@ func (ra *roaringArray) resize(newsize int) {
 }
 
 func (ra *roaringArray) clear() {
-	*ra = roaringArray{}
+	ra.resize(0)
+	ra.copyOnWrite = false
+	ra.conserz = nil
 }
 
 func (ra *roaringArray) clone() *roaringArray {
@@ -570,9 +572,21 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 	}
 
 	// Allocate slices upfront as number of containers is known
-	ra.containers = make([]container, size)
-	ra.keys = make([]uint16, size)
-	ra.needCopyOnWrite = make([]bool, size)
+	if cap(ra.containers) >= int(size) {
+		ra.containers = ra.containers[:size]
+	} else {
+		ra.containers = make([]container, size)
+	}
+	if cap(ra.keys) >= int(size) {
+		ra.keys = ra.keys[:size]
+	} else {
+		ra.keys = make([]uint16, size)
+	}
+	if cap(ra.needCopyOnWrite) >= int(size) {
+		ra.needCopyOnWrite = ra.needCopyOnWrite[:size]
+	} else {
+		ra.needCopyOnWrite = make([]bool, size)
+	}
 
 	for i := uint32(0); i < size; i++ {
 		key := uint16(keycard[2*i])
