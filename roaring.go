@@ -146,9 +146,10 @@ func New() *Bitmap {
 	return &Bitmap{}
 }
 
-// Clear removes all content from the Bitmap and frees the memory
+// Clear resets the Bitmap to be logically empty, but may retain
+// some memory allocations that may speed up future operations
 func (rb *Bitmap) Clear() {
-	rb.highlowcontainer = *newRoaringArray()
+	rb.highlowcontainer.clear()
 }
 
 // ToArray creates a new slice containing all of the integers stored in the Bitmap in sorted order
