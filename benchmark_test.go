@@ -66,10 +66,10 @@ func BenchmarkOrs(b *testing.B) {
 		b.StopTimer()
 	})
 	if fastcard != nextcard {
-		b.Fatalf("Cardinalities don't match: %d, %d, %d", fastcard, nextcard)
+		b.Fatalf("Cardinalities don't match: %d, %d", fastcard, nextcard)
 	}
 	if fastcard != twotwocard {
-		b.Fatalf("Cardinalities don't match: %d, %d, %d", fastcard, twotwocard)
+		b.Fatalf("Cardinalities don't match: %d, %d", fastcard, twotwocard)
 	}
 }
 
