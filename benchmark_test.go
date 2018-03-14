@@ -697,3 +697,27 @@ func BenchmarkXorLopsided(b *testing.B) {
 		s.Clone().Xor(x2)
 	}
 }
+
+func BenchmarkBitmapReuseWithoutClear(b *testing.B) {
+	for j := 0; j < b.N; j++ {
+		s := NewBitmap()
+		for i := 0; i < 100000; i++ {
+			s.Add(uint32(i * 4096))
+		}
+	}
+}
+
+func BenchmarkBitmapReuseWithClear(b *testing.B) {
+	s := NewBitmap()
+	for i := 0; i < 100000; i++ {
+		s.Add(uint32(i * 4096))
+	}
+	b.ResetTimer()
+
+	for j := 0; j < b.N; j++ {
+		s.Clear() // reuse the same bitmap
+		for i := 0; i < 100000; i++ {
+			s.Add(uint32(i * 4096))
+		}
+	}
+}
