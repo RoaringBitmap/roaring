@@ -130,7 +130,6 @@ func TestSerializationReadRunsFromFile039(t *testing.T) {
 
 func TestSerializationBasic4WriteAndReadFile040(t *testing.T) {
 
-	//fname := "testdata/all3.msgp.snappy"
 	fname := "testdata/all3.classic"
 
 	rb := NewBitmap()
@@ -304,7 +303,6 @@ func TestSerializationBasic3_042(t *testing.T) {
 		c1, c2 := rb.GetCardinality(), newrb.GetCardinality()
 		So(c2, ShouldEqual, c1)
 		So(newrb.Equals(rb), ShouldBeTrue)
-		//fmt.Printf("\n Basic3: good: match on card = %v", c1)
 	})
 }
 
@@ -341,11 +339,6 @@ func TestSerializationRunContainerMsgpack028(t *testing.T) {
 			{n: 10, percentFill: .2, ntrial: 10},
 			{n: 10, percentFill: .8, ntrial: 10},
 			{n: 10, percentFill: .50, ntrial: 10},
-			/*
-				trial{n: 10, percentFill: .01, ntrial: 10},
-				trial{n: 1000, percentFill: .50, ntrial: 10},
-				trial{n: 1000, percentFill: .99, ntrial: 10},
-			*/
 		}
 
 		tester := func(tr trial) {
@@ -418,8 +411,6 @@ func TestSerializationArrayOnly032(t *testing.T) {
 					r0 := rand.Intn(n)
 					ma[r0] = true
 				}
-
-				//showArray16(a, "a")
 
 				// vs arrayContainer
 				ac := newArrayContainer()
@@ -525,8 +516,6 @@ func TestSerializationBitmapOnly034(t *testing.T) {
 					ma[r0] = true
 				}
 
-				//showArray16(a, "a")
-
 				bc := newBitmapContainer()
 				for k := range ma {
 					bc.iadd(uint16(k))
@@ -602,7 +591,6 @@ func TestSerializationBasicMsgpack035(t *testing.T) {
 		c1, c2 := rb.GetCardinality(), newrb.GetCardinality()
 		So(c2, ShouldEqual, c1)
 		So(newrb.Equals(rb), ShouldBeTrue)
-		//fmt.Printf("\n Basic3: good: match on card = %v", c1)
 	})
 }
 
@@ -615,13 +603,6 @@ func TestSerializationRunContainer32Msgpack050(t *testing.T) {
 
 		trials := []trial{
 			{n: 10, percentFill: .2, ntrial: 1},
-			/*			trial{n: 10, percentFill: .8, ntrial: 10},
-						trial{n: 10, percentFill: .50, ntrial: 10},
-
-							trial{n: 10, percentFill: .01, ntrial: 10},
-							trial{n: 1000, percentFill: .50, ntrial: 10},
-							trial{n: 1000, percentFill: .99, ntrial: 10},
-			*/
 		}
 
 		tester := func(tr trial) {
@@ -904,7 +885,7 @@ func TestBitmap_FromBuffer(t *testing.T) {
 			t.Errorf("Failed reading %s: %s", fn, err)
 		}
 	})
-
+	// all3.classic somehow created by other tests.
 	t.Run("all3.classic bitmap", func(t *testing.T) {
 		file := "testdata/all3.classic"
 
@@ -919,7 +900,46 @@ func TestBitmap_FromBuffer(t *testing.T) {
 			t.Errorf("Failed reading %s: %s", file, err)
 		}
 	})
+	t.Run("testdata/bitmapwithruns.bin bitmap Ops", func(t *testing.T) {
+		file := "testdata/bitmapwithruns.bin"
 
+		buf, err := ioutil.ReadFile(file)
+		if err != nil {
+			t.Fatalf("Failed to read file")
+		}
+		empt := NewBitmap()
+
+		rb1 := NewBitmap()
+		_, err = rb1.FromBuffer(buf)
+		if err != nil {
+			t.Errorf("Failed reading %s: %s", file, err)
+		}
+		rb2 := NewBitmap()
+		_, err = rb2.FromBuffer(buf)
+		if err != nil {
+			t.Errorf("Failed reading %s: %s", file, err)
+		}
+		rbor := Or(rb1, rb2)
+		rbfastor := FastOr(rb1, rb2)
+		rband := And(rb1, rb2)
+		rbxor := Xor(rb1, rb2)
+		rbandnot := AndNot(rb1, rb2)
+		if !rbor.Equals(rb1) {
+			t.Errorf("Bug in OR")
+		}
+		if !rbfastor.Equals(rbor) {
+			t.Errorf("Bug in FASTOR")
+		}
+		if !rband.Equals(rb1) {
+			t.Errorf("Bug in AND")
+		}
+		if !rbxor.Equals(empt) {
+			t.Errorf("Bug in XOR")
+		}
+		if !rbandnot.Equals(empt) {
+			t.Errorf("Bug in ANDNOT")
+		}
+	})
 	t.Run("marking all containers as requiring COW", func(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
 
