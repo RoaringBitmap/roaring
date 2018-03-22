@@ -11,6 +11,22 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/willf/bitset"
 )
+func TestRoaringIntervalCheck(t *testing.T) {
+	r := BitmapOf(1,2,3,1000)
+  rangeb := New()
+  rangeb.AddRange(10,1000+1)
+
+	if ! r.Intersects(rangeb) {
+		t.FailNow()
+	}
+  rangeb2 := New()
+  rangeb2.AddRange(10,1000)
+	if r.Intersects(rangeb2) {
+		t.FailNow()
+	}
+
+
+}
 
 func TestRoaringRangeEnd(t *testing.T) {
 	r := New()
