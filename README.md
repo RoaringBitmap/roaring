@@ -1,7 +1,8 @@
 roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https://travis-ci.org/RoaringBitmap/roaring) [![Coverage Status](https://coveralls.io/repos/github/RoaringBitmap/roaring/badge.svg?branch=master)](https://coveralls.io/github/RoaringBitmap/roaring?branch=master) [![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring) [![Go Report Card](https://goreportcard.com/badge/RoaringBitmap/roaring)](https://goreportcard.com/report/github.com/RoaringBitmap/roaring)
 =============
 
-This is a go port of the Roaring bitmap data structure.
+This is a go version of the Roaring bitmap data structure. 
+
 
 
 Roaring bitmaps are used by several major systems such as [Apache Lucene][lucene] and derivative systems such as [Solr][solr] and
@@ -33,13 +34,16 @@ The ``roaring`` Go library is used by
 * [Pilosa](https://www.pilosa.com/)
 * [Bleve](http://www.blevesearch.com)
 
+This library is used in production in several systems, it is part of the [Awesome Go collection](https://awesome-go.com).
+
+
 There are also  [Java](https://github.com/RoaringBitmap/RoaringBitmap) and [C/C++](https://github.com/RoaringBitmap/CRoaring) versions.  The Java, C, C++ and Go version are binary compatible: e.g,  you can save bitmaps
 from a Java program and load them back in Go, and vice versa. We have a [format specification](https://github.com/RoaringBitmap/RoaringFormatSpec).
 
 
 This code is licensed under Apache License, Version 2.0 (ASL2.0).
 
-Copyright 2016 by the authors.
+Copyright 2016-... by the authors.
 
 
 ### References
