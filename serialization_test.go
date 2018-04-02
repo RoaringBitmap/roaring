@@ -23,7 +23,9 @@ func TestSerializationOfEmptyBitmap(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed writing")
 	}
-
+	if uint64(buf.Len()) != rb.GetSerializedSizeInBytes() {
+		t.Errorf("Bad GetSerializedSizeInBytes")
+	}
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 	if err != nil {
@@ -67,7 +69,9 @@ func TestSerializationBasic037(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed writing")
 	}
-
+	if uint64(buf.Len()) != rb.GetSerializedSizeInBytes() {
+		t.Errorf("Bad GetSerializedSizeInBytes")
+	}
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 	if err != nil {
@@ -87,9 +91,13 @@ func TestSerializationToFile038(t *testing.T) {
 	if err != nil {
 		t.Errorf("Can't open a file for writing")
 	}
-	_, err = rb.WriteTo(fout)
+	var l int64
+	l, err = rb.WriteTo(fout)
 	if err != nil {
 		t.Errorf("Failed writing")
+	}
+	if uint64(l) != rb.GetSerializedSizeInBytes() {
+		t.Errorf("Bad GetSerializedSizeInBytes")
 	}
 	fout.Close()
 
@@ -149,9 +157,14 @@ func TestSerializationBasic4WriteAndReadFile040(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed creating '%s'", fname)
 	}
-	_, err = rb.WriteTo(fout)
+	var l int64
+
+	l, err = rb.WriteTo(fout)
 	if err != nil {
 		t.Errorf("Failed writing to '%s'", fname)
+	}
+	if uint64(l) != rb.GetSerializedSizeInBytes() {
+		t.Errorf("Bad GetSerializedSizeInBytes")
 	}
 	fout.Close()
 
@@ -294,6 +307,9 @@ func TestSerializationBasic3_042(t *testing.T) {
 		if err != nil {
 			t.Errorf("Failed writing")
 		}
+		if uint64(buf.Len()) != rb.GetSerializedSizeInBytes() {
+			t.Errorf("Bad GetSerializedSizeInBytes")
+		}
 
 		newrb := NewBitmap()
 		_, err = newrb.ReadFrom(&buf)
@@ -421,7 +437,6 @@ func TestSerializationArrayOnly032(t *testing.T) {
 				buf := &bytes.Buffer{}
 				_, err := ac.writeTo(buf)
 				panicOn(err)
-
 				// have to pre-size the array write-target properly
 				// by telling it the cardinality to read.
 				ac2 := newArrayContainerSize(int(ac.getCardinality()))
@@ -473,7 +488,6 @@ func TestSerializationRunOnly033(t *testing.T) {
 				buf := &bytes.Buffer{}
 				_, err := ac.writeTo(buf)
 				panicOn(err)
-
 				ac2 := newRunContainer16()
 
 				_, err = ac2.readFrom(buf)
@@ -524,7 +538,6 @@ func TestSerializationBitmapOnly034(t *testing.T) {
 				buf := &bytes.Buffer{}
 				_, err := bc.writeTo(buf)
 				panicOn(err)
-
 				bc2 := newBitmapContainer()
 
 				_, err = bc2.readFrom(buf)
@@ -818,7 +831,9 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed writing")
 		}
-
+		if uint64(buf.Len()) != rb.GetSerializedSizeInBytes() {
+			t.Errorf("Bad GetSerializedSizeInBytes")
+		}
 		newRb := NewBitmap()
 		newRb.FromBuffer(buf.Bytes())
 

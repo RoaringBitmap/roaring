@@ -164,8 +164,8 @@ func (bc *bitmapContainer) getSizeInBytes() int {
 }
 
 func (bc *bitmapContainer) serializedSizeInBytes() int {
-	return bc.Msgsize()
-	//return len(bc.bitmap) * 8 // +  bcBaseBytes
+	//return bc.Msgsize()// NOO! This breaks GetSerializedSizeInBytes
+	return len(bc.bitmap) * 8
 }
 
 const bcBaseBytes = int(unsafe.Sizeof(bitmapContainer{}))
