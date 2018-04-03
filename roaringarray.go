@@ -297,6 +297,23 @@ func (ra *roaringArray) getContainerAtIndex(i int) container {
 	return ra.containers[i]
 }
 
+func (ra *roaringArray) getFastContainerAtIndex(i int, needsWriteable bool) container {
+	c := ra.getContainerAtIndex(i)
+	switch t := c.(type) {
+	case *arrayContainer:
+		c = t.toBitmapContainer()
+	case *runContainer16:
+		if !t.isFull() {
+			c = t.toBitmapContainer()
+		}
+	case *bitmapContainer:
+		if needsWriteable && ra.needCopyOnWrite[i] {
+			c = ra.containers[i].clone()
+		}
+	}
+	return c
+}
+
 func (ra *roaringArray) getWritableContainerAtIndex(i int) container {
 	if ra.needCopyOnWrite[i] {
 		ra.containers[i] = ra.containers[i].clone()
