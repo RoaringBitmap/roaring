@@ -215,7 +215,7 @@ func testAggregations(t *testing.T,
 		bigxor := Xor(Xor(rb1, rb2), rb3)
 
 		if or != nil && !or(rb1, rb2, rb3).Equals(rb1) {
-			t.Error()
+			t.Errorf("Expected bitmap of cardinality %d, got %d", rb1.GetCardinality(), or(rb1, rb2, rb3).GetCardinality())
 		}
 
 		if and != nil && !and(rb1, rb2, rb3).Equals(bigand) {
@@ -257,7 +257,7 @@ func testAggregations(t *testing.T,
 		bigxor := Xor(Xor(rb1, rb2), rb3)
 
 		if or != nil && !or(rb1, rb2, rb3).Equals(rb1) {
-			t.Error()
+			t.Errorf("Expected bitmap of cardinality %d, got %d", rb1.GetCardinality(), or(rb1, rb2, rb3).GetCardinality())
 		}
 
 		if and != nil && !and(rb1, rb2, rb3).Equals(bigand) {
@@ -279,6 +279,14 @@ func TestParAggregations(t *testing.T) {
 	}
 
 	testAggregations(t, andFunc, orFunc, nil)
+}
+
+func TestParHeapAggregations(t *testing.T) {
+	orFunc := func(bitmaps ...*Bitmap) *Bitmap {
+		return ParHeapOr(0, bitmaps...)
+	}
+
+	testAggregations(t, nil, orFunc, nil)
 }
 
 func TestFastAggregations(t *testing.T) {
