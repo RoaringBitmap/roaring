@@ -2,6 +2,7 @@ package roaring
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 
@@ -47,6 +48,8 @@ func (b *runContainer16) readFromMsgpack(stream io.Reader) (int, error) {
 	return 0, err
 }
 
+var errCorruptedStream = errors.New("insufficient/odd number of stored bytes, corrupted stream detected")
+
 func (b *runContainer16) readFrom(stream io.Reader) (int, error) {
 	b.iv = b.iv[:0]
 	b.card = 0
@@ -63,7 +66,7 @@ func (b *runContainer16) readFrom(stream io.Reader) (int, error) {
 	}
 	for i := range encRun {
 		if len(by) < 2 {
-			panic("insufficient/odd number of stored bytes, corrupted stream detected")
+			return 0, errCorruptedStream
 		}
 		encRun[i] = binary.LittleEndian.Uint16(by)
 		by = by[2:]
@@ -71,7 +74,7 @@ func (b *runContainer16) readFrom(stream io.Reader) (int, error) {
 	nr := int(numRuns)
 	for i := 0; i < nr; i++ {
 		if i > 0 && b.iv[i-1].last() >= encRun[i*2] {
-			panic(fmt.Errorf("error: stored runContainer had runs that were not in sorted order!! (b.iv[i-1=%v].last = %v >= encRun[i=%v] = %v)", i-1, b.iv[i-1].last(), i, encRun[i*2]))
+			return 0, fmt.Errorf("error: stored runContainer had runs that were not in sorted order!! (b.iv[i-1=%v].last = %v >= encRun[i=%v] = %v)", i-1, b.iv[i-1].last(), i, encRun[i*2])
 		}
 		b.iv = append(b.iv, interval16{start: encRun[i*2], length: encRun[i*2+1]})
 		b.card += int64(encRun[i*2+1]) + 1

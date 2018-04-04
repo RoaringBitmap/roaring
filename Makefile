@@ -24,7 +24,9 @@ help:
 	@echo "    make clean       : Remove any build artifact"
 	@echo "    make nuke        : Deletes any intermediate file"
 	@echo ""
-	@echo "    make fuzz       : Fuzzy testing"
+	@echo "    make fuzz-smat   : Fuzzy testing with smat"
+	@echo "    make fuzz-stream : Fuzzy testing with stream deserialization"
+	@echo "    make fuzz-buffer : Fuzzy testing with buffer deserialization"
 	@echo ""
 
 # Alias for help target
@@ -71,9 +73,19 @@ deps:
 	GOPATH=$(GOPATH) go get github.com/philhofer/fwd
 	GOPATH=$(GOPATH) go get github.com/jtolds/gls
 
-fuzz:
+fuzz-smat:
 	go test -tags=gofuzz -run=TestGenerateSmatCorpus
-	go-fuzz-build github.com/RoaringBitmap/roaring
+	go-fuzz-build -func FuzzSmat github.com/RoaringBitmap/roaring
+	go-fuzz -bin=./roaring-fuzz.zip -workdir=workdir/ -timeout=200
+
+
+fuzz-stream:
+	go-fuzz-build -func FuzzSerializationStream github.com/RoaringBitmap/roaring
+	go-fuzz -bin=./roaring-fuzz.zip -workdir=workdir/ -timeout=200
+
+
+fuzz-buffer:
+	go-fuzz-build -func FuzzSerializationBuffer github.com/RoaringBitmap/roaring
 	go-fuzz -bin=./roaring-fuzz.zip -workdir=workdir/ -timeout=200
 
 # Remove any build artifact
