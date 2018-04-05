@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -977,4 +978,28 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		}
 	})
 
+}
+
+func TestSerializationCrashers(t *testing.T) {
+	crashers, err := filepath.Glob("testdata/crash*")
+	if err != nil {
+		t.Errorf("error globbing testdata/crash*: %v", err)
+		return
+	}
+
+	for _, crasher := range crashers {
+		t.Log(crasher)
+
+		data, err := ioutil.ReadFile(crasher)
+		if err != nil {
+			t.Errorf("error opening crasher %v: %v", crasher, err)
+			continue
+		}
+
+		newrb := NewBitmap()
+		_, err = newrb.FromBuffer(data)
+		if err != nil {
+			t.Errorf("Failed reading %v: %v", crasher, err)
+		}
+	}
 }
