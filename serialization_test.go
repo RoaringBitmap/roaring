@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -988,8 +989,6 @@ func TestSerializationCrashers(t *testing.T) {
 	}
 
 	for _, crasher := range crashers {
-		t.Log(crasher)
-
 		data, err := ioutil.ReadFile(crasher)
 		if err != nil {
 			t.Errorf("error opening crasher %v: %v", crasher, err)
@@ -997,9 +996,15 @@ func TestSerializationCrashers(t *testing.T) {
 		}
 
 		newrb := NewBitmap()
-		_, err = newrb.FromBuffer(data)
-		if err != nil {
-			t.Errorf("Failed reading %v: %v", crasher, err)
-		}
+		func() {
+			defer func() {
+				if err := recover(); err != nil {
+					t.Error("crasher", crasher, "panicked:", err)
+					t.Log("stack:\n", string(debug.Stack()))
+				}
+			}()
+			// return values ignored -- we're checking for panics()
+			newrb.FromBuffer(data)
+		}()
 	}
 }
