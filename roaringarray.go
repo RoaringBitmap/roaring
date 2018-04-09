@@ -565,7 +565,9 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 	} else {
 		return 0, fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
 	}
-
+	if size > (1 << 16) {
+		return 0, fmt.Errorf("It is logically impossible to have more than (1<<16) containers.")
+	}
 	// descriptive header
 	// keycard - is {key, cardinality} tuple slice
 	if pos+2*2*int(size) > len(buf) {
@@ -672,6 +674,9 @@ func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
 		pos += 4
 	} else {
 		return 0, fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
+	}
+	if size > (1 << 16) {
+		return 0, fmt.Errorf("It is logically impossible to have more than (1<<16) containers.")
 	}
 	// descriptive header
 	keycard := make([]uint16, 2*size, 2*size)
