@@ -981,6 +981,16 @@ func TestBitmap_FromBuffer(t *testing.T) {
 
 }
 
+func catchPanic(t *testing.T, f func(), name string) {
+	defer func() {
+		if err := recover(); err != nil {
+			t.Error("panicked "+name+":", err)
+			t.Log("stack:\n", string(debug.Stack()))
+		}
+	}()
+	f()
+}
+
 func TestSerializationCrashers(t *testing.T) {
 	crashers, err := filepath.Glob("testdata/crash*")
 	if err != nil {
@@ -995,16 +1005,14 @@ func TestSerializationCrashers(t *testing.T) {
 			continue
 		}
 
-		newrb := NewBitmap()
-		func() {
-			defer func() {
-				if err := recover(); err != nil {
-					t.Error("crasher", crasher, "panicked:", err)
-					t.Log("stack:\n", string(debug.Stack()))
-				}
-			}()
-			// return values ignored -- we're checking for panics()
-			newrb.FromBuffer(data)
-		}()
+		// take a copy in case the stream is modified during unpacking attempt
+		orig := make([]byte, len(data))
+		copy(orig, data)
+
+		catchPanic(t, func() { NewBitmap().FromBuffer(data) }, "FromBuffer(" + crasher + ")")
+
+		// reset for next one
+		copy(data, orig)
+		catchPanic(t, func() { NewBitmap().ReadFrom(bytes.NewReader(data)) }, "ReadFrom(" + crasher + ")")
 	}
 }
