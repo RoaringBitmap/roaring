@@ -4,6 +4,7 @@ package roaring
 
 import (
 	"testing"
+	"fmt"
 )
 
 func testAggregations(t *testing.T,
@@ -271,14 +272,18 @@ func testAggregations(t *testing.T,
 }
 
 func TestParAggregations(t *testing.T) {
-	andFunc := func(bitmaps ...*Bitmap) *Bitmap {
-		return ParAnd(0, bitmaps...)
-	}
-	orFunc := func(bitmaps ...*Bitmap) *Bitmap {
-		return ParOr(0, bitmaps...)
-	}
+	for _, p := range [...]int{1, 2, 4} {
+		andFunc := func(bitmaps ...*Bitmap) *Bitmap {
+			return ParAnd(p, bitmaps...)
+		}
+		orFunc := func(bitmaps ...*Bitmap) *Bitmap {
+			return ParOr(p, bitmaps...)
+		}
 
-	testAggregations(t, andFunc, orFunc, nil)
+		t.Run(fmt.Sprintf("par%d", p), func(t *testing.T) {
+			testAggregations(t, andFunc, orFunc, nil)
+		})
+	}
 }
 
 func TestFastAggregations(t *testing.T) {
