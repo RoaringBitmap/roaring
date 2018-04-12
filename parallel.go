@@ -2,9 +2,9 @@ package roaring
 
 import (
 	"container/heap"
+	"fmt"
 	"runtime"
 	"sync"
-	"fmt"
 )
 
 var defaultWorkerCount = runtime.NumCPU()
@@ -386,7 +386,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 
 	if chunkCount*chunkSize < int(keyRange) {
 		// it's fine to panic to indicate an implementation error
-		panic(fmt.Sprintf("invariant check failed: chunkCount * chunkSize >= keyRange, %d * %d < %d", chunkCount, chunkSize, keyRange))
+		panic(fmt.Sprintf("invariant check failed: chunkCount * chunkSize < keyRange, %d * %d < %d", chunkCount, chunkSize, keyRange))
 	}
 
 	chunks := make([]*roaringArray, chunkCount)
@@ -417,7 +417,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 		for i := 0; i < chunkCount; i++ {
 			spec := parChunkSpec{
 				start: uint16(int(lKey) + i*chunkSize),
-				end:   uint16(minOfInt((i+1)*chunkSize-1+int(lKey), int(hKey))),
+				end:   uint16(minOfInt(int(lKey)+(i+1)*chunkSize-1, int(hKey))),
 				idx:   int(i),
 			}
 			chunkSpecChan <- spec
@@ -504,14 +504,14 @@ func lazyOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 			if key1 < key2 {
 				answer.appendCopy(*ra1, idx1)
 				idx1++
-				if idx1 >= length1 {
+				if idx1 == length1 {
 					break
 				}
 				key1 = ra1.getKeyAtIndex(idx1)
 			} else if key1 > key2 {
 				answer.appendCopy(*ra2, idx2)
 				idx2++
-				if idx2 >= length2 {
+				if idx2 == length2 {
 					break
 				}
 				key2 = ra2.getKeyAtIndex(idx2)
@@ -521,7 +521,7 @@ func lazyOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 				answer.appendContainer(key1, c1.lazyOR(ra2.getContainerAtIndex(idx2)), false)
 				idx1++
 				idx2++
-				if idx1 >= length1 || idx2 >= length2 {
+				if idx1 == length1 || idx2 == length2 {
 					break
 				}
 
@@ -532,21 +532,23 @@ func lazyOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 	}
 
 	if idx2 < length2 {
-		key2 := ra2.getKeyAtIndex(idx2)
+		key2 = ra2.getKeyAtIndex(idx2)
 		for key2 <= last {
 			answer.appendContainer(key2, ra2.getContainerAtIndex(idx2), true)
 			idx2++
-			if idx2 >= length2 {
+			if idx2 == length2 {
 				break
 			}
 			key2 = ra2.getKeyAtIndex(idx2)
 		}
-	} else if idx1 < length1 {
-		key1 := ra1.getKeyAtIndex(idx1)
+	}
+
+	if idx1 < length1 {
+		key1 = ra1.getKeyAtIndex(idx1)
 		for key1 <= last {
 			answer.appendContainer(key1, ra1.getContainerAtIndex(idx1), true)
 			idx1++
-			if idx1 >= length1 {
+			if idx1 == length1 {
 				break
 			}
 			key1 = ra1.getKeyAtIndex(idx1)
@@ -603,7 +605,7 @@ func lazyIOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 	}
 
 	if idx2 < length2 {
-		key2 := ra2.getKeyAtIndex(idx2)
+		key2 = ra2.getKeyAtIndex(idx2)
 		for key2 <= last {
 			ra1.appendContainer(key2, ra2.getContainerAtIndex(idx2), true)
 			idx2++

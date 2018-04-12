@@ -268,6 +268,19 @@ func testAggregations(t *testing.T,
 			t.Error()
 		}
 	})
+
+	t.Run("issue 178", func(t *testing.T) {
+		ba1 := []uint32{3585028, 65901253, 143441994, 211160474, 286511937, 356744840, 434332509, 502812785, 576097614, 646557334, 714794241, 775083485, 833704249, 889329147, 941367043}
+		ba2 := []uint32{17883, 54494426, 113908938, 174519827, 235465665, 296685741, 357644666, 420192495, 476104304, 523046142, 577855081, 634889665, 692460635, 751350463, 809989192, 863494316, 919127240}
+
+		r1 := BitmapOf(ba1...)
+		r2 := BitmapOf(ba2...)
+
+		result := or(r1, r2)
+		if result.GetCardinality() != 32 {
+			t.Errorf("Expected bitmap of cardinality %d, got %d", 32, result.GetCardinality())
+		}
+	})
 }
 
 func TestParAggregations(t *testing.T) {
