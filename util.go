@@ -264,3 +264,52 @@ func getRandomPermutation(n int) []int {
 	}
 	return m
 }
+
+func minOfInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxOfInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func maxOfUint16(a, b uint16) uint16 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minOfUint16(a, b uint16) uint16 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func maxUint16(a, b uint16) uint16 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minUint16(a, b uint16) uint16 {
+	if a < b {
+		return a
+	}
+	return b
+}
