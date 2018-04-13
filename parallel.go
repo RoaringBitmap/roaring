@@ -376,13 +376,8 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 		chunkCount = int(keyRange)
 	} else {
 		chunkCount = parallelism * 4
-		if int(keyRange)%chunkCount > 0 {
-			chunkSize = (int(keyRange) / chunkCount) + 1
-		} else {
-			chunkSize = int(keyRange) / chunkCount
-		}
+		chunkSize = (int(keyRange) + chunkCount - 1) / chunkCount
 	}
-	//fmt.Printf("cc %d cs %d r %d d %d\n", chunkCount, chunkSize, int(keyRange)%chunkSize, chunkCount*chunkSize-int(keyRange))
 
 	if chunkCount*chunkSize < int(keyRange) {
 		// it's fine to panic to indicate an implementation error
@@ -603,7 +598,6 @@ func lazyIOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 			}
 		}
 	}
-
 	if idx2 < length2 {
 		key2 = ra2.getKeyAtIndex(idx2)
 		for key2 <= last {
