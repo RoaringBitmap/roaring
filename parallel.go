@@ -529,7 +529,7 @@ func lazyOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 	if idx2 < length2 {
 		key2 = ra2.getKeyAtIndex(idx2)
 		for key2 <= last {
-			answer.appendContainer(key2, ra2.getContainerAtIndex(idx2), true)
+			answer.appendCopy(*ra2, idx2)
 			idx2++
 			if idx2 == length2 {
 				break
@@ -541,7 +541,7 @@ func lazyOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 	if idx1 < length1 {
 		key1 = ra1.getKeyAtIndex(idx1)
 		for key1 <= last {
-			answer.appendContainer(key1, ra1.getContainerAtIndex(idx1), true)
+			answer.appendCopy(*ra1, idx1)
 			idx1++
 			if idx1 == length1 {
 				break
@@ -601,7 +601,7 @@ func lazyIOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 	if idx2 < length2 {
 		key2 = ra2.getKeyAtIndex(idx2)
 		for key2 <= last {
-			ra1.appendContainer(key2, ra2.getContainerAtIndex(idx2), true)
+			ra1.appendCopy(*ra2, idx2)
 			idx2++
 			if idx2 >= length2 {
 				break
