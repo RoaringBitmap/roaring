@@ -58,8 +58,9 @@ func (b *runContainer16) readFrom(stream io.Reader) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	encRun := make([]uint16, 2*numRuns)
-	by := make([]byte, 4*numRuns)
+	nr := int(numRuns)
+	encRun := make([]uint16, 2*nr)
+	by := make([]byte, 4*nr)
 	err = binary.Read(stream, binary.LittleEndian, &by)
 	if err != nil {
 		return 0, err
@@ -71,7 +72,6 @@ func (b *runContainer16) readFrom(stream io.Reader) (int, error) {
 		encRun[i] = binary.LittleEndian.Uint16(by)
 		by = by[2:]
 	}
-	nr := int(numRuns)
 	for i := 0; i < nr; i++ {
 		if i > 0 && b.iv[i-1].last() >= encRun[i*2] {
 			return 0, fmt.Errorf("error: stored runContainer had runs that were not in sorted order!! (b.iv[i-1=%v].last = %v >= encRun[i=%v] = %v)", i-1, b.iv[i-1].last(), i, encRun[i*2])
