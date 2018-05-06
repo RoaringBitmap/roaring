@@ -1,9 +1,10 @@
 package roaring
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestBitmapContainerNumberOfRuns024(t *testing.T) {
@@ -64,4 +65,12 @@ func TestBitmapContainerNumberOfRuns024(t *testing.T) {
 			}
 
 		})
+}
+
+func TestBitmapcontainerAndCardinality(t *testing.T) {
+	Convey("bitmap containers get cardinality in range, miss the last index, issue #183", t, func() {
+		c1 := newRunContainer16Range(0, 65535)
+		c2 := newBitmapContainerwithRange(0, 65535)
+		So(65536, ShouldEqual, c1.andCardinality(c2))
+	})
 }
