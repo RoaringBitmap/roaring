@@ -712,11 +712,11 @@ func (bc *bitmapContainer) getCardinalityInRange(start, end uint) int {
 	endword := (end - 1) / 64
 	const allones = ^uint64(0)
 	if firstword == endword {
-		return int(popcount(bc.bitmap[firstword] & ((allones << (start % 64)) & (allones >> (64 - (end % 64))))))
+		return int(popcount(bc.bitmap[firstword] & ((allones << (start % 64)) & (allones >> ((64 - end) & 63)))))
 	}
 	answer := popcount(bc.bitmap[firstword] & (allones << (start % 64)))
-	answer += popcntSlice(bc.bitmap[firstword+1 : endword+1])
-	answer += popcount(bc.bitmap[endword] & (allones >> (64 - (end % 64))))
+	answer += popcntSlice(bc.bitmap[firstword+1 : endword])
+	answer += popcount(bc.bitmap[endword] & (allones >> ((64 - end) & 63)))
 	return int(answer)
 }
 

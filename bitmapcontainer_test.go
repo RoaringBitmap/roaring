@@ -1,10 +1,9 @@
 package roaring
 
 import (
+	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestBitmapContainerNumberOfRuns024(t *testing.T) {
@@ -69,8 +68,46 @@ func TestBitmapContainerNumberOfRuns024(t *testing.T) {
 
 func TestBitmapcontainerAndCardinality(t *testing.T) {
 	Convey("bitmap containers get cardinality in range, miss the last index, issue #183", t, func() {
-		c1 := newRunContainer16Range(0, 65535)
-		c2 := newBitmapContainerwithRange(0, 65535)
-		So(65536, ShouldEqual, c1.andCardinality(c2))
+		for r := 0; r <= 65535; r += 1 {
+			c1 := newRunContainer16Range(0, uint16(r))
+			c2 := newBitmapContainerwithRange(0, int(r))
+			So(r+1, ShouldEqual, c1.andCardinality(c2))
+		}
+	})
+}
+
+func TestIssue181(t *testing.T) {
+
+	Convey("Initial issue 181", t, func() {
+		a := New()
+		var x uint32
+
+		// adding 1M integers
+		for i := 1; i <= 1000000; i++ {
+			x += uint32(rand.Intn(10) + 1)
+			a.Add(x)
+		}
+		b := New()
+		for i := 1; i <= int(x); i++ {
+			b.Add(uint32(i))
+		}
+		So(b.AndCardinality(a), ShouldEqual, a.AndCardinality(b))
+		So(b.AndCardinality(a), ShouldEqual, And(a, b).GetCardinality())
+	})
+	Convey("Second version of issue 181", t, func() {
+		a := New()
+		var x uint32
+
+		// adding 1M integers
+		for i := 1; i <= 1000000; i++ {
+			x += uint32(rand.Intn(10) + 1)
+			a.Add(x)
+		}
+		b := New()
+		b.AddRange(1, uint64(x))
+
+		So(b.AndCardinality(a), ShouldEqual, a.AndCardinality(b))
+		So(b.AndCardinality(a), ShouldEqual, And(a, b).GetCardinality())
+
 	})
 }

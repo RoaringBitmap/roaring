@@ -1009,10 +1009,10 @@ func TestSerializationCrashers(t *testing.T) {
 		orig := make([]byte, len(data))
 		copy(orig, data)
 
-		catchPanic(t, func() { NewBitmap().FromBuffer(data) }, "FromBuffer(" + crasher + ")")
+		catchPanic(t, func() { NewBitmap().FromBuffer(data) }, "FromBuffer("+crasher+")")
 
 		// reset for next one
 		copy(data, orig)
-		catchPanic(t, func() { NewBitmap().ReadFrom(bytes.NewReader(data)) }, "ReadFrom(" + crasher + ")")
+		catchPanic(t, func() { NewBitmap().ReadFrom(bytes.NewReader(data)) }, "ReadFrom("+crasher+")")
 	}
 }
