@@ -4,32 +4,815 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	"strings"
 	"testing"
-
+  "strings"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-// showHash utility really only used in testing
-func showHash(name string, h map[int]bool) {
-	hv := []int{}
-	for k := range h {
-		hv = append(hv, k)
-	}
-	sort.Sort(sort.IntSlice(hv))
-	stringH := ""
-	for i := range hv {
-		stringH += fmt.Sprintf("%v, ", hv[i])
-	}
 
-	fmt.Printf("%s is (len %v): %s", name, len(h), stringH)
+// trial is used in the randomized testing of runContainers
+type trial struct {
+	n           int
+	percentFill float64
+	ntrial      int
+
+	// only in the union test
+	// only subtract test
+	percentDelete float64
+
+	// only in 067 randomized operations
+	// we do this + 1 passes
+	numRandomOpsPass int
+
+	// allow sampling range control
+	// only recent tests respect this.
+	srang *interval16
 }
+
+
+func TestRleInterval16s(t *testing.T) {
+
+	Convey("canMerge, and mergeInterval16s should do what they say", t, func() {
+		a := newInterval16Range(0, 9)
+		b := newInterval16Range(0, 1)
+		report := sliceToString16([]interval16{a, b})
+		_ = report
+		c := newInterval16Range(2, 4)
+		d := newInterval16Range(2, 5)
+		e := newInterval16Range(0, 4)
+		f := newInterval16Range(9, 9)
+		g := newInterval16Range(8, 9)
+		h := newInterval16Range(5, 6)
+		i := newInterval16Range(6, 6)
+
+		aIb, empty := intersectInterval16s(a, b)
+		So(empty, ShouldBeFalse)
+		So(aIb, ShouldResemble, b)
+
+		So(canMerge16(b, c), ShouldBeTrue)
+		So(canMerge16(c, b), ShouldBeTrue)
+		So(canMerge16(a, h), ShouldBeTrue)
+
+		So(canMerge16(d, e), ShouldBeTrue)
+		So(canMerge16(f, g), ShouldBeTrue)
+		So(canMerge16(c, h), ShouldBeTrue)
+
+		So(canMerge16(b, h), ShouldBeFalse)
+		So(canMerge16(h, b), ShouldBeFalse)
+		So(canMerge16(c, i), ShouldBeFalse)
+
+		So(mergeInterval16s(b, c), ShouldResemble, e)
+		So(mergeInterval16s(c, b), ShouldResemble, e)
+
+		So(mergeInterval16s(h, i), ShouldResemble, h)
+		So(mergeInterval16s(i, h), ShouldResemble, h)
+
+		////// start
+		So(mergeInterval16s(newInterval16Range(0, 0), newInterval16Range(1, 1)), ShouldResemble, newInterval16Range(0, 1))
+		So(mergeInterval16s(newInterval16Range(1, 1), newInterval16Range(0, 0)), ShouldResemble, newInterval16Range(0, 1))
+		So(mergeInterval16s(newInterval16Range(0, 4), newInterval16Range(3, 5)), ShouldResemble, newInterval16Range(0, 5))
+		So(mergeInterval16s(newInterval16Range(0, 4), newInterval16Range(3, 4)), ShouldResemble, newInterval16Range(0, 4))
+
+		So(mergeInterval16s(newInterval16Range(0, 8), newInterval16Range(1, 7)), ShouldResemble, newInterval16Range(0, 8))
+		So(mergeInterval16s(newInterval16Range(1, 7), newInterval16Range(0, 8)), ShouldResemble, newInterval16Range(0, 8))
+
+		So(func() { _ = mergeInterval16s(newInterval16Range(0, 0), newInterval16Range(2, 3)) }, ShouldPanic)
+
+	})
+}
+
+func TestRleRunIterator16(t *testing.T) {
+
+	Convey("RunIterator16 unit tests for Cur, Next, HasNext, and Remove should pass", t, func() {
+		{
+			rc := newRunContainer16()
+			msg := rc.String()
+			_ = msg
+			So(rc.cardinality(), ShouldEqual, 0)
+			it := rc.newRunIterator16()
+			So(it.hasNext(), ShouldBeFalse)
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 4)})
+			So(rc.cardinality(), ShouldEqual, 1)
+			it := rc.newRunIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			So(it.next(), ShouldResemble, uint16(4))
+			So(it.cur(), ShouldResemble, uint16(4))
+		}
+		{
+			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
+			So(rc.cardinality(), ShouldEqual, 6)
+			it := rc.newRunIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			for i := 4; i < 10; i++ {
+				So(it.next(), ShouldEqual, uint16(i))
+			}
+			So(it.hasNext(), ShouldBeFalse)
+		}
+
+		{
+			// basic nextMany test
+			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
+			So(rc.cardinality(), ShouldEqual, 6)
+			it := rc.newManyRunIterator16()
+
+			buf := make([]uint32, 10)
+			n := it.nextMany(0, buf)
+			So(n, ShouldEqual, 6)
+			expected := []uint32{4, 5, 6, 7, 8, 9, 0, 0, 0, 0}
+			for i, e := range expected {
+				So(buf[i], ShouldEqual, e)
+			}
+		}
+
+		{
+			// nextMany with len(buf) == 0
+			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
+			So(rc.cardinality(), ShouldEqual, 6)
+			it := rc.newManyRunIterator16()
+
+			buf := make([]uint32, 0)
+			n := it.nextMany(0, buf)
+			So(n, ShouldEqual, 0)
+		}
+
+		{
+			// basic nextMany test across ranges
+			rc := newRunContainer16CopyIv([]interval16{
+				newInterval16Range(4, 7),
+				newInterval16Range(11, 13),
+				newInterval16Range(18, 21)})
+			So(rc.cardinality(), ShouldEqual, 11)
+			it := rc.newManyRunIterator16()
+
+			buf := make([]uint32, 15)
+			n := it.nextMany(0, buf)
+			So(n, ShouldEqual, 11)
+			expected := []uint32{4, 5, 6, 7, 11, 12, 13, 18, 19, 20, 21, 0, 0, 0, 0}
+			for i, e := range expected {
+				So(buf[i], ShouldEqual, e)
+			}
+		}
+		{
+			// basic nextMany test across ranges with different buffer sizes
+			rc := newRunContainer16CopyIv([]interval16{
+				newInterval16Range(4, 7),
+				newInterval16Range(11, 13),
+				newInterval16Range(18, 21)})
+			expectedCard := 11
+			expectedVals := []uint32{4, 5, 6, 7, 11, 12, 13, 18, 19, 20, 21}
+			hs := uint32(1 << 16)
+
+			So(rc.cardinality(), ShouldEqual, expectedCard)
+
+			for bufSize := 2; bufSize < 15; bufSize++ {
+				buf := make([]uint32, bufSize)
+				seen := 0
+				it := rc.newManyRunIterator16()
+				for n := it.nextMany(hs, buf); n != 0; n = it.nextMany(hs, buf) {
+					// catch runaway iteration
+					So(seen+n, ShouldBeLessThanOrEqualTo, expectedCard)
+
+					for i, e := range expectedVals[seen : seen+n] {
+						So(buf[i], ShouldEqual, e+hs)
+					}
+					seen += n
+					// if we have more values to return then we shouldn't leave empty slots in the buffer
+					if seen < expectedCard {
+						So(n, ShouldEqual, bufSize)
+					}
+				}
+				So(seen, ShouldEqual, expectedCard)
+			}
+		}
+
+		{
+			// basic nextMany interaction with hasNext
+			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 4)})
+			So(rc.cardinality(), ShouldEqual, 1)
+			it := rc.newManyRunIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+
+			buf := make([]uint32, 4)
+
+			n := it.nextMany(0, buf)
+			So(n, ShouldEqual, 1)
+			expected := []uint32{4, 0, 0, 0}
+			for i, e := range expected {
+				So(buf[i], ShouldEqual, e)
+			}
+			So(it.hasNext(), ShouldBeFalse)
+
+			buf = make([]uint32, 4)
+			n = it.nextMany(0, buf)
+			So(n, ShouldEqual, 0)
+			expected = []uint32{0, 0, 0, 0}
+			for i, e := range expected {
+				So(buf[i], ShouldEqual, e)
+			}
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 9)})
+			card := rc.cardinality()
+			So(card, ShouldEqual, 6)
+
+			it := rc.newRunIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			for i := 4; i < 6; i++ {
+				So(it.next(), ShouldEqual, uint16(i))
+			}
+			So(it.cur(), ShouldEqual, uint16(5))
+
+			So(it.remove(), ShouldEqual, uint16(5))
+
+			So(rc.cardinality(), ShouldEqual, 5)
+
+			it2 := rc.newRunIterator16()
+			So(rc.cardinality(), ShouldEqual, 5)
+			So(it2.next(), ShouldEqual, uint16(4))
+			for i := 6; i < 10; i++ {
+				So(it2.next(), ShouldEqual, uint16(i))
+			}
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{
+				newInterval16Range(0, 0),
+				newInterval16Range(2, 2),
+				newInterval16Range(4, 4),
+			})
+			rc1 := newRunContainer16TakeOwnership([]interval16{
+				newInterval16Range(6, 7),
+				newInterval16Range(10, 11),
+				newInterval16Range(MaxUint16, MaxUint16),
+			})
+
+			rc = rc.union(rc1)
+
+			So(rc.cardinality(), ShouldEqual, 8)
+			it := rc.newRunIterator16()
+			So(it.next(), ShouldEqual, uint16(0))
+			So(it.next(), ShouldEqual, uint16(2))
+			So(it.next(), ShouldEqual, uint16(4))
+			So(it.next(), ShouldEqual, uint16(6))
+			So(it.next(), ShouldEqual, uint16(7))
+			So(it.next(), ShouldEqual, uint16(10))
+			So(it.next(), ShouldEqual, uint16(11))
+			So(it.next(), ShouldEqual, uint16(MaxUint16))
+			So(it.hasNext(), ShouldEqual, false)
+
+			newInterval16Range(0, MaxUint16)
+			rc2 := newRunContainer16TakeOwnership([]interval16{newInterval16Range(0, MaxUint16)})
+
+			rc2 = rc2.union(rc)
+			So(rc2.numIntervals(), ShouldEqual, 1)
+		}
+	})
+}
+
+func TestRleRunSearch16(t *testing.T) {
+
+	Convey("RunContainer16.search should respect the prior bounds we provide for efficiency of searching through a subset of the intervals", t, func() {
+		{
+			vals := []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18, MaxUint16 - 3, MaxUint16}
+			exAt := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11} // expected at
+			absent := []uint16{1, 3, 5, 7, 9, 11, 13, 15, 17, 19, MaxUint16 - 2}
+
+			rc := newRunContainer16FromVals(true, vals...)
+
+			So(rc.cardinality(), ShouldEqual, 12)
+
+			var where int64
+			var present bool
+
+			for i, v := range vals {
+				where, present, _ = rc.search(int64(v), nil)
+				So(present, ShouldBeTrue)
+				So(where, ShouldEqual, exAt[i])
+			}
+
+			for i, v := range absent {
+				where, present, _ = rc.search(int64(v), nil)
+				So(present, ShouldBeFalse)
+				So(where, ShouldEqual, i)
+			}
+
+			// delete the MaxUint16 so we can test
+			// the behavior when searching near upper limit.
+
+
+			So(rc.cardinality(), ShouldEqual, 12)
+			So(rc.numIntervals(), ShouldEqual, 12)
+
+			rc.removeKey(MaxUint16)
+			So(rc.cardinality(), ShouldEqual, 11)
+			So(rc.numIntervals(), ShouldEqual, 11)
+
+			where, present, _ = rc.search(MaxUint16, nil)
+			So(present, ShouldBeFalse)
+			So(where, ShouldEqual, 10)
+
+			var numCompares int
+			where, present, numCompares = rc.search(MaxUint16, nil)
+			So(present, ShouldBeFalse)
+			So(where, ShouldEqual, 10)
+			So(numCompares, ShouldEqual, 3)
+
+			opts := &searchOptions{
+				startIndex: 5,
+			}
+			where, present, numCompares = rc.search(MaxUint16, opts)
+			So(present, ShouldBeFalse)
+			So(where, ShouldEqual, 10)
+			So(numCompares, ShouldEqual, 2)
+
+			where, present, _ = rc.search(MaxUint16-3, opts)
+			So(present, ShouldBeTrue)
+			So(where, ShouldEqual, 10)
+
+			// with the bound in place, MaxUint16-3 should not be found
+			opts.endxIndex = 10
+			where, present, _ = rc.search(MaxUint16-3, opts)
+			So(present, ShouldBeFalse)
+			So(where, ShouldEqual, 9)
+
+		}
+	})
+
+}
+
+func TestRleIntersection16(t *testing.T) {
+
+	Convey("RunContainer16.intersect of two RunContainer16(s) should return their intersection", t, func() {
+		{
+			vals := []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18, MaxUint16 - 3, MaxUint16 - 1}
+
+			a := newRunContainer16FromVals(true, vals[:5]...)
+			b := newRunContainer16FromVals(true, vals[2:]...)
+			So(haveOverlap16(newInterval16Range(0, 2), newInterval16Range(2, 2)), ShouldBeTrue)
+			So(haveOverlap16(newInterval16Range(0, 2), newInterval16Range(3, 3)), ShouldBeFalse)
+
+			isect := a.intersect(b)
+			So(isect.cardinality(), ShouldEqual, 3)
+			So(isect.contains(4), ShouldBeTrue)
+			So(isect.contains(6), ShouldBeTrue)
+			So(isect.contains(8), ShouldBeTrue)
+
+			newInterval16Range(0, MaxUint16)
+			d := newRunContainer16TakeOwnership([]interval16{newInterval16Range(0, MaxUint16)})
+
+			isect = isect.intersect(d)
+			So(isect.cardinality(), ShouldEqual, 3)
+			So(isect.contains(4), ShouldBeTrue)
+			So(isect.contains(6), ShouldBeTrue)
+			So(isect.contains(8), ShouldBeTrue)
+
+			e := newRunContainer16TakeOwnership(
+				[]interval16{
+					newInterval16Range(2, 4),
+					newInterval16Range(8, 9),
+					newInterval16Range(14, 16),
+					newInterval16Range(20, 22)},
+			)
+			f := newRunContainer16TakeOwnership(
+				[]interval16{
+					newInterval16Range(3, 18),
+					newInterval16Range(22, 23)},
+			)
+
+
+			{
+				isect = e.intersect(f)
+				So(isect.cardinality(), ShouldEqual, 8)
+				So(isect.contains(3), ShouldBeTrue)
+				So(isect.contains(4), ShouldBeTrue)
+				So(isect.contains(8), ShouldBeTrue)
+				So(isect.contains(9), ShouldBeTrue)
+				So(isect.contains(14), ShouldBeTrue)
+				So(isect.contains(15), ShouldBeTrue)
+				So(isect.contains(16), ShouldBeTrue)
+				So(isect.contains(22), ShouldBeTrue)
+			}
+
+			{
+				// check for symmetry
+				isect = f.intersect(e)
+				So(isect.cardinality(), ShouldEqual, 8)
+				So(isect.contains(3), ShouldBeTrue)
+				So(isect.contains(4), ShouldBeTrue)
+				So(isect.contains(8), ShouldBeTrue)
+				So(isect.contains(9), ShouldBeTrue)
+				So(isect.contains(14), ShouldBeTrue)
+				So(isect.contains(15), ShouldBeTrue)
+				So(isect.contains(16), ShouldBeTrue)
+				So(isect.contains(22), ShouldBeTrue)
+			}
+
+		}
+	})
+}
+
+func TestRleRandomIntersection16(t *testing.T) {
+
+	Convey("RunContainer.intersect of two RunContainers should return their intersection, and this should hold over randomized container content when compared to intersection done with hash maps", t, func() {
+
+		seed := int64(42)
+		rand.Seed(seed)
+
+		trials := []trial{
+			{n: 100, percentFill: .80, ntrial: 10},
+			{n: 1000, percentFill: .20, ntrial: 20},
+			{n: 10000, percentFill: .01, ntrial: 10},
+			{n: 1000, percentFill: .99, ntrial: 10},
+		}
+
+		tester := func(tr trial) {
+			for j := 0; j < tr.ntrial; j++ {
+				ma := make(map[int]bool)
+				mb := make(map[int]bool)
+
+				n := tr.n
+				a := []uint16{}
+				b := []uint16{}
+
+				var first, second int
+
+				draw := int(float64(n) * tr.percentFill)
+				for i := 0; i < draw; i++ {
+					r0 := rand.Intn(n)
+					a = append(a, uint16(r0))
+					ma[r0] = true
+					if i == 0 {
+						first = r0
+						second = r0 + 1
+						a = append(a, uint16(second))
+						ma[second] = true
+					}
+
+					r1 := rand.Intn(n)
+					b = append(b, uint16(r1))
+					mb[r1] = true
+				}
+
+				// print a; very likely it has dups
+				sort.Sort(uint16Slice(a))
+				stringA := ""
+				for i := range a {
+					stringA += fmt.Sprintf("%v, ", a[i])
+				}
+
+				// hash version of intersect:
+				hashi := make(map[int]bool)
+				for k := range ma {
+					if mb[k] {
+						hashi[k] = true
+					}
+				}
+
+				// RunContainer's Intersect
+				brle := newRunContainer16FromVals(false, b...)
+
+				//arle := newRunContainer16FromVals(false, a...)
+				// instead of the above line, create from array
+				// get better test coverage:
+				arr := newArrayContainerRange(int(first), int(second))
+				arle := newRunContainer16FromArray(arr)
+				arle.set(false, a...)
+
+				isect := arle.intersect(brle)
+
+
+				//showHash("hashi", hashi)
+
+				for k := range hashi {
+					So(isect.contains(uint16(k)), ShouldBeTrue)
+				}
+
+				So(isect.cardinality(), ShouldEqual, len(hashi))
+			}
+		}
+
+		for i := range trials {
+			tester(trials[i])
+		}
+
+	})
+}
+
+func TestRleRandomUnion16(t *testing.T) {
+
+	Convey("RunContainer.union of two RunContainers should return their union, and this should hold over randomized container content when compared to union done with hash maps", t, func() {
+
+		seed := int64(42)
+		rand.Seed(seed)
+
+		trials := []trial{
+			{n: 100, percentFill: .80, ntrial: 10},
+			{n: 1000, percentFill: .20, ntrial: 20},
+			{n: 10000, percentFill: .01, ntrial: 10},
+			{n: 1000, percentFill: .99, ntrial: 10, percentDelete: .04},
+		}
+
+		tester := func(tr trial) {
+			for j := 0; j < tr.ntrial; j++ {
+				ma := make(map[int]bool)
+				mb := make(map[int]bool)
+
+				n := tr.n
+				a := []uint16{}
+				b := []uint16{}
+
+				draw := int(float64(n) * tr.percentFill)
+				numDel := int(float64(n) * tr.percentDelete)
+				for i := 0; i < draw; i++ {
+					r0 := rand.Intn(n)
+					a = append(a, uint16(r0))
+					ma[r0] = true
+
+					r1 := rand.Intn(n)
+					b = append(b, uint16(r1))
+					mb[r1] = true
+				}
+
+				// hash version of union:
+				hashu := make(map[int]bool)
+				for k := range ma {
+					hashu[k] = true
+				}
+				for k := range mb {
+					hashu[k] = true
+				}
+
+				//showHash("hashu", hashu)
+
+				// RunContainer's Union
+				arle := newRunContainer16()
+				for i := range a {
+					arle.Add(a[i])
+				}
+				brle := newRunContainer16()
+				brle.set(false, b...)
+
+				union := arle.union(brle)
+				un := union.AsSlice()
+				sort.Sort(uint16Slice(un))
+
+				for kk, v := range un {
+					_ = kk
+					So(hashu[int(v)], ShouldBeTrue)
+				}
+
+				for k := range hashu {
+					So(union.contains(uint16(k)), ShouldBeTrue)
+				}
+
+				So(union.cardinality(), ShouldEqual, len(hashu))
+
+				// do the deletes, exercising the remove functionality
+				for i := 0; i < numDel; i++ {
+					r1 := rand.Intn(len(a))
+					goner := a[r1]
+					union.removeKey(goner)
+					delete(hashu, int(goner))
+				}
+				// verify the same as in the hashu
+				So(union.cardinality(), ShouldEqual, len(hashu))
+				for k := range hashu {
+					So(union.contains(uint16(k)), ShouldBeTrue)
+				}
+
+			}
+		}
+
+		for i := range trials {
+			tester(trials[i])
+		}
+
+	})
+}
+
+func TestRleAndOrXor16(t *testing.T) {
+
+	Convey("RunContainer And, Or, Xor tests", t, func() {
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{
+				newInterval16Range(0, 0),
+				newInterval16Range(2, 2),
+				newInterval16Range(4, 4),
+			})
+			b0 := NewBitmap()
+			b0.Add(2)
+			b0.Add(6)
+			b0.Add(8)
+
+			and := rc.And(b0)
+			or := rc.Or(b0)
+			xor := rc.Xor(b0)
+
+			So(and.GetCardinality(), ShouldEqual, 1)
+			So(or.GetCardinality(), ShouldEqual, 5)
+			So(xor.GetCardinality(), ShouldEqual, 4)
+
+			// test creating size 0 and 1 from array
+			arr := newArrayContainerCapacity(0)
+			empty := newRunContainer16FromArray(arr)
+			onceler := newArrayContainerCapacity(1)
+			onceler.content = append(onceler.content, uint16(0))
+			oneZero := newRunContainer16FromArray(onceler)
+			So(empty.cardinality(), ShouldEqual, 0)
+			So(oneZero.cardinality(), ShouldEqual, 1)
+			So(empty.And(b0).GetCardinality(), ShouldEqual, 0)
+			So(empty.Or(b0).GetCardinality(), ShouldEqual, 3)
+
+			// exercise newRunContainer16FromVals() with 0 and 1 inputs.
+			empty2 := newRunContainer16FromVals(false, []uint16{}...)
+			So(empty2.cardinality(), ShouldEqual, 0)
+			one2 := newRunContainer16FromVals(false, []uint16{1}...)
+			So(one2.cardinality(), ShouldEqual, 1)
+		}
+	})
+}
+
+func TestRlePanics16(t *testing.T) {
+
+	Convey("Some RunContainer calls/methods should panic if misused", t, func() {
+
+		// newRunContainer16FromVals
+		So(func() { newRunContainer16FromVals(true, 1, 0) }, ShouldPanic)
+
+		arr := newArrayContainerRange(1, 3)
+		arr.content = []uint16{2, 3, 3, 2, 1}
+		So(func() { newRunContainer16FromArray(arr) }, ShouldPanic)
+	})
+}
+
+func TestRleCoverageOddsAndEnds16(t *testing.T) {
+
+	Convey("Some RunContainer code paths that don't otherwise get coverage -- these should be tested to increase percentage of code coverage in testing", t, func() {
+
+
+		rc := &runContainer16{}
+		So(rc.String(), ShouldEqual, "runContainer16{}")
+		rc.iv = make([]interval16, 1)
+		rc.iv[0] = newInterval16Range(3, 4)
+		So(rc.String(), ShouldEqual, "runContainer16{0:[3, 4], }")
+
+		a := newInterval16Range(5, 9)
+		b := newInterval16Range(0, 1)
+		c := newInterval16Range(1, 2)
+
+		// intersectInterval16s(a, b interval16)
+		isect, isEmpty := intersectInterval16s(a, b)
+		So(isEmpty, ShouldBeTrue)
+		// [0,0] can't be trusted: So(isect.runlen(), ShouldEqual, 0)
+		isect, isEmpty = intersectInterval16s(b, c)
+		So(isEmpty, ShouldBeFalse)
+		So(isect.runlen(), ShouldEqual, 1)
+
+		// runContainer16.union
+		{
+			ra := newRunContainer16FromVals(false, 4, 5)
+			rb := newRunContainer16FromVals(false, 4, 6, 8, 9, 10)
+			ra.union(rb)
+			So(rb.indexOfIntervalAtOrAfter(4, 2), ShouldEqual, 2)
+			So(rb.indexOfIntervalAtOrAfter(3, 2), ShouldEqual, 2)
+		}
+
+		// runContainer.intersect
+		{
+			ra := newRunContainer16()
+			rb := newRunContainer16()
+			So(ra.intersect(rb).cardinality(), ShouldEqual, 0)
+		}
+		{
+			ra := newRunContainer16FromVals(false, 1)
+			rb := newRunContainer16FromVals(false, 4)
+			So(ra.intersect(rb).cardinality(), ShouldEqual, 0)
+		}
+
+		// runContainer.Add
+		{
+			ra := newRunContainer16FromVals(false, 1)
+			rb := newRunContainer16FromVals(false, 4)
+			So(ra.cardinality(), ShouldEqual, 1)
+			So(rb.cardinality(), ShouldEqual, 1)
+			ra.Add(5)
+			So(ra.cardinality(), ShouldEqual, 2)
+
+			// newRunIterator16()
+			empty := newRunContainer16()
+			it := empty.newRunIterator16()
+			So(func() { it.next() }, ShouldPanic)
+			it2 := ra.newRunIterator16()
+			it2.curIndex = int64(len(it2.rc.iv))
+			So(func() { it2.next() }, ShouldPanic)
+
+			// runIterator16.remove()
+			emptyIt := empty.newRunIterator16()
+			So(func() { emptyIt.remove() }, ShouldPanic)
+
+			// newRunContainer16FromArray
+			arr := newArrayContainerRange(1, 6)
+			arr.content = []uint16{5, 5, 5, 6, 9}
+			rc3 := newRunContainer16FromArray(arr)
+			So(rc3.cardinality(), ShouldEqual, 3)
+
+			// runContainer16SerializedSizeInBytes
+			// runContainer16.SerializedSizeInBytes
+			_ = runContainer16SerializedSizeInBytes(3)
+			_ = rc3.serializedSizeInBytes()
+
+			// findNextIntervalThatIntersectsStartingFrom
+			idx, _ := rc3.findNextIntervalThatIntersectsStartingFrom(0, 100)
+			So(idx, ShouldEqual, 1)
+
+			// deleteAt / remove
+			rc3.Add(10)
+			rc3.removeKey(10)
+			rc3.removeKey(9)
+			So(rc3.cardinality(), ShouldEqual, 2)
+			rc3.Add(9)
+			rc3.Add(10)
+			rc3.Add(12)
+			So(rc3.cardinality(), ShouldEqual, 5)
+			it3 := rc3.newRunIterator16()
+			it3.next()
+			it3.next()
+			it3.next()
+			it3.next()
+			So(it3.cur(), ShouldEqual, uint16(10))
+			it3.remove()
+			So(it3.next(), ShouldEqual, uint16(12))
+		}
+
+		// runContainer16.equals
+		{
+			rc16 := newRunContainer16()
+			So(rc16.equals16(rc16), ShouldBeTrue)
+			rc16b := newRunContainer16()
+			So(rc16.equals16(rc16b), ShouldBeTrue)
+			rc16.Add(1)
+			rc16b.Add(2)
+			So(rc16.equals16(rc16b), ShouldBeFalse)
+		}
+	})
+}
+
+func TestRleStoringMax16(t *testing.T) {
+
+	Convey("Storing the MaxUint16 should be possible, because it may be necessary to do so--users will assume that any valid uint16 should be storable. In particular the smaller 16-bit version will definitely expect full access to all bits.", t, func() {
+
+		rc := newRunContainer16()
+		rc.Add(MaxUint16)
+		So(rc.contains(MaxUint16), ShouldBeTrue)
+		So(rc.cardinality(), ShouldEqual, 1)
+		rc.removeKey(MaxUint16)
+		So(rc.contains(MaxUint16), ShouldBeFalse)
+		So(rc.cardinality(), ShouldEqual, 0)
+
+		rc.set(false, MaxUint16-1, MaxUint16)
+		So(rc.cardinality(), ShouldEqual, 2)
+
+		So(rc.contains(MaxUint16-1), ShouldBeTrue)
+		So(rc.contains(MaxUint16), ShouldBeTrue)
+		rc.removeKey(MaxUint16 - 1)
+		So(rc.cardinality(), ShouldEqual, 1)
+		rc.removeKey(MaxUint16)
+		So(rc.cardinality(), ShouldEqual, 0)
+
+		rc.set(false, MaxUint16-2, MaxUint16-1, MaxUint16)
+		So(rc.cardinality(), ShouldEqual, 3)
+		So(rc.numIntervals(), ShouldEqual, 1)
+		rc.removeKey(MaxUint16 - 1)
+		So(rc.numIntervals(), ShouldEqual, 2)
+		So(rc.cardinality(), ShouldEqual, 2)
+
+	})
+}
+
+// go test -bench BenchmarkFromBitmap -run -
+func BenchmarkFromBitmap16(b *testing.B) {
+	b.StopTimer()
+	seed := int64(42)
+	rand.Seed(seed)
+
+	tr := trial{n: 10000, percentFill: .95, ntrial: 1, numRandomOpsPass: 100}
+	_, _, bc := getRandomSameThreeContainers(tr)
+
+	b.StartTimer()
+
+	for j := 0; j < b.N; j++ {
+		newRunContainer16FromBitmapContainer(bc)
+	}
+}
+
+
+
 
 func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 
 	Convey("runContainer16 `and` operation against other container types should correctly do the intersection", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -38,7 +821,6 @@ func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRleRandomAndAgainstOtherContainers on check# j=%v", j)
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
 
@@ -71,8 +853,6 @@ func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 				// RunContainer's Intersect
 				rc := newRunContainer16FromVals(false, a...)
 
-				p("rc from a is %v", rc)
-
 				// vs bitmapContainer
 				bc := newBitmapContainer()
 				for _, bv := range b {
@@ -92,31 +872,19 @@ func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 				rcVsAcIsect := rc.and(ac)
 				rcVsRcbIsect := rc.and(rcb)
 
-				p("rcVsBcIsect is %v", rcVsBcIsect)
-				p("rcVsAcIsect is %v", rcVsAcIsect)
-				p("rcVsRcbIsect is %v", rcVsRcbIsect)
-
-				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rcVsBcIsect", k)
 					So(rcVsBcIsect.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rcVsAcIsect", k)
 					So(rcVsAcIsect.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rcVsRcbIsect", k)
 					So(rcVsRcbIsect.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rcVsBcIsect is %v, len(hashi) is %v", rcVsBcIsect.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsAcIsect is %v, len(hashi) is %v", rcVsAcIsect.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsRcbIsect is %v, len(hashi) is %v", rcVsRcbIsect.getCardinality(), len(hashi))
 				So(rcVsBcIsect.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsAcIsect.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsRcbIsect.getCardinality(), ShouldEqual, len(hashi))
 			}
-			p("done with randomized and() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -130,21 +898,14 @@ func TestRle16RandomUnionAgainstOtherContainers011(t *testing.T) {
 
 	Convey("runContainer16 `or` operation against other container types should correctly do the intersection", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
 			{n: 100, percentFill: .95, ntrial: 1},
-			/*			trial{n: 100, percentFill: .01, ntrial: 10},
-						trial{n: 100, percentFill: .99, ntrial: 10},
-						trial{n: 100, percentFill: .50, ntrial: 10},
-						trial{n: 10, percentFill: 1.0, ntrial: 10},
-			*/
 		}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRleRandomAndAgainstOtherContainers on check# j=%v", j)
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
 
@@ -177,8 +938,6 @@ func TestRle16RandomUnionAgainstOtherContainers011(t *testing.T) {
 
 				// RunContainer's 'or'
 				rc := newRunContainer16FromVals(false, a...)
-
-				p("rc from a is %v", rc)
 
 				// vs bitmapContainer
 				bc := newBitmapContainer()
@@ -199,31 +958,15 @@ func TestRle16RandomUnionAgainstOtherContainers011(t *testing.T) {
 				rcVsAcUnion := rc.or(ac)
 				rcVsRcbUnion := rc.or(rcb)
 
-				p("rcVsBcUnion is %v", rcVsBcUnion)
-				p("rcVsAcUnion is %v", rcVsAcUnion)
-				p("rcVsRcbUnion is %v", rcVsRcbUnion)
-
-				//showHash("hashi", hashi)
-
 				for k := range hashi {
-					p("hashi has %v, checking in rcVsBcUnion", k)
 					So(rcVsBcUnion.contains(uint16(k)), ShouldBeTrue)
-
-					p("hashi has %v, checking in rcVsAcUnion", k)
 					So(rcVsAcUnion.contains(uint16(k)), ShouldBeTrue)
-
-					p("hashi has %v, checking in rcVsRcbUnion", k)
 					So(rcVsRcbUnion.contains(uint16(k)), ShouldBeTrue)
 				}
-
-				p("checking for cardinality agreement: rcVsBcUnion is %v, len(hashi) is %v", rcVsBcUnion.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsAcUnion is %v, len(hashi) is %v", rcVsAcUnion.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsRcbUnion is %v, len(hashi) is %v", rcVsRcbUnion.getCardinality(), len(hashi))
 				So(rcVsBcUnion.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsAcUnion.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsRcbUnion.getCardinality(), ShouldEqual, len(hashi))
 			}
-			p("done with randomized or() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -237,7 +980,6 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 
 	Convey("runContainer16 `ior` inplace union operation against other container types should correctly do the intersection", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -246,7 +988,6 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRleRandomInplaceUnionAgainstOtherContainers on check# j=%v", j)
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
 
@@ -279,10 +1020,7 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 
 				// RunContainer's 'or'
 				rc := newRunContainer16FromVals(false, a...)
-
-				p("rc from a is %v", rc)
-
-				rcVsBcUnion := rc.Clone()
+        rcVsBcUnion := rc.Clone()
 				rcVsAcUnion := rc.Clone()
 				rcVsRcbUnion := rc.Clone()
 
@@ -305,31 +1043,19 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 				rcVsAcUnion.ior(ac)
 				rcVsRcbUnion.ior(rcb)
 
-				p("rcVsBcUnion is %v", rcVsBcUnion)
-				p("rcVsAcUnion is %v", rcVsAcUnion)
-				p("rcVsRcbUnion is %v", rcVsRcbUnion)
-
-				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rcVsBcUnion", k)
 					So(rcVsBcUnion.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rcVsAcUnion", k)
 					So(rcVsAcUnion.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rcVsRcbUnion", k)
 					So(rcVsRcbUnion.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rcVsBcUnion is %v, len(hashi) is %v", rcVsBcUnion.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsAcUnion is %v, len(hashi) is %v", rcVsAcUnion.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsRcbUnion is %v, len(hashi) is %v", rcVsRcbUnion.getCardinality(), len(hashi))
 				So(rcVsBcUnion.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsAcUnion.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsRcbUnion.getCardinality(), ShouldEqual, len(hashi))
 			}
-			p("done with randomized or() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -343,7 +1069,6 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 
 	Convey("runContainer16 `iand` inplace-and operation against other container types should correctly do the intersection", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -352,7 +1077,6 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRleRandomAndAgainstOtherContainers on check# j=%v", j)
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
 
@@ -385,7 +1109,6 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 				// RunContainer's Intersect
 				rc := newRunContainer16FromVals(false, a...)
 
-				p("rc from a is %v", rc)
 
 				// vs bitmapContainer
 				bc := newBitmapContainer()
@@ -410,31 +1133,19 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 				rcVsAcIsect = rcVsAcIsect.iand(ac)
 				rcVsRcbIsect = rcVsRcbIsect.iand(rcb)
 
-				p("rcVsBcIsect is %v", rcVsBcIsect)
-				p("rcVsAcIsect is %v", rcVsAcIsect)
-				p("rcVsRcbIsect is %v", rcVsRcbIsect)
-
-				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rcVsBcIsect", k)
 					So(rcVsBcIsect.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rcVsAcIsect", k)
 					So(rcVsAcIsect.contains(uint16(k)), ShouldBeTrue)
 
-					p("hashi has %v, checking in rcVsRcbIsect", k)
 					So(rcVsRcbIsect.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rcVsBcIsect is %v, len(hashi) is %v", rcVsBcIsect.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsAcIsect is %v, len(hashi) is %v", rcVsAcIsect.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsRcbIsect is %v, len(hashi) is %v", rcVsRcbIsect.getCardinality(), len(hashi))
 				So(rcVsBcIsect.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsAcIsect.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsRcbIsect.getCardinality(), ShouldEqual, len(hashi))
 			}
-			p("done with randomized and() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -448,7 +1159,6 @@ func TestRle16RemoveApi015(t *testing.T) {
 
 	Convey("runContainer16 `remove` (a minus b) should work", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -457,7 +1167,6 @@ func TestRle16RemoveApi015(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16RemoveApi015 on check# j=%v", j)
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
 
@@ -491,25 +1200,18 @@ func TestRle16RemoveApi015(t *testing.T) {
 				// RunContainer's remove
 				rc := newRunContainer16FromVals(false, a...)
 
-				p("rc from a, pre-remove, is %v", rc)
 
 				for k := range mb {
 					rc.iremove(uint16(k))
 				}
 
-				p("rc from a, post-iremove, is %v", rc)
-
-				//showHash("correct answer is hashrm", hashrm)
 
 				for k := range hashrm {
-					p("hashrm has %v, checking in rc", k)
 					So(rc.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rc is %v, len(hashrm) is %v", rc.getCardinality(), len(hashrm))
 				So(rc.getCardinality(), ShouldEqual, len(hashrm))
 			}
-			p("done with randomized remove() checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -525,14 +1227,12 @@ func showArray16(a []uint16, name string) {
 	for i := range a {
 		stringA += fmt.Sprintf("%v, ", a[i])
 	}
-	p("%s is '%v'", name, stringA)
 }
 
 func TestRle16RandomAndNot016(t *testing.T) {
 
 	Convey("runContainer16 `andNot` operation against other container types should correctly do the and-not operation", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -541,7 +1241,6 @@ func TestRle16RandomAndNot016(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16RandomAndNot16 on check# j=%v", j)
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
 
@@ -575,7 +1274,6 @@ func TestRle16RandomAndNot016(t *testing.T) {
 				// RunContainer's and-not
 				rc := newRunContainer16FromVals(false, a...)
 
-				p("rc from a is %v", rc)
 
 				// vs bitmapContainer
 				bc := newBitmapContainer()
@@ -596,31 +1294,17 @@ func TestRle16RandomAndNot016(t *testing.T) {
 				rcVsAcAndnot := rc.andNot(ac)
 				rcVsRcbAndnot := rc.andNot(rcb)
 
-				p("rcVsBcAndnot is %v", rcVsBcAndnot)
-				p("rcVsAcAndnot is %v", rcVsAcAndnot)
-				p("rcVsRcbAndnot is %v", rcVsRcbAndnot)
-
-				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rcVsBcAndnot", k)
 					So(rcVsBcAndnot.contains(uint16(k)), ShouldBeTrue)
-
-					p("hashi has %v, checking in rcVsAcAndnot", k)
 					So(rcVsAcAndnot.contains(uint16(k)), ShouldBeTrue)
-
-					p("hashi has %v, checking in rcVsRcbAndnot", k)
 					So(rcVsRcbAndnot.contains(uint16(k)), ShouldBeTrue)
 				}
 
-				p("checking for cardinality agreement: rcVsBcAndnot is %v, len(hashi) is %v", rcVsBcAndnot.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsAcAndnot is %v, len(hashi) is %v", rcVsAcAndnot.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsRcbAndnot is %v, len(hashi) is %v", rcVsRcbAndnot.getCardinality(), len(hashi))
 				So(rcVsBcAndnot.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsAcAndnot.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsRcbAndnot.getCardinality(), ShouldEqual, len(hashi))
 			}
-			p("done with randomized andNot() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -634,7 +1318,6 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 
 	Convey("runContainer16 `iandNot` operation against other container types should correctly do the inplace-and-not operation", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -643,7 +1326,6 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16RandomAndNot16 on check# j=%v", j)
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
 
@@ -676,8 +1358,6 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 
 				// RunContainer's and-not
 				rc := newRunContainer16FromVals(false, a...)
-
-				p("rc from a is %v", rc)
 
 				// vs bitmapContainer
 				bc := newBitmapContainer()
@@ -702,31 +1382,16 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 				rcVsAcIandnot.iandNot(ac)
 				rcVsRcbIandnot.iandNot(rcb)
 
-				p("rcVsBcIandnot is %v", rcVsBcIandnot)
-				p("rcVsAcIandnot is %v", rcVsAcIandnot)
-				p("rcVsRcbIandnot is %v", rcVsRcbIandnot)
-
-				//showHash("hashi", hashi)
 
 				for k := range hashi {
-					p("hashi has %v, checking in rcVsBcIandnot", k)
 					So(rcVsBcIandnot.contains(uint16(k)), ShouldBeTrue)
-
-					p("hashi has %v, checking in rcVsAcIandnot", k)
 					So(rcVsAcIandnot.contains(uint16(k)), ShouldBeTrue)
-
-					p("hashi has %v, checking in rcVsRcbIandnot", k)
 					So(rcVsRcbIandnot.contains(uint16(k)), ShouldBeTrue)
 				}
-
-				p("checking for cardinality agreement: rcVsBcIandnot is %v, len(hashi) is %v", rcVsBcIandnot.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsAcIandnot is %v, len(hashi) is %v", rcVsAcIandnot.getCardinality(), len(hashi))
-				p("checking for cardinality agreement: rcVsRcbIandnot is %v, len(hashi) is %v", rcVsRcbIandnot.getCardinality(), len(hashi))
 				So(rcVsBcIandnot.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsAcIandnot.getCardinality(), ShouldEqual, len(hashi))
 				So(rcVsRcbIandnot.getCardinality(), ShouldEqual, len(hashi))
 			}
-			p("done with randomized andNot() vs bitmapContainer and arrayContainer checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -740,7 +1405,6 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 
 	Convey("runContainer `invert` operation should do a NOT on the set of intervals, in-place", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -749,7 +1413,6 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16InversinoOfIntervals018 on check# j=%v", j)
 				ma := make(map[int]bool)
 				hashNotA := make(map[int]bool)
 
@@ -770,17 +1433,11 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 					delete(hashNotA, r0)
 				}
 
-				//showArray16(a, "a")
-				// too big to print: showHash("hashNotA is not a:", hashNotA)
 
 				// RunContainer's invert
 				rc := newRunContainer16FromVals(false, a...)
 
-				p("rc from a is %v", rc)
-				p("rc.cardinality = %v", rc.cardinality())
 				inv := rc.invert()
-
-				p("inv of a (card=%v) is %v", inv.cardinality(), inv)
 
 				So(inv.cardinality(), ShouldEqual, 1+MaxUint16-rc.cardinality())
 
@@ -791,10 +1448,8 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 				}
 
 				// skip for now, too big to do 2^16-1
-				p("checking for cardinality agreement: inv is %v, len(hashNotA) is %v", inv.getCardinality(), len(hashNotA))
 				So(inv.getCardinality(), ShouldEqual, len(hashNotA))
 			}
-			p("done with randomized invert() check for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -834,7 +1489,6 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 		So(left[0].last(), ShouldEqual, 10)
 
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -843,7 +1497,6 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16SubtractionOfIntervals019 on check# j=%v", j)
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
 
@@ -870,9 +1523,6 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 					delete(hashAminusB, k)
 				}
 
-				//showHash("hash a is:", ma)
-				//showHash("hash b is:", mb)
-				//showHash("hashAminusB is:", hashAminusB)
 
 				// RunContainer's subtract A - B
 				rc := newRunContainer16FromVals(false, a...)
@@ -880,10 +1530,6 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 
 				abkup := rc.Clone()
 
-				p("rc from a is %v", rc)
-				p("rc.cardinality = %v", rc.cardinality())
-				p("rcb from b is %v", rcb)
-				p("rcb.cardinality = %v", rcb.cardinality())
 				it := rcb.newRunIterator16()
 				for it.hasNext() {
 					nx := it.next()
@@ -895,21 +1541,14 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 					abkup.isubtract(p)
 				}
 
-				p("rc = a - b; has (card=%v), is %v", rc.cardinality(), rc)
-				p("abkup = a - b; has (card=%v), is %v", abkup.cardinality(), abkup)
-
 				for k := range hashAminusB {
-					p("hashAminusB has element %v, checking rc and abkup (which are/should be: A - B)", k)
 					So(rc.contains(uint16(k)), ShouldBeTrue)
 					So(abkup.contains(uint16(k)), ShouldBeTrue)
 				}
-				p("checking for cardinality agreement: sub is %v, len(hashAminusB) is %v", rc.getCardinality(), len(hashAminusB))
 				So(rc.getCardinality(), ShouldEqual, len(hashAminusB))
-				p("checking for cardinality agreement: sub is %v, len(hashAminusB) is %v", abkup.getCardinality(), len(hashAminusB))
 				So(abkup.getCardinality(), ShouldEqual, len(hashAminusB))
 
 			}
-			p("done with randomized subtract() check for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -953,21 +1592,14 @@ func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
 
 	Convey("runContainer `Not` operation should flip the bits of a range on the new returned container", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
 			{n: 100, percentFill: .8, ntrial: 2},
-			/*			trial{n: 10, percentFill: .01, ntrial: 10},
-						trial{n: 10, percentFill: .50, ntrial: 10},
-						trial{n: 1000, percentFill: .50, ntrial: 10},
-						trial{n: 1000, percentFill: .99, ntrial: 10},
-			*/
 		}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16NotAlsoKnownAsFlipRange021 on check# j=%v", j)
 
 				// what is the interval we are going to flip?
 
@@ -978,13 +1610,11 @@ func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
 				a := []uint16{}
 
 				draw := int(float64(n) * tr.percentFill)
-				p("draw is %v", draw)
 				for i := 0; i < draw; i++ {
 					r0 := rand.Intn(n)
 					a = append(a, uint16(r0))
 					ma[r0] = true
 					flipped[r0] = true
-					p("draw r0=%v is being added to a and ma", r0)
 				}
 
 				// pick an interval to flip
@@ -993,7 +1623,6 @@ func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
 				if last < begin {
 					begin, last = last, begin
 				}
-				p("our interval to flip is [%v, %v]", begin, last)
 
 				// do the flip on the hash `flipped`
 				for i := begin; i <= last; i++ {
@@ -1004,9 +1633,6 @@ func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
 					}
 				}
 
-				//showArray16(a, "a")
-				// can be too big to print:
-				//showHash("hash (correct) version of flipped is:", flipped)
 
 				// RunContainer's Not
 				rc := newRunContainer16FromVals(false, a...)
@@ -1036,22 +1662,14 @@ func TestRleEquals022(t *testing.T) {
 
 	Convey("runContainer `equals` should accurately compare contents against other container types", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
 			{n: 100, percentFill: .2, ntrial: 10},
-			/*
-				trial{n: 10, percentFill: .01, ntrial: 10},
-				trial{n: 10, percentFill: .50, ntrial: 10},
-				trial{n: 1000, percentFill: .50, ntrial: 10},
-				trial{n: 1000, percentFill: .99, ntrial: 10},
-			*/
 		}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRleEquals022 on check# j=%v", j)
 
 				ma := make(map[int]bool)
 
@@ -1095,7 +1713,6 @@ func TestRleEquals022(t *testing.T) {
 					So(bc.contains(uint16(k)), ShouldBeTrue)
 				}
 			}
-			p("done with randomized equals() check for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -1109,22 +1726,14 @@ func TestRleIntersects023(t *testing.T) {
 
 	Convey("runContainer `intersects` query should work against any mix of container types", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
 			{n: 10, percentFill: .293, ntrial: 1000},
-			/*
-				trial{n: 10, percentFill: .01, ntrial: 10},
-				trial{n: 10, percentFill: .50, ntrial: 10},
-				trial{n: 1000, percentFill: .50, ntrial: 10},
-				trial{n: 1000, percentFill: .99, ntrial: 10},
-			*/
 		}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRleIntersects023 on check# j=%v", j)
 
 				ma := make(map[int]bool)
 				mb := make(map[int]bool)
@@ -1152,11 +1761,6 @@ func TestRleIntersects023(t *testing.T) {
 						break
 					}
 				}
-				//fmt.Printf("isect was %v\n", isect)
-
-				//showArray16(a, "a")
-				// can be too big to print:
-				//showHash("hash (correct) version of flipped is:", flipped)
 
 				rcA := newRunContainer16FromVals(false, a...)
 				rcB := newRunContainer16FromVals(false, b...)
@@ -1211,7 +1815,6 @@ func TestRleIntersects023(t *testing.T) {
 				So(bcB.intersects(rcA), ShouldEqual, isect)
 
 			}
-			p("done with randomized intersects() check for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -1225,7 +1828,6 @@ func TestRleToEfficientContainer027(t *testing.T) {
 
 	Convey("runContainer toEfficientContainer should return equivalent containers", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		// 4096 or fewer integers -> array typically
@@ -1233,17 +1835,10 @@ func TestRleToEfficientContainer027(t *testing.T) {
 		trials := []trial{
 			{n: 8000, percentFill: .01, ntrial: 10},
 			{n: 8000, percentFill: .99, ntrial: 10},
-			/*
-				trial{n: 10, percentFill: .01, ntrial: 10},
-				trial{n: 10, percentFill: .50, ntrial: 10},
-				trial{n: 1000, percentFill: .50, ntrial: 10},
-				trial{n: 1000, percentFill: .99, ntrial: 10},
-			*/
 		}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRleToEfficientContainer027 on check# j=%v", j)
 
 				ma := make(map[int]bool)
 
@@ -1262,17 +1857,7 @@ func TestRleToEfficientContainer027(t *testing.T) {
 				c := rc.toEfficientContainer()
 				So(rc.equals(c), ShouldBeTrue)
 
-				switch tc := c.(type) {
-				case *bitmapContainer:
-					p("I see a bitmapContainer with card %v", tc.getCardinality())
-				case *arrayContainer:
-					p("I see a arrayContainer with card %v", tc.getCardinality())
-				case *runContainer16:
-					p("I see a runContainer16 with card %v", tc.getCardinality())
-				}
-
 			}
-			p("done with randomized toEfficientContainer() check for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -1300,14 +1885,6 @@ func TestRleToEfficientContainer027(t *testing.T) {
 		_, isBitmapContainer := c.(*bitmapContainer)
 		So(isBitmapContainer, ShouldBeTrue)
 
-		switch tc := c.(type) {
-		case *bitmapContainer:
-			p("I see a bitmapContainer with card %v", tc.getCardinality())
-		case *arrayContainer:
-			p("I see a arrayContainer with card %v", tc.getCardinality())
-		case *runContainer16:
-			p("I see a runContainer16 with card %v", tc.getCardinality())
-		}
 
 	})
 }
@@ -1316,7 +1893,6 @@ func TestRle16RandomFillLeastSignificant16bits029(t *testing.T) {
 
 	Convey("runContainer16.fillLeastSignificant16bits() should fill contents as expected, matching the same function on bitmap and array containers", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -1325,7 +1901,6 @@ func TestRle16RandomFillLeastSignificant16bits029(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16RandomFillLeastSignificant16bits029 on check# j=%v", j)
 				ma := make(map[int]bool)
 
 				n := tr.n
@@ -1342,8 +1917,6 @@ func TestRle16RandomFillLeastSignificant16bits029(t *testing.T) {
 
 				// RunContainer
 				rc := newRunContainer16FromVals(false, a...)
-
-				p("rc from a is %v", rc)
 
 				// vs bitmapContainer
 				bc := newBitmapContainer()
@@ -1372,7 +1945,6 @@ func TestRle16RandomFillLeastSignificant16bits029(t *testing.T) {
 				So(rcOut, ShouldResemble, acOut)
 				So(rcOut, ShouldResemble, bcOut)
 			}
-			p("done with randomized fillLeastSignificant16bits checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -1386,7 +1958,6 @@ func TestRle16RandomGetShortIterator030(t *testing.T) {
 
 	Convey("runContainer16.getShortIterator should traverse the contents expected, matching the traversal of the bitmap and array containers", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -1395,7 +1966,6 @@ func TestRle16RandomGetShortIterator030(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16RandomGetShortIterator030 on check# j=%v", j)
 				ma := make(map[int]bool)
 
 				n := tr.n
@@ -1412,8 +1982,6 @@ func TestRle16RandomGetShortIterator030(t *testing.T) {
 
 				// RunContainer
 				rc := newRunContainer16FromVals(false, a...)
-
-				p("rc from a is %v", rc)
 
 				// vs bitmapContainer
 				bc := newBitmapContainer()
@@ -1439,7 +2007,6 @@ func TestRle16RandomGetShortIterator030(t *testing.T) {
 					So(rn, ShouldEqual, bn)
 				}
 			}
-			p("done with randomized TestRle16RandomGetShortIterator030 checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -1453,7 +2020,6 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 
 	Convey("runContainer16.iaddRange and iremoveRange should add/remove contents as expected, matching the same operations on the bitmap and array containers and the hashmap pos control", t, func() {
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		trials := []trial{
@@ -1462,7 +2028,6 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestRle16RandomIaddRangeIremoveRange031 on check# j=%v", j)
 				ma := make(map[int]bool)
 
 				n := tr.n
@@ -1479,8 +2044,6 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 
 				// RunContainer
 				rc := newRunContainer16FromVals(false, a...)
-
-				p("rc from a is %v", rc)
 
 				// vs bitmapContainer
 				bc := newBitmapContainer()
@@ -1554,7 +2117,6 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 				// coverage for run16 method
 				So(rc.serializedSizeInBytes(), ShouldEqual, 2+4*rc.numberOfRuns())
 			}
-			p("done with randomized TestRle16RandomIaddRangeIremoveRange031 checks for trial %#v", tr)
 		}
 
 		for i := range trials {
@@ -1608,7 +2170,6 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 		//rleVerbose = true
 
 		seed := int64(42)
-		p("seed is %v", seed)
 		rand.Seed(seed)
 
 		srang := newInterval16Range(MaxUint16-100, MaxUint16)
@@ -1618,19 +2179,9 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
-				p("TestAllContainerMethodsAllContainerTypesWithData067 on check# j=%v", j)
 
 				a, r, b := getRandomSameThreeContainers(tr)
 				a2, r2, b2 := getRandomSameThreeContainers(tr)
-
-				p("prior to any operations, fresh from getRandom...")
-				p("receiver (a) is '%s'", a)
-				p("receiver (r) is '%s'", r)
-				p("receiver (b) is '%s'", b)
-
-				p("\n argument is '%s'\n", r2)
-
-				m := []string{"array", "run", "bitmap"}
 
 				receiver := []container{a, r, b}
 				arg := []container{a2, r2, b2}
@@ -1667,13 +2218,8 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 							panic("internal logic error")
 						}
 
-						p("\n ========== testing calls to '%s' all match\n", c1.name)
 						for k2, a := range arg {
 
-							p("\n ------------  on arg as '%s': %s\n", m[k2], a)
-							p("\n prior to '%s', array receiver c1 is '%s'\n", c1.name, c1.cn)
-							p("\n prior to '%s', run receiver c2 is '%s'\n", c2.name, c2.cn)
-							p("\n prior to '%s', bitmap receiver c3 is '%s'\n", c3.name, c3.cn)
 							if !c1.cn.equals(c2.cn) {
 								panic("c1 not equal to c2")
 							}
@@ -1712,12 +2258,6 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 							// check for equality all ways...
 							// excercising equals() calls too.
 
-							p("'%s' receiver, '%s' arg, call='%s', res1=%s",
-								m[0], m[k2], z, res1)
-							p("'%s' receiver, '%s' arg, call='%s', res2=%s",
-								m[1], m[k2], z, res2)
-							p("'%s' receiver, '%s' arg, call='%s', res3=%s",
-								m[2], m[k2], z, res3)
 
 							if !res1.equals(res2) {
 								panic(fmt.Sprintf("k:%v, k2:%v, res1 != res2,"+
@@ -1728,8 +2268,6 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 									" call is '%s'", k, k2, c1.name))
 							}
 							if !res1.equals(res3) {
-								p("res1 = %s", res1)
-								p("res3 = %s", res3)
 								panic(fmt.Sprintf("k:%v, k2:%v, res1 != res3,"+
 									" call is '%s'", k, k2, c1.name))
 							}
@@ -1750,7 +2288,6 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 				} // end pass
 
 			} // end j
-			p("done with randomized TestAllContainerMethodsAllContainerTypesWithData067 checks for trial %#v", tr)
 		} // end tester
 
 		for i := range trials {
@@ -1788,11 +2325,9 @@ func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *
 		ma[r0] = true
 	}
 
-	//showArray16(a, "a")
 
 	rc := newRunContainer16FromVals(false, a...)
 
-	p("rc from a is %v", rc)
 
 	// vs bitmapContainer
 	bc := newBitmapContainerFromRun(rc)

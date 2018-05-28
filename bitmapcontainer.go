@@ -261,12 +261,6 @@ func (bc *bitmapContainer) iremoveReturnMinimized(i uint16) container {
 
 // iremove returns true if i was found.
 func (bc *bitmapContainer) iremove(i uint16) bool {
-	/* branchless code
-	  w := bc.bitmap[i>>6]
-		mask := uint64(1) << (i % 64)
-		neww := w &^ mask
-		bc.cardinality -= int((w ^ neww) >> (i % 64))
-		bc.bitmap[i>>6] = neww */
 	if bc.contains(i) {
 		bc.cardinality--
 		bc.bitmap[i/64] &^= (uint64(1) << (i % 64))
@@ -306,7 +300,6 @@ func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container
 
 // flip all values in range [firstOfRange,endx)
 func (bc *bitmapContainer) inot(firstOfRange, endx int) container {
-	p("bc.inot() called with [%v, %v)", firstOfRange, endx)
 	if endx-firstOfRange == maxCapacity {
 		//p("endx-firstOfRange == maxCapacity")
 		flipBitmapRange(bc.bitmap, firstOfRange, endx)

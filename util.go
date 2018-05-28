@@ -14,6 +14,13 @@ const (
 	serialCookie               = 12347 // runs, arrays, and bitmaps
 	noOffsetThreshold          = 4
 
+  // MaxUint32 is the largest uint32 value.
+  MaxUint32 = 4294967295
+
+  // MaxUint16 is the largest 16 bit unsigned int.
+  // This is the largest value an interval16 can store.
+  MaxUint16 = 65535
+
 	// Compute wordSizeInBytes, the size of a word in bytes.
 	_m              = ^uint64(0)
 	_logS           = _m>>8&1 + _m>>16&1 + _m>>32&1

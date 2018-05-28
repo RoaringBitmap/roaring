@@ -794,10 +794,6 @@ main:
 	}
 }
 
-/*func (rb *Bitmap) Or(x2 *Bitmap) {
-	results := Or(rb, x2) // Todo: could be computed in-place for reduced memory usage
-	rb.highlowcontainer = results.highlowcontainer
-}*/
 
 // AndNot computes the difference between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) AndNot(x2 *Bitmap) {
