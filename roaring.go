@@ -52,7 +52,7 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
-// WriteToMsgpack writes a msgpack2/snappy-streaming compressed serialized
+// Deprecated: WriteToMsgpack writes a msgpack2/snappy-streaming compressed serialized
 // version of this bitmap to stream. The format is not
 // compatible with the WriteTo() format, and is
 // experimental: it may produce smaller on disk
@@ -101,7 +101,7 @@ func (rb *Bitmap) HasRunCompression() bool {
 	return rb.highlowcontainer.hasRunCompression()
 }
 
-// ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
+// Deprecated: ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
 // version of this bitmap from stream. The format is
 // expected is that written by the WriteToMsgpack()
 // call; see additional notes there.
