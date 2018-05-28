@@ -588,7 +588,6 @@ func TestSerializationBasicMsgpack035(t *testing.T) {
 	})
 }
 
-
 func TestByteSliceAsUint16Slice(t *testing.T) {
 	t.Run("valid slice", func(t *testing.T) {
 		expectedSize := 2

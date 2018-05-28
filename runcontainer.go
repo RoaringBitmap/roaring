@@ -868,7 +868,6 @@ type searchOptions struct {
 	endxIndex int64
 }
 
-
 // search returns alreadyPresent to indicate if the
 // key is already in one of our interval16s.
 //
@@ -1757,8 +1756,6 @@ func (rc *runContainer16) equals16(srb *runContainer16) bool {
 	return true
 }
 
-
-
 // compile time verify we meet interface requirements
 var _ container = &runContainer16{}
 
@@ -2412,12 +2409,6 @@ func newRunContainer16FromContainer(c container) *runContainer16 {
 	}
 	panic("unsupported container type")
 }
-
-
-
-
-
-
 
 // And finds the intersection of rc and b.
 func (rc *runContainer16) And(b *Bitmap) *Bitmap {

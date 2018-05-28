@@ -190,7 +190,6 @@ func TestArrayContainerNumberOfRuns025(t *testing.T) {
 					rc := newRunContainer16FromVals(false, a...)
 					rcNr := rc.numberOfRuns()
 
-
 					// vs arrayContainer
 					ac := newArrayContainer()
 					for k := range ma {

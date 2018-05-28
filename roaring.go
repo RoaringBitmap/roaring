@@ -794,7 +794,6 @@ main:
 	}
 }
 
-
 // AndNot computes the difference between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) AndNot(x2 *Bitmap) {
 	pos1 := 0

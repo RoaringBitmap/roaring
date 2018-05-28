@@ -2,13 +2,12 @@ package roaring
 
 import (
 	"fmt"
+	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"sort"
+	"strings"
 	"testing"
-  "strings"
-	. "github.com/smartystreets/goconvey/convey"
 )
-
 
 // trial is used in the randomized testing of runContainers
 type trial struct {
@@ -28,7 +27,6 @@ type trial struct {
 	// only recent tests respect this.
 	srang *interval16
 }
-
 
 func TestRleInterval16s(t *testing.T) {
 
@@ -300,7 +298,6 @@ func TestRleRunSearch16(t *testing.T) {
 			// delete the MaxUint16 so we can test
 			// the behavior when searching near upper limit.
 
-
 			So(rc.cardinality(), ShouldEqual, 12)
 			So(rc.numIntervals(), ShouldEqual, 12)
 
@@ -379,7 +376,6 @@ func TestRleIntersection16(t *testing.T) {
 					newInterval16Range(3, 18),
 					newInterval16Range(22, 23)},
 			)
-
 
 			{
 				isect = e.intersect(f)
@@ -480,7 +476,6 @@ func TestRleRandomIntersection16(t *testing.T) {
 				arle.set(false, a...)
 
 				isect := arle.intersect(brle)
-
 
 				//showHash("hashi", hashi)
 
@@ -650,7 +645,6 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 
 	Convey("Some RunContainer code paths that don't otherwise get coverage -- these should be tested to increase percentage of code coverage in testing", t, func() {
 
-
 		rc := &runContainer16{}
 		So(rc.String(), ShouldEqual, "runContainer16{}")
 		rc.iv = make([]interval16, 1)
@@ -806,9 +800,6 @@ func BenchmarkFromBitmap16(b *testing.B) {
 	}
 }
 
-
-
-
 func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 
 	Convey("runContainer16 `and` operation against other container types should correctly do the intersection", t, func() {
@@ -871,7 +862,6 @@ func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 				rcVsBcIsect := rc.and(bc)
 				rcVsAcIsect := rc.and(ac)
 				rcVsRcbIsect := rc.and(rcb)
-
 
 				for k := range hashi {
 					So(rcVsBcIsect.contains(uint16(k)), ShouldBeTrue)
@@ -1020,7 +1010,7 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 
 				// RunContainer's 'or'
 				rc := newRunContainer16FromVals(false, a...)
-        rcVsBcUnion := rc.Clone()
+				rcVsBcUnion := rc.Clone()
 				rcVsAcUnion := rc.Clone()
 				rcVsRcbUnion := rc.Clone()
 
@@ -1042,7 +1032,6 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 				rcVsBcUnion.ior(bc)
 				rcVsAcUnion.ior(ac)
 				rcVsRcbUnion.ior(rcb)
-
 
 				for k := range hashi {
 					So(rcVsBcUnion.contains(uint16(k)), ShouldBeTrue)
@@ -1109,7 +1098,6 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 				// RunContainer's Intersect
 				rc := newRunContainer16FromVals(false, a...)
 
-
 				// vs bitmapContainer
 				bc := newBitmapContainer()
 				for _, bv := range b {
@@ -1132,7 +1120,6 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 				rcVsBcIsect = rcVsBcIsect.iand(bc)
 				rcVsAcIsect = rcVsAcIsect.iand(ac)
 				rcVsRcbIsect = rcVsRcbIsect.iand(rcb)
-
 
 				for k := range hashi {
 					So(rcVsBcIsect.contains(uint16(k)), ShouldBeTrue)
@@ -1200,11 +1187,9 @@ func TestRle16RemoveApi015(t *testing.T) {
 				// RunContainer's remove
 				rc := newRunContainer16FromVals(false, a...)
 
-
 				for k := range mb {
 					rc.iremove(uint16(k))
 				}
-
 
 				for k := range hashrm {
 					So(rc.contains(uint16(k)), ShouldBeTrue)
@@ -1274,7 +1259,6 @@ func TestRle16RandomAndNot016(t *testing.T) {
 				// RunContainer's and-not
 				rc := newRunContainer16FromVals(false, a...)
 
-
 				// vs bitmapContainer
 				bc := newBitmapContainer()
 				for _, bv := range b {
@@ -1293,7 +1277,6 @@ func TestRle16RandomAndNot016(t *testing.T) {
 				rcVsBcAndnot := rc.andNot(bc)
 				rcVsAcAndnot := rc.andNot(ac)
 				rcVsRcbAndnot := rc.andNot(rcb)
-
 
 				for k := range hashi {
 					So(rcVsBcAndnot.contains(uint16(k)), ShouldBeTrue)
@@ -1382,7 +1365,6 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 				rcVsAcIandnot.iandNot(ac)
 				rcVsRcbIandnot.iandNot(rcb)
 
-
 				for k := range hashi {
 					So(rcVsBcIandnot.contains(uint16(k)), ShouldBeTrue)
 					So(rcVsAcIandnot.contains(uint16(k)), ShouldBeTrue)
@@ -1432,7 +1414,6 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 					ma[r0] = true
 					delete(hashNotA, r0)
 				}
-
 
 				// RunContainer's invert
 				rc := newRunContainer16FromVals(false, a...)
@@ -1522,7 +1503,6 @@ func TestRle16SubtractionOfIntervals019(t *testing.T) {
 				for k := range mb {
 					delete(hashAminusB, k)
 				}
-
 
 				// RunContainer's subtract A - B
 				rc := newRunContainer16FromVals(false, a...)
@@ -1632,7 +1612,6 @@ func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
 						flipped[i] = true
 					}
 				}
-
 
 				// RunContainer's Not
 				rc := newRunContainer16FromVals(false, a...)
@@ -1884,7 +1863,6 @@ func TestRleToEfficientContainer027(t *testing.T) {
 
 		_, isBitmapContainer := c.(*bitmapContainer)
 		So(isBitmapContainer, ShouldBeTrue)
-
 
 	})
 }
@@ -2258,7 +2236,6 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 							// check for equality all ways...
 							// excercising equals() calls too.
 
-
 							if !res1.equals(res2) {
 								panic(fmt.Sprintf("k:%v, k2:%v, res1 != res2,"+
 									" call is '%s'", k, k2, c1.name))
@@ -2325,9 +2302,7 @@ func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *
 		ma[r0] = true
 	}
 
-
 	rc := newRunContainer16FromVals(false, a...)
-
 
 	// vs bitmapContainer
 	bc := newBitmapContainerFromRun(rc)

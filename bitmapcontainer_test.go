@@ -37,7 +37,6 @@ func TestBitmapContainerNumberOfRuns024(t *testing.T) {
 					rc := newRunContainer16FromVals(false, a...)
 					rcNr := rc.numberOfRuns()
 
-
 					// vs bitmapContainer
 					bc := newBitmapContainer()
 					for k := range ma {
