@@ -4,7 +4,7 @@ package roaring
 
 // LeadingZeroBits returns the number of consecutive most significant zero
 // bits of x.
-func countLeadingZeros(x uint64) int {
+func countLeadingZeros(i uint64) int {
 	if i == 0 {
 		return 64
 	}
