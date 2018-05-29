@@ -38,6 +38,7 @@ type container interface {
 	inot(firstOfRange, endx int) container // i stands for inplace, range is [firstOfRange,endx)
 	xor(r container) container
 	getShortIterator() shortIterable
+	getReverseIterator() shortIterable
 	getManyIterator() manyIterable
 	contains(i uint16) bool
 	maximum() uint16

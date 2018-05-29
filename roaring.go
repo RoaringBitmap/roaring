@@ -252,6 +252,43 @@ func newIntIterator(a *Bitmap) *intIterator {
 	return p
 }
 
+type intReverseIterator struct {
+	pos              int
+	hs               uint32
+	iter             shortIterable
+	highlowcontainer *roaringArray
+}
+
+// HasNext returns true if there are more integers to iterate over
+func (ii *intReverseIterator) HasNext() bool {
+	return ii.pos >= 0
+}
+
+func (ii *intReverseIterator) init() {
+	if ii.pos >= 0 {
+		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getReverseIterator()
+		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+	}
+}
+
+// Next returns the next integer
+func (ii *intReverseIterator) Next() uint32 {
+	x := uint32(ii.iter.next()) | ii.hs
+	if !ii.iter.hasNext() {
+		ii.pos = ii.pos - 1
+		ii.init()
+	}
+	return x
+}
+
+func newIntReverseIterator(a *Bitmap) *intReverseIterator {
+	p := new(intReverseIterator)
+	p.highlowcontainer = &a.highlowcontainer
+	p.pos = len(a.highlowcontainer.containers) - 1
+	p.init()
+	return p
+}
+
 // ManyIntIterable allows you to iterate over the values in a Bitmap
 type ManyIntIterable interface {
 	// pass in a buffer to fill up with values, returns how many values were returned
@@ -330,7 +367,12 @@ func (rb *Bitmap) Iterator() IntIterable {
 	return newIntIterator(rb)
 }
 
-// Iterator creates a new ManyIntIterable to iterate over the integers contained in the bitmap, in sorted order
+// ReverseIterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order
+func (rb *Bitmap) ReverseIterator() IntIterable {
+	return newIntReverseIterator(rb)
+}
+
+// ManyIterator creates a new ManyIntIterable to iterate over the integers contained in the bitmap, in sorted order
 func (rb *Bitmap) ManyIterator() ManyIntIterable {
 	return newManyIntIterator(rb)
 }

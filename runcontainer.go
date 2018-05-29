@@ -1219,6 +1219,78 @@ func (ri *runIterator16) remove() uint16 {
 	return cur
 }
 
+// runReverseIterator16 advice: you must call next() at least once
+// before calling cur(); and you should call hasNext()
+// before calling next() to insure there are contents.
+type runReverseIterator16 struct {
+	rc            *runContainer16
+	curIndex      int64  // index into rc.iv
+	curPosInIndex uint16 // offset in rc.iv[curIndex]
+	curSeq        int64  // 0->cardinality, performance optimization in hasNext()
+}
+
+// newRunReverseIterator16 returns a new empty run iterator.
+func (rc *runContainer16) newRunReverseIterator16() *runReverseIterator16 {
+	return &runReverseIterator16{rc: rc, curIndex: -2}
+}
+
+// hasNext returns false if calling next will panic. It
+// returns true when there is at least one more value
+// available in the iteration sequence.
+func (ri *runReverseIterator16) hasNext() bool {
+	if len(ri.rc.iv) == 0 {
+		return false
+	}
+	if ri.curIndex == -2 {
+		return true
+	}
+	return ri.rc.cardinality()-ri.curSeq > 1
+}
+
+// cur returns the current value pointed to by the iterator.
+func (ri *runReverseIterator16) cur() uint16 {
+	return ri.rc.iv[ri.curIndex].start + ri.curPosInIndex
+}
+
+// next returns the next value in the iteration sequence.
+func (ri *runReverseIterator16) next() uint16 {
+	if !ri.hasNext() {
+		panic("no next available")
+	}
+	if ri.curIndex == -1 {
+		panic("runReverseIterator.next() going beyond what is available")
+	}
+	if ri.curIndex == -2 {
+		// first time is special
+		ri.curIndex = int64(len(ri.rc.iv)) - 1
+		ri.curPosInIndex = ri.rc.iv[ri.curIndex].length
+	} else {
+		if ri.curPosInIndex > 0 {
+			ri.curPosInIndex--
+		} else {
+			ri.curIndex--
+			ri.curPosInIndex = ri.rc.iv[ri.curIndex].length
+		}
+		ri.curSeq++
+	}
+	return ri.cur()
+}
+
+// remove removes the element that the iterator
+// is on from the run container. You can use
+// cur if you want to double check what is about
+// to be deleted.
+func (ri *runReverseIterator16) remove() uint16 {
+	n := ri.rc.cardinality()
+	if n == 0 {
+		panic("runReverseIterator.Remove called on empty runContainer16")
+	}
+	cur := ri.cur()
+
+	ri.rc.deleteAt(&ri.curIndex, &ri.curPosInIndex, &ri.curSeq)
+	return cur
+}
+
 type manyRunIterator16 struct {
 	rc            *runContainer16
 	curIndex      int64
@@ -1923,6 +1995,10 @@ func (rc *runContainer16) fillLeastSignificant16bits(x []uint32, i int, mask uin
 
 func (rc *runContainer16) getShortIterator() shortIterable {
 	return rc.newRunIterator16()
+}
+
+func (rc *runContainer16) getReverseIterator() shortIterable {
+	return rc.newRunReverseIterator16()
 }
 
 func (rc *runContainer16) getManyIterator() manyIterable {

@@ -118,6 +118,36 @@ func (bc *bitmapContainer) getShortIterator() shortIterable {
 	return newBitmapContainerShortIterator(bc)
 }
 
+type reverseBitmapContainerShortIterator struct {
+	ptr *bitmapContainer
+	i   int
+}
+
+func (bcsi *reverseBitmapContainerShortIterator) next() uint16 {
+	if bcsi.i == -1 {
+		panic("reverseBitmapContainerShortIterator.next() going beyond what is available")
+	}
+
+	j := bcsi.i
+	bcsi.i = bcsi.ptr.PrevSetBit(bcsi.i - 1)
+	return uint16(j)
+}
+
+func (bcsi *reverseBitmapContainerShortIterator) hasNext() bool {
+	return bcsi.i >= 0
+}
+
+func newReverseBitmapContainerShortIterator(a *bitmapContainer) *reverseBitmapContainerShortIterator {
+	if a.cardinality == 0 {
+		return &reverseBitmapContainerShortIterator{a, -1}
+	}
+	return &reverseBitmapContainerShortIterator{a, int(a.maximum())}
+}
+
+func (bc *bitmapContainer) getReverseIterator() shortIterable {
+	return newReverseBitmapContainerShortIterator(bc)
+}
+
 type bitmapContainerManyIterator struct {
 	ptr    *bitmapContainer
 	base   int
@@ -905,6 +935,33 @@ func (bc *bitmapContainer) NextSetBit(i int) int {
 	for ; x < len(bc.bitmap); x++ {
 		if bc.bitmap[x] != 0 {
 			return (x * 64) + countTrailingZeros(bc.bitmap[x])
+		}
+	}
+	return -1
+}
+
+func (bc *bitmapContainer) PrevSetBit(i int) int {
+	if i < 0 {
+		return -1
+	}
+	x := i / 64
+	if x >= len(bc.bitmap) {
+		return -1
+	}
+	for ; x > -1; x-- {
+		w := bc.bitmap[x]
+		b := i % 64
+		if w == 0 {
+			i = i - b
+			continue
+		}
+		for b > 0 {
+			masked := w & (1 << uint(b))
+			if masked != 0 {
+				return i
+			}
+			b--
+			i--
 		}
 	}
 	return -1
