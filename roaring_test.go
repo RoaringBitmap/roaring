@@ -2070,7 +2070,7 @@ func TestReverseIterator(t *testing.T) {
 	}
 	{
 		bm := New()
-		bm.AddInt(MaxUint32)
+		bm.Add(MaxUint32)
 		i := bm.ReverseIterator()
 		if !i.HasNext() {
 			t.Error("expected HasNext() to be true")

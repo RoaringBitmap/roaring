@@ -941,8 +941,6 @@ func (bc *bitmapContainer) NextSetBit(i int) int {
 }
 
 func (bc *bitmapContainer) PrevSetBit(i int) int {
-	fmt.Println("PrevSetBit ", i)
-
 	if i < 0 {
 		return -1
 	}
@@ -955,7 +953,7 @@ func (bc *bitmapContainer) PrevSetBit(i int) int {
 
 	b := i % 64
 
-	w = w << uint(63 - b)
+	w = w << uint(63-b)
 	if w != 0 {
 		return b - countLeadingZeros(w)
 	}
