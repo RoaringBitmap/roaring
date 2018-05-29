@@ -2001,3 +2001,85 @@ func TestFlipVerySmall(t *testing.T) {
 		So(rbcard, ShouldEqual, 9)
 	})
 }
+
+func TestReverseIterator(t *testing.T) {
+	{
+		values := []uint32{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16, MaxUint32}
+		bm := New()
+		for n := 0; n < len(values); n++ {
+			bm.Add(values[n])
+		}
+		i := bm.ReverseIterator()
+		n := len(values) - 1
+		for i.HasNext() {
+			v := i.Next()
+			if values[n] != v {
+				t.Errorf("expected %d got %d", values[n], v)
+			}
+			n--
+		}
+	}
+	{
+		bm := New()
+		i := bm.ReverseIterator()
+		if i.HasNext() {
+			t.Error("expected HasNext() to be false")
+		}
+	}
+	{
+		bm := New()
+		bm.AddInt(0)
+		i := bm.ReverseIterator()
+		if !i.HasNext() {
+			t.Error("expected HasNext() to be true")
+		}
+		if i.Next() != 0 {
+			t.Error("expected 0")
+		}
+		if i.HasNext() {
+			t.Error("expected HasNext() to be false")
+		}
+	}
+	{
+		bm := New()
+		bm.AddInt(9999)
+		i := bm.ReverseIterator()
+		if !i.HasNext() {
+			t.Error("expected HasNext() to be true")
+		}
+		if i.Next() != 9999 {
+			t.Error("expected 9999")
+		}
+		if i.HasNext() {
+			t.Error("expected HasNext() to be false")
+		}
+	}
+	{
+		bm := New()
+		bm.AddInt(MaxUint16)
+		i := bm.ReverseIterator()
+		if !i.HasNext() {
+			t.Error("expected HasNext() to be true")
+		}
+		if i.Next() != MaxUint16 {
+			t.Error("expected MaxUint16")
+		}
+		if i.HasNext() {
+			t.Error("expected HasNext() to be false")
+		}
+	}
+	{
+		bm := New()
+		bm.AddInt(MaxUint32)
+		i := bm.ReverseIterator()
+		if !i.HasNext() {
+			t.Error("expected HasNext() to be true")
+		}
+		if i.Next() != MaxUint32 {
+			t.Error("expected MaxUint32")
+		}
+		if i.HasNext() {
+			t.Error("expected HasNext() to be false")
+		}
+	}
+}

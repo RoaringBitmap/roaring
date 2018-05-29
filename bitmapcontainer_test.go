@@ -101,3 +101,55 @@ func TestIssue181(t *testing.T) {
 
 	})
 }
+
+func TestBitmapContainerReverseIterator(t *testing.T) {
+
+	Convey("RunReverseIterator16 unit tests for cur, next, hasNext, and remove should pass", t, func() {
+		{
+			bc := newBitmapContainer()
+			it := bc.getReverseIterator()
+			So(it.hasNext(), ShouldBeFalse)
+			So(func() { it.next() }, ShouldPanic)
+		}
+		{
+			bc := newBitmapContainerwithRange(0, 0)
+			it := bc.getReverseIterator()
+			So(it.hasNext(), ShouldBeTrue)
+			So(it.next(), ShouldResemble, uint16(0))
+		}
+		{
+			bc := newBitmapContainerwithRange(4, 4)
+			it := bc.getReverseIterator()
+			So(it.hasNext(), ShouldBeTrue)
+			So(it.next(), ShouldResemble, uint16(4))
+		}
+		{
+			bc := newBitmapContainerwithRange(4, 9)
+			it := bc.getReverseIterator()
+			So(it.hasNext(), ShouldBeTrue)
+			for i := 9; i >= 4; i-- {
+				v := it.next()
+				So(v, ShouldEqual, uint16(i))
+			}
+			So(it.hasNext(), ShouldBeFalse)
+			So(func() { it.next() }, ShouldPanic)
+		}
+		{
+			values := []uint16{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16}
+			bc := newBitmapContainer()
+			for n := 0; n < len(values); n++ {
+				bc.iadd(values[n])
+			}
+			i := bc.getReverseIterator()
+			n := len(values) - 1
+			for i.hasNext() {
+				v := i.next()
+				if values[n] != v {
+					t.Errorf("expected %d got %d", values[n], v)
+				}
+				n--
+			}
+		}
+
+	})
+}

@@ -268,6 +268,98 @@ func TestRleRunIterator16(t *testing.T) {
 	})
 }
 
+func TestRleRunReverseIterator16(t *testing.T) {
+
+	Convey("RunReverseIterator16 unit tests for cur, next, hasNext, and remove should pass", t, func() {
+		{
+			rc := newRunContainer16()
+			it := rc.newRunReverseIterator16()
+			So(it.hasNext(), ShouldBeFalse)
+			So(func() { it.next() }, ShouldPanic)
+			So(func() { it.remove() }, ShouldPanic)
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(0, 0)})
+			it := rc.newRunReverseIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			So(it.next(), ShouldResemble, uint16(0))
+			So(it.cur(), ShouldResemble, uint16(0))
+			So(func() { it.next() }, ShouldPanic)
+			So(it.remove(), ShouldEqual, uint16(0))
+			So(func() { it.remove() }, ShouldPanic)
+			So(it.hasNext(), ShouldBeFalse)
+			So(func() { it.next() }, ShouldPanic)
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 4)})
+			it := rc.newRunReverseIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			So(it.next(), ShouldResemble, uint16(4))
+			So(it.cur(), ShouldResemble, uint16(4))
+			So(it.hasNext(), ShouldBeFalse)
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(MaxUint16, MaxUint16)})
+			it := rc.newRunReverseIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			So(it.next(), ShouldResemble, uint16(MaxUint16))
+			So(it.cur(), ShouldResemble, uint16(MaxUint16))
+			So(it.hasNext(), ShouldBeFalse)
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 9)})
+			it := rc.newRunReverseIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			for i := 9; i >= 4; i-- {
+				So(it.next(), ShouldEqual, uint16(i))
+			}
+			So(it.hasNext(), ShouldBeFalse)
+			So(func() { it.next() }, ShouldPanic)
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 9)})
+			it := rc.newRunReverseIterator16()
+			So(it.hasNext(), ShouldBeTrue)
+			for i := 9; i >= 5; i-- {
+				So(it.next(), ShouldEqual, uint16(i))
+			}
+			So(it.cur(), ShouldEqual, uint16(5))
+			So(it.remove(), ShouldEqual, uint16(5))
+			So(rc.cardinality(), ShouldEqual, 5)
+
+			it2 := rc.newRunReverseIterator16()
+			So(rc.cardinality(), ShouldEqual, 5)
+			So(it2.next(), ShouldEqual, uint16(9))
+			for i := 8; i > 5; i-- {
+				So(it2.next(), ShouldEqual, uint16(i))
+			}
+		}
+		{
+			rc := newRunContainer16TakeOwnership([]interval16{
+				newInterval16Range(0, 0),
+				newInterval16Range(2, 2),
+				newInterval16Range(4, 4),
+				newInterval16Range(6, 7),
+				newInterval16Range(10, 12),
+				newInterval16Range(MaxUint16, MaxUint16),
+			})
+
+			it := rc.newRunReverseIterator16()
+			So(it.next(), ShouldEqual, uint16(MaxUint16))
+			So(it.next(), ShouldEqual, uint16(12))
+			So(it.next(), ShouldEqual, uint16(11))
+			So(it.next(), ShouldEqual, uint16(10))
+			So(it.next(), ShouldEqual, uint16(7))
+			So(it.next(), ShouldEqual, uint16(6))
+			So(it.next(), ShouldEqual, uint16(4))
+			So(it.next(), ShouldEqual, uint16(2))
+			So(it.next(), ShouldEqual, uint16(0))
+			So(it.hasNext(), ShouldEqual, false)
+			So(func() { it.next() }, ShouldPanic)
+		}
+	})
+}
+
 func TestRleRunSearch16(t *testing.T) {
 
 	Convey("RunContainer16.search should respect the prior bounds we provide for efficiency of searching through a subset of the intervals", t, func() {
