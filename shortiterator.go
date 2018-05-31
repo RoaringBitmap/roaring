@@ -26,7 +26,7 @@ type reverseIterator struct {
 }
 
 func (si *reverseIterator) hasNext() bool {
-	return si.loc > 0
+	return si.loc >= 0
 }
 
 func (si *reverseIterator) next() uint16 {
