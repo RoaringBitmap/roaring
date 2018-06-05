@@ -62,6 +62,7 @@ func TestContainerReverseIterator(t *testing.T) {
 			So(si.next(), ShouldEqual, content[i])
 			i--
 		}
+		So(i, ShouldEqual, -1)
 	})
 }
 

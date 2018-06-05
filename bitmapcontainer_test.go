@@ -130,6 +130,11 @@ func TestBitmapContainerReverseIterator(t *testing.T) {
 			for i := 9; i >= 4; i-- {
 				v := it.next()
 				So(v, ShouldEqual, uint16(i))
+				if i > 4 {
+					So(it.hasNext(), ShouldBeTrue)
+				} else if i == 4 {
+					So(it.hasNext(), ShouldBeFalse)
+				}
 			}
 			So(it.hasNext(), ShouldBeFalse)
 			So(func() { it.next() }, ShouldPanic)

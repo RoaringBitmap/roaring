@@ -268,6 +268,8 @@ func (ii *intReverseIterator) init() {
 	if ii.pos >= 0 {
 		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getReverseIterator()
 		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+	} else {
+		ii.iter = nil
 	}
 }
 
@@ -284,7 +286,7 @@ func (ii *intReverseIterator) Next() uint32 {
 func newIntReverseIterator(a *Bitmap) *intReverseIterator {
 	p := new(intReverseIterator)
 	p.highlowcontainer = &a.highlowcontainer
-	p.pos = len(a.highlowcontainer.containers) - 1
+	p.pos = a.highlowcontainer.size() - 1
 	p.init()
 	return p
 }

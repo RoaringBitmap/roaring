@@ -312,6 +312,11 @@ func TestRleRunReverseIterator16(t *testing.T) {
 			So(it.hasNext(), ShouldBeTrue)
 			for i := 9; i >= 4; i-- {
 				So(it.next(), ShouldEqual, uint16(i))
+				if i > 4 {
+					So(it.hasNext(), ShouldBeTrue)
+				} else if i == 4 {
+					So(it.hasNext(), ShouldBeFalse)
+				}
 			}
 			So(it.hasNext(), ShouldBeFalse)
 			So(func() { it.next() }, ShouldPanic)

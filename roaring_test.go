@@ -2018,6 +2018,20 @@ func TestReverseIterator(t *testing.T) {
 			}
 			n--
 		}
+
+		// HasNext() was terminating early - add test
+		i = bm.ReverseIterator()
+		n = len(values) - 1
+		for ; n >= 0; n-- {
+			v := i.Next()
+			if values[n] != v {
+				t.Errorf("expected %d got %d", values[n], v)
+			}
+			if n > 0 && !i.HasNext() {
+				t.Errorf("expected HaveNext()=true for n=%d, values[n]=%d", n, values[n])
+				t.FailNow()
+			}
+		}
 	}
 	{
 		bm := New()
