@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/willf/bitset"
 )
 
@@ -2096,4 +2097,16 @@ func TestReverseIterator(t *testing.T) {
 			t.Error("expected HasNext() to be false")
 		}
 	}
+}
+
+func TestPackageFlipMaxRangeEnd(t *testing.T) {
+	var empty Bitmap
+	flipped := Flip(&empty, 0, MaxRange)
+	assert.EqualValues(t, MaxRange, flipped.GetCardinality())
+}
+
+func TestBitmapFlipMaxRangeEnd(t *testing.T) {
+	var bm Bitmap
+	bm.Flip(0, MaxRange)
+	assert.EqualValues(t, MaxRange, bm.GetCardinality())
 }
