@@ -1125,10 +1125,10 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 		return
 	}
 
-	hbStart := highbits(uint32(rangeStart))
-	lbStart := lowbits(uint32(rangeStart))
-	hbLast := highbits(uint32(rangeEnd - 1))
-	lbLast := lowbits(uint32(rangeEnd - 1))
+	hbStart := uint32(highbits(uint32(rangeStart)))
+	lbStart := uint32(lowbits(uint32(rangeStart)))
+	hbLast := uint32(highbits(uint32(rangeEnd - 1)))
+	lbLast := uint32(lowbits(uint32(rangeEnd - 1)))
 
 	var max uint32 = maxLowBit
 	for hb := hbStart; hb <= hbLast; hb++ {
@@ -1141,7 +1141,7 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 			containerLast = uint32(lbLast)
 		}
 
-		i := rb.highlowcontainer.getIndex(hb)
+		i := rb.highlowcontainer.getIndex(uint16(hb))
 
 		if i >= 0 {
 			c := rb.highlowcontainer.getWritableContainerAtIndex(i).inot(int(containerStart), int(containerLast)+1)
@@ -1152,7 +1152,7 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 			}
 		} else { // *think* the range of ones must never be
 			// empty.
-			rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, rangeOfOnes(int(containerStart), int(containerLast)))
+			rb.highlowcontainer.insertNewKeyValueAt(-i-1, uint16(hb), rangeOfOnes(int(containerStart), int(containerLast)))
 		}
 	}
 }
@@ -1178,24 +1178,24 @@ func (rb *Bitmap) AddRange(rangeStart, rangeEnd uint64) {
 	lbLast := uint32(lowbits(uint32(rangeEnd - 1)))
 
 	var max uint32 = maxLowBit
-	for hb := uint16(hbStart); hb <= uint16(hbLast); hb++ {
+	for hb := hbStart; hb <= hbLast; hb++ {
 		containerStart := uint32(0)
-		if hb == uint16(hbStart) {
+		if hb == hbStart {
 			containerStart = lbStart
 		}
 		containerLast := max
-		if hb == uint16(hbLast) {
+		if hb == hbLast {
 			containerLast = lbLast
 		}
 
-		i := rb.highlowcontainer.getIndex(hb)
+		i := rb.highlowcontainer.getIndex(uint16(hb))
 
 		if i >= 0 {
 			c := rb.highlowcontainer.getWritableContainerAtIndex(i).iaddRange(int(containerStart), int(containerLast)+1)
 			rb.highlowcontainer.setContainerAtIndex(i, c)
 		} else { // *think* the range of ones must never be
 			// empty.
-			rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, rangeOfOnes(int(containerStart), int(containerLast)))
+			rb.highlowcontainer.insertNewKeyValueAt(-i-1, uint16(hb), rangeOfOnes(int(containerStart), int(containerLast)))
 		}
 	}
 }
@@ -1282,13 +1282,13 @@ func Flip(bm *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 	}
 
 	answer := NewBitmap()
-	hbStart := highbits(uint32(rangeStart))
-	lbStart := lowbits(uint32(rangeStart))
-	hbLast := highbits(uint32(rangeEnd - 1))
-	lbLast := lowbits(uint32(rangeEnd - 1))
+	hbStart := uint32(highbits(uint32(rangeStart)))
+	lbStart := uint32(lowbits(uint32(rangeStart)))
+	hbLast := uint32(highbits(uint32(rangeEnd - 1)))
+	lbLast := uint32(lowbits(uint32(rangeEnd - 1)))
 
 	// copy the containers before the active area
-	answer.highlowcontainer.appendCopiesUntil(bm.highlowcontainer, hbStart)
+	answer.highlowcontainer.appendCopiesUntil(bm.highlowcontainer, uint16(hbStart))
 
 	var max uint32 = maxLowBit
 	for hb := hbStart; hb <= hbLast; hb++ {
@@ -1301,23 +1301,23 @@ func Flip(bm *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 			containerLast = uint32(lbLast)
 		}
 
-		i := bm.highlowcontainer.getIndex(hb)
-		j := answer.highlowcontainer.getIndex(hb)
+		i := bm.highlowcontainer.getIndex(uint16(hb))
+		j := answer.highlowcontainer.getIndex(uint16(hb))
 
 		if i >= 0 {
 			c := bm.highlowcontainer.getContainerAtIndex(i).not(int(containerStart), int(containerLast)+1)
 			if c.getCardinality() > 0 {
-				answer.highlowcontainer.insertNewKeyValueAt(-j-1, hb, c)
+				answer.highlowcontainer.insertNewKeyValueAt(-j-1, uint16(hb), c)
 			}
 
 		} else { // *think* the range of ones must never be
 			// empty.
-			answer.highlowcontainer.insertNewKeyValueAt(-j-1, hb,
+			answer.highlowcontainer.insertNewKeyValueAt(-j-1, uint16(hb),
 				rangeOfOnes(int(containerStart), int(containerLast)))
 		}
 	}
 	// copy the containers after the active area.
-	answer.highlowcontainer.appendCopiesAfter(bm.highlowcontainer, hbLast)
+	answer.highlowcontainer.appendCopiesAfter(bm.highlowcontainer, uint16(hbLast))
 
 	return answer
 }
