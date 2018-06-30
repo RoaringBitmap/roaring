@@ -346,3 +346,20 @@ func TestArrayContainerEtc070(t *testing.T) {
 		So(ac10.numberOfRuns(), ShouldEqual, 1)
 	})
 }
+
+func TestArrayContainerIand(t *testing.T) {
+
+	Convey("arrayContainer iand with full RLE container should work", t, func() {
+		a := NewBitmap()
+		a.AddRange(0, 200000)
+		b := BitmapOf(50, 100000, 150000)
+
+		b.And(a)
+
+		r := b.ToArray()
+		So(r, ShouldHaveLength, 3)
+		So(r[0], ShouldEqual, 50)
+		So(r[1], ShouldEqual, 100000)
+		So(r[2], ShouldEqual, 150000)
+	})
+}

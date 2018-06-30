@@ -554,7 +554,7 @@ func (ac *arrayContainer) iand(a container) container {
 		return ac.iandBitmap(x)
 	case *runContainer16:
 		if x.isFull() {
-			return ac.clone()
+			return ac
 		}
 		return x.andArray(ac)
 	}
