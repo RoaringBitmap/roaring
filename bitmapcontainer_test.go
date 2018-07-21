@@ -58,7 +58,7 @@ func TestBitmapContainerNumberOfRuns024(t *testing.T) {
 
 func TestBitmapcontainerAndCardinality(t *testing.T) {
 	Convey("bitmap containers get cardinality in range, miss the last index, issue #183", t, func() {
-		for r := 0; r <= 65535; r += 1 {
+		for r := 0; r <= 65535; r++ {
 			c1 := newRunContainer16Range(0, uint16(r))
 			c2 := newBitmapContainerwithRange(0, int(r))
 			So(r+1, ShouldEqual, c1.andCardinality(c2))

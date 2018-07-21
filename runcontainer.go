@@ -1328,9 +1328,9 @@ func (ri *manyRunIterator16) nextMany(hs uint32, buf []uint32) int {
 			}
 			buf[n] = uint32(ri.rc.iv[ri.curIndex].start) | hs
 			if ri.curIndex != 0 {
-				ri.curSeq += 1
+				ri.curSeq++
 			}
-			n += 1
+			n++
 			// not strictly necessarily due to len(buf)-n min check, but saves some work
 			continue
 		}

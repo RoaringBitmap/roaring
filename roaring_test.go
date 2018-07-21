@@ -1478,7 +1478,7 @@ func TestNextMany(t *testing.T) {
 			expected := make([]uint32, count)
 			{
 				v := uint32(0)
-				for i, _ := range expected {
+				for i := range expected {
 					expected[i] = v
 					v += gap
 				}

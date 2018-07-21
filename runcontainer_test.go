@@ -129,8 +129,7 @@ func TestRleRunIterator16(t *testing.T) {
 			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
 			So(rc.cardinality(), ShouldEqual, 6)
 			it := rc.newManyRunIterator16()
-
-			buf := make([]uint32, 0)
+			var buf []uint32
 			n := it.nextMany(0, buf)
 			So(n, ShouldEqual, 0)
 		}

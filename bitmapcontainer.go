@@ -161,7 +161,7 @@ func (bcmi *bitmapContainerManyIterator) nextMany(hs uint32, buf []uint32) int {
 
 	for n < len(buf) {
 		if bitset == 0 {
-			base += 1
+			base++
 			if base >= len(bcmi.ptr.bitmap) {
 				bcmi.base = base
 				bcmi.bitset = bitset
@@ -207,16 +207,13 @@ func bitmapContainerSizeInBytes() int {
 
 func bitmapEquals(a, b []uint64) bool {
 	if len(a) != len(b) {
-		//p("bitmaps differ on length. len(a)=%v; len(b)=%v", len(a), len(b))
 		return false
 	}
 	for i, v := range a {
 		if v != b[i] {
-			//p("bitmaps differ on element i=%v", i)
 			return false
 		}
 	}
-	//p("bitmapEquals returning true")
 	return true
 }
 
@@ -239,9 +236,7 @@ func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask ui
 func (bc *bitmapContainer) equals(o container) bool {
 	srb, ok := o.(*bitmapContainer)
 	if ok {
-		//p("bitmapContainers.equals: both are bitmapContainers")
 		if srb.cardinality != bc.cardinality {
-			//p("bitmapContainers.equals: card differs: %v vs %v", srb.cardinality, bc.cardinality)
 			return false
 		}
 		return bitmapEquals(bc.bitmap, srb.bitmap)
@@ -331,12 +326,9 @@ func (bc *bitmapContainer) iremoveRange(firstOfRange, lastOfRange int) container
 // flip all values in range [firstOfRange,endx)
 func (bc *bitmapContainer) inot(firstOfRange, endx int) container {
 	if endx-firstOfRange == maxCapacity {
-		//p("endx-firstOfRange == maxCapacity")
 		flipBitmapRange(bc.bitmap, firstOfRange, endx)
 		bc.cardinality = maxCapacity - bc.cardinality
-		//p("bc.cardinality is now %v", bc.cardinality)
 	} else if endx-firstOfRange > maxCapacity/2 {
-		//p("endx-firstOfRange > maxCapacity/2")
 		flipBitmapRange(bc.bitmap, firstOfRange, endx)
 		bc.computeCardinality()
 	} else {
@@ -812,8 +804,6 @@ func (bc *bitmapContainer) andNotRun16(rc *runContainer16) container {
 }
 
 func (bc *bitmapContainer) iandNot(a container) container {
-	//p("bitmapContainer.iandNot() starting")
-
 	switch x := a.(type) {
 	case *arrayContainer:
 		return bc.iandNotArray(x)
@@ -957,7 +947,7 @@ func (bc *bitmapContainer) PrevSetBit(i int) int {
 	if w != 0 {
 		return b - countLeadingZeros(w)
 	}
-	x -= 1
+	x--
 	for ; x >= 0; x-- {
 		if bc.bitmap[x] != 0 {
 			return (x * 64) + 63 - countLeadingZeros(bc.bitmap[x])
