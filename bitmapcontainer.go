@@ -1029,3 +1029,36 @@ func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
 func (bc *bitmapContainer) containerType() contype {
 	return bitmapContype
 }
+
+func (bc *bitmapContainer) addOffset(x uint16) []container {
+	low := newBitmapContainer()
+	high := newBitmapContainer()
+	b := uint32(x) >> 6
+	i := uint32(x) % 64
+	end := uint32(1024) - b
+	fmt.Println("bitmapContainer.addOffset", b, i, end)
+	if i == 0 {
+		copy(low.bitmap[b:], bc.bitmap[:end])
+		copy(high.bitmap[:b], bc.bitmap[end:])
+	} else {
+		low.bitmap[b] = bc.bitmap[0] << i
+		for k := uint32(1); k < end; k++ {
+			newval := bc.bitmap[k] << i
+			if newval == 0 {
+				newval = bc.bitmap[k-1] >> (64 - i)
+			}
+			low.bitmap[b+k] = newval
+		}
+		for k := end; k < 1024; k++ {
+			newval := bc.bitmap[k] << i
+			if newval == 0 {
+				newval = bc.bitmap[k-1] >> (64 - i)
+			}
+			high.bitmap[k-end] = newval
+		}
+		high.bitmap[b] = bc.bitmap[1023] >> (64 - i)
+	}
+	low.computeCardinality()
+	high.computeCardinality()
+	return []container{low, high}
+}

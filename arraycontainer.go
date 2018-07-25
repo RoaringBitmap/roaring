@@ -962,3 +962,17 @@ func (ac *arrayContainer) toEfficientContainer() container {
 func (ac *arrayContainer) containerType() contype {
 	return arrayContype
 }
+
+func (ac *arrayContainer) addOffset(x uint16) []container {
+	low := &arrayContainer{}
+	high := &arrayContainer{}
+	for _, val := range ac.content {
+		y := uint32(val) + uint32(x)
+		if highbits(y) > 0 {
+			high.content = append(high.content, lowbits(y))
+		} else {
+			low.content = append(low.content, lowbits(y))
+		}
+	}
+	return []container{low, high}
+}
