@@ -1026,7 +1026,6 @@ func (bc *bitmapContainer) addOffset(x uint16) []container {
 	b := uint32(x) >> 6
 	i := uint32(x) % 64
 	end := uint32(1024) - b
-	fmt.Println("bitmapContainer.addOffset", b, i, end)
 	if i == 0 {
 		copy(low.bitmap[b:], bc.bitmap[:end])
 		copy(high.bitmap[:b], bc.bitmap[end:])
