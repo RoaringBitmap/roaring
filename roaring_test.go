@@ -136,6 +136,33 @@ func TestRoaringBitmapAddMany(t *testing.T) {
 	}
 }
 
+func TestRoaringBitmapAddOffset(t *testing.T) {
+	array := []uint32{5580, 33722, 44031, 57276, 83097}
+	bmp := NewBitmap()
+	bmp.AddMany(array)
+	offtest := uint32(25000)
+	cop := AddOffset(bmp, offtest)
+	// t.Logf("%T %v", cop, cop)
+	if len(array) != int(cop.GetCardinality()) {
+		t.Errorf("length diff %d!=%d", len(array), bmp.GetCardinality())
+		// t.FailNow()
+	}
+	expected := make([]uint32, len(array))
+	for i, x := range array {
+		expected[i] = x + offtest
+	}
+	wout := cop.ToArray()
+	t.Logf("%v, %v", wout, expected)
+	if len(wout) != len(expected) {
+		t.Errorf("length diff %d!=%d", len(wout), len(expected))
+	}
+	for i, x := range wout {
+		if x != expected[i] {
+			t.Errorf("found discrepancy %d!=%d", x, expected[i])
+		}
+	}
+}
+
 // https://github.com/RoaringBitmap/roaring/issues/64
 func TestFlip64(t *testing.T) {
 	bm := New()
