@@ -857,12 +857,15 @@ func (bc *bitmapContainer) andNotBitmap(value2 *bitmapContainer) container {
 	return ac
 }
 
-func (bc *bitmapContainer) iandNotBitmapSurely(value2 *bitmapContainer) *bitmapContainer {
+func (bc *bitmapContainer) iandNotBitmapSurely(value2 *bitmapContainer) container {
 	newCardinality := int(popcntMaskSlice(bc.bitmap, value2.bitmap))
 	for k := 0; k < len(bc.bitmap); k++ {
 		bc.bitmap[k] = bc.bitmap[k] &^ value2.bitmap[k]
 	}
 	bc.cardinality = newCardinality
+	if bc.getCardinality() <= arrayDefaultMaxSize {
+		return bc.toArrayContainer()
+	}
 	return bc
 }
 

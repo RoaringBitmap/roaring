@@ -1,6 +1,7 @@
 package roaring
 
 import (
+	"bytes"
 	"log"
 	"math"
 	"math/rand"
@@ -160,6 +161,30 @@ func TestRoaringBitmapAddOffset(t *testing.T) {
 		if x != expected[i] {
 			t.Errorf("found discrepancy %d!=%d", x, expected[i])
 		}
+	}
+}
+
+func TestRoaringInPlaceAndNotBitmapContainer(t *testing.T) {
+	bm := NewBitmap()
+	for i := 0; i < 8192; i++ {
+		bm.Add(uint32(i))
+	}
+	toRemove := NewBitmap()
+	for i := 128; i < 8192; i++ {
+		toRemove.Add(uint32(i))
+	}
+	bm.AndNot(toRemove)
+
+	var b bytes.Buffer
+	_, err := bm.WriteTo(&b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bm2 := NewBitmap()
+	bm2.ReadFrom(bytes.NewBuffer(b.Bytes()))
+	if !bm2.Equals(bm) {
+		t.Errorf("expected %s to equal %s", bm2, bm)
 	}
 }
 
