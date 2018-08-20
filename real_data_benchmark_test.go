@@ -12,6 +12,8 @@ import (
 	"testing"
 )
 
+// To run these benchmarks, type BENCH_REAL_DATA=1 go test -bench BenchmarkRealData -run -
+
 var benchRealData = false
 
 var realDatasets = []string{
