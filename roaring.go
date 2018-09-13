@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -124,6 +125,14 @@ func (rb *Bitmap) MarshalBinary() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func (rb *Bitmap) MarshalJSON() ([]byte, error) {
+	b, err := rb.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(b)
+}
+
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface for the bitmap
 func (rb *Bitmap) UnmarshalBinary(data []byte) error {
 	var buf bytes.Buffer
@@ -134,6 +143,15 @@ func (rb *Bitmap) UnmarshalBinary(data []byte) error {
 	reader := bufio.NewReader(&buf)
 	_, err = rb.ReadFrom(reader)
 	return err
+}
+
+func (rb *Bitmap) UnmarshalJSON(data []byte) error {
+	var b []byte
+	err := json.Unmarshal(data, &b)
+	if err != nil {
+		return err
+	}
+	return rb.UnmarshalBinary(b)
 }
 
 // NewBitmap creates a new empty Bitmap (see also New)
