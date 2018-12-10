@@ -2162,3 +2162,20 @@ func TestBitmapFlipMaxRangeEnd(t *testing.T) {
 	bm.Flip(0, MaxRange)
 	assert.EqualValues(t, MaxRange, bm.GetCardinality())
 }
+
+func TestNextIterator(t *testing.T) {
+	bm := NewBitmap()
+	bm.AddRange(0, 1000000)
+	v := bm.GetCardinality()
+	for it := bm.Iterator(); it.HasNext(); {
+		i := it.Next()
+		bm.Remove(i)
+		v--
+	}
+	if v != 0 {
+		t.Errorf("Should be zero but is %d", v)
+	}
+	if v := bm.GetCardinality(); v != 0 {
+		t.Errorf("Should be zero but is %d", v)
+	}
+}
