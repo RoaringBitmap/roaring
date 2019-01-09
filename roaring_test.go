@@ -14,6 +14,22 @@ import (
 	"github.com/willf/bitset"
 )
 
+func TestReverseIteratorCount(t *testing.T) {
+	b := New()
+	for i := uint32(0); i < 5000; i++ {
+		b.Add(i)
+	}
+	it := b.ReverseIterator()
+	count := 0
+	for it.HasNext() {
+		it.Next()
+		count += 1
+	}
+	if count != 5000 {
+		t.FailNow()
+	}
+}
+
 func TestRoaringIntervalCheck(t *testing.T) {
 	r := BitmapOf(1, 2, 3, 1000)
 	rangeb := New()

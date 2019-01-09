@@ -364,19 +364,19 @@ func (rb *Bitmap) String() string {
 	return buffer.String()
 }
 
-// Iterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order; 
+// Iterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) Iterator() IntIterable {
 	return newIntIterator(rb)
 }
 
-// ReverseIterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order; 
+// ReverseIterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) ReverseIterator() IntIterable {
 	return newIntReverseIterator(rb)
 }
 
-// ManyIterator creates a new ManyIntIterable to iterate over the integers contained in the bitmap, in sorted order; 
+// ManyIterator creates a new ManyIntIterable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) ManyIterator() ManyIntIterable {
 	return newManyIntIterator(rb)
