@@ -159,6 +159,38 @@ func TestBitmapContainerReverseIterator(t *testing.T) {
 	})
 }
 
+func TestBitmapNextSet(t *testing.T) {
+	testSize := 5000
+	bc := newBitmapContainer()
+	for i := 0; i < testSize; i++ {
+		bc.iadd(uint16(i))
+	}
+
+	m := 0
+	for n := 0; n > 0; n = bc.NextSetBit(n + 1) {
+		if n != m {
+			t.Fatalf("n!=m %d!=%d", n, m)
+		}
+		m++
+	}
+}
+
+func TestBitmapPrevSet(t *testing.T) {
+	testSize := 5000
+	bc := newBitmapContainer()
+	for i := 0; i < testSize; i++ {
+		bc.iadd(uint16(i))
+	}
+
+	m := testSize - 1
+	for n := testSize - 1; n > 0; n = bc.PrevSetBit(n - 1) {
+		if n != m {
+			t.Fatalf("n!=m %d!=%d", n, m)
+		}
+		m--
+	}
+}
+
 func TestBitmapOffset(t *testing.T) {
 	nums := []uint16{10, 100, 1000}
 	expected := make([]int, len(nums))
