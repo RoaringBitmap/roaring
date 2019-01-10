@@ -15,18 +15,21 @@ import (
 )
 
 func TestReverseIteratorCount(t *testing.T) {
-	b := New()
-	for i := uint32(0); i < 5000; i++ {
-		b.Add(i)
-	}
-	it := b.ReverseIterator()
-	count := 0
-	for it.HasNext() {
-		it.Next()
-		count += 1
-	}
-	if count != 5000 {
-		t.FailNow()
+	array := []int{2, 63, 64, 65, 4095, 4096, 4097, 4159, 4160, 4161, 5000, 20000, 66666}
+	for _, testSize := range array {
+		b := New()
+		for i := uint32(0); i < uint32(testSize); i++ {
+			b.Add(i)
+		}
+		it := b.ReverseIterator()
+		count := 0
+		for it.HasNext() {
+			it.Next()
+			count += 1
+		}
+		if count != testSize {
+			t.FailNow()
+		}
 	}
 }
 

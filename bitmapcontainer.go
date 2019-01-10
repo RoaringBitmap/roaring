@@ -968,7 +968,7 @@ func (bc *bitmapContainer) PrevSetBit(i int) int {
 
 	w = w << uint(63-b)
 	if w != 0 {
-		return b - countLeadingZeros(w)
+		return i - countLeadingZeros(w)
 	}
 	x--
 	for ; x >= 0; x-- {
