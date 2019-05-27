@@ -525,6 +525,38 @@ func BenchmarkSerializationDense(b *testing.B) {
 	}
 }
 
+func BenchmarkMarshalBinary(b *testing.B) {
+	r := rand.New(rand.NewSource(0))
+	s := NewBitmap()
+	sz := 10000000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(r.Int31n(int32(sz))))
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		s.MarshalBinary()
+	}
+}
+
+func BenchmarkUnmarshalBinary(b *testing.B) {
+	r := rand.New(rand.NewSource(0))
+	s := NewBitmap()
+	sz := 10000000
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(r.Int31n(int32(sz))))
+	}
+	data, _ := s.MarshalBinary()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		ub := NewBitmap()
+		ub.UnmarshalBinary(data)
+	}
+}
+
 func BenchmarkEqualsSparse(b *testing.B) {
 	b.StopTimer()
 	r := rand.New(rand.NewSource(0))
