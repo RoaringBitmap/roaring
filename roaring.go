@@ -1364,7 +1364,7 @@ func (rb *Bitmap) GetCopyOnWrite() (val bool) {
 }
 
 func (rb *Bitmap) FlushCopyOnWrite() {
-	return rb.highlowcontainer.flushCopyOnWrite()
+	rb.highlowcontainer.flushCopyOnWrite()
 }
 
 // FlipInt calls Flip after casting the parameters (convenience method)
