@@ -1363,8 +1363,11 @@ func (rb *Bitmap) GetCopyOnWrite() (val bool) {
 	return rb.highlowcontainer.copyOnWrite
 }
 
-func (rb *Bitmap) FlushCopyOnWrite() {
-	rb.highlowcontainer.flushCopyOnWrite()
+// clone all containers which have needCopyOnWrite set to true
+// This can be used to make sure it is safe to munmap a []byte
+// that the roaring array may still have a reference to.
+func (rb *Bitmap) CloneCopyOnWriteContainers() {
+	rb.highlowcontainer.cloneCopyOnWriteContainers()
 }
 
 // FlipInt calls Flip after casting the parameters (convenience method)

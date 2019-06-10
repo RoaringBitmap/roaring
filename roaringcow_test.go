@@ -3,6 +3,7 @@ package roaring
 import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/willf/bitset"
+	"bytes"
 	"log"
 	"math/rand"
 	"strconv"
@@ -1885,4 +1886,27 @@ func TestFlipVerySmallCOW(t *testing.T) {
 		rbcard := rb.GetCardinality()
 		So(rbcard, ShouldEqual, 9)
 	})
+}
+
+func TestCloneCOWContainers(t *testing.T) {
+	Convey("test CloneCopyOnWriteContainers", t, func() {
+		rb := NewBitmap()
+		rb.AddRange(0,3000)
+		buf := &bytes.Buffer{}
+		rb.WriteTo(buf)
+
+		newRb1 := NewBitmap()
+		newRb1.FromBuffer(buf.Bytes())
+		newRb1.CloneCopyOnWriteContainers()
+
+		rb2 := NewBitmap()
+		rb2.AddRange(3000,6000)
+		buf.Reset()
+		rb2.WriteTo(buf)
+
+		So(newRb1.ToArray(), ShouldResemble, rb.ToArray())
+
+		})
+
+
 }
