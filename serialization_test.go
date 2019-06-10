@@ -927,3 +927,38 @@ func TestSerializationCrashers(t *testing.T) {
 		catchPanic(t, func() { NewBitmap().ReadFrom(bytes.NewReader(data)) }, "ReadFrom("+crasher+")")
 	}
 }
+
+func TestBitmapFromBufferCOW(t *testing.T) {
+	rbbogus := NewBitmap()
+	rbbogus.Add(100)
+	rbbogus.Add(100000)
+	rb1 := NewBitmap()
+	rb1.Add(1)
+	buf1 := &bytes.Buffer{}
+	rb1.WriteTo(buf1)
+	rb2 := NewBitmap()
+	rb2.Add(1000000)
+	buf2 := &bytes.Buffer{}
+	rb2.WriteTo(buf2)
+	newRb1 := NewBitmap()
+	newRb1.FromBuffer(buf1.Bytes())
+	newRb2 := NewBitmap()
+	newRb2.FromBuffer(buf2.Bytes())
+	rbor1 := Or(newRb1, newRb2)
+	rbor2 := rbor1.Clone()
+	rbor3 := Or(newRb1.Clone(), newRb2.Clone())
+	buf1.Reset()
+	buf2.Reset()
+	rbbogus.WriteTo(buf1)
+	rbbogus.WriteTo(buf2)
+	rbexpected := NewBitmap()
+	rbexpected.Add(1)
+	rbexpected.Add(1000000)
+	// rbexpected.Equals(rbor1) is False
+	if !rbexpected.Equals(rbor2) {
+		t.Errorf("Bad Mapping")
+	}
+	if !rbexpected.Equals(rbor3) {
+		t.Errorf("Bad Mapping")
+	}
+}
