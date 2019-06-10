@@ -283,6 +283,19 @@ func (ra *roaringArray) clone() *roaringArray {
 	return &sa
 }
 
+
+// clone all containers which have needCopyOnWrite set to true
+// This can be used to make sure it is safe to munmap a []byte
+// that the roaring array may still have a reference to.
+func (ra *roaringArray) cloneCopyOnWriteContainers() {
+	for i, needCopyOnWrite := range ra.needCopyOnWrite {
+		if needCopyOnWrite {
+			ra.containers[i] = ra.containers[i].clone()
+			ra.needCopyOnWrite[i] = false
+		}
+	}
+}
+
 // unused function:
 //func (ra *roaringArray) containsKey(x uint16) bool {
 //	return (ra.binarySearch(0, int64(len(ra.keys)), x) >= 0)
