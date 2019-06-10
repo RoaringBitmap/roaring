@@ -283,6 +283,15 @@ func (ra *roaringArray) clone() *roaringArray {
 	return &sa
 }
 
+func (ra *roaringArray) flushCopyOnWrite() {
+	for i, needCopyOnWrite := range ra.needCopyOnWrite {
+		if needCopyOnWrite {
+			ra.containers[i] = ra.containers[i].clone()
+			ra.needCopyOnWrite[i] = false
+		}
+	}
+}
+
 // unused function:
 //func (ra *roaringArray) containsKey(x uint16) bool {
 //	return (ra.binarySearch(0, int64(len(ra.keys)), x) >= 0)
