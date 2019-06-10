@@ -86,6 +86,12 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 // You should *not* change the copy-on-write status of the resulting
 // bitmaps (SetCopyOnWrite).
 //
+// If buf becomes unavailable, then a bitmap created with
+// FromBuffer would be effectively broken. Furthermore, any
+// bitmap derived from this bitmap (e.g., via Or, And) might
+// also be broken. Thus, before making buf unavailable, you should
+// call CloneCopyOnWriteContainers on all such bitmaps.
+//
 func (rb *Bitmap) FromBuffer(buf []byte) (int64, error) {
 	return rb.highlowcontainer.fromBuffer(buf)
 }
@@ -1363,9 +1369,17 @@ func (rb *Bitmap) GetCopyOnWrite() (val bool) {
 	return rb.highlowcontainer.copyOnWrite
 }
 
-// clone all containers which have needCopyOnWrite set to true
+// CloneCopyOnWriteContainers clones all containers which have 
+// needCopyOnWrite set to true.
 // This can be used to make sure it is safe to munmap a []byte
-// that the roaring array may still have a reference to.
+// that the roaring array may still have a reference to, after
+// calling FromBuffer.
+// More generally this function is useful if you call FromBuffer 
+// to construct a bitmap with a backing array buf
+// and then later discard the buf array. Note that you should call 
+// CloneCopyOnWriteContainers on all bitmaps that were derived 
+// from the 'FromBuffer' bitmap since they map have dependencies
+// on the buf array as well.
 func (rb *Bitmap) CloneCopyOnWriteContainers() {
 	rb.highlowcontainer.cloneCopyOnWriteContainers()
 }
