@@ -945,8 +945,11 @@ func TestBitmapFromBufferCOW(t *testing.T) {
 	newRb2 := NewBitmap()
 	newRb2.FromBuffer(buf2.Bytes())
 	rbor1 := Or(newRb1, newRb2)
-	rbor2 := rbor1.Clone()
-	rbor3 := Or(newRb1.Clone(), newRb2.Clone())
+	rbor2 := rbor1
+	rbor3 := Or(newRb1, newRb2)
+	rbor1.CloneCopyOnWriteContainers()
+	rbor2.CloneCopyOnWriteContainers()
+	rbor3.CloneCopyOnWriteContainers()
 	buf1.Reset()
 	buf2.Reset()
 	rbbogus.WriteTo(buf1)
