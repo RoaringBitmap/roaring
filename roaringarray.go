@@ -283,7 +283,6 @@ func (ra *roaringArray) clone() *roaringArray {
 	return &sa
 }
 
-
 // clone all containers which have needCopyOnWrite set to true
 // This can be used to make sure it is safe to munmap a []byte
 // that the roaring array may still have a reference to.

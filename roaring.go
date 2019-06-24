@@ -1369,15 +1369,15 @@ func (rb *Bitmap) GetCopyOnWrite() (val bool) {
 	return rb.highlowcontainer.copyOnWrite
 }
 
-// CloneCopyOnWriteContainers clones all containers which have 
+// CloneCopyOnWriteContainers clones all containers which have
 // needCopyOnWrite set to true.
 // This can be used to make sure it is safe to munmap a []byte
 // that the roaring array may still have a reference to, after
 // calling FromBuffer.
-// More generally this function is useful if you call FromBuffer 
+// More generally this function is useful if you call FromBuffer
 // to construct a bitmap with a backing array buf
-// and then later discard the buf array. Note that you should call 
-// CloneCopyOnWriteContainers on all bitmaps that were derived 
+// and then later discard the buf array. Note that you should call
+// CloneCopyOnWriteContainers on all bitmaps that were derived
 // from the 'FromBuffer' bitmap since they map have dependencies
 // on the buf array as well.
 func (rb *Bitmap) CloneCopyOnWriteContainers() {

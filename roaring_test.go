@@ -341,6 +341,17 @@ func TestFlipOnEmpty(t *testing.T) {
 	})
 }
 
+func TestBitmapRank2(t *testing.T) {
+	Convey("rank tests", t, func() {
+		r := NewBitmap()
+		for i := uint32(1); i < 8194; i += 2 {
+			r.Add(i)
+		}
+		rank := r.Rank(63)
+		So(rank, ShouldEqual, 32)
+	})
+}
+
 func TestBitmapRank(t *testing.T) {
 	for N := uint32(1); N <= 1048576; N *= 2 {
 		Convey("rank tests"+strconv.Itoa(int(N)), t, func() {
