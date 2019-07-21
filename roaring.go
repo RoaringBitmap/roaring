@@ -413,9 +413,14 @@ func (rb *Bitmap) Equals(o interface{}) bool {
 }
 
 // AddOffset adds the value 'offset' to each and every value in a bitmap, generating a new bitmap in the process
-func AddOffset(x *Bitmap, offset uint32) (answer *Bitmap) {
-	containerOffset := highbits(offset)
-	inOffset := lowbits(offset)
+func AddOffset(x *Bitmap, offset int32) (answer *Bitmap) {
+	var containerOffset uint16
+	if offset < 0 {
+		containerOffset = uint16((offset - (1 << 16) + 1) / (1 << 16))
+	} else {
+		containerOffset = highbits(uint32(offset))
+	}
+	inOffset := int16(offset - int32(containerOffset)*(1<<16))
 	if inOffset == 0 {
 		answer = x.Clone()
 		for pos := 0; pos < answer.highlowcontainer.size(); pos++ {
@@ -429,7 +434,7 @@ func AddOffset(x *Bitmap, offset uint32) (answer *Bitmap) {
 			key := x.highlowcontainer.getKeyAtIndex(pos)
 			key += containerOffset
 			c := x.highlowcontainer.getContainerAtIndex(pos)
-			offsetted := c.addOffset(inOffset)
+			offsetted := c.addOffset(uint16(inOffset))
 			if offsetted[0].getCardinality() > 0 {
 				curSize := answer.highlowcontainer.size()
 				lastkey := uint16(0)
