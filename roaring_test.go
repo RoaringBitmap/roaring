@@ -2181,6 +2181,67 @@ func TestReverseIterator(t *testing.T) {
 	}
 }
 
+func TestIteratorPeekNext(t *testing.T) {
+	values := []uint32{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16, MaxUint32}
+	bm := New()
+	for n := 0; n < len(values); n++ {
+		bm.Add(values[n])
+	}
+	i := bm.Iterator()
+	for i.HasNext() {
+		p := i.PeekNext()
+		v := i.Next()
+
+		if p != v {
+			t.Errorf("expected %d got %d", v, p)
+		}
+	}
+}
+
+func TestIteratorAdvance(t *testing.T) {
+	values := []uint32{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16}
+	bm := New()
+	for n := 0; n < len(values); n++ {
+		bm.Add(values[n])
+	}
+
+	cases := []struct {
+		minval   uint32
+		expected uint32
+	}{
+		{0, 0},
+		{1, 2},
+		{2, 2},
+		{3, 15},
+		{30, 31},
+		{33, 33},
+		{9998, 9999},
+		{MaxUint16, MaxUint16},
+	}
+
+	for j, c := range cases {
+		i := bm.Iterator()
+		i.AdvanceIfNeeded(c.minval)
+
+		if !i.HasNext() {
+			t.Error("expected HasNext() to be true")
+		}
+
+		if i.PeekNext() != c.expected {
+			t.Errorf("Test %d fail, expected %d got %d", j, c.expected, i.PeekNext())
+		}
+	}
+
+	{
+		i := bm.Iterator()
+		i.AdvanceIfNeeded(MaxUint32)
+
+		if i.HasNext() {
+			t.Error("expected HasNext() to be false")
+		}
+	}
+}
+
 func TestPackageFlipMaxRangeEnd(t *testing.T) {
 	var empty Bitmap
 	flipped := Flip(&empty, 0, MaxRange)

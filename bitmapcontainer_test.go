@@ -1,9 +1,10 @@
 package roaring
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestBitmapContainerNumberOfRuns024(t *testing.T) {
@@ -188,6 +189,68 @@ func TestBitmapPrevSet(t *testing.T) {
 			t.Fatalf("n!=m %d!=%d", n, m)
 		}
 		m--
+	}
+}
+
+func TestBitmapIteratorPeekNext(t *testing.T) {
+	testSize := 5000
+	bc := newBitmapContainer()
+	for i := 0; i < testSize; i++ {
+		bc.iadd(uint16(i))
+	}
+
+	i := bc.getShortIterator()
+
+	for i.hasNext() {
+		p := i.peekNext()
+		n := i.next()
+
+		if p != n {
+			t.Fatalf("n!=p %d!=%d", n, p)
+		}
+	}
+}
+
+func TestBitmapIteratorAdvance(t *testing.T) {
+	values := []uint16{0, 2, 15, 16, 31, 32, 33, 9999}
+	bc := newBitmapContainer()
+	for _, v := range values {
+		bc.iadd(v)
+	}
+
+	cases := []struct {
+		minval   uint16
+		expected uint16
+	}{
+		{0, 0},
+		{1, 2},
+		{2, 2},
+		{3, 15},
+		{30, 31},
+		{33, 33},
+		{9998, 9999},
+	}
+
+	for j, c := range cases {
+		i := bc.getShortIterator()
+		i.advanceIfNeeded(c.minval)
+
+		if !i.hasNext() {
+			t.Error("expected hasNext() to be true")
+		}
+
+		if i.peekNext() != c.expected {
+			t.Errorf("Test %d fail, expected %d got %d", j, c.expected, i.peekNext())
+		}
+	}
+
+	{
+		i := bc.getShortIterator()
+		i.advanceIfNeeded(MaxUint16)
+
+		if i.hasNext() {
+			t.Error("expected hasNext() to be false")
+		}
 	}
 }
 

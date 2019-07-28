@@ -1204,6 +1204,20 @@ func (ri *runIterator16) next() uint16 {
 	return ri.cur()
 }
 
+func (ri *runIterator16) peekNext() uint16 {
+	old := *ri
+	val := ri.next()
+	*ri = old
+
+	return val
+}
+
+func (ri *runIterator16) advanceIfNeeded(minval uint16) {
+	for ri.hasNext() && ri.peekNext() < minval {
+		ri.next()
+	}
+}
+
 // remove removes the element that the iterator
 // is on from the run container. You can use
 // Cur if you want to double check what is about
@@ -1993,7 +2007,7 @@ func (rc *runContainer16) fillLeastSignificant16bits(x []uint32, i int, mask uin
 	}
 }
 
-func (rc *runContainer16) getShortIterator() shortIterable {
+func (rc *runContainer16) getShortIterator() shortPeekable {
 	return rc.newRunIterator16()
 }
 

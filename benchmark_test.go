@@ -404,6 +404,21 @@ func BenchmarkSparseIterateRoaring(b *testing.B) {
 
 }
 
+// go test -bench BenchmarkSparseAdvance -run -
+func BenchmarkSparseAdvanceRoaring(b *testing.B) {
+	b.StopTimer()
+	s := NewBitmap()
+	initsize := 65000
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(i))
+	}
+	b.StartTimer()
+	for j := 0; j < b.N; j++ {
+		i := s.Iterator()
+		i.AdvanceIfNeeded(uint32(j % initsize))
+	}
+}
+
 // go test -bench BenchmarkIterate -run -
 func BenchmarkIterateBitset(b *testing.B) {
 	b.StopTimer()
