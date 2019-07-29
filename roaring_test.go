@@ -2187,15 +2187,13 @@ func TestIteratorPeekNext(t *testing.T) {
 	for n := 0; n < len(values); n++ {
 		bm.Add(values[n])
 	}
-	i := bm.Iterator()
-	for i.HasNext() {
-		p := i.PeekNext()
-		v := i.Next()
 
-		if p != v {
-			t.Errorf("expected %d got %d", v, p)
+	Convey("Test IntIterator PeekNext", t, func() {
+		i := bm.Iterator()
+		for i.HasNext() {
+			So(i.PeekNext(), ShouldEqual, i.Next())
 		}
-	}
+	})
 }
 
 func TestIteratorAdvance(t *testing.T) {
@@ -2219,27 +2217,32 @@ func TestIteratorAdvance(t *testing.T) {
 		{MaxUint16, MaxUint16},
 	}
 
-	for j, c := range cases {
+	Convey("advance by using a new int iterator", t, func() {
+		for _, c := range cases {
+			i := bm.Iterator()
+			i.AdvanceIfNeeded(c.minval)
+
+			So(i.HasNext(), ShouldBeTrue)
+			So(i.PeekNext(), ShouldEqual, c.expected)
+		}
+	})
+
+	Convey("advance by using the same int iterator", t, func() {
 		i := bm.Iterator()
-		i.AdvanceIfNeeded(c.minval)
 
-		if !i.HasNext() {
-			t.Error("expected HasNext() to be true")
+		for _, c := range cases {
+			i.AdvanceIfNeeded(c.minval)
+
+			So(i.HasNext(), ShouldBeTrue)
+			So(i.PeekNext(), ShouldEqual, c.expected)
 		}
+	})
 
-		if i.PeekNext() != c.expected {
-			t.Errorf("Test %d fail, expected %d got %d", j, c.expected, i.PeekNext())
-		}
-	}
-
-	{
+	Convey("advance out of a container value", t, func() {
 		i := bm.Iterator()
 		i.AdvanceIfNeeded(MaxUint32)
-
-		if i.HasNext() {
-			t.Error("expected HasNext() to be false")
-		}
-	}
+		So(i.HasNext(), ShouldBeFalse)
+	})
 }
 
 func TestPackageFlipMaxRangeEnd(t *testing.T) {

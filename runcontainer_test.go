@@ -2397,6 +2397,14 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 
 }
 
+func TestRuntimeIteratorPeekNext(t *testing.T) {
+	testContainerIteratorPeekNext(t, newRunContainer16())
+}
+
+func TestRuntimeIteratorAdvance(t *testing.T) {
+	testContainerIteratorAdvance(t, newRunContainer16())
+}
+
 // generate random contents, then return that same
 // logical content in three different container types
 func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *bitmapContainer) {

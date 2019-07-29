@@ -409,13 +409,67 @@ func BenchmarkSparseAdvanceRoaring(b *testing.B) {
 	b.StopTimer()
 	s := NewBitmap()
 	initsize := 65000
+
 	for i := 0; i < initsize; i++ {
 		s.Add(uint32(i))
 	}
-	b.StartTimer()
-	for j := 0; j < b.N; j++ {
-		i := s.Iterator()
-		i.AdvanceIfNeeded(uint32(j % initsize))
+
+	for _, gap := range []int{0, initsize / 2, initsize - 1} {
+		b.Run(fmt.Sprintf("advance from %d", gap), func(b *testing.B) {
+			b.StartTimer()
+			diff := uint32(0)
+
+			for n := 0; n < b.N; n++ {
+				val := uint32(gap + (n % (initsize - gap)))
+
+				i := s.Iterator()
+				i.AdvanceIfNeeded(val)
+
+				diff += i.PeekNext() - val
+			}
+
+			b.StopTimer()
+
+			if diff != 0 {
+				b.Fatalf("Expected diff 0, got %d", diff)
+			}
+		})
+	}
+}
+
+// go test -bench BenchmarkSparseAdvance -run -
+func BenchmarkSparseAdvanceSequentially(b *testing.B) {
+	b.StopTimer()
+	s := NewBitmap()
+	initsize := 65000
+
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(i))
+	}
+
+	for _, gap := range []int{0, initsize / 2, initsize - 1} {
+		b.Run(fmt.Sprintf("advance from %d", gap), func(b *testing.B) {
+			b.StartTimer()
+			diff := uint32(0)
+
+			for n := 0; n < b.N; n++ {
+				val := uint32(gap + (n % (initsize - gap)))
+
+				i := s.Iterator()
+
+				for i.HasNext() && i.PeekNext() < val {
+					i.Next()
+				}
+
+				diff += i.PeekNext() - val
+			}
+
+			b.StopTimer()
+
+			if diff != 0 {
+				b.Fatalf("Expected diff 0, got %d", diff)
+			}
+		})
 	}
 }
 
