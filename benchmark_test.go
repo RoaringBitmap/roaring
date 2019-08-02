@@ -414,13 +414,13 @@ func BenchmarkSparseAdvanceRoaring(b *testing.B) {
 		s.Add(uint32(i))
 	}
 
-	for _, gap := range []int{0, initsize / 2, initsize - 1} {
+	for _, gap := range []int{1, 2, 65, 650} {
 		b.Run(fmt.Sprintf("advance from %d", gap), func(b *testing.B) {
 			b.StartTimer()
 			diff := uint32(0)
 
 			for n := 0; n < b.N; n++ {
-				val := uint32(gap + (n % (initsize - gap)))
+				val := uint32((gap * n) % initsize)
 
 				i := s.Iterator()
 				i.AdvanceIfNeeded(val)
@@ -447,13 +447,13 @@ func BenchmarkSparseAdvanceSequentially(b *testing.B) {
 		s.Add(uint32(i))
 	}
 
-	for _, gap := range []int{0, initsize / 2, initsize - 1} {
+	for _, gap := range []int{1, 2, 65, 650} {
 		b.Run(fmt.Sprintf("advance from %d", gap), func(b *testing.B) {
 			b.StartTimer()
 			diff := uint32(0)
 
 			for n := 0; n < b.N; n++ {
-				val := uint32(gap + (n % (initsize - gap)))
+				val := uint32((gap * n) % initsize)
 
 				i := s.Iterator()
 

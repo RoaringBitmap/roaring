@@ -2243,6 +2243,17 @@ func TestIteratorAdvance(t *testing.T) {
 		i.AdvanceIfNeeded(MaxUint32)
 		So(i.HasNext(), ShouldBeFalse)
 	})
+
+	Convey("advance on a value that is less than the pointed value", t, func() {
+		i := bm.Iterator()
+		i.AdvanceIfNeeded(29)
+		So(i.HasNext(), ShouldBeTrue)
+		So(i.PeekNext(), ShouldEqual, 31)
+
+		i.AdvanceIfNeeded(13)
+		So(i.HasNext(), ShouldBeTrue)
+		So(i.PeekNext(), ShouldEqual, 31)
+	})
 }
 
 func TestPackageFlipMaxRangeEnd(t *testing.T) {

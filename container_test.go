@@ -115,6 +115,17 @@ func testContainerIteratorAdvance(t *testing.T, con container) {
 		i.advanceIfNeeded(MaxUint16)
 		So(i.hasNext(), ShouldBeFalse)
 	})
+
+	Convey("advance on a value that is less than the pointed value", t, func() {
+		i := con.getShortIterator()
+		i.advanceIfNeeded(29)
+		So(i.hasNext(), ShouldBeTrue)
+		So(i.peekNext(), ShouldEqual, 31)
+
+		i.advanceIfNeeded(13)
+		So(i.hasNext(), ShouldBeTrue)
+		So(i.peekNext(), ShouldEqual, 31)
+	})
 }
 
 func TestContainerReverseIterator(t *testing.T) {

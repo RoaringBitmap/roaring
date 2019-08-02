@@ -115,8 +115,8 @@ func (bcsi *bitmapContainerShortIterator) peekNext() uint16 {
 }
 
 func (bcsi *bitmapContainerShortIterator) advanceIfNeeded(minval uint16) {
-	for bcsi.hasNext() && bcsi.peekNext() < minval {
-		bcsi.next()
+	if bcsi.hasNext() && bcsi.peekNext() < minval {
+		bcsi.i = bcsi.ptr.NextSetBit(int(minval))
 	}
 }
 
