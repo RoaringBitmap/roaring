@@ -2181,6 +2181,81 @@ func TestReverseIterator(t *testing.T) {
 	}
 }
 
+func TestIteratorPeekNext(t *testing.T) {
+	values := []uint32{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16, MaxUint32}
+	bm := New()
+	for n := 0; n < len(values); n++ {
+		bm.Add(values[n])
+	}
+
+	Convey("Test IntIterator PeekNext", t, func() {
+		i := bm.Iterator()
+		for i.HasNext() {
+			So(i.PeekNext(), ShouldEqual, i.Next())
+		}
+	})
+}
+
+func TestIteratorAdvance(t *testing.T) {
+	values := []uint32{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16}
+	bm := New()
+	for n := 0; n < len(values); n++ {
+		bm.Add(values[n])
+	}
+
+	cases := []struct {
+		minval   uint32
+		expected uint32
+	}{
+		{0, 0},
+		{1, 2},
+		{2, 2},
+		{3, 15},
+		{30, 31},
+		{33, 33},
+		{9998, 9999},
+		{MaxUint16, MaxUint16},
+	}
+
+	Convey("advance by using a new int iterator", t, func() {
+		for _, c := range cases {
+			i := bm.Iterator()
+			i.AdvanceIfNeeded(c.minval)
+
+			So(i.HasNext(), ShouldBeTrue)
+			So(i.PeekNext(), ShouldEqual, c.expected)
+		}
+	})
+
+	Convey("advance by using the same int iterator", t, func() {
+		i := bm.Iterator()
+
+		for _, c := range cases {
+			i.AdvanceIfNeeded(c.minval)
+
+			So(i.HasNext(), ShouldBeTrue)
+			So(i.PeekNext(), ShouldEqual, c.expected)
+		}
+	})
+
+	Convey("advance out of a container value", t, func() {
+		i := bm.Iterator()
+		i.AdvanceIfNeeded(MaxUint32)
+		So(i.HasNext(), ShouldBeFalse)
+	})
+
+	Convey("advance on a value that is less than the pointed value", t, func() {
+		i := bm.Iterator()
+		i.AdvanceIfNeeded(29)
+		So(i.HasNext(), ShouldBeTrue)
+		So(i.PeekNext(), ShouldEqual, 31)
+
+		i.AdvanceIfNeeded(13)
+		So(i.HasNext(), ShouldBeTrue)
+		So(i.PeekNext(), ShouldEqual, 31)
+	})
+}
+
 func TestPackageFlipMaxRangeEnd(t *testing.T) {
 	var empty Bitmap
 	flipped := Flip(&empty, 0, MaxRange)

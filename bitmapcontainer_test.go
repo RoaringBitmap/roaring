@@ -1,9 +1,10 @@
 package roaring
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestBitmapContainerNumberOfRuns024(t *testing.T) {
@@ -189,6 +190,14 @@ func TestBitmapPrevSet(t *testing.T) {
 		}
 		m--
 	}
+}
+
+func TestBitmapIteratorPeekNext(t *testing.T) {
+	testContainerIteratorPeekNext(t, newBitmapContainer())
+}
+
+func TestBitmapIteratorAdvance(t *testing.T) {
+	testContainerIteratorAdvance(t, newBitmapContainer())
 }
 
 func TestBitmapOffset(t *testing.T) {

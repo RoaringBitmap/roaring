@@ -206,10 +206,20 @@ type IntIterable interface {
 	Next() uint32
 }
 
+// IntPeekable allows you to look at the next value without advancing and
+// advance as long as the next value is smaller than minval
+type IntPeekable interface {
+	IntIterable
+	// PeekNext peeks the next value without advancing the iterator
+	PeekNext() uint32
+	// AdvanceIfNeeded advances as long as the next value is smaller than minval
+	AdvanceIfNeeded(minval uint32)
+}
+
 type intIterator struct {
 	pos              int
 	hs               uint32
-	iter             shortIterable
+	iter             shortPeekable
 	highlowcontainer *roaringArray
 }
 
@@ -233,6 +243,30 @@ func (ii *intIterator) Next() uint32 {
 		ii.init()
 	}
 	return x
+}
+
+// PeekNext peeks the next value without advancing the iterator
+func (ii *intIterator) PeekNext() uint32 {
+	return uint32(ii.iter.peekNext()&maxLowBit) | ii.hs
+}
+
+// AdvanceIfNeeded advances as long as the next value is smaller than minval
+func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
+	to := minval >> 16
+
+	for ii.HasNext() && (ii.hs>>16) < to {
+		ii.pos++
+		ii.init()
+	}
+
+	if ii.HasNext() && (ii.hs>>16) == to {
+		ii.iter.advanceIfNeeded(lowbits(minval))
+
+		if !ii.HasNext() {
+			ii.pos++
+			ii.init()
+		}
+	}
 }
 
 func newIntIterator(a *Bitmap) *intIterator {
@@ -355,9 +389,9 @@ func (rb *Bitmap) String() string {
 	return buffer.String()
 }
 
-// Iterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order;
+// Iterator creates a new IntPeekable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
-func (rb *Bitmap) Iterator() IntIterable {
+func (rb *Bitmap) Iterator() IntPeekable {
 	return newIntIterator(rb)
 }
 

@@ -52,6 +52,82 @@ func checkContent(c container, s []uint16) bool {
 	return !fail
 }
 
+func testContainerIteratorPeekNext(t *testing.T, c container) {
+	testSize := 5000
+	for i := 0; i < testSize; i++ {
+		c.iadd(uint16(i))
+	}
+
+	Convey("shortIterator peekNext", t, func() {
+		i := c.getShortIterator()
+
+		for i.hasNext() {
+			So(i.peekNext(), ShouldEqual, i.next())
+			testSize--
+		}
+
+		So(testSize, ShouldEqual, 0)
+	})
+}
+
+func testContainerIteratorAdvance(t *testing.T, con container) {
+	values := []uint16{0, 2, 15, 16, 31, 32, 33, 9999}
+	for _, v := range values {
+		con.iadd(v)
+	}
+
+	cases := []struct {
+		minval   uint16
+		expected uint16
+	}{
+		{0, 0},
+		{1, 2},
+		{2, 2},
+		{3, 15},
+		{30, 31},
+		{33, 33},
+		{9998, 9999},
+	}
+
+	Convey("advance by using a new short iterator", t, func() {
+		for _, c := range cases {
+			i := con.getShortIterator()
+			i.advanceIfNeeded(c.minval)
+
+			So(i.hasNext(), ShouldBeTrue)
+			So(i.peekNext(), ShouldEqual, c.expected)
+		}
+	})
+
+	Convey("advance by using the same short iterator", t, func() {
+		i := con.getShortIterator()
+
+		for _, c := range cases {
+			i.advanceIfNeeded(c.minval)
+
+			So(i.hasNext(), ShouldBeTrue)
+			So(i.peekNext(), ShouldEqual, c.expected)
+		}
+	})
+
+	Convey("advance out of a container value", t, func() {
+		i := con.getShortIterator()
+		i.advanceIfNeeded(MaxUint16)
+		So(i.hasNext(), ShouldBeFalse)
+	})
+
+	Convey("advance on a value that is less than the pointed value", t, func() {
+		i := con.getShortIterator()
+		i.advanceIfNeeded(29)
+		So(i.hasNext(), ShouldBeTrue)
+		So(i.peekNext(), ShouldEqual, 31)
+
+		i.advanceIfNeeded(13)
+		So(i.hasNext(), ShouldBeTrue)
+		So(i.peekNext(), ShouldEqual, 31)
+	})
+}
+
 func TestContainerReverseIterator(t *testing.T) {
 	Convey("ArrayReverseIterator", t, func() {
 		content := []uint16{1, 3, 5, 7, 9}

@@ -393,3 +393,11 @@ func TestArrayContainerIand(t *testing.T) {
 		So(r[2], ShouldEqual, 150000)
 	})
 }
+
+func TestArrayIteratorPeekNext(t *testing.T) {
+	testContainerIteratorPeekNext(t, newArrayContainer())
+}
+
+func TestArrayIteratorAdvance(t *testing.T) {
+	testContainerIteratorAdvance(t, newArrayContainer())
+}
