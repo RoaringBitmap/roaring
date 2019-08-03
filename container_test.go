@@ -71,7 +71,7 @@ func testContainerIteratorPeekNext(t *testing.T, c container) {
 }
 
 func testContainerIteratorAdvance(t *testing.T, con container) {
-	values := []uint16{0, 2, 15, 16, 31, 32, 33, 9999}
+	values := []uint16{2, 15, 16, 31, 32, 33, 9999}
 	for _, v := range values {
 		con.iadd(v)
 	}
@@ -80,7 +80,7 @@ func testContainerIteratorAdvance(t *testing.T, con container) {
 		minval   uint16
 		expected uint16
 	}{
-		{0, 0},
+		{0, 2},
 		{1, 2},
 		{2, 2},
 		{3, 15},
@@ -112,6 +112,10 @@ func testContainerIteratorAdvance(t *testing.T, con container) {
 
 	Convey("advance out of a container value", t, func() {
 		i := con.getShortIterator()
+
+		i.advanceIfNeeded(MaxUint16)
+		So(i.hasNext(), ShouldBeFalse)
+
 		i.advanceIfNeeded(MaxUint16)
 		So(i.hasNext(), ShouldBeFalse)
 	})

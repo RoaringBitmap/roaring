@@ -2197,7 +2197,7 @@ func TestIteratorPeekNext(t *testing.T) {
 }
 
 func TestIteratorAdvance(t *testing.T) {
-	values := []uint32{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16}
+	values := []uint32{2, 15, 16, 31, 32, 33, 9999, MaxUint16}
 	bm := New()
 	for n := 0; n < len(values); n++ {
 		bm.Add(values[n])
@@ -2207,7 +2207,7 @@ func TestIteratorAdvance(t *testing.T) {
 		minval   uint32
 		expected uint32
 	}{
-		{0, 0},
+		{0, 2},
 		{1, 2},
 		{2, 2},
 		{3, 15},
@@ -2240,6 +2240,10 @@ func TestIteratorAdvance(t *testing.T) {
 
 	Convey("advance out of a container value", t, func() {
 		i := bm.Iterator()
+
+		i.AdvanceIfNeeded(MaxUint32)
+		So(i.HasNext(), ShouldBeFalse)
+
 		i.AdvanceIfNeeded(MaxUint32)
 		So(i.HasNext(), ShouldBeFalse)
 	})

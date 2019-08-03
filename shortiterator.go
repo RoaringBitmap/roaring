@@ -31,7 +31,7 @@ func (si *shortIterator) peekNext() uint16 {
 }
 
 func (si *shortIterator) advanceIfNeeded(minval uint16) {
-	if si.peekNext() < minval {
+	if si.hasNext() && si.peekNext() < minval {
 		si.loc = advanceUntil(si.slice, si.loc, len(si.slice), minval)
 	}
 }

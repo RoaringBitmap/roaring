@@ -1213,6 +1213,46 @@ func (ri *runIterator16) peekNext() uint16 {
 }
 
 func (ri *runIterator16) advanceIfNeeded(minval uint16) {
+	if ri.hasNext() && ri.peekNext() < minval {
+		key := int64(minval)
+
+		opt := &searchOptions{
+			startIndex: ri.curIndex,
+			endxIndex:  int64(len(ri.rc.iv)),
+		}
+
+		// first time is special
+		if opt.startIndex == -1 {
+			opt.startIndex = 0
+		}
+
+		interval, isPresent, _ := ri.rc.search(key, opt)
+
+		// interval == -1 means, that the key is before the pointed interval
+		if interval == -1 && !isPresent {
+			return
+		}
+
+		// actualize curSeq with the number of skipped elements
+		if ri.curIndex >= 0 && ri.rc.iv[ri.curIndex].length <= ri.curPosInIndex {
+			ri.curSeq += int64(ri.rc.iv[ri.curIndex].length - ri.curPosInIndex + 1)
+		}
+
+		for j := ri.curIndex + 1; j < interval; j++ {
+			ri.curSeq += int64(ri.rc.iv[j].length + 1)
+		}
+
+		// if isPresent, than we should use the previous interval
+		if isPresent {
+			ri.curIndex = interval - 1
+		} else {
+			// otherwise we have interval where the last value is less than minval
+			ri.curIndex = interval
+		}
+
+		ri.curPosInIndex = ri.rc.iv[ri.curIndex].length
+	}
+
 	for ri.hasNext() && ri.peekNext() < minval {
 		ri.next()
 	}
