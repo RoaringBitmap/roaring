@@ -262,7 +262,7 @@ func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
 	if ii.HasNext() && (ii.hs>>16) == to {
 		ii.iter.advanceIfNeeded(lowbits(minval))
 
-		if !ii.HasNext() {
+		if !ii.iter.hasNext() {
 			ii.pos++
 			ii.init()
 		}
