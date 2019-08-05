@@ -5,22 +5,9 @@ import "testing"
 //hack to return a container with just the 0 value in the container.
 func UnitZeroContainer(test *testing.T) container {
 	bytes := make([]byte, 4)
-	return ContainerFromBytes(bytes)
+	return &arrayContainer{byteSliceAsUint16Slice(bytes[2:])}
 }
 
-func testSingleUnitContainerSegmentWithEvents(test *testing.T) {
-	pop, obs := inlinedFunction(test)
-	test.Logf("produced: %+v\n%+v",
-		pop,
-		obs)
-	union := pop.or(obs[0])
-	if pop.getCardinality()  != union.getCardinality() {
-		test.Errorf("unexpected:%+v,%+v,%+v",
-			pop,
-			obs,
-			union)
-	}
-}
 func inlinedFunction(test *testing.T) (container, []container) {
 	populationContainer := UnitZeroContainer(test)
 	observationContainers := make([]container, 0)
@@ -37,14 +24,9 @@ func TestHundredTimes(test *testing.T) {
 
 func testUnits(test *testing.T) {
 	pop, obs := inlinedFunction(test)
-	test.Logf("produced: %+v\n%+v",
-		pop,
-		obs)
-	union := pop.or(obs[0])
-	if pop.getCardinality()  != union.getCardinality() {
-		test.Errorf("unexpected:%+v,%+v,%+v",
-			pop,
-			obs,
-			union)
+	//this line is apparently required?
+	test.Logf("produced: %+v,%+v", pop, obs[0])
+	if !pop.equals(obs[0]) {
+		test.Errorf("unexpected:%+v,%+v", pop, obs[0])
 	}
 }
