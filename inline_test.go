@@ -10,22 +10,25 @@ func ZeroContainer(test *testing.T) container {
 	return &arrayContainer{byteSliceAsUint16Slice(bytes[2:])}
 }
 
-func inlinedFunction(test *testing.T) (container, []container) {
-	populationContainer := ZeroContainer(test)
-	observationContainers := make([]container, 0)
-	container:= ZeroContainer(test)
-	observationContainers = append(observationContainers, container)
-	return populationContainer, observationContainers
+func containerGenerator(test *testing.T) (container, []container) {
+	firstContainer := ZeroContainer(test)
+	containerSlice := make([]container, 0)
+	secondContainer := ZeroContainer(test)
+	containerSlice = append(containerSlice, secondContainer)
+	return firstContainer, containerSlice
 }
 
-func TestHundredTimes(test *testing.T) {
-	for i := 0; i < 100; i++ {
-		testComparison(test)
-	}
+func workingContainerGenerator(test *testing.T) (container, []container) {
+	firstContainer := ZeroContainer(test)
+	secondContainer := ZeroContainer(test)
+	return firstContainer, []container{secondContainer}
 }
 
-func testComparison(test *testing.T) {
-	a, b := inlinedFunction(test)
+func TestComparison(test *testing.T) {
+	// the commented out line passes
+	a, b := containerGenerator(test)
+	//a, b := workingContainerGenerator(test)
+
 	// if you comment out this line the test passes
 	test.Logf("produced: %+v,%+v", a, b[0])
 	if !a.equals(b[0]) {

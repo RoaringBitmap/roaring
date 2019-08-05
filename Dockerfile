@@ -11,4 +11,4 @@ RUN git clone https://github.com/jacksonrnewhouse/roaring.git
 WORKDIR roaring/
 RUN git checkout inline
 RUN go test -run "^$"
-CMD go test -run TestHundredTimes
+CMD go test -run TestComparison
