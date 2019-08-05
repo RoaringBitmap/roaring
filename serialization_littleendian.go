@@ -68,6 +68,13 @@ func (bc *bitmapContainer) asLittleEndianByteSlice() []byte {
 
 // Deserialization code follows
 
+////
+// These methods (byteSliceAsUint16Slice,...) do not make copies,
+// they are pointer-based (unsafe). The caller is responsible to
+// ensure that the input slice does not get garbage collected, deleted
+// or modified while you hold the returned slince.
+////
+
 func byteSliceAsUint16Slice(slice []byte) []uint16 {
 	if len(slice)%2 != 0 {
 		panic("Slice size should be divisible by 2")
