@@ -83,6 +83,15 @@ func byteSliceAsUint16Slice(slice []byte) []uint16 {
 	// return it
 	return *(*[]uint16)(unsafe.Pointer(&header))
 }
+func ContainerFromBytes(bytes []byte) container {
+	if len(bytes) == 8192 {
+		container := &bitmapContainer{bitmap: byteSliceAsUint64Slice(bytes)}
+		container.computeCardinality()
+		return container
+	} else {
+		return &arrayContainer{byteSliceAsUint16Slice(bytes[2:])}
+	}
+}
 
 func byteSliceAsUint64Slice(slice []byte) []uint64 {
 	if len(slice)%8 != 0 {
