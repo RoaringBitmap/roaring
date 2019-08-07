@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	snappy "github.com/glycerine/go-unsnap-stream"
 	"github.com/tinylib/msgp/msgp"
@@ -64,7 +63,6 @@ type container interface {
 	iremoveRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	selectInt(x uint16) int                  // selectInt returns the xth integer in the container
 	serializedSizeInBytes() int
-	readFrom(io.Reader) (int, error)
 	writeTo(io.Writer) (int, error)
 
 	numberOfRuns() int
@@ -104,6 +102,7 @@ type roaringArray struct {
 	containers      []container `msg:"-"` // don't try to serialize directly.
 	needCopyOnWrite []bool
 	copyOnWrite     bool
+	sentry          [][]byte
 
 	// conserz is used at serialization time
 	// to serialize containers. Otherwise empty.
@@ -262,6 +261,9 @@ func (ra *roaringArray) clone() *roaringArray {
 		sa.containers = make([]container, len(ra.containers))
 		copy(sa.containers, ra.containers)
 		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
+
+		sa.sentry = make([][]byte, len(ra.sentry))
+		copy(sa.sentry, ra.sentry)
 
 		ra.markAllAsNeedingCopyOnWrite()
 		sa.markAllAsNeedingCopyOnWrite()
@@ -561,48 +563,61 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
-	pos := 0
-	if len(buf) < 8 {
-		return 0, fmt.Errorf("buffer too small, expecting at least 8 bytes, was %d", len(buf))
+func (ra *roaringArray) readFrom(stream *byteInput) (int64, error) {
+	cookie, err := stream.readUInt32()
+
+	if err != nil {
+		return stream.getReadBytes(), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
 	}
 
-	cookie := binary.LittleEndian.Uint32(buf)
-	pos += 4
-	var size uint32 // number of containers
+	if ra.sentry == nil {
+		ra.sentry = [][]byte{}
+	} else {
+		ra.sentry = ra.sentry[:0]
+	}
+
+	var size uint32
 	var isRunBitmap []byte
 
-	// cookie header
 	if cookie&0x0000FFFF == serialCookie {
-		size = uint32(uint16(cookie>>16) + 1) // number of containers
-
+		size = uint32(uint16(cookie>>16) + 1)
 		// create is-run-container bitmap
 		isRunBitmapSize := (int(size) + 7) / 8
-		if pos+isRunBitmapSize > len(buf) {
-			return 0, fmt.Errorf("malformed bitmap, is-run bitmap overruns buffer at %d", pos+isRunBitmapSize)
+		buf, err := stream.next(isRunBitmapSize)
+
+		if err != nil {
+			return stream.getReadBytes(), fmt.Errorf("malformed bitmap, failed to read is-run bitmap, got: %s", err)
 		}
 
-		isRunBitmap = buf[pos : pos+isRunBitmapSize]
-		pos += isRunBitmapSize
+		isRunBitmap = buf
 	} else if cookie == serialCookieNoRunContainer {
-		size = binary.LittleEndian.Uint32(buf[pos:])
-		pos += 4
+		size, err = stream.readUInt32()
+
+		if err != nil {
+			return stream.getReadBytes(), fmt.Errorf("malformed bitmap, failed to read a bitmap size: %s", err)
+		}
 	} else {
-		return 0, fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
+		return stream.getReadBytes(), fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
 	}
+
 	if size > (1 << 16) {
-		return 0, fmt.Errorf("It is logically impossible to have more than (1<<16) containers.")
+		return stream.getReadBytes(), fmt.Errorf("it is logically impossible to have more than (1<<16) containers")
 	}
+
 	// descriptive header
-	// keycard - is {key, cardinality} tuple slice
-	if pos+2*2*int(size) > len(buf) {
-		return 0, fmt.Errorf("malfomred bitmap, key-cardinality slice overruns buffer at %d", pos+2*2*int(size))
+	buf, err := stream.next(2 * 2 * int(size))
+
+	if err != nil {
+		return stream.getReadBytes(), fmt.Errorf("failed to read descriptive header: %s", err)
 	}
-	keycard := byteSliceAsUint16Slice(buf[pos : pos+2*2*int(size)])
-	pos += 2 * 2 * int(size)
+
+	ra.sentry = append(ra.sentry, buf)
+	keycard := byteSliceAsUint16Slice(buf)
 
 	if isRunBitmap == nil || size >= noOffsetThreshold {
-		pos += 4 * int(size)
+		if err := stream.skipBytes(int(size) * 4); err != nil {
+			return stream.getReadBytes(), fmt.Errorf("failed to skip bytes: %s", err)
+		}
 	}
 
 	// Allocate slices upfront as number of containers is known
@@ -611,11 +626,13 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 	} else {
 		ra.containers = make([]container, size)
 	}
+
 	if cap(ra.keys) >= int(size) {
 		ra.keys = ra.keys[:size]
 	} else {
 		ra.keys = make([]uint16, size)
 	}
+
 	if cap(ra.needCopyOnWrite) >= int(size) {
 		ra.needCopyOnWrite = ra.needCopyOnWrite[:size]
 	} else {
@@ -623,127 +640,68 @@ func (ra *roaringArray) fromBuffer(buf []byte) (int64, error) {
 	}
 
 	for i := uint32(0); i < size; i++ {
-		key := uint16(keycard[2*i])
+		key := keycard[2*i]
 		card := int(keycard[2*i+1]) + 1
 		ra.keys[i] = key
 		ra.needCopyOnWrite[i] = true
 
 		if isRunBitmap != nil && isRunBitmap[i/8]&(1<<(i%8)) != 0 {
 			// run container
-			nr := binary.LittleEndian.Uint16(buf[pos:])
-			pos += 2
-			if pos+int(nr)*4 > len(buf) {
-				return 0, fmt.Errorf("malformed bitmap, a run container overruns buffer at %d:%d", pos, pos+int(nr)*4)
+			nr, err := stream.readUInt16()
+
+			if err != nil {
+				return 0, fmt.Errorf("failed to read runtime container size: %s", err)
 			}
+
+			buf, err := stream.next(int(nr) * 4)
+
+			if err != nil {
+				return stream.getReadBytes(), fmt.Errorf("failed to read runtime container content: %s", err)
+			}
+
+			ra.sentry = append(ra.sentry, buf)
+
 			nb := runContainer16{
-				iv:   byteSliceAsInterval16Slice(buf[pos : pos+int(nr)*4]),
+				iv:   byteSliceAsInterval16Slice(buf),
 				card: int64(card),
 			}
-			pos += int(nr) * 4
+
 			ra.containers[i] = &nb
 		} else if card > arrayDefaultMaxSize {
 			// bitmap container
+			buf, err := stream.next(arrayDefaultMaxSize * 2)
+
+			if err != nil {
+				return stream.getReadBytes(), fmt.Errorf("failed to read bitmap container: %s", err)
+			}
+
+			ra.sentry = append(ra.sentry, buf)
+
 			nb := bitmapContainer{
 				cardinality: card,
-				bitmap:      byteSliceAsUint64Slice(buf[pos : pos+arrayDefaultMaxSize*2]),
+				bitmap:      byteSliceAsUint64Slice(buf),
 			}
-			pos += arrayDefaultMaxSize * 2
+
 			ra.containers[i] = &nb
 		} else {
 			// array container
-			nb := arrayContainer{
-				byteSliceAsUint16Slice(buf[pos : pos+card*2]),
+			buf, err := stream.next(card * 2)
+
+			if err != nil {
+				return stream.getReadBytes(), fmt.Errorf("failed to read array container: %s", err)
 			}
-			pos += card * 2
+
+			ra.sentry = append(ra.sentry, buf)
+
+			nb := arrayContainer{
+				byteSliceAsUint16Slice(buf),
+			}
+
 			ra.containers[i] = &nb
 		}
 	}
 
-	return int64(pos), nil
-}
-
-func (ra *roaringArray) readFrom(stream io.Reader) (int64, error) {
-	pos := 0
-	var cookie uint32
-	err := binary.Read(stream, binary.LittleEndian, &cookie)
-	if err != nil {
-		return 0, fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
-	}
-	pos += 4
-	var size uint32
-	var isRun *bitmapContainer
-	if cookie&0x0000FFFF == serialCookie {
-		size = uint32(uint16(cookie>>16) + 1)
-		bytesToRead := (int(size) + 7) / 8
-		numwords := (bytesToRead + 7) / 8
-		by := make([]byte, bytesToRead, numwords*8)
-		nr, err := io.ReadFull(stream, by)
-		if err != nil {
-			return 8 + int64(nr), fmt.Errorf("error in readFrom: could not read the "+
-				"runContainer bit flags of length %v bytes: %v", bytesToRead, err)
-		}
-		pos += bytesToRead
-		by = by[:cap(by)]
-		isRun = newBitmapContainer()
-		for i := 0; i < numwords; i++ {
-			isRun.bitmap[i] = binary.LittleEndian.Uint64(by)
-			by = by[8:]
-		}
-	} else if cookie == serialCookieNoRunContainer {
-		err = binary.Read(stream, binary.LittleEndian, &size)
-		if err != nil {
-			return 0, fmt.Errorf("error in roaringArray.readFrom: when reading size, got: %s", err)
-		}
-		pos += 4
-	} else {
-		return 0, fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
-	}
-	if size > (1 << 16) {
-		return 0, fmt.Errorf("It is logically impossible to have more than (1<<16) containers.")
-	}
-	// descriptive header
-	keycard := make([]uint16, 2*size, 2*size)
-	err = binary.Read(stream, binary.LittleEndian, keycard)
-	if err != nil {
-		return 0, err
-	}
-	pos += 2 * 2 * int(size)
-	// offset header
-	if isRun == nil || size >= noOffsetThreshold {
-		io.CopyN(ioutil.Discard, stream, 4*int64(size)) // we never skip ahead so this data can be ignored
-		pos += 4 * int(size)
-	}
-	for i := uint32(0); i < size; i++ {
-		key := int(keycard[2*i])
-		card := int(keycard[2*i+1]) + 1
-		if isRun != nil && isRun.contains(uint16(i)) {
-			nb := newRunContainer16()
-			nr, err := nb.readFrom(stream)
-			if err != nil {
-				return 0, err
-			}
-			pos += nr
-			ra.appendContainer(uint16(key), nb, false)
-		} else if card > arrayDefaultMaxSize {
-			nb := newBitmapContainer()
-			nr, err := nb.readFrom(stream)
-			if err != nil {
-				return 0, err
-			}
-			nb.cardinality = card
-			pos += nr
-			ra.appendContainer(keycard[2*i], nb, false)
-		} else {
-			nb := newArrayContainerSize(card)
-			nr, err := nb.readFrom(stream)
-			if err != nil {
-				return 0, err
-			}
-			pos += nr
-			ra.appendContainer(keycard[2*i], nb, false)
-		}
-	}
-	return int64(pos), nil
+	return stream.getReadBytes(), nil
 }
 
 func (ra *roaringArray) hasRunCompression() bool {

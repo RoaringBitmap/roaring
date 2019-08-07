@@ -67,7 +67,7 @@ func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
-	return rb.highlowcontainer.readFrom(stream)
+	return rb.highlowcontainer.readFrom(&byteInput{r: stream})
 }
 
 // FromBuffer creates a bitmap from its serialized version stored in buffer
@@ -93,7 +93,7 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 // call CloneCopyOnWriteContainers on all such bitmaps.
 //
 func (rb *Bitmap) FromBuffer(buf []byte) (int64, error) {
-	return rb.highlowcontainer.fromBuffer(buf)
+	return rb.ReadFrom(bytes.NewBuffer(buf))
 }
 
 // RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
