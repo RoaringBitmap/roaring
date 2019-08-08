@@ -102,7 +102,6 @@ type roaringArray struct {
 	containers      []container `msg:"-"` // don't try to serialize directly.
 	needCopyOnWrite []bool
 	copyOnWrite     bool
-	sentry          [][]byte
 
 	// conserz is used at serialization time
 	// to serialize containers. Otherwise empty.
@@ -261,9 +260,6 @@ func (ra *roaringArray) clone() *roaringArray {
 		sa.containers = make([]container, len(ra.containers))
 		copy(sa.containers, ra.containers)
 		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
-
-		sa.sentry = make([][]byte, len(ra.sentry))
-		copy(sa.sentry, ra.sentry)
 
 		ra.markAllAsNeedingCopyOnWrite()
 		sa.markAllAsNeedingCopyOnWrite()
@@ -570,12 +566,6 @@ func (ra *roaringArray) readFrom(stream *byteInput) (int64, error) {
 		return stream.getReadBytes(), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
 	}
 
-	if ra.sentry == nil {
-		ra.sentry = [][]byte{}
-	} else {
-		ra.sentry = ra.sentry[:0]
-	}
-
 	var size uint32
 	var isRunBitmap []byte
 
@@ -611,7 +601,6 @@ func (ra *roaringArray) readFrom(stream *byteInput) (int64, error) {
 		return stream.getReadBytes(), fmt.Errorf("failed to read descriptive header: %s", err)
 	}
 
-	ra.sentry = append(ra.sentry, buf)
 	keycard := byteSliceAsUint16Slice(buf)
 
 	if isRunBitmap == nil || size >= noOffsetThreshold {
@@ -659,8 +648,6 @@ func (ra *roaringArray) readFrom(stream *byteInput) (int64, error) {
 				return stream.getReadBytes(), fmt.Errorf("failed to read runtime container content: %s", err)
 			}
 
-			ra.sentry = append(ra.sentry, buf)
-
 			nb := runContainer16{
 				iv:   byteSliceAsInterval16Slice(buf),
 				card: int64(card),
@@ -675,8 +662,6 @@ func (ra *roaringArray) readFrom(stream *byteInput) (int64, error) {
 				return stream.getReadBytes(), fmt.Errorf("failed to read bitmap container: %s", err)
 			}
 
-			ra.sentry = append(ra.sentry, buf)
-
 			nb := bitmapContainer{
 				cardinality: card,
 				bitmap:      byteSliceAsUint64Slice(buf),
@@ -690,8 +675,6 @@ func (ra *roaringArray) readFrom(stream *byteInput) (int64, error) {
 			if err != nil {
 				return stream.getReadBytes(), fmt.Errorf("failed to read array container: %s", err)
 			}
-
-			ra.sentry = append(ra.sentry, buf)
 
 			nb := arrayContainer{
 				byteSliceAsUint16Slice(buf),
