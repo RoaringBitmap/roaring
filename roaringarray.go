@@ -559,7 +559,7 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (ra *roaringArray) readFrom(stream *byteInput) (int64, error) {
+func (ra *roaringArray) readFrom(stream byteInput) (int64, error) {
 	cookie, err := stream.readUInt32()
 
 	if err != nil {

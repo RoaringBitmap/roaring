@@ -5,50 +5,117 @@ import (
 	"io"
 )
 
-type byteBuffer interface {
+type byteInput interface {
 	// Next returns a slice containing the next n bytes from the buffer,
 	// advancing the buffer as if the bytes had been returned by Read.
 	next(n int) ([]byte, error)
+	// readUInt64 reads uint32 with LittleEndian order
+	readUInt32() (uint32, error)
+	// readUInt16 reads uint16 with LittleEndian order
+	readUInt16() (uint16, error)
+	// getReadBytes returns read bytes
+	getReadBytes() int64
+	// skipBytes skips exactly n bytes, if
+	skipBytes(n int) error
 }
 
-type byteInput struct {
-	buf       byteBuffer
-	readBytes int
-}
-
-func newByteInputFromReader(reader io.Reader) *byteInput {
-	return &byteInput{
-		buf:       &byteBufferAdapter{reader},
+func newByteInputFromReader(reader io.Reader) byteInput {
+	return &byteInputAdapter{
+		r:         reader,
 		readBytes: 0,
 	}
 }
 
-func newByteInputFromBuffer(buf []byte) *byteInput {
-	return &byteInput{
-		buf:       &byteBufferImpl{buf: buf, off: 0},
-		readBytes: 0,
+func newByteInput(buf []byte) byteInput {
+	return &byteBuffer{
+		buf: buf,
+		off: 0,
 	}
+}
+
+type byteBuffer struct {
+	buf []byte
+	off int
 }
 
 // Next returns a slice containing the next n bytes from the reader
 // If there are fewer bytes than the given n, io.ErrUnexpectedEOF will be returned
-func (b *byteInput) next(n int) ([]byte, error) {
-	data, err := b.buf.next(n)
-	b.readBytes += len(data)
+func (b *byteBuffer) next(n int) ([]byte, error) {
+	m := len(b.buf) - b.off
+
+	if n > m {
+		return nil, io.ErrUnexpectedEOF
+	}
+
+	data := b.buf[b.off : b.off+n]
+	b.off += n
+
+	return data, nil
+}
+
+// ReadUInt32 reads uint32 with LittleEndian order
+func (b *byteBuffer) readUInt32() (uint32, error) {
+	if len(b.buf)-b.off < 4 {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	v := binary.LittleEndian.Uint32(b.buf[b.off:])
+	b.off += 4
+
+	return v, nil
+}
+
+// readUInt16 reads uint16 with LittleEndian order
+func (b *byteBuffer) readUInt16() (uint16, error) {
+	if len(b.buf)-b.off < 2 {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	v := binary.LittleEndian.Uint16(b.buf[b.off:])
+	b.off += 2
+
+	return v, nil
+}
+
+// getReadBytes returns read bytes
+func (b *byteBuffer) getReadBytes() int64 {
+	return int64(b.off)
+}
+
+// skipBytes skips exactly n bytes
+func (b *byteBuffer) skipBytes(n int) error {
+	m := len(b.buf) - b.off
+
+	if n > m {
+		return io.ErrUnexpectedEOF
+	}
+
+	b.off += n
+
+	return nil
+}
+
+type byteInputAdapter struct {
+	r         io.Reader
+	readBytes int
+}
+
+// Next returns a slice containing the next n bytes from the buffer,
+// advancing the buffer as if the bytes had been returned by Read.
+func (b *byteInputAdapter) next(n int) ([]byte, error) {
+	buf := make([]byte, n)
+	m, err := io.ReadAtLeast(b.r, buf, n)
+	b.readBytes += m
 
 	if err != nil {
 		return nil, err
 	}
 
-	if len(data) != n {
-		return nil, io.ErrUnexpectedEOF
-	}
-
-	return data, nil
+	return buf, nil
 }
 
-// ReadUInt64 reads uint32 with LittleEndian order
-func (b *byteInput) readUInt32() (uint32, error) {
+// ReadUInt32 reads uint32 with LittleEndian order
+func (b *byteInputAdapter) readUInt32() (uint32, error) {
 	buf, err := b.next(4)
 
 	if err != nil {
@@ -59,7 +126,7 @@ func (b *byteInput) readUInt32() (uint32, error) {
 }
 
 // readUInt16 reads uint16 with LittleEndian order
-func (b *byteInput) readUInt16() (uint16, error) {
+func (b *byteInputAdapter) readUInt16() (uint16, error) {
 	buf, err := b.next(2)
 
 	if err != nil {
@@ -70,59 +137,13 @@ func (b *byteInput) readUInt16() (uint16, error) {
 }
 
 // getReadBytes returns read bytes
-func (b *byteInput) getReadBytes() int64 {
+func (b *byteInputAdapter) getReadBytes() int64 {
 	return int64(b.readBytes)
 }
 
-// skipBytes skips exactly n bytes, if
-func (b *byteInput) skipBytes(n int) (err error) {
-	data, err := b.buf.next(n)
-	b.readBytes += len(data)
+// skipBytes skips exactly n bytes
+func (b *byteInputAdapter) skipBytes(n int) error {
+	_, err := b.next(n)
 
-	if err != nil {
-		return
-	}
-
-	if len(data) != n {
-		err = io.ErrUnexpectedEOF
-	}
-
-	return
-}
-
-type byteBufferAdapter struct {
-	r io.Reader
-}
-
-// Next returns a slice containing the next n bytes from the buffer,
-// advancing the buffer as if the bytes had been returned by Read.
-func (b *byteBufferAdapter) next(n int) ([]byte, error) {
-	buf := make([]byte, n)
-	readBytes, err := b.r.Read(buf)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return buf[:readBytes], nil
-}
-
-type byteBufferImpl struct {
-	buf []byte
-	off int
-}
-
-// Next returns a slice containing the next n bytes from the buffer,
-// advancing the buffer as if the bytes had been returned by Read.
-func (b *byteBufferImpl) next(n int) ([]byte, error) {
-	m := len(b.buf) - b.off
-
-	if n > m {
-		n = m
-	}
-
-	data := b.buf[b.off : b.off+n]
-	b.off += n
-
-	return data, nil
+	return err
 }

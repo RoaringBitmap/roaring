@@ -2,16 +2,17 @@ package roaring
 
 import (
 	"bytes"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestByteInputFlow(t *testing.T) {
 	Convey("Test should be an error on empty data", t, func() {
 		buf := bytes.NewBuffer([]byte{})
 
-		instances := []*byteInput{
-			newByteInputFromBuffer(buf.Bytes()),
+		instances := []byteInput{
+			newByteInput(buf.Bytes()),
 			newByteInputFromReader(buf),
 		}
 
@@ -36,8 +37,8 @@ func TestByteInputFlow(t *testing.T) {
 	Convey("Test not empty data", t, func() {
 		buf := bytes.NewBuffer(uint16SliceAsByteSlice([]uint16{1, 10, 32, 66, 23}))
 
-		instances := []*byteInput{
-			newByteInputFromBuffer(buf.Bytes()),
+		instances := []byteInput{
+			newByteInput(buf.Bytes()),
 			newByteInputFromReader(buf),
 		}
 

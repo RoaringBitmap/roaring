@@ -93,7 +93,7 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 // call CloneCopyOnWriteContainers on all such bitmaps.
 //
 func (rb *Bitmap) FromBuffer(buf []byte) (int64, error) {
-	return rb.highlowcontainer.readFrom(newByteInputFromBuffer(buf))
+	return rb.highlowcontainer.readFrom(newByteInput(buf))
 }
 
 // RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
