@@ -608,6 +608,14 @@ func TestByteSliceAsUint16Slice(t *testing.T) {
 		}
 	})
 
+	t.Run("inlined", func(t *testing.T) {
+		first, second := singleSliceInArray()
+		t.Logf("received %v %v", first, second[0])
+		if !first.Equals(second[0]) {
+			t.Errorf("inline fail %v %v", first, second[0])
+		}
+	})
+
 	t.Run("empty slice", func(t *testing.T) {
 		slice := make([]byte, 0, 0)
 
@@ -632,6 +640,19 @@ func TestByteSliceAsUint16Slice(t *testing.T) {
 
 		t.Errorf("byteSliceAsUint16Slice should panic on invalid slice size")
 	})
+}
+
+func singleSliceInArray() (*Bitmap, []*Bitmap) {
+	firstSlice := singleSlice()
+	containerSlice := make([]*Bitmap, 0)
+	secondContainer := singleSlice()
+	containerSlice = append(containerSlice, secondContainer)
+	return firstSlice, containerSlice
+}
+
+func singleSlice() *Bitmap {
+	slice := make([]byte, 2)
+	return &Bitmap{highlowcontainer:roaringArray{keys: []uint16{0}, containers: []container{&arrayContainer{ byteSliceAsUint16Slice(slice)}}}}
 }
 
 func TestByteSliceAsUint64Slice(t *testing.T) {
