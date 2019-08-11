@@ -573,13 +573,11 @@ func (ra *roaringArray) readFrom(stream byteInput) (int64, error) {
 		size = uint32(uint16(cookie>>16) + 1)
 		// create is-run-container bitmap
 		isRunBitmapSize := (int(size) + 7) / 8
-		buf, err := stream.next(isRunBitmapSize)
+		isRunBitmap, err = stream.next(isRunBitmapSize)
 
 		if err != nil {
 			return stream.getReadBytes(), fmt.Errorf("malformed bitmap, failed to read is-run bitmap, got: %s", err)
 		}
-
-		isRunBitmap = buf
 	} else if cookie == serialCookieNoRunContainer {
 		size, err = stream.readUInt32()
 
