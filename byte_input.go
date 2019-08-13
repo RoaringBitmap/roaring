@@ -6,16 +6,16 @@ import (
 )
 
 type byteInput interface {
-	// Next returns a slice containing the next n bytes from the buffer,
+	// next returns a slice containing the next n bytes from the buffer,
 	// advancing the buffer as if the bytes had been returned by Read.
 	next(n int) ([]byte, error)
-	// readUInt64 reads uint32 with LittleEndian order
+	// readUInt32 reads uint32 with LittleEndian order
 	readUInt32() (uint32, error)
 	// readUInt16 reads uint16 with LittleEndian order
 	readUInt16() (uint16, error)
 	// getReadBytes returns read bytes
 	getReadBytes() int64
-	// skipBytes skips exactly n bytes, if
+	// skipBytes skips exactly n bytes
 	skipBytes(n int) error
 }
 
@@ -38,7 +38,7 @@ type byteBuffer struct {
 	off int
 }
 
-// Next returns a slice containing the next n bytes from the reader
+// next returns a slice containing the next n bytes from the reader
 // If there are fewer bytes than the given n, io.ErrUnexpectedEOF will be returned
 func (b *byteBuffer) next(n int) ([]byte, error) {
 	m := len(b.buf) - b.off
@@ -53,7 +53,7 @@ func (b *byteBuffer) next(n int) ([]byte, error) {
 	return data, nil
 }
 
-// ReadUInt32 reads uint32 with LittleEndian order
+// readUInt32 reads uint32 with LittleEndian order
 func (b *byteBuffer) readUInt32() (uint32, error) {
 	if len(b.buf)-b.off < 4 {
 		return 0, io.ErrUnexpectedEOF
@@ -95,12 +95,18 @@ func (b *byteBuffer) skipBytes(n int) error {
 	return nil
 }
 
+// reset resets the given buffer with a new byte slice
+func (b *byteBuffer) reset(buf []byte) {
+	b.buf = buf
+	b.off = 0
+}
+
 type byteInputAdapter struct {
 	r         io.Reader
 	readBytes int
 }
 
-// Next returns a slice containing the next n bytes from the buffer,
+// next returns a slice containing the next n bytes from the buffer,
 // advancing the buffer as if the bytes had been returned by Read.
 func (b *byteInputAdapter) next(n int) ([]byte, error) {
 	buf := make([]byte, n)
@@ -114,7 +120,7 @@ func (b *byteInputAdapter) next(n int) ([]byte, error) {
 	return buf, nil
 }
 
-// ReadUInt32 reads uint32 with LittleEndian order
+// readUInt32 reads uint32 with LittleEndian order
 func (b *byteInputAdapter) readUInt32() (uint32, error) {
 	buf, err := b.next(4)
 
@@ -146,4 +152,10 @@ func (b *byteInputAdapter) skipBytes(n int) error {
 	_, err := b.next(n)
 
 	return err
+}
+
+// reset resets the given buffer with a new stream
+func (b *byteInputAdapter) reset(stream io.Reader) {
+	b.r = stream
+	b.readBytes = 0
 }

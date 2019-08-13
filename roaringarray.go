@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
-
 	snappy "github.com/glycerine/go-unsnap-stream"
 	"github.com/tinylib/msgp/msgp"
+	"io"
 )
 
 //go:generate msgp -unexported
