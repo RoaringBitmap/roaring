@@ -1250,7 +1250,10 @@ func (ri *runIterator16) advanceIfNeeded(minval uint16) {
 			ri.curIndex = interval
 		}
 
-		ri.curPosInIndex = ri.rc.iv[ri.curIndex].length
+		// we should set a position to the previous container, only if the iterator doesn't point on the first container
+		if ri.curIndex >= 0 {
+			ri.curPosInIndex = ri.rc.iv[ri.curIndex].length
+		}
 	}
 
 	for ri.hasNext() && ri.peekNext() < minval {
