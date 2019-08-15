@@ -2,11 +2,12 @@ package roaring
 
 import (
 	"fmt"
-	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"sort"
 	"strings"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 // trial is used in the randomized testing of runContainers
@@ -107,7 +108,7 @@ func TestRunOffset(t *testing.T) {
 
 func TestRleRunIterator16(t *testing.T) {
 
-	Convey("RunIterator16 unit tests for Cur, Next, HasNext, and Remove should pass", t, func() {
+	Convey("RunIterator16 unit tests for next, hasNext, and peekNext should pass", t, func() {
 		{
 			rc := newRunContainer16()
 			msg := rc.String()
@@ -115,14 +116,16 @@ func TestRleRunIterator16(t *testing.T) {
 			So(rc.cardinality(), ShouldEqual, 0)
 			it := rc.newRunIterator16()
 			So(it.hasNext(), ShouldBeFalse)
+			So(func() { it.peekNext() }, ShouldPanic)
+			So(func() { it.next() }, ShouldPanic)
 		}
 		{
 			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 4)})
 			So(rc.cardinality(), ShouldEqual, 1)
 			it := rc.newRunIterator16()
 			So(it.hasNext(), ShouldBeTrue)
+			So(it.peekNext(), ShouldResemble, uint16(4))
 			So(it.next(), ShouldResemble, uint16(4))
-			So(it.cur(), ShouldResemble, uint16(4))
 		}
 		{
 			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
@@ -236,29 +239,6 @@ func TestRleRunIterator16(t *testing.T) {
 			}
 		}
 		{
-			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 9)})
-			card := rc.cardinality()
-			So(card, ShouldEqual, 6)
-
-			it := rc.newRunIterator16()
-			So(it.hasNext(), ShouldBeTrue)
-			for i := 4; i < 6; i++ {
-				So(it.next(), ShouldEqual, uint16(i))
-			}
-			So(it.cur(), ShouldEqual, uint16(5))
-
-			So(it.remove(), ShouldEqual, uint16(5))
-
-			So(rc.cardinality(), ShouldEqual, 5)
-
-			it2 := rc.newRunIterator16()
-			So(rc.cardinality(), ShouldEqual, 5)
-			So(it2.next(), ShouldEqual, uint16(4))
-			for i := 6; i < 10; i++ {
-				So(it2.next(), ShouldEqual, uint16(i))
-			}
-		}
-		{
 			rc := newRunContainer16TakeOwnership([]interval16{
 				newInterval16Range(0, 0),
 				newInterval16Range(2, 2),
@@ -295,23 +275,19 @@ func TestRleRunIterator16(t *testing.T) {
 
 func TestRleRunReverseIterator16(t *testing.T) {
 
-	Convey("RunReverseIterator16 unit tests for cur, next, hasNext, and remove should pass", t, func() {
+	Convey("RunReverseIterator16 unit tests for next, hasNext, and peekNext should pass", t, func() {
 		{
 			rc := newRunContainer16()
 			it := rc.newRunReverseIterator16()
 			So(it.hasNext(), ShouldBeFalse)
 			So(func() { it.next() }, ShouldPanic)
-			So(func() { it.remove() }, ShouldPanic)
 		}
 		{
 			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(0, 0)})
 			it := rc.newRunReverseIterator16()
 			So(it.hasNext(), ShouldBeTrue)
 			So(it.next(), ShouldResemble, uint16(0))
-			So(it.cur(), ShouldResemble, uint16(0))
 			So(func() { it.next() }, ShouldPanic)
-			So(it.remove(), ShouldEqual, uint16(0))
-			So(func() { it.remove() }, ShouldPanic)
 			So(it.hasNext(), ShouldBeFalse)
 			So(func() { it.next() }, ShouldPanic)
 		}
@@ -320,7 +296,6 @@ func TestRleRunReverseIterator16(t *testing.T) {
 			it := rc.newRunReverseIterator16()
 			So(it.hasNext(), ShouldBeTrue)
 			So(it.next(), ShouldResemble, uint16(4))
-			So(it.cur(), ShouldResemble, uint16(4))
 			So(it.hasNext(), ShouldBeFalse)
 		}
 		{
@@ -328,7 +303,6 @@ func TestRleRunReverseIterator16(t *testing.T) {
 			it := rc.newRunReverseIterator16()
 			So(it.hasNext(), ShouldBeTrue)
 			So(it.next(), ShouldResemble, uint16(MaxUint16))
-			So(it.cur(), ShouldResemble, uint16(MaxUint16))
 			So(it.hasNext(), ShouldBeFalse)
 		}
 		{
@@ -345,24 +319,6 @@ func TestRleRunReverseIterator16(t *testing.T) {
 			}
 			So(it.hasNext(), ShouldBeFalse)
 			So(func() { it.next() }, ShouldPanic)
-		}
-		{
-			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 9)})
-			it := rc.newRunReverseIterator16()
-			So(it.hasNext(), ShouldBeTrue)
-			for i := 9; i >= 5; i-- {
-				So(it.next(), ShouldEqual, uint16(i))
-			}
-			So(it.cur(), ShouldEqual, uint16(5))
-			So(it.remove(), ShouldEqual, uint16(5))
-			So(rc.cardinality(), ShouldEqual, 5)
-
-			it2 := rc.newRunReverseIterator16()
-			So(rc.cardinality(), ShouldEqual, 5)
-			So(it2.next(), ShouldEqual, uint16(9))
-			for i := 8; i > 5; i-- {
-				So(it2.next(), ShouldEqual, uint16(i))
-			}
 		}
 		{
 			rc := newRunContainer16TakeOwnership([]interval16{
@@ -823,9 +779,9 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			it2.curIndex = int64(len(it2.rc.iv))
 			So(func() { it2.next() }, ShouldPanic)
 
-			// runIterator16.remove()
+			// runIterator16.peekNext()
 			emptyIt := empty.newRunIterator16()
-			So(func() { emptyIt.remove() }, ShouldPanic)
+			So(func() { emptyIt.peekNext() }, ShouldPanic)
 
 			// newRunContainer16FromArray
 			arr := newArrayContainerRange(1, 6)
@@ -856,8 +812,7 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			it3.next()
 			it3.next()
 			it3.next()
-			So(it3.cur(), ShouldEqual, uint16(10))
-			it3.remove()
+			So(it3.peekNext(), ShouldEqual, uint16(12))
 			So(it3.next(), ShouldEqual, uint16(12))
 		}
 
@@ -2403,6 +2358,16 @@ func TestRuntimeIteratorPeekNext(t *testing.T) {
 
 func TestRuntimeIteratorAdvance(t *testing.T) {
 	testContainerIteratorAdvance(t, newRunContainer16())
+}
+
+// go test -bench BenchmarkShortIteratorAdvance -run -
+func BenchmarkShortIteratorAdvanceRuntime(b *testing.B) {
+	benchmarkContainerIteratorAdvance(b, newRunContainer16())
+}
+
+// go test -bench BenchmarkShortIteratorNext -run -
+func BenchmarkShortIteratorNextRuntime(b *testing.B) {
+	benchmarkContainerIteratorNext(b, newRunContainer16())
 }
 
 // generate random contents, then return that same

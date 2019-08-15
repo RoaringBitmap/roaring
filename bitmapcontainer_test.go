@@ -200,6 +200,16 @@ func TestBitmapIteratorAdvance(t *testing.T) {
 	testContainerIteratorAdvance(t, newBitmapContainer())
 }
 
+// go test -bench BenchmarkShortIteratorAdvance -run -
+func BenchmarkShortIteratorAdvanceBitmap(b *testing.B) {
+	benchmarkContainerIteratorAdvance(b, newBitmapContainer())
+}
+
+// go test -bench BenchmarkShortIteratorNext -run -
+func BenchmarkShortIteratorNextBitmap(b *testing.B) {
+	benchmarkContainerIteratorNext(b, newBitmapContainer())
+}
+
 func TestBitmapOffset(t *testing.T) {
 	nums := []uint16{10, 100, 1000}
 	expected := make([]int, len(nums))

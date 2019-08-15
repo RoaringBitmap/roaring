@@ -33,7 +33,7 @@ func (ac *arrayContainer) getReverseIterator() shortIterable {
 }
 
 func (ac *arrayContainer) getManyIterator() manyIterable {
-	return &manyIterator{ac.content, 0}
+	return &shortIterator{ac.content, 0}
 }
 
 func (ac *arrayContainer) minimum() uint16 {
