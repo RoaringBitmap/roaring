@@ -401,3 +401,13 @@ func TestArrayIteratorPeekNext(t *testing.T) {
 func TestArrayIteratorAdvance(t *testing.T) {
 	testContainerIteratorAdvance(t, newArrayContainer())
 }
+
+// go test -bench BenchmarkShortIteratorAdvance -run -
+func BenchmarkShortIteratorAdvanceArray(b *testing.B) {
+	benchmarkContainerIteratorAdvance(b, newArrayContainer())
+}
+
+// go test -bench BenchmarkShortIteratorNext -run -
+func BenchmarkShortIteratorNextArray(b *testing.B) {
+	benchmarkContainerIteratorNext(b, newArrayContainer())
+}

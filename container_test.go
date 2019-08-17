@@ -1,6 +1,7 @@
 package roaring
 
 import (
+	"fmt"
 	"log"
 	"testing"
 
@@ -84,9 +85,13 @@ func testContainerIteratorAdvance(t *testing.T, con container) {
 		{1, 1},
 		{2, 2},
 		{3, 15},
+		{15, 15},
 		{30, 31},
+		{31, 31},
 		{33, 33},
+		{34, 9999},
 		{9998, 9999},
+		{9999, 9999},
 	}
 
 	Convey("advance by using a new short iterator", t, func() {
@@ -113,7 +118,11 @@ func testContainerIteratorAdvance(t *testing.T, con container) {
 	Convey("advance out of a container value", t, func() {
 		i := con.getShortIterator()
 
-		i.advanceIfNeeded(MaxUint16)
+		i.advanceIfNeeded(33)
+		So(i.hasNext(), ShouldBeTrue)
+		So(i.peekNext(), ShouldEqual, 33)
+
+		i.advanceIfNeeded(MaxUint16 - 1)
 		So(i.hasNext(), ShouldBeFalse)
 
 		i.advanceIfNeeded(MaxUint16)
@@ -130,6 +139,65 @@ func testContainerIteratorAdvance(t *testing.T, con container) {
 		So(i.hasNext(), ShouldBeTrue)
 		So(i.peekNext(), ShouldEqual, 31)
 	})
+}
+
+func benchmarkContainerIteratorAdvance(b *testing.B, con container) {
+	for _, initsize := range []int{1, 650, 6500, MaxUint16} {
+		for i := 0; i < initsize; i++ {
+			con.iadd(uint16(i))
+		}
+
+		b.Run(fmt.Sprintf("init size %d shortIterator advance", initsize), func(b *testing.B) {
+			b.StartTimer()
+			diff := uint16(0)
+
+			for n := 0; n < b.N; n++ {
+				val := uint16(n % initsize)
+
+				i := con.getShortIterator()
+				i.advanceIfNeeded(val)
+
+				diff += i.peekNext() - val
+			}
+
+			b.StopTimer()
+
+			if diff != 0 {
+				b.Fatalf("Expected diff 0, got %d", diff)
+			}
+		})
+	}
+}
+
+func benchmarkContainerIteratorNext(b *testing.B, con container) {
+	for _, initsize := range []int{1, 650, 6500, MaxUint16} {
+		for i := 0; i < initsize; i++ {
+			con.iadd(uint16(i))
+		}
+
+		b.Run(fmt.Sprintf("init size %d shortIterator next", initsize), func(b *testing.B) {
+			b.StartTimer()
+			diff := 0
+
+			for n := 0; n < b.N; n++ {
+				i := con.getShortIterator()
+				j := 0
+
+				for i.hasNext() {
+					i.next()
+					j++
+				}
+
+				diff += j - initsize
+			}
+
+			b.StopTimer()
+
+			if diff != 0 {
+				b.Fatalf("Expected diff 0, got %d", diff)
+			}
+		})
+	}
 }
 
 func TestContainerReverseIterator(t *testing.T) {

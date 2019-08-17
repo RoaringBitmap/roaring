@@ -407,6 +407,7 @@ func BenchmarkSparseIterateRoaring(b *testing.B) {
 // go test -bench BenchmarkSparseAdvance -run -
 func BenchmarkSparseAdvanceRoaring(b *testing.B) {
 	b.StopTimer()
+
 	s := NewBitmap()
 	initsize := 65000
 
@@ -416,7 +417,9 @@ func BenchmarkSparseAdvanceRoaring(b *testing.B) {
 
 	for _, gap := range []int{1, 2, 65, 650} {
 		b.Run(fmt.Sprintf("advance from %d", gap), func(b *testing.B) {
+			b.ReportAllocs()
 			b.StartTimer()
+
 			diff := uint32(0)
 
 			for n := 0; n < b.N; n++ {
@@ -438,8 +441,32 @@ func BenchmarkSparseAdvanceRoaring(b *testing.B) {
 }
 
 // go test -bench BenchmarkSparseAdvance -run -
+func BenchmarkSparseAdvanceOnHugeData(b *testing.B) {
+	b.ReportAllocs()
+
+	s := NewBitmap()
+	initsize := 6500000
+	sz := 100000000
+	r := rand.New(rand.NewSource(0))
+
+	for i := 0; i < initsize; i++ {
+		s.Add(uint32(r.Int31n(int32(sz))))
+	}
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		val := uint32(n)
+
+		i := s.Iterator()
+		i.AdvanceIfNeeded(val)
+	}
+}
+
+// go test -bench BenchmarkSparseAdvance -run -
 func BenchmarkSparseAdvanceSequentially(b *testing.B) {
 	b.StopTimer()
+
 	s := NewBitmap()
 	initsize := 65000
 
@@ -449,7 +476,9 @@ func BenchmarkSparseAdvanceSequentially(b *testing.B) {
 
 	for _, gap := range []int{1, 2, 65, 650} {
 		b.Run(fmt.Sprintf("advance from %d", gap), func(b *testing.B) {
+			b.ReportAllocs()
 			b.StartTimer()
+
 			diff := uint32(0)
 
 			for n := 0; n < b.N; n++ {
