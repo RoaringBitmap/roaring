@@ -207,7 +207,7 @@ You can use roaring with gore:
 
 - go get -u github.com/motemen/gore
 - Make sure that ``$GOPATH/bin`` is in your ``$PATH``.
-- go get github/RoaringBitmap/roaring
+- go get github.com/RoaringBitmap/roaring
 
 ```go
 $ gore
