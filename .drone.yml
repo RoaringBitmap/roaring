@@ -1,0 +1,15 @@
+kind: pipeline
+name: default
+
+workspace:
+  base: /go
+  path: src/github.com/RoaringBitmap/roaring
+
+steps:
+- name: test
+  image: golang
+  commands:
+  - go get
+  - go test
+  - go test -tags appengine 
+
