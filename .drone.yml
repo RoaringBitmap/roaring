@@ -9,8 +9,8 @@ steps:
 - name: test
   image: golang
   commands:
-  - go get
-  - go test
+  - go get -t 
+  - go test 
   - go test -race -run TestConcurrent*
   - go build -tags appengine 
   - go test -tags appengine 
