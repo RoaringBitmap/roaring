@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"sync"
 )
 
 // Bitmap represents a compressed bitmap where you can add integers.
@@ -66,8 +67,14 @@ func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
-func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
-	return rb.highlowcontainer.readFrom(stream)
+func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
+	stream := byteInputAdapterPool.Get().(*byteInputAdapter)
+	stream.reset(reader)
+
+	p, err = rb.highlowcontainer.readFrom(stream)
+	byteInputAdapterPool.Put(stream)
+
+	return
 }
 
 // FromBuffer creates a bitmap from its serialized version stored in buffer
@@ -92,9 +99,29 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (int64, error) {
 // also be broken. Thus, before making buf unavailable, you should
 // call CloneCopyOnWriteContainers on all such bitmaps.
 //
-func (rb *Bitmap) FromBuffer(buf []byte) (int64, error) {
-	return rb.highlowcontainer.fromBuffer(buf)
+func (rb *Bitmap) FromBuffer(buf []byte) (p int64, err error) {
+	stream := byteBufferPool.Get().(*byteBuffer)
+	stream.reset(buf)
+
+	p, err = rb.highlowcontainer.readFrom(stream)
+	byteBufferPool.Put(stream)
+
+	return
 }
+
+var (
+	byteBufferPool = sync.Pool{
+		New: func() interface{} {
+			return &byteBuffer{}
+		},
+	}
+
+	byteInputAdapterPool = sync.Pool{
+		New: func() interface{} {
+			return &byteInputAdapter{}
+		},
+	}
+)
 
 // RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
 func (rb *Bitmap) RunOptimize() {

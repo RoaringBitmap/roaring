@@ -25,7 +25,7 @@ func TestReverseIteratorCount(t *testing.T) {
 		count := 0
 		for it.HasNext() {
 			it.Next()
-			count += 1
+			count++
 		}
 		if count != testSize {
 			t.FailNow()

@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"testing"
 
@@ -393,145 +394,6 @@ func TestSerializationRunContainerMsgpack028(t *testing.T) {
 			tester(trials[i])
 		}
 
-	})
-}
-
-func TestSerializationArrayOnly032(t *testing.T) {
-
-	Convey("arrayContainer writeTo and readFrom should return logically equivalent containers, so long as you pre-size the write target properly", t, func() {
-
-		seed := int64(42)
-		rand.Seed(seed)
-
-		trials := []trial{
-			{n: 101, percentFill: .50, ntrial: 10},
-		}
-
-		tester := func(tr trial) {
-			for j := 0; j < tr.ntrial; j++ {
-				ma := make(map[int]bool)
-
-				n := tr.n
-
-				draw := int(float64(n) * tr.percentFill)
-				for i := 0; i < draw; i++ {
-					r0 := rand.Intn(n)
-					ma[r0] = true
-				}
-
-				// vs arrayContainer
-				ac := newArrayContainer()
-				for k := range ma {
-					ac.iadd(uint16(k))
-				}
-
-				buf := &bytes.Buffer{}
-				_, err := ac.writeTo(buf)
-				panicOn(err)
-				// have to pre-size the array write-target properly
-				// by telling it the cardinality to read.
-				ac2 := newArrayContainerSize(int(ac.getCardinality()))
-
-				_, err = ac2.readFrom(buf)
-				panicOn(err)
-				So(ac2.String(), ShouldResemble, ac.String())
-			}
-		}
-
-		for i := range trials {
-			tester(trials[i])
-		}
-	})
-}
-
-func TestSerializationRunOnly033(t *testing.T) {
-
-	Convey("runContainer16 writeTo and readFrom should return logically equivalent containers", t, func() {
-
-		seed := int64(42)
-		rand.Seed(seed)
-
-		trials := []trial{
-			{n: 100, percentFill: .50, ntrial: 1},
-		}
-
-		tester := func(tr trial) {
-			for j := 0; j < tr.ntrial; j++ {
-				ma := make(map[int]bool)
-
-				n := tr.n
-
-				draw := int(float64(n) * tr.percentFill)
-				for i := 0; i < draw; i++ {
-					r0 := rand.Intn(n)
-					ma[r0] = true
-				}
-
-				ac := newRunContainer16()
-				for k := range ma {
-					ac.iadd(uint16(k))
-				}
-
-				buf := &bytes.Buffer{}
-				_, err := ac.writeTo(buf)
-				panicOn(err)
-				ac2 := newRunContainer16()
-
-				_, err = ac2.readFrom(buf)
-				panicOn(err)
-				So(ac2.equals(ac), ShouldBeTrue)
-				So(ac2.String(), ShouldResemble, ac.String())
-			}
-		}
-
-		for i := range trials {
-			tester(trials[i])
-		}
-	})
-}
-
-func TestSerializationBitmapOnly034(t *testing.T) {
-
-	Convey("bitmapContainer writeTo and readFrom should return logically equivalent containers", t, func() {
-		seed := int64(42)
-		rand.Seed(seed)
-
-		trials := []trial{
-			{n: 8192, percentFill: .99, ntrial: 10},
-		}
-
-		tester := func(tr trial) {
-			for j := 0; j < tr.ntrial; j++ {
-				ma := make(map[int]bool)
-
-				n := tr.n
-
-				draw := int(float64(n) * tr.percentFill)
-				for i := 0; i < draw; i++ {
-					r0 := rand.Intn(n)
-					ma[r0] = true
-				}
-
-				bc := newBitmapContainer()
-				for k := range ma {
-					bc.iadd(uint16(k))
-				}
-
-				buf := &bytes.Buffer{}
-				_, err := bc.writeTo(buf)
-				panicOn(err)
-				bc2 := newBitmapContainer()
-
-				_, err = bc2.readFrom(buf)
-				panicOn(err)
-				So(bc2.String(), ShouldResemble, bc.String())
-				So(bc2.equals(bc), ShouldBeTrue)
-			}
-		}
-
-		for i := range trials {
-			tester(trials[i])
-		}
 	})
 }
 
@@ -963,5 +825,111 @@ func TestBitmapFromBufferCOW(t *testing.T) {
 	}
 	if !rbexpected.Equals(rbor3) {
 		t.Errorf("Bad Mapping")
+	}
+}
+
+func TestHoldReference(t *testing.T) {
+	Convey("Test Hold Reference", t, func() {
+		rb := New()
+		buf := &bytes.Buffer{}
+
+		for i := uint32(0); i < 650; i++ {
+			rb.Add(i)
+		}
+
+		_, err := rb.WriteTo(buf)
+		So(err, ShouldBeNil)
+
+		nb := New()
+		data := buf.Bytes()
+
+		if _, err := nb.ReadFrom(bytes.NewReader(data)); err != nil {
+			t.Fatalf("Unexpected error occurs: %v", err)
+		}
+
+		buf = nil
+		rb = nil
+		data = nil
+
+		runtime.GC()
+
+		iterator := nb.Iterator()
+		i := uint32(0)
+
+		for iterator.HasNext() {
+			v := iterator.Next()
+
+			if v != i {
+				return
+			}
+
+			So(v, ShouldEqual, i)
+			i++
+		}
+	})
+}
+
+func BenchmarkUnserializeReadFrom(b *testing.B) {
+	for _, size := range []uint32{650, 6500, 65000, 650000, 6500000} {
+		rb := New()
+		buf := &bytes.Buffer{}
+
+		for i := uint32(0); i < size; i++ {
+			rb.Add(i)
+		}
+
+		_, err := rb.WriteTo(buf)
+
+		if err != nil {
+			b.Fatalf("Unexpected error occurs: %v", err)
+		}
+
+		b.Run(fmt.Sprintf("ReadFrom-%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			b.StartTimer()
+
+			for n := 0; n < b.N; n++ {
+				reader := bytes.NewReader(buf.Bytes())
+				nb := New()
+
+				if _, err := nb.ReadFrom(reader); err != nil {
+					b.Fatalf("Unexpected error occurs: %v", err)
+				}
+			}
+
+			b.StopTimer()
+		})
+	}
+}
+
+func BenchmarkUnserializeFromBuffer(b *testing.B) {
+	for _, size := range []uint32{650, 6500, 65000, 650000, 6500000} {
+		rb := New()
+		buf := &bytes.Buffer{}
+
+		for i := uint32(0); i < size; i++ {
+			rb.Add(i)
+		}
+
+		_, err := rb.WriteTo(buf)
+
+		if err != nil {
+			b.Fatalf("Unexpected error occurs: %v", err)
+		}
+
+		b.Run(fmt.Sprintf("FromBuffer-%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			b.StartTimer()
+
+			for n := 0; n < b.N; n++ {
+				nb := New()
+
+				if _, err := nb.FromBuffer(buf.Bytes()); err != nil {
+					b.Fatalf("Unexpected error occurs: %v", err)
+				}
+			}
+
+			b.StopTimer()
+		})
 	}
 }
