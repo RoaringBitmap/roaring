@@ -1,7 +1,7 @@
 package roaring
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -37,15 +37,12 @@ func numberOfLeadingZeros(i uint64) int {
 }
 
 func TestCountLeadingZeros072(t *testing.T) {
-	Convey("countLeadingZeros", t, func() {
-		So(numberOfLeadingZeros(0), ShouldEqual, 64)
-		So(numberOfLeadingZeros(8), ShouldEqual, 60)
-		So(numberOfLeadingZeros(1<<17), ShouldEqual, 64-17-1)
-		So(numberOfLeadingZeros(0xFFFFFFFFFFFFFFFF), ShouldEqual, 0)
-		So(countLeadingZeros(0), ShouldEqual, 64)
-		So(countLeadingZeros(8), ShouldEqual, 60)
-		So(countLeadingZeros(1<<17), ShouldEqual, 64-17-1)
-		So(countLeadingZeros(0xFFFFFFFFFFFFFFFF), ShouldEqual, 0)
-
-	})
+	assert.Equal(t, 64, numberOfLeadingZeros(0))
+	assert.Equal(t, 60, numberOfLeadingZeros(8))
+	assert.Equal(t, 64-17-1, numberOfLeadingZeros(1<<17))
+	assert.Equal(t, 0, numberOfLeadingZeros(0xFFFFFFFFFFFFFFFF))
+	assert.Equal(t, 64, countLeadingZeros(0))
+	assert.Equal(t, 60, countLeadingZeros(8))
+	assert.Equal(t, 64-17-1, countLeadingZeros(1<<17))
+	assert.Equal(t, 0, countLeadingZeros(0xFFFFFFFFFFFFFFFF))
 }

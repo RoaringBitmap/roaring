@@ -48,7 +48,7 @@ func TestByteInputFlow(t *testing.T) {
 			assert.NoError(t, err)
 
 			p, err := input.readUInt32()
-			assert.EqualValues(t,  2097162, p) // 32 << 16 | 10
+			assert.EqualValues(t, 2097162, p) // 32 << 16 | 10
 			assert.NoError(t, err)
 
 			b, err := input.next(2)
