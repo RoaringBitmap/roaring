@@ -103,10 +103,6 @@ func TestArrayContainerMassiveSetAndGet(t *testing.T) {
 	}
 }
 
-type FakeContainer struct {
-	arrayContainer
-}
-
 func TestArrayContainerUnsupportedType(t *testing.T) {
 	a := container(newArrayContainer())
 	testContainerPanics(t, a)
@@ -116,7 +112,9 @@ func TestArrayContainerUnsupportedType(t *testing.T) {
 }
 
 func testContainerPanics(t *testing.T, c container) {
-	f := &FakeContainer{}
+	f := &struct {
+		arrayContainer
+	}{}
 
 	assert.Panics(t, func() { c.or(f) })
 	assert.Panics(t, func() { c.ior(f) })
