@@ -2,10 +2,9 @@ package roaring
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func makeContainer(ss []uint16) container {
@@ -59,16 +58,15 @@ func testContainerIteratorPeekNext(t *testing.T, c container) {
 		c.iadd(uint16(i))
 	}
 
-	Convey("shortIterator peekNext", t, func() {
-		i := c.getShortIterator()
+	i := c.getShortIterator()
+	assert.True(t, i.hasNext())
 
-		for i.hasNext() {
-			So(i.peekNext(), ShouldEqual, i.next())
-			testSize--
-		}
+	for i.hasNext() {
+		assert.Equal(t, i.peekNext(), i.next())
+		testSize--
+	}
 
-		So(testSize, ShouldEqual, 0)
-	})
+	assert.Equal(t, 0, testSize)
 }
 
 func testContainerIteratorAdvance(t *testing.T, con container) {
@@ -94,50 +92,50 @@ func testContainerIteratorAdvance(t *testing.T, con container) {
 		{9999, 9999},
 	}
 
-	Convey("advance by using a new short iterator", t, func() {
+	t.Run("advance by using a new short iterator", func(t *testing.T) {
 		for _, c := range cases {
 			i := con.getShortIterator()
 			i.advanceIfNeeded(c.minval)
 
-			So(i.hasNext(), ShouldBeTrue)
-			So(i.peekNext(), ShouldEqual, c.expected)
+			assert.True(t, i.hasNext())
+			assert.Equal(t, c.expected, i.peekNext())
 		}
 	})
 
-	Convey("advance by using the same short iterator", t, func() {
+	t.Run("advance by using the same short iterator", func(t *testing.T) {
 		i := con.getShortIterator()
 
 		for _, c := range cases {
 			i.advanceIfNeeded(c.minval)
 
-			So(i.hasNext(), ShouldBeTrue)
-			So(i.peekNext(), ShouldEqual, c.expected)
+			assert.True(t, i.hasNext())
+			assert.Equal(t, c.expected, i.peekNext())
 		}
 	})
 
-	Convey("advance out of a container value", t, func() {
+	t.Run("advance out of a container value", func(t *testing.T) {
 		i := con.getShortIterator()
 
 		i.advanceIfNeeded(33)
-		So(i.hasNext(), ShouldBeTrue)
-		So(i.peekNext(), ShouldEqual, 33)
+		assert.True(t, i.hasNext())
+		assert.EqualValues(t, 33, i.peekNext())
 
 		i.advanceIfNeeded(MaxUint16 - 1)
-		So(i.hasNext(), ShouldBeFalse)
+		assert.False(t, i.hasNext())
 
 		i.advanceIfNeeded(MaxUint16)
-		So(i.hasNext(), ShouldBeFalse)
+		assert.False(t, i.hasNext())
 	})
 
-	Convey("advance on a value that is less than the pointed value", t, func() {
+	t.Run("advance on a value that is less than the pointed value", func(t *testing.T) {
 		i := con.getShortIterator()
 		i.advanceIfNeeded(29)
-		So(i.hasNext(), ShouldBeTrue)
-		So(i.peekNext(), ShouldEqual, 31)
+		assert.True(t, i.hasNext())
+		assert.EqualValues(t, 31, i.peekNext())
 
 		i.advanceIfNeeded(13)
-		So(i.hasNext(), ShouldBeTrue)
-		So(i.peekNext(), ShouldEqual, 31)
+		assert.True(t, i.hasNext())
+		assert.EqualValues(t, 31, i.peekNext())
 	})
 }
 
@@ -201,29 +199,31 @@ func benchmarkContainerIteratorNext(b *testing.B, con container) {
 }
 
 func TestContainerReverseIterator(t *testing.T) {
-	Convey("ArrayReverseIterator", t, func() {
-		content := []uint16{1, 3, 5, 7, 9}
-		c := makeContainer(content)
-		si := c.getReverseIterator()
-		i := 4
-		for si.hasNext() {
-			So(si.next(), ShouldEqual, content[i])
-			i--
-		}
-		So(i, ShouldEqual, -1)
-	})
+	content := []uint16{1, 3, 5, 7, 9}
+	c := makeContainer(content)
+	si := c.getReverseIterator()
+	i := 4
+
+	for si.hasNext() {
+		assert.Equal(t, content[i], si.next())
+		i--
+	}
+
+	assert.Equal(t, -1, i)
 }
 
 func TestRoaringContainer(t *testing.T) {
-	Convey("countTrailingZeros", t, func() {
+	t.Run("countTrailingZeros", func(t *testing.T) {
 		x := uint64(0)
 		o := countTrailingZeros(x)
-		So(o, ShouldEqual, 64)
+		assert.Equal(t, 64, o)
+
 		x = 1 << 3
 		o = countTrailingZeros(x)
-		So(o, ShouldEqual, 3)
+		assert.Equal(t, 3, o)
 	})
-	Convey("ArrayShortIterator", t, func() {
+
+	t.Run("ArrayShortIterator", func(t *testing.T) {
 		content := []uint16{1, 3, 5, 7, 9}
 		c := makeContainer(content)
 		si := c.getShortIterator()
@@ -233,17 +233,19 @@ func TestRoaringContainer(t *testing.T) {
 			i++
 		}
 
-		So(i, ShouldEqual, 5)
+		assert.Equal(t, 5, i)
 	})
 
-	Convey("BinarySearch", t, func() {
+	t.Run("BinarySearch", func(t *testing.T) {
 		content := []uint16{1, 3, 5, 7, 9}
 		res := binarySearch(content, 5)
-		So(res, ShouldEqual, 2)
+		assert.Equal(t, 2, res)
+
 		res = binarySearch(content, 4)
-		So(res, ShouldBeLessThan, 0)
+		assert.Less(t, res, 0)
 	})
-	Convey("bitmapcontainer", t, func() {
+
+	t.Run("bitmapcontainer", func(t *testing.T) {
 		content := []uint16{1, 3, 5, 7, 9}
 		a := newArrayContainer()
 		b := newBitmapContainer()
@@ -253,11 +255,11 @@ func TestRoaringContainer(t *testing.T) {
 		}
 		c := a.toBitmapContainer()
 
-		So(a.getCardinality(), ShouldEqual, b.getCardinality())
-		So(c.getCardinality(), ShouldEqual, b.getCardinality())
-
+		assert.Equal(t, b.getCardinality(), a.getCardinality())
+		assert.Equal(t, b.getCardinality(), c.getCardinality())
 	})
-	Convey("inottest0", t, func() {
+
+	t.Run("inottest0", func(t *testing.T) {
 		content := []uint16{9}
 		c := makeContainer(content)
 		c = c.inot(0, 11)
@@ -267,10 +269,11 @@ func TestRoaringContainer(t *testing.T) {
 			si.next()
 			i++
 		}
-		So(i, ShouldEqual, 10)
+
+		assert.Equal(t, 10, i)
 	})
 
-	Convey("inotTest1", t, func() {
+	t.Run("inotTest1", func(t *testing.T) {
 		// Array container, range is complete
 		content := []uint16{1, 3, 5, 7, 9}
 		//content := []uint16{1}
@@ -286,7 +289,7 @@ func TestRoaringContainer(t *testing.T) {
 				pos++
 			}
 		}
-		So(checkContent(c, s), ShouldEqual, true)
-	})
 
+		assert.True(t, checkContent(c, s))
+	})
 }
