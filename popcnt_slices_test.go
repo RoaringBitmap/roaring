@@ -6,19 +6,18 @@ package roaring
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPopcntSlice(t *testing.T) {
 	s := []uint64{2, 3, 5, 7, 11, 13, 17, 19, 23, 29}
 	resGo := popcntSliceGo(s)
 	resAsm := popcntSliceAsm(s)
-	if resGo != resAsm {
-		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
-	}
 	res := popcntSlice(s)
-	if res != resGo {
-		t.Errorf("The implementations are different")
-	}
+
+	assert.Equal(t, resGo, resAsm)
+	assert.Equal(t, resGo, res)
 }
 
 func TestPopcntMaskSlice(t *testing.T) {
@@ -26,13 +25,10 @@ func TestPopcntMaskSlice(t *testing.T) {
 	m := []uint64{31, 37, 41, 43, 47, 53, 59, 61, 67, 71}
 	resGo := popcntMaskSliceGo(s, m)
 	resAsm := popcntMaskSliceAsm(s, m)
-	if resGo != resAsm {
-		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
-	}
 	res := popcntMaskSlice(s, m)
-	if res != resGo {
-		t.Errorf("The implementations are different")
-	}
+
+	assert.Equal(t, resGo, resAsm)
+	assert.Equal(t, resGo, res)
 }
 
 func TestPopcntAndSlice(t *testing.T) {
@@ -40,13 +36,10 @@ func TestPopcntAndSlice(t *testing.T) {
 	m := []uint64{31, 37, 41, 43, 47, 53, 59, 61, 67, 71}
 	resGo := popcntAndSliceGo(s, m)
 	resAsm := popcntAndSliceAsm(s, m)
-	if resGo != resAsm {
-		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
-	}
 	res := popcntAndSlice(s, m)
-	if res != resGo {
-		t.Errorf("The implementations are different")
-	}
+
+	assert.Equal(t, resGo, resAsm)
+	assert.Equal(t, resGo, res)
 }
 
 func TestPopcntOrSlice(t *testing.T) {
@@ -54,13 +47,10 @@ func TestPopcntOrSlice(t *testing.T) {
 	m := []uint64{31, 37, 41, 43, 47, 53, 59, 61, 67, 71}
 	resGo := popcntOrSliceGo(s, m)
 	resAsm := popcntOrSliceAsm(s, m)
-	if resGo != resAsm {
-		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
-	}
 	res := popcntOrSlice(s, m)
-	if res != resGo {
-		t.Errorf("The implementations are different")
-	}
+
+	assert.Equal(t, resGo, resAsm)
+	assert.Equal(t, resGo, res)
 }
 
 func TestPopcntXorSlice(t *testing.T) {
@@ -68,11 +58,8 @@ func TestPopcntXorSlice(t *testing.T) {
 	m := []uint64{31, 37, 41, 43, 47, 53, 59, 61, 67, 71}
 	resGo := popcntXorSliceGo(s, m)
 	resAsm := popcntXorSliceAsm(s, m)
-	if resGo != resAsm {
-		t.Errorf("The implementations are different: GO %d != ASM %d", resGo, resAsm)
-	}
 	res := popcntXorSlice(s, m)
-	if res != resGo {
-		t.Errorf("The implementations are different")
-	}
+
+	assert.Equal(t, resGo, resAsm)
+	assert.Equal(t, resGo, res)
 }
