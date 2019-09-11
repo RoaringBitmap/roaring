@@ -2177,7 +2177,7 @@ func TestReverseIterator(t *testing.T) {
 		i := bm.ReverseIterator()
 
 		assert.True(t, i.HasNext())
-		assert.EqualValues(t, MaxUint32, i.Next())
+		assert.EqualValues(t, uint32(MaxUint32), i.Next())
 		assert.False(t, i.HasNext())
 	})
 }
