@@ -89,17 +89,23 @@ func TestArrayOffset(t *testing.T) {
 
 func TestArrayContainerMassiveSetAndGet(t *testing.T) {
 	v := container(newArrayContainer())
+
 	for j := 0; j <= arrayDefaultMaxSize; j++ {
 		v = v.iaddReturnMinimized(uint16(j))
 		assert.Equal(t, 1+j, v.getCardinality())
 
-		for i := 0; i <= arrayDefaultMaxSize; i++ {
+		success := true
+		i := 0
+
+		for ; i <= arrayDefaultMaxSize && success; i++ {
 			if i <= j {
-				assert.True(t, v.contains(uint16(i)))
+				success = v.contains(uint16(i))
 			} else {
-				assert.False(t, v.contains(uint16(i)))
+				success = !v.contains(uint16(i))
 			}
 		}
+
+		assert.Truef(t, success, "failed at %d iteration", i)
 	}
 }
 
