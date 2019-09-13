@@ -2,13 +2,12 @@ package roaring
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/assert"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestByteInputFlow(t *testing.T) {
-	Convey("Test should be an error on empty data", t, func() {
+	t.Run("Test should be an error on empty data", func(t *testing.T) {
 		buf := bytes.NewBuffer([]byte{})
 
 		instances := []byteInput{
@@ -18,23 +17,24 @@ func TestByteInputFlow(t *testing.T) {
 
 		for _, input := range instances {
 			n, err := input.readUInt16()
-			So(n, ShouldEqual, 0)
-			So(err, ShouldBeError)
+
+			assert.EqualValues(t, 0, n)
+			assert.Error(t, err)
 
 			p, err := input.readUInt32()
-			So(p, ShouldEqual, 0)
-			So(err, ShouldBeError)
+			assert.EqualValues(t, 0, p)
+			assert.Error(t, err)
 
 			b, err := input.next(10)
-			So(b, ShouldEqual, nil)
-			So(err, ShouldBeError)
+			assert.Nil(t, b)
+			assert.Error(t, err)
 
 			err = input.skipBytes(10)
-			So(err, ShouldBeError)
+			assert.Error(t, err)
 		}
 	})
 
-	Convey("Test not empty data", t, func() {
+	t.Run("Test on nonempty data", func(t *testing.T) {
 		buf := bytes.NewBuffer(uint16SliceAsByteSlice([]uint16{1, 10, 32, 66, 23}))
 
 		instances := []byteInput{
@@ -44,23 +44,23 @@ func TestByteInputFlow(t *testing.T) {
 
 		for _, input := range instances {
 			n, err := input.readUInt16()
-			So(n, ShouldEqual, 1)
-			So(err, ShouldBeNil)
+			assert.EqualValues(t, 1, n)
+			assert.NoError(t, err)
 
 			p, err := input.readUInt32()
-			So(p, ShouldEqual, 2097162) // 32 << 16 | 10
-			So(err, ShouldBeNil)
+			assert.EqualValues(t, 2097162, p) // 32 << 16 | 10
+			assert.NoError(t, err)
 
 			b, err := input.next(2)
-			So([]byte{66, 0}, ShouldResemble, b)
-			So(err, ShouldBeNil)
+			assert.EqualValues(t, []byte{66, 0}, b)
+			assert.NoError(t, err)
 
 			err = input.skipBytes(2)
-			So(err, ShouldBeNil)
+			assert.NoError(t, err)
 
 			b, err = input.next(1)
-			So(b, ShouldEqual, nil)
-			So(err, ShouldBeError)
+			assert.Nil(t, b)
+			assert.Error(t, err)
 		}
 	})
 }

@@ -4,6 +4,7 @@ package roaring
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -18,75 +19,40 @@ func testAggregations(t *testing.T,
 		rb1.Add(1)
 		rb2.Add(2)
 
-		if and != nil && and(rb1, rb2).GetCardinality() != 0 {
-			t.Error()
-		}
-		if and != nil && or(rb1, rb2).GetCardinality() != 2 {
-			t.Error()
-		}
-		if xor != nil && xor(rb1, rb2).GetCardinality() != 2 {
-			t.Error()
-		}
+		assertAggregation(t, 0, and, rb1, rb2)
+		assertAggregation(t, 2, or, rb1, rb2)
+		assertAggregation(t, 2, xor, rb1, rb2)
 	})
 
 	t.Run("aggregate nothing", func(t *testing.T) {
-		if and != nil && and().GetCardinality() != 0 {
-			t.Error()
-		}
-
-		if or != nil && or().GetCardinality() != 0 {
-			t.Error()
-		}
-
-		if xor != nil && xor().GetCardinality() != 0 {
-			t.Error()
-		}
+		assertAggregation(t, 0, and)
+		assertAggregation(t, 0, or)
+		assertAggregation(t, 0, xor)
 	})
 
 	t.Run("single bitmap", func(t *testing.T) {
 		rb := BitmapOf(1, 2, 3)
 
-		if and != nil && and(rb).GetCardinality() != 3 {
-			t.Error()
-		}
-
-		if or != nil && or(rb).GetCardinality() != 3 {
-			t.Error()
-		}
-
-		if xor != nil && xor(rb).GetCardinality() != 3 {
-			t.Error()
-		}
+		assertAggregation(t, 3, and, rb)
+		assertAggregation(t, 3, or, rb)
+		assertAggregation(t, 3, xor, rb)
 	})
 
 	t.Run("empty and single elem bitmaps", func(t *testing.T) {
 		rb1 := NewBitmap()
 		rb2 := BitmapOf(1)
 
-		if and != nil && and(rb1, rb2).GetCardinality() != 0 {
-			t.Error()
-		}
-
-		if or != nil && or(rb1, rb2).GetCardinality() != 1 {
-			t.Error()
-		}
-
-		if xor != nil && xor(rb1, rb2).GetCardinality() != 1 {
-			t.Error()
-		}
+		assertAggregation(t, 0, and, rb1, rb2)
+		assertAggregation(t, 1, or, rb1, rb2)
+		assertAggregation(t, 1, xor, rb1, rb2)
 	})
 
 	t.Run("two single elem disjoint sets", func(t *testing.T) {
 		rb1 := BitmapOf(1)
 		rb2 := BitmapOf(2)
 
-		if and != nil && and(rb1, rb2).Stats().Containers != 0 {
-			t.Error()
-		}
-
-		if or != nil && or(rb1, rb2).GetCardinality() != 2 {
-			t.Error()
-		}
+		assertAggregation(t, 0, and, rb1, rb2)
+		assertAggregation(t, 2, or, rb1, rb2)
 	})
 
 	t.Run("3 bitmaps with CoW set (not in order of definition)", func(t *testing.T) {
@@ -102,17 +68,9 @@ func testAggregations(t *testing.T,
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		if and != nil && and(rb2, rb1, rb3).GetCardinality() != 0 {
-			t.Error()
-		}
-
-		if or != nil && or(rb2, rb1, rb3).GetCardinality() != 4 {
-			t.Error()
-		}
-
-		if xor != nil && xor(rb2, rb1, rb3).GetCardinality() != 3 {
-			t.Error()
-		}
+		assertAggregation(t, 0, and, rb2, rb1, rb3)
+		assertAggregation(t, 4, or, rb2, rb1, rb3)
+		assertAggregation(t, 3, xor, rb2, rb1, rb3)
 	})
 
 	t.Run("3 bitmaps (not in order of definition)", func(t *testing.T) {
@@ -125,17 +83,9 @@ func testAggregations(t *testing.T,
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		if and != nil && and(rb2, rb1, rb3).GetCardinality() != 0 {
-			t.Error()
-		}
-
-		if or != nil && or(rb2, rb1, rb3).GetCardinality() != 4 {
-			t.Error()
-		}
-
-		if xor != nil && xor(rb2, rb1, rb3).GetCardinality() != 3 {
-			t.Error()
-		}
+		assertAggregation(t, 0, and, rb2, rb1, rb3)
+		assertAggregation(t, 4, or, rb2, rb1, rb3)
+		assertAggregation(t, 3, xor, rb2, rb1, rb3)
 	})
 
 	t.Run("3 bitmaps", func(t *testing.T) {
@@ -148,17 +98,9 @@ func testAggregations(t *testing.T,
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		if and != nil && and(rb1, rb2, rb3).GetCardinality() != 0 {
-			t.Error()
-		}
-
-		if or != nil && or(rb1, rb2, rb3).GetCardinality() != 4 {
-			t.Error()
-		}
-
-		if xor != nil && xor(rb1, rb2, rb3).GetCardinality() != 3 {
-			t.Error()
-		}
+		assertAggregation(t, 0, and, rb1, rb2, rb3)
+		assertAggregation(t, 4, or, rb1, rb2, rb3)
+		assertAggregation(t, 3, xor, rb1, rb2, rb3)
 	})
 
 	t.Run("3 bitmaps with CoW set", func(t *testing.T) {
@@ -174,17 +116,9 @@ func testAggregations(t *testing.T,
 		rb3.Add(1)
 		rb3.Add(300000)
 
-		if and != nil && and(rb1, rb2, rb3).GetCardinality() != 0 {
-			t.Error()
-		}
-
-		if or != nil && or(rb1, rb2, rb3).GetCardinality() != 4 {
-			t.Error()
-		}
-
-		if xor != nil && xor(rb1, rb2, rb3).GetCardinality() != 3 {
-			t.Error()
-		}
+		assertAggregation(t, 0, and, rb1, rb2, rb3)
+		assertAggregation(t, 4, or, rb1, rb2, rb3)
+		assertAggregation(t, 3, xor, rb1, rb2, rb3)
 	})
 
 	t.Run("advanced case", func(t *testing.T) {
@@ -215,16 +149,16 @@ func testAggregations(t *testing.T,
 		bigand := And(And(rb1, rb2), rb3)
 		bigxor := Xor(Xor(rb1, rb2), rb3)
 
-		if or != nil && !or(rb1, rb2, rb3).Equals(rb1) {
-			t.Errorf("Expected bitmap of cardinality %d, got %d", rb1.GetCardinality(), or(rb1, rb2, rb3).GetCardinality())
+		if or != nil {
+			assert.True(t, or(rb1, rb2, rb3).Equals(rb1))
 		}
 
-		if and != nil && !and(rb1, rb2, rb3).Equals(bigand) {
-			t.Error()
+		if and != nil {
+			assert.True(t, and(rb1, rb2, rb3).Equals(bigand))
 		}
 
-		if xor != nil && !xor(rb1, rb2, rb3).Equals(bigxor) {
-			t.Error()
+		if xor != nil {
+			assert.True(t, xor(rb1, rb2, rb3).Equals(bigxor))
 		}
 	})
 
@@ -257,16 +191,16 @@ func testAggregations(t *testing.T,
 		bigand := And(And(rb1, rb2), rb3)
 		bigxor := Xor(Xor(rb1, rb2), rb3)
 
-		if or != nil && !or(rb1, rb2, rb3).Equals(rb1) {
-			t.Errorf("Expected bitmap of cardinality %d, got %d", rb1.GetCardinality(), or(rb1, rb2, rb3).GetCardinality())
+		if or != nil {
+			assert.True(t, or(rb1, rb2, rb3).Equals(rb1))
 		}
 
-		if and != nil && !and(rb1, rb2, rb3).Equals(bigand) {
-			t.Error()
+		if and != nil {
+			assert.True(t, and(rb1, rb2, rb3).Equals(bigand))
 		}
 
-		if xor != nil && !xor(rb1, rb2, rb3).Equals(bigxor) {
-			t.Error()
+		if xor != nil {
+			assert.True(t, xor(rb1, rb2, rb3).Equals(bigxor))
 		}
 	})
 
@@ -277,11 +211,14 @@ func testAggregations(t *testing.T,
 		r1 := BitmapOf(ba1...)
 		r2 := BitmapOf(ba2...)
 
-		result := or(r1, r2)
-		if result.GetCardinality() != 32 {
-			t.Errorf("Expected bitmap of cardinality %d, got %d", 32, result.GetCardinality())
-		}
+		assertAggregation(t, 32, or, r1, r2)
 	})
+}
+
+func assertAggregation(t *testing.T, expected uint64, aggr func(bitmaps ...*Bitmap) *Bitmap, bitmaps ...*Bitmap) {
+	if aggr != nil {
+		assert.Equal(t, aggr(bitmaps...).GetCardinality(), expected)
+	}
 }
 
 func TestParAggregations(t *testing.T) {

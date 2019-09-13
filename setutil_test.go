@@ -3,6 +3,7 @@ package roaring
 // to run just these tests: go test -run TestSetUtil*
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -13,15 +14,14 @@ func TestSetUtilDifference(t *testing.T) {
 	expectedresult := []uint16{0, 1}
 	nl := difference(data1, data2, result)
 	result = result[:nl]
-	if !equal(result, expectedresult) {
-		t.Errorf("Difference is broken")
-	}
+
+	assert.Equal(t, expectedresult, result)
+
 	expectedresult = []uint16{5, 8, 11}
 	nl = difference(data2, data1, result)
 	result = result[:nl]
-	if !equal(result, expectedresult) {
-		t.Errorf("Difference is broken")
-	}
+
+	assert.Equal(t, expectedresult, result)
 }
 
 func TestSetUtilUnion(t *testing.T) {
@@ -31,14 +31,13 @@ func TestSetUtilUnion(t *testing.T) {
 	expectedresult := []uint16{0, 1, 2, 3, 4, 5, 8, 9, 11}
 	nl := union2by2(data1, data2, result)
 	result = result[:nl]
-	if !equal(result, expectedresult) {
-		t.Errorf("Union is broken")
-	}
+
+	assert.Equal(t, expectedresult, result)
+
 	nl = union2by2(data2, data1, result)
 	result = result[:nl]
-	if !equal(result, expectedresult) {
-		t.Errorf("Union is broken")
-	}
+
+	assert.Equal(t, expectedresult, result)
 }
 
 func TestSetUtilExclusiveUnion(t *testing.T) {
@@ -48,14 +47,13 @@ func TestSetUtilExclusiveUnion(t *testing.T) {
 	expectedresult := []uint16{0, 1, 5, 8, 11}
 	nl := exclusiveUnion2by2(data1, data2, result)
 	result = result[:nl]
-	if !equal(result, expectedresult) {
-		t.Errorf("Exclusive Union is broken")
-	}
+
+	assert.Equal(t, expectedresult, result)
+
 	nl = exclusiveUnion2by2(data2, data1, result)
 	result = result[:nl]
-	if !equal(result, expectedresult) {
-		t.Errorf("Exclusive Union is broken")
-	}
+
+	assert.Equal(t, expectedresult, result)
 }
 
 func TestSetUtilIntersection(t *testing.T) {
@@ -66,34 +64,32 @@ func TestSetUtilIntersection(t *testing.T) {
 	nl := intersection2by2(data1, data2, result)
 	result = result[:nl]
 	result = result[:len(expectedresult)]
-	if !equal(result, expectedresult) {
-		t.Errorf("Intersection is broken")
-	}
+
+	assert.Equal(t, expectedresult, result)
+
 	nl = intersection2by2(data2, data1, result)
 	result = result[:nl]
-	if !equal(result, expectedresult) {
-		t.Errorf("Intersection is broken")
-	}
-	data1 = []uint16{4}
 
+	assert.Equal(t, expectedresult, result)
+
+	data1 = []uint16{4}
 	data2 = make([]uint16, 10000)
+
 	for i := range data2 {
 		data2[i] = uint16(i)
 	}
+
 	result = make([]uint16, 0, len(data1)+len(data2))
 	expectedresult = data1
 	nl = intersection2by2(data1, data2, result)
 	result = result[:nl]
 
-	if !equal(result, expectedresult) {
-		t.Errorf("Long intersection is broken")
-	}
+	assert.Equal(t, expectedresult, result)
+
 	nl = intersection2by2(data2, data1, result)
 	result = result[:nl]
-	if !equal(result, expectedresult) {
-		t.Errorf("Long intersection is broken")
-	}
 
+	assert.Equal(t, expectedresult, result)
 }
 
 func TestSetUtilIntersection2(t *testing.T) {
@@ -104,9 +100,8 @@ func TestSetUtilIntersection2(t *testing.T) {
 	nl := intersection2by2(data1, data2, result)
 	result = result[:nl]
 	result = result[:len(expectedresult)]
-	if !equal(result, expectedresult) {
-		t.Errorf("Intersection is broken")
-	}
+
+	assert.Equal(t, expectedresult, result)
 }
 
 func TestSetUtilBinarySearch(t *testing.T) {
@@ -118,13 +113,9 @@ func TestSetUtilBinarySearch(t *testing.T) {
 		key := uint16(i)
 		loc := binarySearch(data, key)
 		if (key & 1) == 0 {
-			if loc != int(key)/2 {
-				t.Errorf("binary search is broken")
-			}
+			assert.Equal(t, int(key)/2, loc)
 		} else {
-			if loc != -int(key)/2-2 {
-				t.Errorf("neg binary search is broken")
-			}
+			assert.Equal(t, -int(key)/2-2, loc)
 		}
 	}
 }

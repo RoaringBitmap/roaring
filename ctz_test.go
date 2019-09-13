@@ -2,29 +2,25 @@ package roaring
 
 import (
 	"encoding/binary"
+	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestCountTrailingZeros072(t *testing.T) {
-	Convey("countTrailingZeros", t, func() {
-		So(numberOfTrailingZeros(0), ShouldEqual, 64)
-		So(numberOfTrailingZeros(8), ShouldEqual, 3)
-		So(numberOfTrailingZeros(7), ShouldEqual, 0)
-		So(numberOfTrailingZeros(1<<17), ShouldEqual, 17)
-		So(numberOfTrailingZeros(7<<17), ShouldEqual, 17)
-		So(numberOfTrailingZeros(255<<33), ShouldEqual, 33)
+	assert.Equal(t, 64, numberOfTrailingZeros(0))
+	assert.Equal(t, 3, numberOfTrailingZeros(8))
+	assert.Equal(t, 0, numberOfTrailingZeros(7))
+	assert.Equal(t, 17, numberOfTrailingZeros(1<<17))
+	assert.Equal(t, 17, numberOfTrailingZeros(7<<17))
+	assert.Equal(t, 33, numberOfTrailingZeros(255<<33))
 
-		So(countTrailingZeros(0), ShouldEqual, 64)
-		So(countTrailingZeros(8), ShouldEqual, 3)
-		So(countTrailingZeros(7), ShouldEqual, 0)
-		So(countTrailingZeros(1<<17), ShouldEqual, 17)
-		So(countTrailingZeros(7<<17), ShouldEqual, 17)
-		So(countTrailingZeros(255<<33), ShouldEqual, 33)
-
-	})
+	assert.Equal(t, 64, countTrailingZeros(0))
+	assert.Equal(t, 3, countTrailingZeros(8))
+	assert.Equal(t, 0, countTrailingZeros(7))
+	assert.Equal(t, 17, countTrailingZeros(1<<17))
+	assert.Equal(t, 17, countTrailingZeros(7<<17))
+	assert.Equal(t, 33, countTrailingZeros(255<<33))
 }
 
 func getRandomUint64Set(n int) []uint64 {
