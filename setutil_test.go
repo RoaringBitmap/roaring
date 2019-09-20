@@ -4,6 +4,7 @@ package roaring
 
 import (
 	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"testing"
 )
 
@@ -92,16 +93,31 @@ func TestSetUtilIntersection(t *testing.T) {
 	assert.Equal(t, expectedresult, result)
 }
 
-func TestSetUtilIntersection2(t *testing.T) {
-	data1 := []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18}
-	data2 := []uint16{0, 3, 6, 9, 12, 15, 18}
-	result := make([]uint16, 0, len(data1)+len(data2))
-	expectedresult := []uint16{0, 6, 12, 18}
-	nl := intersection2by2(data1, data2, result)
-	result = result[:nl]
-	result = result[:len(expectedresult)]
+func TestSetUtilIntersectionCases(t *testing.T) {
+	cases := []struct {
+		name string
+		algo func(a, b, buf []uint16) int
+	}{
+		{
+			name: "onesidedgallopingintersect2by2",
+			algo: onesidedgallopingintersect2by2,
+		},
+		{
+			name: "shotgun4Intersect",
+			algo: shotgun4Intersect,
+		},
+	}
 
-	assert.Equal(t, expectedresult, result)
+	data1 := []uint16{0, 3, 6, 9, 12, 15, 18}
+	data2 := []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18}
+	expected := []uint16{0, 6, 12, 18}
+
+	for _, c := range cases {
+		result := make([]uint16, 0, len(data1)+len(data2))
+		n := c.algo(data1, data2, result)
+
+		assert.Equalf(t, expected, result[:n], "failed algorithm: %s", c.name)
+	}
 }
 
 func TestSetUtilBinarySearch(t *testing.T) {
@@ -118,4 +134,49 @@ func TestSetUtilBinarySearch(t *testing.T) {
 			assert.Equal(t, -int(key)/2-2, loc)
 		}
 	}
+}
+
+func BenchmarkIntersectAlgorithms(b *testing.B) {
+	sz1 := 1000
+	s1 := make([]uint16, sz1)
+
+	sz2 := MaxUint16
+	s2 := make([]uint16, sz2)
+
+	for i := 0; i < sz2; i++ {
+		s2[i] = uint16(i)
+	}
+
+	r := rand.New(rand.NewSource(0))
+	k := 0
+
+	for i := 0; i < sz1 && k < sz2; i++ {
+		n := r.Intn(100)
+		k += n
+
+		// prevent adding duplicates
+		if n == 0 && i > 0 {
+			k++
+		}
+
+		s1[i] = uint16(s2[k])
+	}
+
+	buf := make([]uint16, sz1+sz2)
+
+	b.Run("onesidedgallopingintersect2by2", func(b *testing.B) {
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			onesidedgallopingintersect2by2(s1, s2, buf)
+		}
+	})
+
+	b.Run("shotgun4", func(b *testing.B) {
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			shotgun4Intersect(s1, s2, buf)
+		}
+	})
 }
