@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"runtime"
 	"unsafe"
 )
 
@@ -30,8 +31,12 @@ func uint64SliceAsByteSlice(slice []uint64) []byte {
 	header.Len *= 8
 	header.Cap *= 8
 
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	result := *(*[]byte)(unsafe.Pointer(&header))
+	runtime.KeepAlive(header.Data)
+
 	// return it
-	return *(*[]byte)(unsafe.Pointer(&header))
+	return result
 }
 
 func uint16SliceAsByteSlice(slice []uint16) []byte {
@@ -42,8 +47,12 @@ func uint16SliceAsByteSlice(slice []uint16) []byte {
 	header.Len *= 2
 	header.Cap *= 2
 
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	result := *(*[]byte)(unsafe.Pointer(&header))
+	runtime.KeepAlive(header.Data)
+
 	// return it
-	return *(*[]byte)(unsafe.Pointer(&header))
+	return result
 }
 
 func (bc *bitmapContainer) asLittleEndianByteSlice() []byte {
@@ -71,8 +80,12 @@ func byteSliceAsUint16Slice(slice []byte) []uint16 {
 	header.Len /= 2
 	header.Cap /= 2
 
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	result := *(*[]uint16)(unsafe.Pointer(&header))
+	runtime.KeepAlive(header.Data)
+
 	// return it
-	return *(*[]uint16)(unsafe.Pointer(&header))
+	return result
 }
 
 func byteSliceAsUint64Slice(slice []byte) []uint64 {
@@ -87,8 +100,12 @@ func byteSliceAsUint64Slice(slice []byte) []uint64 {
 	header.Len /= 8
 	header.Cap /= 8
 
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	result := *(*[]uint64)(unsafe.Pointer(&header))
+	runtime.KeepAlive(header.Data)
+
 	// return it
-	return *(*[]uint64)(unsafe.Pointer(&header))
+	return result
 }
 
 func byteSliceAsInterval16Slice(slice []byte) []interval16 {
@@ -103,6 +120,10 @@ func byteSliceAsInterval16Slice(slice []byte) []interval16 {
 	header.Len /= 4
 	header.Cap /= 4
 
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	result := *(*[]interval16)(unsafe.Pointer(&header))
+	runtime.KeepAlive(header.Data)
+
 	// return it
-	return *(*[]interval16)(unsafe.Pointer(&header))
+	return result
 }
