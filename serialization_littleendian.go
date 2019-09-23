@@ -33,7 +33,7 @@ func uint64SliceAsByteSlice(slice []uint64) []byte {
 
 	// instantiate result and use KeepAlive so data isn't unmapped.
 	result := *(*[]byte)(unsafe.Pointer(&header))
-	runtime.KeepAlive(header.Data)
+	runtime.KeepAlive(&slice)
 
 	// return it
 	return result
@@ -49,7 +49,7 @@ func uint16SliceAsByteSlice(slice []uint16) []byte {
 
 	// instantiate result and use KeepAlive so data isn't unmapped.
 	result := *(*[]byte)(unsafe.Pointer(&header))
-	runtime.KeepAlive(header.Data)
+	runtime.KeepAlive(&slice)
 
 	// return it
 	return result
@@ -82,7 +82,7 @@ func byteSliceAsUint16Slice(slice []byte) []uint16 {
 
 	// instantiate result and use KeepAlive so data isn't unmapped.
 	result := *(*[]uint16)(unsafe.Pointer(&header))
-	runtime.KeepAlive(header.Data)
+	runtime.KeepAlive(&slice)
 
 	// return it
 	return result
@@ -102,7 +102,7 @@ func byteSliceAsUint64Slice(slice []byte) []uint64 {
 
 	// instantiate result and use KeepAlive so data isn't unmapped.
 	result := *(*[]uint64)(unsafe.Pointer(&header))
-	runtime.KeepAlive(header.Data)
+	runtime.KeepAlive(&slice)
 
 	// return it
 	return result
@@ -122,7 +122,7 @@ func byteSliceAsInterval16Slice(slice []byte) []interval16 {
 
 	// instantiate result and use KeepAlive so data isn't unmapped.
 	result := *(*[]interval16)(unsafe.Pointer(&header))
-	runtime.KeepAlive(header.Data)
+	runtime.KeepAlive(&slice)
 
 	// return it
 	return result
