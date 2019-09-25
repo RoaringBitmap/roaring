@@ -1442,8 +1442,8 @@ func (rc *runContainer16) selectInt16(j uint16) int {
 
 	var offset int64
 	for k := range rc.iv {
-		nextOffset := offset + rc.iv[k].runlen() + 1
-		if nextOffset > int64(j) {
+		nextOffset := offset + rc.iv[k].runlen()
+		if nextOffset >= int64(j) {
 			return int(int64(rc.iv[k].start) + (int64(j) - offset))
 		}
 		offset = nextOffset
