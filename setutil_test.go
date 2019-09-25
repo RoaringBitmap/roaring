@@ -181,7 +181,7 @@ func BenchmarkIntersectAlgorithms(b *testing.B) {
 
 	buf := make([]uint16, sz1+sz2+sz3+sz4)
 	commonseed := 123456
-	r = rand.New(rand.NewSource(commonseed)) // we set the same seed in both instances
+	r = rand.New(rand.NewSource(int64(commonseed))) // we set the same seed in both instances
 
 	b.Run("onesidedgallopingintersect2by2", func(b *testing.B) {
 
@@ -206,7 +206,7 @@ func BenchmarkIntersectAlgorithms(b *testing.B) {
 
 		}
 	})
-	r = rand.New(rand.NewSource(commonseed)) // we set the same seed in both instances
+	r = rand.New(rand.NewSource(int64(commonseed))) // we set the same seed in both instances
 
 	b.Run("shotgun4", func(b *testing.B) {
 		b.ResetTimer()
