@@ -582,6 +582,104 @@ mainwhile:
 	return pos
 }
 
+// shotgun4Intersect performs intersection between small and large arrays described in
+// https://lemire.me/blog/2019/01/16/faster-intersections-between-sorted-arrays-with-shotgun/
+func shotgun4Intersect(small, large, buf []uint16) int {
+	if len(small) == 0 {
+		return 0
+	}
+
+	nS, nL := len(small), len(large)
+	buf = buf[:cap(buf)]
+	idxS, idxL := 0, 0
+	pos := 0
+
+	for (idxS+4 <= nS) && idxL < nL {
+		t1, t2, t3, t4 := small[idxS], small[idxS+1], small[idxS+2], small[idxS+3]
+		idx1, idx2, idx3, idx4 := idxL, idxL, idxL, idxL
+		n := nL - idxL
+
+		for n > 1 {
+			m := n >> 1
+
+			if large[idx1+m] < t1 {
+				idx1 += m
+			}
+
+			if large[idx2+m] < t2 {
+				idx2 += m
+			}
+
+			if large[idx3+m] < t3 {
+				idx3 += m
+			}
+
+			if large[idx4+m] < t4 {
+				idx4 += m
+			}
+
+			n -= m
+		}
+
+		if large[idx1] < t1 {
+			idx1++
+		}
+
+		if large[idx2] < t2 {
+			idx2++
+		}
+
+		if large[idx3] < t3 {
+			idx3++
+		}
+
+		if large[idx4] < t4 {
+			idx4++
+		}
+
+		if idx1 < nL && large[idx1] == t1 {
+			buf[pos] = t1
+			pos++
+		}
+
+		if idx2 < nL && large[idx2] == t2 {
+			buf[pos] = t2
+			pos++
+		}
+
+		if idx3 < nL && large[idx3] == t3 {
+			buf[pos] = t3
+			pos++
+		}
+
+		if idx4 < nL && large[idx4] == t4 {
+			buf[pos] = t4
+			pos++
+		}
+
+		idxS += 4
+		idxL = idx4
+	}
+
+	for idxS < nS && idxL < nL {
+		s := small[idxS]
+		idxL = advanceUntil(large, idxL, nL, s)
+
+		if idxL == nL {
+			break
+		}
+
+		if large[idxL] == s {
+			buf[pos] = s
+			pos++
+		}
+
+		idxS++
+	}
+
+	return pos
+}
+
 func binarySearch(array []uint16, ikey uint16) int {
 	low := 0
 	high := len(array) - 1
