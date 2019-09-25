@@ -419,7 +419,7 @@ func singleSliceInArray() (*Bitmap, []*Bitmap) {
 
 func singleSlice() *Bitmap {
 	slice := make([]byte, 2)
-	return &Bitmap{highlowcontainer:roaringArray{keys: []uint16{0}, containers: []container{&arrayContainer{ byteSliceAsUint16Slice(slice)}}}}
+	return &Bitmap{highlowcontainer: roaringArray{keys: []uint16{0}, containers: []container{&arrayContainer{byteSliceAsUint16Slice(slice)}}}}
 }
 
 func TestByteSliceAsUint64Slice(t *testing.T) {

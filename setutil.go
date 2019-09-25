@@ -582,6 +582,11 @@ mainwhile:
 	return pos
 }
 
+// returns -1 if x < y, zero otherwise
+func branchlessComparator(x, y uint16) int {
+	return (int(x) - int(y)) >> 63
+}
+
 // shotgun4Intersect performs intersection between small and large arrays described in
 // https://lemire.me/blog/2019/01/16/faster-intersections-between-sorted-arrays-with-shotgun/
 func shotgun4Intersect(small, large, buf []uint16) int {
@@ -601,58 +606,65 @@ func shotgun4Intersect(small, large, buf []uint16) int {
 
 		for n > 1 {
 			m := n >> 1
-
-			if large[idx1+m] < t1 {
-				idx1 += m
-			}
-
-			if large[idx2+m] < t2 {
-				idx2 += m
-			}
-
-			if large[idx3+m] < t3 {
-				idx3 += m
-			}
-
-			if large[idx4+m] < t4 {
-				idx4 += m
-			}
-
+			l1, l2, l3, l4 := large[idx1+m], large[idx2+m], large[idx3+m], large[idx4+m]
+			idx1 += branchlessComparator(l1, t1) & m
+			idx2 += branchlessComparator(l2, t2) & m
+			idx3 += branchlessComparator(l3, t3) & m
+			idx4 += branchlessComparator(l4, t4) & m
 			n -= m
 		}
 
-		if large[idx1] < t1 {
-			idx1++
+		l1, l2, l3, l4 := large[idx1], large[idx2], large[idx3], large[idx4]
+		if idx4+1 < nL { // common case
+			idx1 -= branchlessComparator(l1, t1)
+			idx2 -= branchlessComparator(l2, t2)
+			idx3 -= branchlessComparator(l3, t3)
+			idx4 -= branchlessComparator(l4, t4)
+			l1, l2, l3, l4 = large[idx1], large[idx2], large[idx3], large[idx4]
+		} else { // slow path
+			if l1 < t1 {
+				idx1++
+				if idx1 < nL {
+					l1 = large[idx1]
+				}
+			}
+			if l2 < t2 {
+				idx2++
+				if idx2 < nL {
+					l2 = large[idx2]
+				}
+			}
+			if l3 < t3 {
+				idx3++
+				if idx3 < nL {
+					l3 = large[idx3]
+				}
+			}
+			if l4 < t4 {
+				idx4++
+				if idx4 < nL {
+					l4 = large[idx4]
+				}
+			}
+
 		}
 
-		if large[idx2] < t2 {
-			idx2++
-		}
-
-		if large[idx3] < t3 {
-			idx3++
-		}
-
-		if large[idx4] < t4 {
-			idx4++
-		}
-
-		if idx1 < nL && large[idx1] == t1 {
+		if l1 == t1 {
 			buf[pos] = t1
 			pos++
 		}
 
-		if idx2 < nL && large[idx2] == t2 {
+		if l2 == t2 {
 			buf[pos] = t2
 			pos++
 		}
 
-		if idx3 < nL && large[idx3] == t3 {
+		if l3 == t3 {
 			buf[pos] = t3
 			pos++
 		}
 
-		if idx4 < nL && large[idx4] == t4 {
+		if l4 == t4 {
 			buf[pos] = t4
 			pos++
 		}
