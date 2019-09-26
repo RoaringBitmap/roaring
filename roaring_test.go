@@ -122,22 +122,52 @@ func TestRoaringBitmapAddMany(t *testing.T) {
 }
 
 func TestRoaringBitmapAddOffset(t *testing.T) {
-	array := []uint32{5580, 33722, 44031, 57276, 83097}
-	bmp := NewBitmap()
-	bmp.AddMany(array)
-	offtest := uint32(25000)
-	cop := AddOffset(bmp, offtest)
-
-	assert.EqualValues(t, len(array), cop.GetCardinality())
-
-	expected := make([]uint32, len(array))
-	for i, x := range array {
-		expected[i] = x + offtest
+	cases := []struct {
+		arr      []uint32
+		offset   int64
+		expected []uint32
+	}{
+		{
+			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
+			offset:   25000,
+			expected: []uint32{30580, 58722, 69031, 82276, 108097},
+		},
+		{
+			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
+			offset:   -25000,
+			expected: []uint32{8722, 19031, 32276, 58097},
+		},
+		{
+			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
+			offset:   -83097,
+			expected: []uint32{0},
+		},
+		{
+			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
+			offset:   MaxUint32,
+			expected: []uint32{},
+		},
+		{
+			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
+			offset:   -MaxUint32,
+			expected: []uint32{},
+		},
+		{
+			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
+			offset:   0,
+			expected: []uint32{5580, 33722, 44031, 57276, 83097},
+		},
 	}
 
-	wout := cop.ToArray()
+	for _, c := range cases {
+		bmp := NewBitmap()
+		bmp.AddMany(c.arr)
 
-	assert.EqualValues(t, expected, wout)
+		cop := AddOffset(bmp, c.offset)
+
+		assert.EqualValues(t, len(c.expected), cop.GetCardinality())
+		assert.EqualValues(t, c.expected, cop.ToArray())
+	}
 }
 
 func TestRoaringInPlaceAndNotBitmapContainer(t *testing.T) {
