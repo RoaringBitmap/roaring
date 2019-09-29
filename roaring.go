@@ -474,7 +474,13 @@ func (rb *Bitmap) Equals(o interface{}) bool {
 }
 
 // AddOffset adds the value 'offset' to each and every value in a bitmap, generating a new bitmap in the process
-func AddOffset(x *Bitmap, offset int64) (answer *Bitmap) {
+func AddOffset(x *Bitmap, offset uint32) (answer *Bitmap) {
+	return AddOffset64(x, int64(offset))
+}
+
+// AddOffset64 adds the value 'offset' to each and every value in a bitmap, generating a new bitmap in the process
+// Offset value could be negative. In the case when |offset| > |element|, the element will be omitted
+func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 	// we need "offset" to be a long because we want to support values
 	// between -0xFFFFFFFF up to +-0xFFFFFFFF
 	var containerOffset64 int64

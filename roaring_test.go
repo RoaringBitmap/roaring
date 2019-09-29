@@ -163,7 +163,7 @@ func TestRoaringBitmapAddOffset(t *testing.T) {
 		bmp := NewBitmap()
 		bmp.AddMany(c.arr)
 
-		cop := AddOffset(bmp, c.offset)
+		cop := AddOffset64(bmp, c.offset)
 
 		assert.EqualValues(t, len(c.expected), cop.GetCardinality())
 		assert.EqualValues(t, c.expected, cop.ToArray())
