@@ -479,7 +479,7 @@ func AddOffset(x *Bitmap, offset uint32) (answer *Bitmap) {
 }
 
 // AddOffset64 adds the value 'offset' to each and every value in a bitmap, generating a new bitmap in the process
-// Offset value could be negative. In the case when |offset| > |element|, the element will be omitted
+// If offset + element is outside of the range [0,2^32), that the element will be dropped
 func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 	// we need "offset" to be a long because we want to support values
 	// between -0xFFFFFFFF up to +-0xFFFFFFFF
