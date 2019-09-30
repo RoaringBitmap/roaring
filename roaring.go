@@ -475,41 +475,72 @@ func (rb *Bitmap) Equals(o interface{}) bool {
 
 // AddOffset adds the value 'offset' to each and every value in a bitmap, generating a new bitmap in the process
 func AddOffset(x *Bitmap, offset uint32) (answer *Bitmap) {
-	containerOffset := highbits(offset)
-	inOffset := lowbits(offset)
+	return AddOffset64(x, int64(offset))
+}
+
+// AddOffset64 adds the value 'offset' to each and every value in a bitmap, generating a new bitmap in the process
+// If offset + element is outside of the range [0,2^32), that the element will be dropped
+func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
+	// we need "offset" to be a long because we want to support values
+	// between -0xFFFFFFFF up to +-0xFFFFFFFF
+	var containerOffset64 int64
+
+	if offset < 0 {
+		containerOffset64 = (offset - (1 << 16) + 1) / (1 << 16)
+	} else {
+		containerOffset64 = offset >> 16
+	}
+
+	if containerOffset64 >= (1<<16) || containerOffset64 <= -(1<<16) {
+		return New()
+	}
+
+	containerOffset := int32(containerOffset64)
+	inOffset := (uint16)(offset - containerOffset64*(1<<16))
+
 	if inOffset == 0 {
 		answer = x.Clone()
 		for pos := 0; pos < answer.highlowcontainer.size(); pos++ {
-			key := answer.highlowcontainer.getKeyAtIndex(pos)
+			key := int32(answer.highlowcontainer.getKeyAtIndex(pos))
 			key += containerOffset
-			answer.highlowcontainer.keys[pos] = key
+
+			if key >= 0 && key <= MaxUint16 {
+				answer.highlowcontainer.keys[pos] = uint16(key)
+			}
 		}
 	} else {
 		answer = New()
+
 		for pos := 0; pos < x.highlowcontainer.size(); pos++ {
-			key := x.highlowcontainer.getKeyAtIndex(pos)
+			key := int32(x.highlowcontainer.getKeyAtIndex(pos))
 			key += containerOffset
+
 			c := x.highlowcontainer.getContainerAtIndex(pos)
 			offsetted := c.addOffset(inOffset)
-			if offsetted[0].getCardinality() > 0 {
+
+			if offsetted[0].getCardinality() > 0 && (key >= 0 && key <= MaxUint16) {
 				curSize := answer.highlowcontainer.size()
-				lastkey := uint16(0)
+				lastkey := int32(0)
+
 				if curSize > 0 {
-					lastkey = answer.highlowcontainer.getKeyAtIndex(curSize - 1)
+					lastkey = int32(answer.highlowcontainer.getKeyAtIndex(curSize - 1))
 				}
+
 				if curSize > 0 && lastkey == key {
 					prev := answer.highlowcontainer.getContainerAtIndex(curSize - 1)
 					orrseult := prev.ior(offsetted[0])
 					answer.highlowcontainer.setContainerAtIndex(curSize-1, orrseult)
 				} else {
-					answer.highlowcontainer.appendContainer(key, offsetted[0], false)
+					answer.highlowcontainer.appendContainer(uint16(key), offsetted[0], false)
 				}
 			}
-			if offsetted[1].getCardinality() > 0 {
-				answer.highlowcontainer.appendContainer(key+1, offsetted[1], false)
+
+			if offsetted[1].getCardinality() > 0 && ((key+1) >= 0 && (key+1) <= MaxUint16) {
+				answer.highlowcontainer.appendContainer(uint16(key+1), offsetted[1], false)
 			}
 		}
 	}
+
 	return answer
 }
 
