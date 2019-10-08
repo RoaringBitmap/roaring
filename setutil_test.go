@@ -3,10 +3,11 @@ package roaring
 // to run just these tests: go test -run TestSetUtil*
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSetUtilDifference(t *testing.T) {
@@ -96,7 +97,7 @@ func TestSetUtilIntersection(t *testing.T) {
 
 // go test -run TestSetUtilIntersectionCases
 func TestSetUtilIntersectionCases(t *testing.T) {
-	cases := []struct {
+	algorithms := []struct {
 		name string
 		algo func(a, b, buf []uint16) int
 	}{
@@ -110,15 +111,63 @@ func TestSetUtilIntersectionCases(t *testing.T) {
 		},
 	}
 
-	data1 := []uint16{0, 3, 6, 9, 12, 15, 18}
-	data2 := []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18}
-	expected := []uint16{0, 6, 12, 18}
+	cases := []struct {
+		a, b, expected []uint16
+	}{
+		{
+			a:        []uint16{},
+			b:        []uint16{},
+			expected: []uint16{},
+		},
+		{
+			a:        []uint16{1},
+			b:        []uint16{1},
+			expected: []uint16{1},
+		},
+		{
+			a:        []uint16{1},
+			b:        []uint16{2},
+			expected: []uint16{},
+		},
+		{
+			a:        []uint16{1, 2},
+			b:        []uint16{2, 3},
+			expected: []uint16{2},
+		},
+		{
+			a:        []uint16{1, 2, 3},
+			b:        []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18},
+			expected: []uint16{2},
+		},
+		{
+			a:        []uint16{0, 3, 6, 9, 12, 15, 18},
+			b:        []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18},
+			expected: []uint16{0, 6, 12, 18},
+		},
+		{
+			a:        []uint16{0, 3, 6, 9, 12, 15, 18},
+			b:        []uint16{0, 3, 6, 9, 12, 15, 18},
+			expected: []uint16{0, 3, 6, 9, 12, 15, 18},
+		},
+		{
+			a:        []uint16{1, 2, 3, 5, 7, 11, 13, 16, 30, 40, 100, 131, 200},
+			b:        []uint16{10, 60, 100},
+			expected: []uint16{100},
+		},
+		{
+			a:        []uint16{10, 60, 100},
+			b:        []uint16{1, 2, 3, 5, 7, 11, 13, 16, 30, 40, 100, 131, 200},
+			expected: []uint16{100},
+		},
+	}
 
-	for _, c := range cases {
-		result := make([]uint16, 0, len(data1)+len(data2))
-		n := c.algo(data1, data2, result)
+	for _, a := range algorithms {
+		for i, c := range cases {
+			result := make([]uint16, 0, len(c.a)+len(c.b))
+			n := a.algo(c.a, c.b, result)
 
-		assert.Equalf(t, expected, result[:n], "failed algorithm: %s", c.name)
+			assert.Equalf(t, c.expected, result[:n], "test %d fail, algorithm: %s", i+1, a.name)
+		}
 	}
 }
 

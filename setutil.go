@@ -675,7 +675,10 @@ func shotgun4Intersect(small, large, buf []uint16) int {
 
 	for idxS < nS && idxL < nL {
 		s := small[idxS]
-		idxL = advanceUntil(large, idxL, nL, s)
+
+		if s > large[idxL] {
+			idxL = advanceUntil(large, idxL, nL, s)
+		}
 
 		if idxL == nL {
 			break
