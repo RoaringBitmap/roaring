@@ -63,7 +63,7 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 func (rb *Bitmap) Checksum() uint64 {
 	const (
 		offset = 14695981039346656037
-		prime = 1099511628211
+		prime  = 1099511628211
 	)
 
 	var bytes []byte
@@ -144,7 +144,6 @@ func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err
 // bitmap derived from this bitmap (e.g., via Or, And) might
 // also be broken. Thus, before making buf unavailable, you should
 // call CloneCopyOnWriteContainers on all such bitmaps.
-//
 func (rb *Bitmap) FromBuffer(buf []byte) (p int64, err error) {
 	stream := internal.ByteBufferPool.Get().(*internal.ByteBuffer)
 	stream.Reset(buf)
@@ -276,9 +275,9 @@ type intIterator struct {
 	// This way, instead of making up-to 64k allocations per full iteration
 	// we get a single allocation and simply reinitialize the appropriate
 	// iterator and point to it in the generic `iter` member on each key bound.
-	shortIter        shortIterator
-	runIter          runIterator16
-	bitmapIter       bitmapContainerShortIterator
+	shortIter  shortIterator
+	runIter    runIterator16
+	bitmapIter bitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -341,7 +340,6 @@ func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
 // IntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
 type IntIterator = intIterator
 
-
 // Initialize configures the existing iterator so that it can iterate through the values of
 // the provided bitmap.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
@@ -357,9 +355,9 @@ type intReverseIterator struct {
 	iter             shortIterable
 	highlowcontainer *roaringArray
 
-	shortIter        reverseIterator
-	runIter          runReverseIterator16
-	bitmapIter       reverseBitmapContainerShortIterator
+	shortIter  reverseIterator
+	runIter    runReverseIterator16
+	bitmapIter reverseBitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -434,9 +432,9 @@ type manyIntIterator struct {
 	iter             manyIterable
 	highlowcontainer *roaringArray
 
-	shortIter        shortIterator
-	runIter          runIterator16
-	bitmapIter       bitmapContainerManyIterator
+	shortIter  shortIterator
+	runIter    runIterator16
+	bitmapIter bitmapContainerManyIterator
 }
 
 func (ii *manyIntIterator) init() {
@@ -494,7 +492,6 @@ func (ii *manyIntIterator) NextMany64(hs64 uint64, buf []uint64) int {
 
 	return n
 }
-
 
 // ManyIntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
 type ManyIntIterator = manyIntIterator
@@ -569,7 +566,7 @@ func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 // Iterator creates a new IntPeekable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) Iterator() IntPeekable {
-    p := new(intIterator)
+	p := new(intIterator)
 	p.Initialize(rb)
 	return p
 }
@@ -1712,4 +1709,75 @@ func (rb *Bitmap) Stats() Statistics {
 		}
 	}
 	return stats
+}
+
+func (rb *Bitmap) checkValidity() bool {
+	for _, c := range rb.highlowcontainer.containers {
+
+		switch c.(type) {
+		case *arrayContainer:
+			if c.getCardinality() > arrayDefaultMaxSize {
+				fmt.Println("Array containers are limited to size ", arrayDefaultMaxSize)
+				return false
+			}
+		case *bitmapContainer:
+			if c.getCardinality() <= arrayDefaultMaxSize {
+				fmt.Println("Bitmaps would be more concise as an array!")
+				return false
+			}
+		case *runContainer16:
+			if c.getSizeInBytes() > minOfInt(bitmapContainerSizeInBytes(), arrayContainerSizeInBytes(c.getCardinality())) {
+				fmt.Println("Inefficient run container!")
+				return false
+			}
+		}
+	}
+	return true
+}
+
+/**********************************************************************/
+// customize for LinDB
+/**********************************************************************/
+
+// GetHighKeys returns the all high keys
+func (rb *Bitmap) GetHighKeys() []uint16 {
+	return rb.highlowcontainer.keys
+}
+
+// GetContainerIndex returns the low container's index in the high container, if not exist returns -1, else returns the index
+func (rb *Bitmap) GetContainerIndex(highKey uint16) int {
+	return rb.highlowcontainer.getIndex(highKey)
+}
+
+// GetContainer gets the low container by high key, if not exist returns nil, else return the wrapper container
+func (rb *Bitmap) GetContainer(highKey uint16) Container {
+	container := rb.highlowcontainer.getContainer(highKey)
+	if container == nil {
+		return nil
+	}
+	return &containerWrapper{container: container}
+}
+
+// GetContainerAtIndex gets the low container by index, if index < -1 returns nil, else returns the wrapper container
+func (rb *Bitmap) GetContainerAtIndex(index int) Container {
+	if index < 0 {
+		return nil
+	}
+	container := rb.highlowcontainer.getContainerAtIndex(index)
+	return &containerWrapper{container: container}
+}
+
+// ContainsAndRank returns the high/low index if key container
+func (rb *Bitmap) ContainsAndRank(key uint32) (found bool, highIdx int, lowInx int) {
+	hb := highbits(key)
+	highIdx = rb.highlowcontainer.getIndex(hb)
+	if highIdx < 0 {
+		return false, highIdx, -1
+	}
+	c := rb.highlowcontainer.getContainerAtIndex(highIdx)
+	lb := lowbits(key)
+	if !c.contains(lb) {
+		return false, highIdx, c.rank(lb)
+	}
+	return true, highIdx, c.rank(lb)
 }

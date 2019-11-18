@@ -50,3 +50,43 @@ func (si *reverseIterator) next() uint16 {
 	si.loc--
 	return a
 }
+
+/**********************************************************************/
+// customize for LinDB
+/**********************************************************************/
+
+// PeekableShortIterator represents the wrapper interface of shortPeekable
+type PeekableShortIterator interface {
+	// HasNext returns if has next element
+	HasNext() bool
+	// Next returns the next element
+	Next() uint16
+	// PeekNext peeks the next element
+	PeekNext() uint16
+	// AdvanceIfNeeded skips to min value
+	AdvanceIfNeeded(minVal uint16)
+}
+
+type peekableShortIterator struct {
+	it shortPeekable
+}
+
+func newPeekableShortIterator(it shortPeekable) PeekableShortIterator {
+	return &peekableShortIterator{it: it}
+}
+
+func (p *peekableShortIterator) HasNext() bool {
+	return p.it.hasNext()
+}
+
+func (p *peekableShortIterator) Next() uint16 {
+	return p.it.next()
+}
+
+func (p *peekableShortIterator) PeekNext() uint16 {
+	return p.it.peekNext()
+}
+
+func (p *peekableShortIterator) AdvanceIfNeeded(minVal uint16) {
+	p.it.advanceIfNeeded(minVal)
+}
