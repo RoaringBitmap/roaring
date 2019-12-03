@@ -1,7 +1,7 @@
 package roaring_test
 
 import (
-	"github.com/RoaringBitmap/roaring"
+	"github.com/lindb/roaring"
 	"testing"
 )
 
