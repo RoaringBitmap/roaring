@@ -47,6 +47,13 @@ func newBitmapContainerwithRange(firstOfRun, lastOfRun int) *bitmapContainer {
 	return bc
 }
 
+func (bc *bitmapContainer) clear() {
+	bc.cardinality = 0
+	for i := 0; i < len(bc.bitmap); i++ {
+		bc.bitmap[i] = 0
+	}
+}
+
 func (bc *bitmapContainer) minimum() uint16 {
 	for i := 0; i < len(bc.bitmap); i++ {
 		w := bc.bitmap[i]

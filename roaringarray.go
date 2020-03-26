@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
+	"sync"
+
 	snappy "github.com/glycerine/go-unsnap-stream"
 	"github.com/tinylib/msgp/msgp"
-	"io"
 )
 
 //go:generate msgp -unexported
@@ -113,6 +115,13 @@ type roaringArray struct {
 type containerSerz struct {
 	t contype  `msg:"t"` // type
 	r msgp.Raw `msg:"r"` // Raw msgpack of the actual container type
+}
+
+// Used for allocating temporary bitmap containers in toBytes()
+var bitmapContainerPool = sync.Pool{
+	New: func() interface{} {
+		return newBitmapContainer()
+	},
 }
 
 func newRoaringArray() *roaringArray {
@@ -492,7 +501,8 @@ func (ra *roaringArray) writeTo(w io.Writer) (n int64, err error) {
 		// compute isRun bitmap
 		var ir []byte
 
-		isRun := newBitmapContainer()
+		isRun := bitmapContainerPool.Get().(*bitmapContainer)
+		isRun.clear()
 		for i, c := range ra.containers {
 			switch c.(type) {
 			case *runContainer16:
@@ -502,6 +512,8 @@ func (ra *roaringArray) writeTo(w io.Writer) (n int64, err error) {
 		// convert to little endian
 		ir = isRun.asLittleEndianByteSlice()[:isRunSizeInBytes]
 		nw += copy(buf[nw:], ir)
+
+		bitmapContainerPool.Put(isRun)
 	} else {
 		binary.LittleEndian.PutUint32(buf[0:], uint32(serialCookieNoRunContainer))
 		nw += 4
