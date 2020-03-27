@@ -22,6 +22,23 @@ func TestSetUtilDifference(t *testing.T) {
 	result = result[:nl]
 
 	assert.Equal(t, expectedresult, result)
+
+	// empty set2
+	data2 = []uint16{}
+	expectedresult = []uint16{0, 1, 2, 3, 4, 9}
+	nl = difference(data1, data2, result)
+	result = result[:nl]
+
+	assert.Equal(t, expectedresult, result)
+
+	// empty set 1
+	data1 = []uint16{}
+	data2 = []uint16{2, 3, 4, 5, 8, 9, 11}
+	expectedresult = []uint16{}
+	nl = difference(data1, data2, result)
+	result = result[:nl]
+
+	assert.Equal(t, expectedresult, result)
 }
 
 func TestSetUtilUnion(t *testing.T) {
