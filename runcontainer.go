@@ -1162,7 +1162,7 @@ func (rc *runContainer16) newRunIterator16() *runIterator16 {
 	return &runIterator16{rc: rc, curIndex: 0, curPosInIndex: 0}
 }
 
-func (rc *runContainer16) iterate(cb func(x uint16)) {
+func (rc *runContainer16) iterate(cb func(x uint16) bool) bool {
 	curIndex := int64(0)
 	curPosInIndex := uint16(0)
 
@@ -1181,9 +1181,12 @@ func (rc *runContainer16) iterate(cb func(x uint16)) {
 			curPosInIndex++
 		}
 
-		cb(next)
+		if !cb(next) {
+			return false
+		}
 	}
 
+	return true
 }
 
 // hasNext returns false if calling next will panic. It

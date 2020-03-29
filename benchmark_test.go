@@ -419,8 +419,9 @@ func BenchmarkIterateRoaring(b *testing.B) {
 
 		for j := 0; j < b.N; j++ {
 			c9 = uint(0)
-			s.Iterate(func(x uint32) {
+			s.Iterate(func(x uint32) bool {
 				c9++
+				return true
 			})
 		}
 	})
@@ -434,8 +435,9 @@ func BenchmarkIterateRoaring(b *testing.B) {
 
 		for j := 0; j < b.N; j++ {
 			c9 = uint(0)
-			s.Iterate(func(x uint32) {
+			s.Iterate(func(x uint32) bool {
 				c9++
+				return true
 			})
 		}
 	})

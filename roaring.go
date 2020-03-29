@@ -416,30 +416,35 @@ func (rb *Bitmap) String() string {
 	return buffer.String()
 }
 
-// Iterate iterates over the bitmap, calling the given callback with each value in the bitmap.
+// Iterate iterates over the bitmap, calling the given callback with each value in the bitmap.  If the callback returns
+// false, the iteration is halted.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
 // There is no guarantee as to what order the values will be iterated
-func (rb *Bitmap) Iterate(cb func(x uint32)) {
+func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 	var hs uint32
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
 		hs = uint32(rb.highlowcontainer.getKeyAtIndex(i)) << 16
 
 		c := rb.highlowcontainer.getContainerAtIndex(i)
 
+		var shouldContinue bool
 		// This is hacky but it avoids allocations from invoking an interface method with a closure
 		switch t := c.(type) {
 		case *arrayContainer:
-			t.iterate(func(x uint16) {
-				cb(uint32(x) | hs)
+			shouldContinue = t.iterate(func(x uint16) bool {
+				return cb(uint32(x) | hs)
 			})
 		case *runContainer16:
-			t.iterate(func(x uint16) {
-				cb(uint32(x) | hs)
+			shouldContinue = t.iterate(func(x uint16) bool {
+				return cb(uint32(x) | hs)
 			})
 		case *bitmapContainer:
-			t.iterate(func(x uint16) {
-				cb(uint32(x) | hs)
+			shouldContinue = t.iterate(func(x uint16) bool {
+				return cb(uint32(x) | hs)
 			})
+		}
+		if !shouldContinue {
+			return
 		}
 	}
 }
