@@ -24,6 +24,12 @@ func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uin
 	}
 }
 
+func (ac *arrayContainer) iterate(cb func(x uint16)) {
+	for i := 0; i < len(ac.content); i++ {
+		cb(ac.content[i])
+	}
+}
+
 func (ac *arrayContainer) getShortIterator() shortPeekable {
 	return &shortIterator{ac.content, 0}
 }

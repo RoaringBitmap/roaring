@@ -96,6 +96,14 @@ func (bc *bitmapContainer) maximum() uint16 {
 	return uint16(0)
 }
 
+func (bc *bitmapContainer) iterate(cb func(x uint16)) {
+	for i := bc.NextSetBit(0); i >= 0; {
+		j := i
+		i = bc.NextSetBit(i + 1)
+		cb(uint16(j))
+	}
+}
+
 type bitmapContainerShortIterator struct {
 	ptr *bitmapContainer
 	i   int

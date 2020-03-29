@@ -1162,6 +1162,30 @@ func (rc *runContainer16) newRunIterator16() *runIterator16 {
 	return &runIterator16{rc: rc, curIndex: 0, curPosInIndex: 0}
 }
 
+func (rc *runContainer16) iterate(cb func(x uint16)) {
+	curIndex := int64(0)
+	curPosInIndex := uint16(0)
+
+	hasNext := func() bool {
+		return int64(len(rc.iv)) > curIndex+1 ||
+			(int64(len(rc.iv)) == curIndex+1 && rc.iv[curIndex].length >= curPosInIndex)
+	}
+
+	for hasNext() {
+		next := rc.iv[curIndex].start + curPosInIndex
+
+		if curPosInIndex == rc.iv[curIndex].length {
+			curPosInIndex = 0
+			curIndex++
+		} else {
+			curPosInIndex++
+		}
+
+		cb(next)
+	}
+
+}
+
 // hasNext returns false if calling next will panic. It
 // returns true when there is at least one more value
 // available in the iteration sequence.

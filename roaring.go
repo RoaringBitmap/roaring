@@ -416,6 +416,34 @@ func (rb *Bitmap) String() string {
 	return buffer.String()
 }
 
+// Iterate iterates over the bitmap, calling the given callback with each value in the bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+// There is no guarantee as to what order the values will be iterated
+func (rb *Bitmap) Iterate(cb func(x uint32)) {
+	var hs uint32
+	for i := 0; i < rb.highlowcontainer.size(); i++ {
+		hs = uint32(rb.highlowcontainer.getKeyAtIndex(i)) << 16
+
+		c := rb.highlowcontainer.getContainerAtIndex(i)
+
+		// This is hacky but it avoids allocations from invoking an interface method with a closure
+		switch t := c.(type) {
+		case *arrayContainer:
+			t.iterate(func(x uint16) {
+				cb(uint32(x) | hs)
+			})
+		case *runContainer16:
+			t.iterate(func(x uint16) {
+				cb(uint32(x) | hs)
+			})
+		case *bitmapContainer:
+			t.iterate(func(x uint16) {
+				cb(uint32(x) | hs)
+			})
+		}
+	}
+}
+
 // Iterator creates a new IntPeekable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) Iterator() IntPeekable {
