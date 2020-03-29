@@ -846,7 +846,7 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 	hbLast := uint64(highbits(rangeEnd))
 	lbLast := uint64(lowbits(rangeEnd))
 
-	var max uint64 = maxLowBit
+	var max uint64 = maxLowBit+1
 	for hb := hbStart; hb <= hbLast; hb++ {
 		var containerStart uint64
 		if hb == hbStart {
@@ -868,7 +868,9 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 		} else { // *think* the range of ones must never be empty.
 			c := roaring.NewBitmap()
 			c.Flip(containerStart, containerLast)
-			rb.highlowcontainer.insertNewKeyValueAt(-i-1, uint32(hb), c)
+			if !c.IsEmpty() {
+				rb.highlowcontainer.insertNewKeyValueAt(-i-1, uint32(hb), c)
+			}
 		}
 	}
 }
@@ -974,7 +976,7 @@ func Flip(rb *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 	// copy the containers before the active area
 	answer.highlowcontainer.appendCopiesUntil(rb.highlowcontainer, uint32(hbStart))
 
-	var max uint64 = maxLowBit
+	var max uint64 = maxLowBit+1
 	for hb := hbStart; hb <= hbLast; hb++ {
 		var containerStart uint64
 		if hb == hbStart {
@@ -997,7 +999,9 @@ func Flip(rb *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 		} else { // *think* the range of ones must never be empty.
 			c := roaring.NewBitmap()
 			c.Flip(containerStart, containerLast)
-			answer.highlowcontainer.insertNewKeyValueAt(-i-1, uint32(hb), c)
+			if !c.IsEmpty() {
+				answer.highlowcontainer.insertNewKeyValueAt(-i-1, uint32(hb), c)
+			}
 		}
 	}
 	// copy the containers after the active area.
