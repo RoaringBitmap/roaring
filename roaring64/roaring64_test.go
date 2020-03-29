@@ -1076,12 +1076,12 @@ func TestBitmap(t *testing.T) {
 	})
 
 	t.Run("ortest2", func(t *testing.T) {
-		arrayrr := make([]uint32, 4000+4000+2)
+		arrayrr := make([]uint64, 4000+4000+2)
 		pos := 0
 		rr := NewBitmap()
 		for k := 0; k < 4000; k++ {
 			rr.AddInt(k)
-			arrayrr[pos] = uint32(k)
+			arrayrr[pos] = uint64(k)
 			pos++
 		}
 		rr.AddInt(100000)
@@ -1089,7 +1089,7 @@ func TestBitmap(t *testing.T) {
 		rr2 := NewBitmap()
 		for k := 4000; k < 8000; k++ {
 			rr2.AddInt(k)
-			arrayrr[pos] = uint32(k)
+			arrayrr[pos] = uint64(k)
 			pos++
 		}
 

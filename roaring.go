@@ -385,13 +385,13 @@ func (ii *manyIntIterator) NextMany(buf []uint32) int {
 }
 
 func (ii *manyIntIterator) NextMany64(hs64 uint64, buf []uint64) int {
-	hs := uint64(ii.hs) | hs64
 	n := 0
 	for n < len(buf) {
 		if ii.iter == nil {
 			break
 		}
 
+		hs := uint64(ii.hs) | hs64
 		moreN := ii.iter.nextMany64(hs, buf[n:])
 		n += moreN
 		if moreN == 0 {
