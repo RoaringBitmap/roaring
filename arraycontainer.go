@@ -25,8 +25,10 @@ func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uin
 }
 
 func (ac *arrayContainer) iterate(cb func(x uint16) bool) bool {
-	for i := 0; i < len(ac.content); i++ {
-		if !cb(ac.content[i]) {
+	iterator := shortIterator{ac.content, 0}
+
+	for iterator.hasNext() {
+		if !cb(iterator.next()) {
 			return false
 		}
 	}

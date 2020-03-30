@@ -1163,25 +1163,10 @@ func (rc *runContainer16) newRunIterator16() *runIterator16 {
 }
 
 func (rc *runContainer16) iterate(cb func(x uint16) bool) bool {
-	curIndex := int64(0)
-	curPosInIndex := uint16(0)
+	iterator := runIterator16{rc, 0, 0}
 
-	hasNext := func() bool {
-		return int64(len(rc.iv)) > curIndex+1 ||
-			(int64(len(rc.iv)) == curIndex+1 && rc.iv[curIndex].length >= curPosInIndex)
-	}
-
-	for hasNext() {
-		next := rc.iv[curIndex].start + curPosInIndex
-
-		if curPosInIndex == rc.iv[curIndex].length {
-			curPosInIndex = 0
-			curIndex++
-		} else {
-			curPosInIndex++
-		}
-
-		if !cb(next) {
+	for iterator.hasNext() {
+		if !cb(iterator.next()) {
 			return false
 		}
 	}

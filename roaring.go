@@ -421,10 +421,8 @@ func (rb *Bitmap) String() string {
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
 // There is no guarantee as to what order the values will be iterated
 func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
-	var hs uint32
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
-		hs = uint32(rb.highlowcontainer.getKeyAtIndex(i)) << 16
-
+		hs := uint32(rb.highlowcontainer.getKeyAtIndex(i)) << 16
 		c := rb.highlowcontainer.getContainerAtIndex(i)
 
 		var shouldContinue bool
@@ -443,8 +441,9 @@ func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 				return cb(uint32(x) | hs)
 			})
 		}
+
 		if !shouldContinue {
-			return
+			break
 		}
 	}
 }
