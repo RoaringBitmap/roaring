@@ -2308,3 +2308,79 @@ func TestBitmapFlipMaxRangeEnd(t *testing.T) {
 
 	assert.EqualValues(t, MaxRange, bm.GetCardinality())
 }
+
+func TestIterate(t *testing.T) {
+	rb := NewBitmap()
+
+	for i := 0; i < 300; i++ {
+		rb.Add(uint32(i))
+	}
+
+	var values []uint32
+	rb.Iterate(func(x uint32) bool {
+		values = append(values, x)
+		return true
+	})
+
+	assert.Equal(t, rb.ToArray(), values)
+}
+
+func TestIterateCompressed(t *testing.T) {
+	rb := NewBitmap()
+
+	for i := 0; i < 300; i++ {
+		rb.Add(uint32(i))
+	}
+
+	rb.RunOptimize()
+
+	var values []uint32
+	rb.Iterate(func(x uint32) bool {
+		values = append(values, x)
+		return true
+	})
+
+	assert.Equal(t, rb.ToArray(), values)
+}
+
+func TestIterateLargeValues(t *testing.T) {
+	rb := NewBitmap()
+
+	// This range of values ensures that all different types of containers will be used
+	for i := 150000; i < 450000; i++ {
+		rb.Add(uint32(i))
+	}
+
+	var values []uint32
+	rb.Iterate(func(x uint32) bool {
+		values = append(values, x)
+		return true
+	})
+
+	assert.Equal(t, rb.ToArray(), values)
+}
+
+func TestIterateHalt(t *testing.T) {
+	rb := NewBitmap()
+
+	// This range of values ensures that all different types of containers will be used
+	for i := 150000; i < 450000; i++ {
+		rb.Add(uint32(i))
+	}
+
+	var values []uint32
+	count := uint64(0)
+	stopAt := rb.GetCardinality() - 1
+	rb.Iterate(func(x uint32) bool {
+		values = append(values, x)
+		count++
+		if count == stopAt {
+			return false
+		}
+		return true
+	})
+
+	expected := rb.ToArray()
+	expected = expected[0 : len(expected)-1]
+	assert.Equal(t, expected, values)
+}

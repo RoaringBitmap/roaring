@@ -363,23 +363,84 @@ func BenchmarkCountBitset(b *testing.B) {
 
 // go test -bench BenchmarkIterate -run -
 func BenchmarkIterateRoaring(b *testing.B) {
-	b.StopTimer()
-	r := rand.New(rand.NewSource(0))
-	s := NewBitmap()
-	sz := 150000
-	initsize := 65000
-	for i := 0; i < initsize; i++ {
-		s.Add(uint32(r.Int31n(int32(sz))))
-	}
-	b.StartTimer()
-	for j := 0; j < b.N; j++ {
-		c9 = uint(0)
-		i := s.Iterator()
-		for i.HasNext() {
-			i.Next()
-			c9++
+	newBitmap := func() *Bitmap {
+		r := rand.New(rand.NewSource(0))
+		s := NewBitmap()
+		sz := 150000
+		initsize := 65000
+		for i := 0; i < initsize; i++ {
+			s.Add(uint32(r.Int31n(int32(sz))))
 		}
+		return s
 	}
+
+	b.Run("iterator-compressed", func(b *testing.B) {
+		b.ReportAllocs()
+
+		s := newBitmap()
+		s.RunOptimize()
+
+		b.ResetTimer()
+
+		for j := 0; j < b.N; j++ {
+			c9 = uint(0)
+			i := s.Iterator()
+			for i.HasNext() {
+				i.Next()
+				c9++
+			}
+		}
+	})
+
+	b.Run("iterator", func(b *testing.B) {
+		b.ReportAllocs()
+
+		s := newBitmap()
+
+		b.ResetTimer()
+
+		for j := 0; j < b.N; j++ {
+			c9 = uint(0)
+			i := s.Iterator()
+			for i.HasNext() {
+				i.Next()
+				c9++
+			}
+		}
+	})
+
+	b.Run("iterate-compressed", func(b *testing.B) {
+		b.ReportAllocs()
+
+		s := newBitmap()
+		s.RunOptimize()
+
+		b.ResetTimer()
+
+		for j := 0; j < b.N; j++ {
+			c9 = uint(0)
+			s.Iterate(func(x uint32) bool {
+				c9++
+				return true
+			})
+		}
+	})
+
+	b.Run("iterate", func(b *testing.B) {
+		b.ReportAllocs()
+
+		s := newBitmap()
+
+		b.ResetTimer()
+
+		for j := 0; j < b.N; j++ {
+			c9 = uint(0)
+			s.Iterate(func(x uint32) bool {
+				c9++
+				return true
+			})
+		}
+	})
 }
 
 // go test -bench BenchmarkSparseIterate -run -
