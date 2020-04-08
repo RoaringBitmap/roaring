@@ -678,7 +678,10 @@ func (rb *Bitmap) GetCardinality() uint64 {
 	return size
 }
 
-// Rank returns the number of integers that are smaller or equal to x (Rank(infinity) would be GetCardinality())
+// Rank returns the number of integers that are smaller or equal to x (Rank(infinity) would be GetCardinality()).
+// If you pass the smallest value, you get the value 1. If you pass a value that is smaller than the smallest
+// value, you get 0. Note that this function differs in convention from the Select function since it
+// return 1 and not 0 on the smallest value.
 func (rb *Bitmap) Rank(x uint32) uint64 {
 	size := uint64(0)
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
@@ -695,7 +698,9 @@ func (rb *Bitmap) Rank(x uint32) uint64 {
 	return size
 }
 
-// Select returns the xth integer in the bitmap
+// Select returns the xth integer in the bitmap. If you pass 0, you get
+// the smallest element. Note that this function differs in convention from
+// the Rank function which returns 1 on the smallest value.
 func (rb *Bitmap) Select(x uint32) (uint32, error) {
 	if rb.GetCardinality() <= uint64(x) {
 		return 0, fmt.Errorf("can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
