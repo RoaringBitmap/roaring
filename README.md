@@ -1,4 +1,4 @@
-roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https://travis-ci.org/RoaringBitmap/roaring) [![Coverage Status](https://coveralls.io/repos/github/RoaringBitmap/roaring/badge.svg?branch=master)](https://coveralls.io/github/RoaringBitmap/roaring?branch=master) [![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring) [![Go Report Card](https://goreportcard.com/badge/RoaringBitmap/roaring)](https://goreportcard.com/report/github.com/RoaringBitmap/roaring)
+roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https://travis-ci.org/RoaringBitmap/roaring) [![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring) [![Go Report Card](https://goreportcard.com/badge/RoaringBitmap/roaring)](https://goreportcard.com/report/github.com/RoaringBitmap/roaring)
 [![Build Status](https://cloud.drone.io/api/badges/RoaringBitmap/roaring/status.svg)](https://cloud.drone.io/RoaringBitmap/roaring)
 =============
 
