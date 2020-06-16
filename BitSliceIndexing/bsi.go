@@ -2,7 +2,7 @@
  * This file contains a library that implements Bit Slice Indexing or BSI.
  * A BSI at its simplest is an array of bitmaps that represent an encoded
  * binary value.  The advantage of a BSI is that comparisons can be made
- * across ranges of values whereas a bitmap can only represent the existance
+ * across ranges of values whereas a bitmap can only represent the existence
  * of a single value for a given column ID.  Another usage scenario involves
  * storage of high cardinality values.
  *
@@ -52,7 +52,7 @@ func NewDefaultBSI() *BSI {
 }
 
 
-// Value existance test.
+// Value existence test.
 func (b *BSI) ValueExists(columnID uint64) bool {
 
     return b.eBM.Contains(uint32(columnID))
