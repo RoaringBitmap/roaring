@@ -1,4 +1,4 @@
-package shared
+package roaring
 
 import (
     _ "fmt"

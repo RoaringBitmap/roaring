@@ -12,7 +12,7 @@
  * Author: Guy A. Molinari, The Walt Disney Company
  *
  */
-package shared
+package roaring
 
 import (
     _ "fmt"
