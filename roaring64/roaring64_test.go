@@ -1875,3 +1875,23 @@ func TestBitmapFlipMaxRangeEnd(t *testing.T) {
 
 	assert.EqualValues(t, roaring.MaxRange, bm.GetCardinality())
 }
+
+func TestSerialization(t *testing.T) {
+        array := []uint64{123, 0xA00000000A, 0xAFFFFFFF7, 0xFFFFFFFFF}
+        bmp := New()
+        for _, v := range array {
+                bmp.Add(v)
+        }
+        assert.False(t, bmp.IsEmpty())
+
+        buf, err := bmp.MarshalBinary()
+        assert.Nil(t, err)
+        assert.NotNil(t, buf)
+
+        newBmp := New()
+        err = newBmp.UnmarshalBinary(buf)
+        assert.Nil(t, err)
+
+        assert.True(t, newBmp.Equals(bmp))
+}
+
