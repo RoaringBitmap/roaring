@@ -191,3 +191,40 @@ func TestFastAggregationsXOR_run(t *testing.T) {
 
 	assert.True(t, HeapXor(rb1, rb2, rb3).Equals(bigxor))
 }
+
+func TestFastAggregationsAndAny(t *testing.T) {
+	rb1 := NewBitmap()
+	rb2 := NewBitmap()
+	rb3 := NewBitmap()
+	rb4 := NewBitmap()
+	for i := uint32(500); i < 75000; i++ {
+		rb1.Add(i)
+	}
+	for i := uint32(0); i < 1000000; i += 7 {
+		rb2.Add(i)
+	}
+	for i := uint32(0); i < 1000000; i += 1001 {
+		rb3.Add(i)
+	}
+	for i := uint32(1000000); i < 2000000; i += 1001 {
+		rb1.Add(i)
+	}
+	for i := uint32(1000000); i < 2000000; i += 3 {
+		rb2.Add(i)
+	}
+	for i := uint32(1000000); i < 2000000; i += 7 {
+		rb3.Add(i)
+	}
+
+	rb4.Add(1001001)
+
+	rb1.RunOptimize()
+
+	base := rb1.Clone()
+	base.And(FastOr(rb2, rb3, rb4))
+
+	fast := rb1.Clone()
+	fast.AndAny(rb2, rb3, rb4)
+
+	assert.True(t, fast.Equals(base))
+}

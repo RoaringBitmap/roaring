@@ -934,6 +934,31 @@ func (bc *bitmapContainer) loadData(arrayContainer *arrayContainer) {
 	}
 }
 
+func (bc *bitmapContainer) resetTo(a container) {
+	switch x := a.(type) {
+	case *arrayContainer:
+		fill(bc.bitmap, 0)
+		bc.loadData(x)
+
+	case *bitmapContainer:
+		bc.cardinality = x.cardinality
+		copy(bc.bitmap, x.bitmap)
+
+	case *runContainer16:
+		bc.cardinality = 0
+		lastEnd := 0
+		for _, r := range x.iv {
+			bc.cardinality += int(r.length)
+			resetBitmapRange(bc.bitmap, lastEnd, int(r.start))
+			setBitmapRange(bc.bitmap, int(r.start), int(r.start+r.length))
+			lastEnd = int(r.start + r.length)
+		}
+
+	default:
+		panic("unsupported container type")
+	}
+}
+
 func (bc *bitmapContainer) toArrayContainer() *arrayContainer {
 	ac := &arrayContainer{}
 	ac.loadData(bc)
