@@ -224,9 +224,6 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 		return
 	}
 
-	basePos := 0
-	intersections := 0
-
 	type withPos struct {
 		bitmap *roaringArray
 		pos    int
@@ -244,8 +241,9 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 		}
 	}
 
+	basePos := 0
+	intersections := 0
 	keyContainers := make([]container, 0, len(filters))
-
 	var (
 		tmpArray  *arrayContainer
 		tmpBitmap *bitmapContainer
@@ -282,8 +280,6 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 			continue
 		}
 
-		baseContainer := rb.highlowcontainer.getWritableContainerAtIndex(basePos)
-
 		var ored container
 
 		if len(keyContainers) == 1 {
@@ -312,9 +308,9 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 			}
 		}
 
-		baseContainer.iand(ored)
-		if baseContainer.getCardinality() > 0 {
-			rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersections, baseKey, baseContainer, false)
+		result := rb.highlowcontainer.getWritableContainerAtIndex(basePos).iand(ored)
+		if result.getCardinality() > 0 {
+			rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersections, baseKey, result, false)
 			intersections++
 		}
 
