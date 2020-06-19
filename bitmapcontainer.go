@@ -945,7 +945,7 @@ func (bc *bitmapContainer) resetTo(a container) {
 		copy(bc.bitmap, x.bitmap)
 
 	case *runContainer16:
-		bc.cardinality = 0
+		bc.cardinality = len(x.iv)
 		lastEnd := 0
 		for _, r := range x.iv {
 			bc.cardinality += int(r.length)
