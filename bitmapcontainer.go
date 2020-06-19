@@ -950,9 +950,10 @@ func (bc *bitmapContainer) resetTo(a container) {
 		for _, r := range x.iv {
 			bc.cardinality += int(r.length)
 			resetBitmapRange(bc.bitmap, lastEnd, int(r.start))
-			setBitmapRange(bc.bitmap, int(r.start), int(r.start+r.length))
-			lastEnd = int(r.start + r.length)
+			lastEnd = int(r.start+r.length) + 1
+			setBitmapRange(bc.bitmap, int(r.start), lastEnd)
 		}
+		resetBitmapRange(bc.bitmap, lastEnd, maxCapacity)
 
 	default:
 		panic("unsupported container type")
