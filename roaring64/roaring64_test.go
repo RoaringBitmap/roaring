@@ -1895,3 +1895,29 @@ func TestSerialization(t *testing.T) {
         assert.True(t, newBmp.Equals(bmp))
 }
 
+func TestAddCheckedRemove64(t *testing.T) {
+        array := []uint64{123, 0xA00000000A, 0xAFFFFFFF7, 0xFFFFFFFFF}
+        bmp := New()
+        for _, v := range array {
+                assert.True(t, bmp.CheckedAdd(v))
+                assert.False(t, bmp.CheckedAdd(v))
+        }
+        for _, v := range array {
+                assert.True(t, bmp.CheckedRemove(v))
+                assert.False(t, bmp.CheckedRemove(v))
+        }
+        assert.True(t, bmp.IsEmpty())
+}
+
+func TestClear64(t *testing.T) {
+        array := []uint64{123, 0xA00000000A, 0xAFFFFFFF7, 0xFFFFFFFFF}
+        bmp := New()
+        for _, v := range array {
+                bmp.Add(v)
+        }
+        assert.False(t, bmp.IsEmpty())
+        bmp.Clear()
+        assert.True(t, bmp.IsEmpty())
+}
+
+

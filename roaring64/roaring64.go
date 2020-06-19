@@ -281,7 +281,6 @@ func (rb *Bitmap) Add(x uint64) {
 
 // CheckedAdd adds the integer x to the bitmap and return true  if it was added (false if the integer was already present)
 func (rb *Bitmap) CheckedAdd(x uint64) bool {
-	// TODO: add unit tests for this method
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {
@@ -290,6 +289,7 @@ func (rb *Bitmap) CheckedAdd(x uint64) bool {
 	}
 	newBitmap := roaring.NewBitmap()
 	newBitmap.Add(lowbits(x))
+	rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newBitmap)
 	return true
 }
 
