@@ -313,7 +313,6 @@ func (rb *Bitmap) Remove(x uint64) {
 
 // CheckedRemove removes the integer x from the bitmap and return true if the integer was effectively remove (and false if the integer was not present)
 func (rb *Bitmap) CheckedRemove(x uint64) bool {
-	// TODO: add unit tests for this method
 	hb := highbits(x)
 	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {

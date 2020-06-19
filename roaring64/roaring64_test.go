@@ -1891,8 +1891,21 @@ func TestSerialization(t *testing.T) {
         newBmp := New()
         err = newBmp.UnmarshalBinary(buf)
         assert.Nil(t, err)
-
         assert.True(t, newBmp.Equals(bmp))
+
+        bufBmp := New()
+        _, err = bufBmp.FromBuffer(buf)
+        assert.Nil(t, err)
+        assert.True(t, bufBmp.Equals(bmp))
+
+	var base64 string
+        base64, err = bufBmp.ToBase64()
+        assert.Nil(t, err)
+        
+        base64Bmp := New()
+        _, err = base64Bmp.FromBase64(base64)
+        assert.Nil(t, err)
+        assert.True(t, base64Bmp.Equals(bmp))
 }
 
 func TestAddCheckedRemove64(t *testing.T) {
@@ -1921,3 +1934,42 @@ func TestClear64(t *testing.T) {
 }
 
 
+func TestRunCompression(t *testing.T) {
+        bmp := New()
+	bmp.SetCopyOnWrite(true)
+	for i := 100; i < 10000; i++ {
+		bmp.Add(uint64(i))
+	}
+	var j uint64
+    	for j = 14000000000000000100; j < 14000000000000001000; j++ {
+		bmp.Add(j)
+	}
+	sizeOrigin := bmp.GetSizeInBytes()
+        bmp.RunOptimize()
+        assert.True(t, bmp.HasRunCompression())
+        assert.True(t, sizeOrigin > bmp.GetSizeInBytes())
+        assert.True(t, bmp.GetCopyOnWrite())
+}
+
+
+func Test64BitValues(t *testing.T) {
+        bmp := New()
+	bmp.SetCopyOnWrite(true)
+	for i := 100; i < 1000; i++ {
+		bmp.Add(uint64(i))
+        }
+	var i uint64
+    	for i = 14000000000000000100; i < 14000000000000001000; i++ {
+		bmp.Add(i)
+	}
+	assert.True(t, bmp.Contains(uint64(14000000000000000500)))
+        array := []uint64{5, 1, 2, 234294967296, 195839473298, 14000000000000000100};
+        bmp2 := New()
+	bmp2.AddMany(array)
+        v, err := bmp2.Select(uint64(5))
+        assert.Nil(t, err)
+	assert.True(t, v == uint64(14000000000000000100))
+	assert.True(t, bmp2.Minimum() == uint64(1))
+	assert.True(t, bmp2.Maximum() == uint64(14000000000000000100))
+	assert.True(t, bmp2.Rank(uint64(195839473298)) == uint64(4))
+}
