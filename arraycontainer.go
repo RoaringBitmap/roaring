@@ -892,7 +892,7 @@ func (ac *arrayContainer) resetTo(a container) {
 		ac.realloc(card)
 		cur := 0
 		for _, r := range x.iv {
-			for val := r.start; val <= r.start+r.length; val++ {
+			for val := r.start; val <= r.last(); val++ {
 				ac.content[cur] = val
 				cur++
 			}

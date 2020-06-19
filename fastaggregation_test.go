@@ -193,38 +193,75 @@ func TestFastAggregationsXOR_run(t *testing.T) {
 }
 
 func TestFastAggregationsAndAny(t *testing.T) {
+	base := NewBitmap()
 	rb1 := NewBitmap()
 	rb2 := NewBitmap()
 	rb3 := NewBitmap()
-	rb4 := NewBitmap()
-	for i := uint32(500); i < 75000; i++ {
+	// only one filter has some values
+	from := uint32(maxCapacity * 4)
+	for i := uint32(from); i < from+100; i += 2 {
 		rb1.Add(i)
 	}
-	for i := uint32(0); i < 1000000; i += 7 {
-		rb2.Add(i)
+	// only base has values
+	from = maxCapacity * 7
+	for i := uint32(from); i < from+100; i += 2 {
+		base.Add(i)
 	}
-	for i := uint32(0); i < 1000000; i += 1001 {
-		rb3.Add(i)
-	}
-	for i := uint32(1000000); i < 2000000; i += 1001 {
+	// base and one of filters have same values
+	from = maxCapacity * 8
+	for i := uint32(from); i < from+100; i += 2 {
+		base.Add(i)
 		rb1.Add(i)
 	}
-	for i := uint32(1000000); i < 2000000; i += 3 {
+	// small union
+	from = maxCapacity * 10
+	for i := uint32(from); i < from+1000; i += 10 {
+		base.Add(i)
+		base.Add(i + i%3)
+
+		rb1.Add(i)
+		rb1.Add(i + 1)
+
+		rb2.Add(i + 2)
+		rb2.Add(i + i%7)
+
+		rb3.Add(200 + i)
+	}
+	// run filters
+	from = maxCapacity * 10
+	for i := uint32(from); i < from+1000; i += 3 {
+		base.Add(i)
+	}
+	for i := uint32(from); i < from+100; i++ {
+		rb1.Add(i)
+		rb2.Add(i + 333)
+		rb3.Add(i + 433)
+	}
+	// large union
+	from = maxCapacity * 16
+	for i := uint32(from); i < from+arrayDefaultMaxSize*10; i += 3 {
+		base.Add(i)
+		base.Add(i + i%2 + 1)
 		rb2.Add(i)
-	}
-	for i := uint32(1000000); i < 2000000; i += 7 {
-		rb3.Add(i)
+		rb3.Add(i + 1)
 	}
 
-	rb4.Add(1001001)
+	// some extra base values
+	from = maxCapacity * 17
+	for i := uint32(from); i < from+1000; i++ {
+		base.Add(i)
+	}
 
+	base.RunOptimize()
 	rb1.RunOptimize()
+	rb2.RunOptimize()
+	rb3.RunOptimize()
 
-	base := rb1.Clone()
-	base.And(FastOr(rb2, rb3, rb4))
+	orFirst := base.Clone()
+	orFirst.And(FastOr(rb1, rb2, rb3))
 
-	fast := rb1.Clone()
-	fast.AndAny(rb2, rb3, rb4)
+	fast := base.Clone()
+	fast.AndAny(rb1, rb2, rb3)
 
-	assert.True(t, fast.Equals(base))
+	assert.True(t, fast.Equals(orFirst))
 }

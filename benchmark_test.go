@@ -919,11 +919,13 @@ func BenchmarkBitmapReuseWithClear(b *testing.B) {
 func BenchmarkAndAny(b *testing.B) {
 
 	runSet := func(name string, base *Bitmap, filters []*Bitmap) {
-		var andFirstCard uint64
-		var orFirstCard uint64
-		var fastCard uint64
+		var (
+			andFirstCard, orFirstCard, andAnyCard uint64
+			andFirstRan, orFirstRan, andAnyRan    bool
+		)
 
 		b.Run(name+"_or-first", func(b *testing.B) {
+			andAnyRan = true
 			for n := 0; n < b.N; n++ {
 				clone := base.Clone()
 
@@ -935,6 +937,7 @@ func BenchmarkAndAny(b *testing.B) {
 		})
 
 		b.Run(name+"_and-first", func(b *testing.B) {
+			orFirstRan = true
 			for n := 0; n < b.N; n++ {
 				anded := make([]*Bitmap, 0, len(filters))
 
@@ -948,21 +951,22 @@ func BenchmarkAndAny(b *testing.B) {
 		})
 
 		b.Run(name+"_AndAny", func(b *testing.B) {
+			andAnyRan = true
 			for n := 0; n < b.N; n++ {
 				clone := base.Clone()
 
 				b.StartTimer()
 				clone.AndAny(filters...)
-				fastCard = clone.GetCardinality()
+				andAnyCard = clone.GetCardinality()
 				b.StopTimer()
 			}
 		})
 
-		if andFirstCard != orFirstCard {
-			b.Fatalf("Cardinalities don't match: %d, %d", andFirstCard, orFirstCard)
+		if andFirstRan && andAnyRan && andFirstCard != andAnyCard {
+			b.Fatalf("Cardinalities don't match: %d, %d", andFirstCard, andAnyCard)
 		}
-		if andFirstCard != fastCard {
-			b.Fatalf("Cardinalities don't match: %d, %d", andFirstCard, fastCard)
+		if orFirstRan && andAnyRan && orFirstCard != andAnyCard {
+			b.Fatalf("Cardinalities don't match: %d, %d", orFirstCard, andAnyCard)
 		}
 	}
 

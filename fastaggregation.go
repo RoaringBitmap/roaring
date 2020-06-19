@@ -245,17 +245,19 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 	intersections := 0
 	keyContainers := make([]container, 0, len(filters))
 	var (
-		tmpArray  *arrayContainer
-		tmpBitmap *bitmapContainer
+		tmpArray   *arrayContainer
+		tmpBitmap  *bitmapContainer
+		minNextKey uint16
 	)
 
-	for ; basePos < rb.highlowcontainer.size() && len(filters) > 0; basePos++ {
+	for basePos < rb.highlowcontainer.size() && len(filters) > 0 {
 		baseKey := rb.highlowcontainer.getKeyAtIndex(basePos)
 
-		// accumulate containers for current key
-		// and exclude filters that do not have more related values
+		// accumulate containers for current key, find next minimal key in filters
+		// and exclude filters that do not have related values anymore
 		i := 0
 		maxPossibleOr := 0
+		minNextKey = MaxUint16
 		for _, f := range filters {
 			if f.key < baseKey {
 				f.pos = f.bitmap.advanceUntil(baseKey, f.pos)
@@ -269,14 +271,22 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 				cont := f.bitmap.getContainerAtIndex(f.pos)
 				keyContainers = append(keyContainers, cont)
 				maxPossibleOr += cont.getCardinality()
+
+				f.pos++
+				if f.pos == f.bitmap.size() {
+					continue
+				}
+				f.key = f.bitmap.getKeyAtIndex(f.pos)
 			}
 
+			minNextKey = minOfUint16(minNextKey, f.key)
 			filters[i] = f
 			i++
 		}
 		filters = filters[:i]
 
 		if len(keyContainers) == 0 {
+			basePos = rb.highlowcontainer.advanceUntil(minNextKey, basePos)
 			continue
 		}
 
@@ -315,6 +325,7 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 		}
 
 		keyContainers = keyContainers[:0]
+		basePos = rb.highlowcontainer.advanceUntil(minNextKey, basePos)
 	}
 
 	rb.highlowcontainer.resize(intersections)
