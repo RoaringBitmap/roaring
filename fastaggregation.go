@@ -213,3 +213,120 @@ func HeapXor(bitmaps ...*Bitmap) *Bitmap {
 	}
 	return heap.Pop(&pq).(*item).value
 }
+
+// AndAny provides a result equivalent to rb.And(FastOr(bitmaps)).
+// It's optimized to minimize allocations. It also might be faster than separate calls.
+func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
+	if len(bitmaps) == 0 {
+		return
+	} else if len(bitmaps) == 1 {
+		rb.And(bitmaps[0])
+		return
+	}
+
+	type withPos struct {
+		bitmap *roaringArray
+		pos    int
+		key    uint16
+	}
+	filters := make([]withPos, 0, len(bitmaps))
+
+	for _, b := range bitmaps {
+		if b.highlowcontainer.size() > 0 {
+			filters = append(filters, withPos{
+				bitmap: &b.highlowcontainer,
+				pos:    0,
+				key:    b.highlowcontainer.getKeyAtIndex(0),
+			})
+		}
+	}
+
+	basePos := 0
+	intersections := 0
+	keyContainers := make([]container, 0, len(filters))
+	var (
+		tmpArray   *arrayContainer
+		tmpBitmap  *bitmapContainer
+		minNextKey uint16
+	)
+
+	for basePos < rb.highlowcontainer.size() && len(filters) > 0 {
+		baseKey := rb.highlowcontainer.getKeyAtIndex(basePos)
+
+		// accumulate containers for current key, find next minimal key in filters
+		// and exclude filters that do not have related values anymore
+		i := 0
+		maxPossibleOr := 0
+		minNextKey = MaxUint16
+		for _, f := range filters {
+			if f.key < baseKey {
+				f.pos = f.bitmap.advanceUntil(baseKey, f.pos)
+				if f.pos == f.bitmap.size() {
+					continue
+				}
+				f.key = f.bitmap.getKeyAtIndex(f.pos)
+			}
+
+			if f.key == baseKey {
+				cont := f.bitmap.getContainerAtIndex(f.pos)
+				keyContainers = append(keyContainers, cont)
+				maxPossibleOr += cont.getCardinality()
+
+				f.pos++
+				if f.pos == f.bitmap.size() {
+					continue
+				}
+				f.key = f.bitmap.getKeyAtIndex(f.pos)
+			}
+
+			minNextKey = minOfUint16(minNextKey, f.key)
+			filters[i] = f
+			i++
+		}
+		filters = filters[:i]
+
+		if len(keyContainers) == 0 {
+			basePos = rb.highlowcontainer.advanceUntil(minNextKey, basePos)
+			continue
+		}
+
+		var ored container
+
+		if len(keyContainers) == 1 {
+			ored = keyContainers[0]
+		} else {
+			//TODO: special case for run containers?
+			if maxPossibleOr > arrayDefaultMaxSize {
+				if tmpBitmap == nil {
+					tmpBitmap = newBitmapContainer()
+				}
+				tmpBitmap.resetTo(keyContainers[0])
+				for _, c := range keyContainers[1:] {
+					tmpBitmap.ior(c)
+				}
+				ored = tmpBitmap
+			} else {
+				if tmpArray == nil {
+					tmpArray = newArrayContainerCapacity(maxPossibleOr)
+				}
+				tmpArray.realloc(maxPossibleOr)
+				tmpArray.resetTo(keyContainers[0])
+				for _, c := range keyContainers[1:] {
+					tmpArray.ior(c)
+				}
+				ored = tmpArray
+			}
+		}
+
+		result := rb.highlowcontainer.getWritableContainerAtIndex(basePos).iand(ored)
+		if result.getCardinality() > 0 {
+			rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersections, baseKey, result, false)
+			intersections++
+		}
+
+		keyContainers = keyContainers[:0]
+		basePos = rb.highlowcontainer.advanceUntil(minNextKey, basePos)
+	}
+
+	rb.highlowcontainer.resize(intersections)
+}

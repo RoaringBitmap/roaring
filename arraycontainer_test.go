@@ -344,6 +344,62 @@ func TestArrayIteratorAdvance(t *testing.T) {
 	testContainerIteratorAdvance(t, newArrayContainer())
 }
 
+func TestArrayContainerResetTo(t *testing.T) {
+	array := newArrayContainer()
+	for i := 0; i < 1000; i++ {
+		array.iadd(uint16(i*1000 + i + 50))
+	}
+
+	bitmap := newBitmapContainer()
+	for i := 0; i < 10000; i++ {
+		bitmap.iadd(uint16(i*1000 + i + 50))
+	}
+
+	run := newRunContainer16()
+	for i := 0; i < 10; i++ {
+		start := i*1000 + i + 50
+		run.iaddRange(start, start+100+i)
+	}
+
+	makeDirty := func() *arrayContainer {
+		ret := newArrayContainer()
+		for i := 0; i < arrayDefaultMaxSize; i += 3 {
+			ret.iadd(uint16(i))
+		}
+		return ret
+	}
+
+	t.Run("to array container", func(t *testing.T) {
+		clean := newArrayContainer()
+		clean.resetTo(array)
+		assert.True(t, clean.equals(array))
+
+		dirty := makeDirty()
+		dirty.resetTo(array)
+		assert.True(t, dirty.equals(array))
+	})
+
+	t.Run("to bitmap container", func(t *testing.T) {
+		clean := newArrayContainer()
+		clean.resetTo(bitmap)
+		assert.True(t, clean.equals(bitmap))
+
+		dirty := makeDirty()
+		dirty.resetTo(bitmap)
+		assert.True(t, dirty.equals(bitmap.toArrayContainer()))
+	})
+
+	t.Run("to run container", func(t *testing.T) {
+		clean := newArrayContainer()
+		clean.resetTo(run)
+		assert.True(t, clean.toEfficientContainer().equals(run))
+
+		dirty := makeDirty()
+		dirty.resetTo(run)
+		assert.True(t, dirty.toEfficientContainer().equals(run))
+	})
+}
+
 // go test -bench BenchmarkShortIteratorAdvance -run -
 func BenchmarkShortIteratorAdvanceArray(b *testing.B) {
 	benchmarkContainerIteratorAdvance(b, newArrayContainer())

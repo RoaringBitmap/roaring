@@ -191,3 +191,77 @@ func TestFastAggregationsXOR_run(t *testing.T) {
 
 	assert.True(t, HeapXor(rb1, rb2, rb3).Equals(bigxor))
 }
+
+func TestFastAggregationsAndAny(t *testing.T) {
+	base := NewBitmap()
+	rb1 := NewBitmap()
+	rb2 := NewBitmap()
+	rb3 := NewBitmap()
+	// only one filter has some values
+	from := uint32(maxCapacity * 4)
+	for i := uint32(from); i < from+100; i += 2 {
+		rb1.Add(i)
+	}
+	// only base has values
+	from = maxCapacity * 7
+	for i := uint32(from); i < from+100; i += 2 {
+		base.Add(i)
+	}
+	// base and one of filters have same values
+	from = maxCapacity * 8
+	for i := uint32(from); i < from+100; i += 2 {
+		base.Add(i)
+		rb1.Add(i)
+	}
+	// small union
+	from = maxCapacity * 10
+	for i := uint32(from); i < from+1000; i += 10 {
+		base.Add(i)
+		base.Add(i + i%3)
+
+		rb1.Add(i)
+		rb1.Add(i + 1)
+
+		rb2.Add(i + 2)
+		rb2.Add(i + i%7)
+
+		rb3.Add(200 + i)
+	}
+	// run filters
+	from = maxCapacity * 10
+	for i := uint32(from); i < from+1000; i += 3 {
+		base.Add(i)
+	}
+	for i := uint32(from); i < from+100; i++ {
+		rb1.Add(i)
+		rb2.Add(i + 333)
+		rb3.Add(i + 433)
+	}
+	// large union
+	from = maxCapacity * 16
+	for i := uint32(from); i < from+arrayDefaultMaxSize*10; i += 3 {
+		base.Add(i)
+		base.Add(i + i%2 + 1)
+		rb2.Add(i)
+		rb3.Add(i + 1)
+	}
+
+	// some extra base values
+	from = maxCapacity * 17
+	for i := uint32(from); i < from+1000; i++ {
+		base.Add(i)
+	}
+
+	base.RunOptimize()
+	rb1.RunOptimize()
+	rb2.RunOptimize()
+	rb3.RunOptimize()
+
+	orFirst := base.Clone()
+	orFirst.And(FastOr(rb1, rb2, rb3))
+
+	fast := base.Clone()
+	fast.AndAny(rb1, rb2, rb3)
+
+	assert.True(t, fast.Equals(orFirst))
+}

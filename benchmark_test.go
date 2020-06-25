@@ -915,3 +915,89 @@ func BenchmarkBitmapReuseWithClear(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkAndAny(b *testing.B) {
+
+	runSet := func(name string, base *Bitmap, filters []*Bitmap) {
+		var (
+			andFirstCard, orFirstCard, andAnyCard uint64
+			andFirstRan, orFirstRan, andAnyRan    bool
+		)
+
+		b.Run(name+"_or-first", func(b *testing.B) {
+			andAnyRan = true
+			for n := 0; n < b.N; n++ {
+				clone := base.Clone()
+
+				b.StartTimer()
+				clone.And(FastOr(filters...))
+				orFirstCard = clone.GetCardinality()
+				b.StopTimer()
+			}
+		})
+
+		b.Run(name+"_and-first", func(b *testing.B) {
+			orFirstRan = true
+			for n := 0; n < b.N; n++ {
+				anded := make([]*Bitmap, 0, len(filters))
+
+				b.StartTimer()
+				for _, f := range filters {
+					anded = append(anded, And(base, f))
+				}
+				andFirstCard = FastOr(anded...).GetCardinality()
+				b.StopTimer()
+			}
+		})
+
+		b.Run(name+"_AndAny", func(b *testing.B) {
+			andAnyRan = true
+			for n := 0; n < b.N; n++ {
+				clone := base.Clone()
+
+				b.StartTimer()
+				clone.AndAny(filters...)
+				andAnyCard = clone.GetCardinality()
+				b.StopTimer()
+			}
+		})
+
+		if andFirstRan && andAnyRan && andFirstCard != andAnyCard {
+			b.Fatalf("Cardinalities don't match: %d, %d", andFirstCard, andAnyCard)
+		}
+		if orFirstRan && andAnyRan && orFirstCard != andAnyCard {
+			b.Fatalf("Cardinalities don't match: %d, %d", orFirstCard, andAnyCard)
+		}
+	}
+
+	r := rand.New(rand.NewSource(0))
+
+	genOne := func(r *rand.Rand, maxCount, domain int) *Bitmap {
+		ret := NewBitmap()
+		count := r.Intn(maxCount) + 5
+		for j := 0; j < count; j++ {
+			v := uint32(r.Intn(domain))
+			ret.Add(v)
+		}
+		return ret
+	}
+
+	genMulti := func(r *rand.Rand, num, maxCount, domain int) []*Bitmap {
+		var ret []*Bitmap
+		for i := 0; i < num; i++ {
+			ret = append(ret, genOne(r, maxCount, domain))
+		}
+		return ret
+	}
+
+	filtersNum := 10
+	domain := 100000000
+
+	smallSize := 100
+	defaultSize := 100000
+	largeSize := 1000000
+
+	runSet("small-base", genOne(r, smallSize, domain), genMulti(r, filtersNum, largeSize, domain))
+	runSet("small-filters", genOne(r, largeSize, domain), genMulti(r, filtersNum, smallSize, domain))
+	runSet("equal", genOne(r, defaultSize, domain), genMulti(r, filtersNum, defaultSize, domain))
+}
