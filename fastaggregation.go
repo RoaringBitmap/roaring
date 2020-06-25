@@ -214,13 +214,13 @@ func HeapXor(bitmaps ...*Bitmap) *Bitmap {
 	return heap.Pop(&pq).(*item).value
 }
 
-// AndAny provides a result equivalent to rb.And(FastOr(bitmaps)).
+// AndAny provides a result equivalent to x1.And(FastOr(bitmaps)).
 // It's optimized to minimize allocations. It also might be faster than separate calls.
-func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
+func (x1 *Bitmap) AndAny(bitmaps ...*Bitmap) {
 	if len(bitmaps) == 0 {
 		return
 	} else if len(bitmaps) == 1 {
-		rb.And(bitmaps[0])
+		x1.And(bitmaps[0])
 		return
 	}
 
@@ -250,8 +250,8 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 		minNextKey uint16
 	)
 
-	for basePos < rb.highlowcontainer.size() && len(filters) > 0 {
-		baseKey := rb.highlowcontainer.getKeyAtIndex(basePos)
+	for basePos < x1.highlowcontainer.size() && len(filters) > 0 {
+		baseKey := x1.highlowcontainer.getKeyAtIndex(basePos)
 
 		// accumulate containers for current key, find next minimal key in filters
 		// and exclude filters that do not have related values anymore
@@ -286,7 +286,7 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 		filters = filters[:i]
 
 		if len(keyContainers) == 0 {
-			basePos = rb.highlowcontainer.advanceUntil(minNextKey, basePos)
+			basePos = x1.highlowcontainer.advanceUntil(minNextKey, basePos)
 			continue
 		}
 
@@ -318,15 +318,15 @@ func (rb *Bitmap) AndAny(bitmaps ...*Bitmap) {
 			}
 		}
 
-		result := rb.highlowcontainer.getWritableContainerAtIndex(basePos).iand(ored)
+		result := x1.highlowcontainer.getWritableContainerAtIndex(basePos).iand(ored)
 		if result.getCardinality() > 0 {
-			rb.highlowcontainer.replaceKeyAndContainerAtIndex(intersections, baseKey, result, false)
+			x1.highlowcontainer.replaceKeyAndContainerAtIndex(intersections, baseKey, result, false)
 			intersections++
 		}
 
 		keyContainers = keyContainers[:0]
-		basePos = rb.highlowcontainer.advanceUntil(minNextKey, basePos)
+		basePos = x1.highlowcontainer.advanceUntil(minNextKey, basePos)
 	}
 
-	rb.highlowcontainer.resize(intersections)
+	x1.highlowcontainer.resize(intersections)
 }
