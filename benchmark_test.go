@@ -917,7 +917,6 @@ func BenchmarkBitmapReuseWithClear(b *testing.B) {
 }
 
 func BenchmarkAndAny(b *testing.B) {
-
 	runSet := func(name string, base *Bitmap, filters []*Bitmap) {
 		var (
 			andFirstCard, orFirstCard, andAnyCard uint64
