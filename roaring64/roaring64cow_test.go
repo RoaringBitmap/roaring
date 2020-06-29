@@ -58,7 +58,7 @@ func TestCloneOfCOWRange(t *testing.T) {
 }
 
 func TestRoaringBitmapBitmapOfCOW(t *testing.T) {
-	array := []uint64{5580, 33722, 44031, 57276, 83097}
+	array := []uint64{5580, 33722, 44031, 57276, 83097, 234294967296, 195839473298, 14000000000000000100}
 	bmp := BitmapOf(array...)
 	bmp.SetCopyOnWrite(true)
 
@@ -66,7 +66,7 @@ func TestRoaringBitmapBitmapOfCOW(t *testing.T) {
 }
 
 func TestRoaringBitmapAddCOW(t *testing.T) {
-	array := []uint64{5580, 33722, 44031, 57276, 83097}
+	array := []uint64{5580, 33722, 44031, 57276, 83097, 234294967296, 195839473298, 14000000000000000100}
 	bmp := New()
 	bmp.SetCopyOnWrite(true)
 	for _, v := range array {
