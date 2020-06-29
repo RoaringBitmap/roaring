@@ -936,7 +936,7 @@ func (rb *Bitmap) AddMany(dat []uint64) {
 func (rb *Bitmap) getOrCreateContainer(hb uint32) *roaring.Bitmap {
 	i := rb.highlowcontainer.getIndex(hb)
 	if i >= 0 {
-		return rb.highlowcontainer.getContainerAtIndex(i)
+		return rb.highlowcontainer.getWritableContainerAtIndex(i)
 	}
 	c := roaring.NewBitmap()
 	rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, c)
