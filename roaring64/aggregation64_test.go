@@ -222,7 +222,7 @@ func assertAggregation(t *testing.T, expected uint64, aggr func(bitmaps ...*Bitm
 }
 
 func TestParAggregations(t *testing.T) {
-	for _, p := range [...]int{1, 2, 4} {
+	for _, p := range [...]int{0, 1, 2, 4} {
 		//andFunc := func(bitmaps ...*Bitmap) *Bitmap {
 		//	return ParAnd(p, bitmaps...)
 		//}
