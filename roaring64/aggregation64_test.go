@@ -237,6 +237,15 @@ func TestParAggregations(t *testing.T) {
 	}
 }
 
+func TestParAggregations2(t *testing.T) {
+	orFunc := func(bitmaps ...*Bitmap) *Bitmap {
+		return ParOr(0, bitmaps...)
+	}
+	t.Run(fmt.Sprintf("par0"), func(t *testing.T) {
+		testAggregations(t, nil, orFunc, nil)
+	})
+}
+
 /*
 func TestParHeapAggregations(t *testing.T) {
 	orFunc := func(bitmaps ...*Bitmap) *Bitmap {
