@@ -143,6 +143,9 @@ func testAggregations(t *testing.T,
 		for i := uint64(1000000); i < 2000000; i += 7 {
 			rb3.Add(i)
 		}
+		for i := uint64(1000000000000000); i < 20000000000000000; i += 100000000000 {
+			rb3.Add(i)
+		}
 
 		rb1.Or(rb2)
 		rb1.Or(rb3)
