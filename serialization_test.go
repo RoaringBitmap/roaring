@@ -771,3 +771,36 @@ func BenchmarkUnserializeFromBuffer(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkUnserializeFromBufferSparse(b *testing.B) {
+	for _, size := range []uint32{650, 6500, 65000} {
+		rb := New()
+		buf := &bytes.Buffer{}
+
+		for i := uint32(0); i < size; i++ {
+			rb.Add(i << 14)
+		}
+
+		_, err := rb.WriteTo(buf)
+
+		if err != nil {
+			b.Fatalf("Unexpected error occurs: %v", err)
+		}
+		b.N = 50
+
+		b.Run(fmt.Sprintf("FromBuffer-%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			b.StartTimer()
+
+			for n := 0; n < b.N; n++ {
+				nb := New()
+
+				if _, err := nb.FromBuffer(buf.Bytes()); err != nil {
+					b.Fatalf("Unexpected error occurs: %v", err)
+				}
+			}
+
+			b.StopTimer()
+		})
+	}
+}
