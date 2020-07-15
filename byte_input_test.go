@@ -2,8 +2,11 @@ package roaring
 
 import (
 	"bytes"
+	"encoding/binary"
 	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"testing"
+	"unsafe"
 )
 
 func TestByteInputFlow(t *testing.T) {
@@ -63,4 +66,44 @@ func TestByteInputFlow(t *testing.T) {
 			assert.Error(t, err)
 		}
 	})
+}
+
+func BenchmarkUint32SafeReading(b *testing.B) {
+	n := 1 << 20
+	arr := make([]byte, n*4)
+	nums := make([]uint32, n)
+	for j := 0; j < n; j++ {
+		rnd := rand.Int31()
+		nums[j] = uint32(rnd)
+		binary.LittleEndian.PutUint32(arr[4*j:4*(j+1)], uint32(rnd))
+	}
+	b.ResetTimer()
+	val := uint32(0)
+	pointer := uint64(0)
+	for pointer < uint64(len(arr)) {
+		var newVal uint32
+		newVal = binary.LittleEndian.Uint32(arr[pointer:])
+		pointer += 4
+		val += newVal
+	}
+}
+
+func BenchmarkUint32UnsafeReading(b *testing.B) {
+	n := 1 << 20
+	arr := make([]byte, n*4)
+	nums := make([]uint32, n)
+	for j := 0; j < n; j++ {
+		rnd := rand.Int31()
+		nums[j] = uint32(rnd)
+		binary.LittleEndian.PutUint32(arr[4*j:4*(j+1)], uint32(rnd))
+	}
+	b.ResetTimer()
+	val := uint32(0)
+	pointer := uint64(0)
+	for pointer < uint64(len(arr)) {
+		var newVal uint32
+		newVal = *(*uint32)(unsafe.Pointer(&arr[pointer]))
+		pointer += 4
+		val += newVal
+	}
 }
