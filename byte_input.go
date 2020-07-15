@@ -1,8 +1,8 @@
 package roaring
 
 import (
-	"encoding/binary"
 	"io"
+	"unsafe"
 )
 
 type byteInput interface {
@@ -59,7 +59,7 @@ func (b *byteBuffer) readUInt32() (uint32, error) {
 		return 0, io.ErrUnexpectedEOF
 	}
 
-	v := binary.LittleEndian.Uint32(b.buf[b.off:])
+	v := *(*uint32)(unsafe.Pointer(&b.buf[b.off]))
 	b.off += 4
 
 	return v, nil
@@ -71,7 +71,7 @@ func (b *byteBuffer) readUInt16() (uint16, error) {
 		return 0, io.ErrUnexpectedEOF
 	}
 
-	v := binary.LittleEndian.Uint16(b.buf[b.off:])
+	v := *(*uint16)(unsafe.Pointer(&b.buf[b.off]))
 	b.off += 2
 
 	return v, nil
@@ -128,7 +128,7 @@ func (b *byteInputAdapter) readUInt32() (uint32, error) {
 		return 0, err
 	}
 
-	return binary.LittleEndian.Uint32(buf), nil
+	return *(*uint32)(unsafe.Pointer(&buf[0])), nil
 }
 
 // readUInt16 reads uint16 with LittleEndian order
@@ -139,7 +139,7 @@ func (b *byteInputAdapter) readUInt16() (uint16, error) {
 		return 0, err
 	}
 
-	return binary.LittleEndian.Uint16(buf), nil
+	return *(*uint16)(unsafe.Pointer(&buf[0])), nil
 }
 
 // getReadBytes returns read bytes
