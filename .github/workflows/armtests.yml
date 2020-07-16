@@ -19,9 +19,9 @@ jobs:
       uses: actions/checkout@v2
     - name: Test
       run: |
-        go test -race -run TestConcurrent*
-        go build -tags appengine
-        go test -tags appengine
-        go test -v
-        go test -v ./roaring64
-        go test -v ./BitSliceIndexing
+        GOARCH=arm go build
+        GOARCH=arm go build ./roaring64
+        GOARCH=arm go build ./BitSliceIndexing
+        GOARCH=arm64 go build
+        GOARCH=arm64 go build ./roaring64
+        GOARCH=arm64 go build ./BitSliceIndexing
