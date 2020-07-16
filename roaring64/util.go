@@ -11,7 +11,7 @@ func lowbits(x uint64) uint32 {
 }
 
 const maxLowBit = roaring.MaxUint32
-const MaxUint32 = roaring.MaxUint32
+const maxUint32 = roaring.MaxUint32
 
 func minOfInt(a, b int) int {
 	if a < b {

@@ -9,12 +9,11 @@ import (
 
 var defaultWorkerCount = runtime.NumCPU()
 
-
 // ParOr computes the union (OR) of all provided bitmaps in parallel,
 // where the parameter "parallelism" determines how many workers are to be used
 // (if it is set to 0, a default number of workers is chosen)
 func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
-	var lKey uint32 = MaxUint32
+	var lKey uint32 = maxUint32
 	var hKey uint32
 
 	bitmapsFiltered := bitmaps[:0]
@@ -30,7 +29,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 		hKey = maxOfUint32(hKey, b.highlowcontainer.keys[b.highlowcontainer.size()-1])
 	}
 
-	if lKey == MaxUint32 && hKey == 0 {
+	if lKey == maxUint32 && hKey == 0 {
 		return New()
 	} else if len(bitmaps) == 1 {
 		return bitmaps[0]
@@ -262,8 +261,8 @@ func iorOnRange(ra1, ra2 *roaringArray64, start, last uint32) *roaringArray64 {
 
 				//ra1.containers[idx1] = c1.lazyIOR(ra2.getContainerAtIndex(idx2))
 				c1.Or(ra2.getContainerAtIndex(idx2))
-                                ra1.setContainerAtIndex(idx1, c1)
-                   
+				ra1.setContainerAtIndex(idx1, c1)
+
 				ra1.needCopyOnWrite[idx1] = false
 				idx1++
 				idx2++

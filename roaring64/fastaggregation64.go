@@ -34,4 +34,3 @@ func FastOr(bitmaps ...*Bitmap) *Bitmap {
 	//answer.repairAfterLazy()
 	return answer
 }
-

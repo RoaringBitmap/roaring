@@ -2,8 +2,8 @@ package roaring64
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"strconv"
@@ -18,57 +18,60 @@ type Bitmap struct {
 
 // ToBase64 serializes a bitmap as Base64
 func (rb *Bitmap) ToBase64() (string, error) {
-        buf := new(bytes.Buffer)
-        _, err := rb.WriteTo(buf)
-        return base64.StdEncoding.EncodeToString(buf.Bytes()), err
+	buf := new(bytes.Buffer)
+	_, err := rb.WriteTo(buf)
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), err
 
 }
 
 // FromBase64 deserializes a bitmap from Base64
 func (rb *Bitmap) FromBase64(str string) (int64, error) {
-        data, err := base64.StdEncoding.DecodeString(str)
-        if err != nil {
-                return 0, err
-        }
-        buf := bytes.NewBuffer(data)
+	data, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return 0, err
+	}
+	buf := bytes.NewBuffer(data)
 
-        return rb.ReadFrom(buf)
+	return rb.ReadFrom(buf)
 }
 
+// ToBytes returns an array of bytes corresponding to what is written
+// when calling WriteTo
 func (rb *Bitmap) ToBytes() ([]byte, error) {
-        var buf bytes.Buffer
-        _, err := rb.WriteTo(&buf)
-        return buf.Bytes(), err
+	var buf bytes.Buffer
+	_, err := rb.WriteTo(&buf)
+	return buf.Bytes(), err
 }
 
+// WriteTo writes a serialized version of this bitmap to stream.
 func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
-    
-    var n int64
+
+	var n int64
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, uint64(rb.highlowcontainer.size()))
-    written, err := stream.Write(buf)
-    if err != nil {
-        return n, err
-    }
-    n += int64(written)
+	written, err := stream.Write(buf)
+	if err != nil {
+		return n, err
+	}
+	n += int64(written)
 	pos := 0
-    keyBuf := make([]byte, 4)
+	keyBuf := make([]byte, 4)
 	for pos < rb.highlowcontainer.size() {
 		c := rb.highlowcontainer.getContainerAtIndex(pos)
 		binary.LittleEndian.PutUint32(keyBuf, rb.highlowcontainer.getKeyAtIndex(pos))
 		pos++
-    	written, err = stream.Write(keyBuf)
-    	n += int64(written)
-    	if err != nil {
-        	return n, err
-    	}
-    	written, err := c.WriteTo(stream)
-    	n += int64(written)
-    	if err != nil {
-        	return n, err
-    	}
+		written, err = stream.Write(keyBuf)
+		n += int64(written)
+		if err != nil {
+			return n, err
+		}
+		written, err := c.WriteTo(stream)
+		n += int64(written)
+		if err != nil {
+			return n, err
+		}
 	}
-    return n, nil
+	return n, nil
 }
 
 // ReadFrom reads a serialized version of this bitmap from stream.
@@ -77,57 +80,58 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 
-    // TODO: Add buffer interning as in base roaring package.
+	// TODO: Add buffer interning as in base roaring package.
 
-    sizeBuf := make([]byte, 8)
-    var n int
-    n, err = stream.Read(sizeBuf)
-    if n == 0 || err != nil {
-        return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read number of containers: %s", err)
-    }
-    p += int64(n)
+	sizeBuf := make([]byte, 8)
+	var n int
+	n, err = stream.Read(sizeBuf)
+	if n == 0 || err != nil {
+		return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read number of containers: %s", err)
+	}
+	p += int64(n)
 	size := binary.LittleEndian.Uint64(sizeBuf)
-    rb.highlowcontainer = roaringArray64{}
+	rb.highlowcontainer = roaringArray64{}
 	rb.highlowcontainer.keys = make([]uint32, size)
 	rb.highlowcontainer.containers = make([]*roaring.Bitmap, size)
 	rb.highlowcontainer.needCopyOnWrite = make([]bool, size)
-    keyBuf := make([]byte, 4)
-    for i := uint64(0); i < size; i++ {
-    	n, err = stream.Read(keyBuf)
-    	if n == 0 || err != nil {
-        	return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read key #%d: %s", i, err)
-    	}
-    	p += int64(n)
+	keyBuf := make([]byte, 4)
+	for i := uint64(0); i < size; i++ {
+		n, err = stream.Read(keyBuf)
+		if n == 0 || err != nil {
+			return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read key #%d: %s", i, err)
+		}
+		p += int64(n)
 		rb.highlowcontainer.keys[i] = binary.LittleEndian.Uint32(keyBuf)
-        rb.highlowcontainer.containers[i] = roaring.NewBitmap()       
-        n, err := rb.highlowcontainer.containers[i].ReadFrom(stream)
-    	if n == 0 || err != nil {
-        	return int64(n), fmt.Errorf("Could not deserialize bitmap for key #%d: %s", i, err)
-    	}
-    	p += int64(n)
-    }
+		rb.highlowcontainer.containers[i] = roaring.NewBitmap()
+		n, err := rb.highlowcontainer.containers[i].ReadFrom(stream)
+		if n == 0 || err != nil {
+			return int64(n), fmt.Errorf("Could not deserialize bitmap for key #%d: %s", i, err)
+		}
+		p += int64(n)
+	}
 
-    return p, nil
+	return p, nil
 }
 
-func (rb *Bitmap) FromBuffer(data []byte) (p int64, err error) {
-
-    // TODO: Add buffer interning as in base roaring package.
-    buf := bytes.NewBuffer(data)
-    return rb.ReadFrom(buf)
-}
+// FromBuffer creates a bitmap from its serialized version stored in buffer
+// func (rb *Bitmap) FromBuffer(data []byte) (p int64, err error) {
+//
+//	// TODO: Add buffer interning as in base roaring package.
+//	buf := bytes.NewBuffer(data)
+//	return rb.ReadFrom(buf)
+// }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for the bitmap
 // (same as ToBytes)
 func (rb *Bitmap) MarshalBinary() ([]byte, error) {
-        return rb.ToBytes()
+	return rb.ToBytes()
 }
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface for the bitmap
 func (rb *Bitmap) UnmarshalBinary(data []byte) error {
-        r := bytes.NewReader(data)
-        _, err := rb.ReadFrom(r)
-        return err
+	r := bytes.NewReader(data)
+	_, err := rb.ReadFrom(r)
+	return err
 }
 
 // RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
@@ -904,6 +908,7 @@ main:
 	return answer
 }
 
+// AddMany add all of the values in dat
 func (rb *Bitmap) AddMany(dat []uint64) {
 	if len(dat) == 0 {
 		return
@@ -962,7 +967,7 @@ func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
 	hbLast := uint64(highbits(rangeEnd))
 	lbLast := uint64(lowbits(rangeEnd))
 
-	var max uint64 = maxLowBit+1
+	var max uint64 = maxLowBit + 1
 	for hb := hbStart; hb <= hbLast; hb++ {
 		var containerStart uint64
 		if hb == hbStart {
@@ -1092,7 +1097,7 @@ func Flip(rb *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 	// copy the containers before the active area
 	answer.highlowcontainer.appendCopiesUntil(rb.highlowcontainer, uint32(hbStart))
 
-	var max uint64 = maxLowBit+1
+	var max uint64 = maxLowBit + 1
 	for hb := hbStart; hb <= hbLast; hb++ {
 		var containerStart uint64
 		if hb == hbStart {

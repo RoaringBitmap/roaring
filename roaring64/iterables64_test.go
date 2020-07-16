@@ -28,7 +28,7 @@ func TestReverseIteratorCount(t *testing.T) {
 
 func TestReverseIterator(t *testing.T) {
 	t.Run("#1", func(t *testing.T) {
-		values := []uint64{0, 2, 15, 16, 31, 32, 33, 9999, roaring.MaxUint16, roaring.MaxUint32, roaring.MaxUint32*2, math.MaxUint64}
+		values := []uint64{0, 2, 15, 16, 31, 32, 33, 9999, roaring.MaxUint16, roaring.MaxUint32, roaring.MaxUint32 * 2, math.MaxUint64}
 		bm := New()
 		for n := 0; n < len(values); n++ {
 			bm.Add(values[n])
@@ -99,7 +99,7 @@ func TestReverseIterator(t *testing.T) {
 }
 
 func TestIteratorPeekNext(t *testing.T) {
-	values := []uint64{0, 2, 15, 16, 31, 32, 33, 9999, roaring.MaxUint16, roaring.MaxUint32, roaring.MaxUint32*2, math.MaxUint64}
+	values := []uint64{0, 2, 15, 16, 31, 32, 33, 9999, roaring.MaxUint16, roaring.MaxUint32, roaring.MaxUint32 * 2, math.MaxUint64}
 	bm := New()
 
 	for n := 0; n < len(values); n++ {
@@ -180,4 +180,3 @@ func TestIteratorAdvance(t *testing.T) {
 		assert.EqualValues(t, 31, i.PeekNext())
 	})
 }
-
