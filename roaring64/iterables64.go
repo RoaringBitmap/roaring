@@ -2,13 +2,13 @@ package roaring64
 
 import "github.com/RoaringBitmap/roaring"
 
-// IntIterable allows you to iterate over the values in a Bitmap
+// IntIterable64 allows you to iterate over the values in a Bitmap
 type IntIterable64 interface {
 	HasNext() bool
 	Next() uint64
 }
 
-// IntPeekable allows you to look at the next value without advancing and
+// IntPeekable64 allows you to look at the next value without advancing and
 // advance as long as the next value is smaller than minval
 type IntPeekable64 interface {
 	IntIterable64
@@ -118,7 +118,7 @@ func newIntReverseIterator(a *Bitmap) *intReverseIterator {
 	return p
 }
 
-// ManyIntIterable allows you to iterate over the values in a Bitmap
+// ManyIntIterable64 allows you to iterate over the values in a Bitmap
 type ManyIntIterable64 interface {
 	// pass in a buffer to fill up with values, returns how many values were returned
 	NextMany([]uint64) int

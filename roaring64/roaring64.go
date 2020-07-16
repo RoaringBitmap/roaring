@@ -35,12 +35,15 @@ func (rb *Bitmap) FromBase64(str string) (int64, error) {
 	return rb.ReadFrom(buf)
 }
 
+// ToBytes returns an array of bytes corresponding to what is written
+// when calling WriteTo
 func (rb *Bitmap) ToBytes() ([]byte, error) {
 	var buf bytes.Buffer
 	_, err := rb.WriteTo(&buf)
 	return buf.Bytes(), err
 }
 
+// WriteTo writes a serialized version of this bitmap to stream.
 func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 
 	var n int64
@@ -110,12 +113,13 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	return p, nil
 }
 
-func (rb *Bitmap) FromBuffer(data []byte) (p int64, err error) {
-
-	// TODO: Add buffer interning as in base roaring package.
-	buf := bytes.NewBuffer(data)
-	return rb.ReadFrom(buf)
-}
+// FromBuffer creates a bitmap from its serialized version stored in buffer
+// func (rb *Bitmap) FromBuffer(data []byte) (p int64, err error) {
+//
+//	// TODO: Add buffer interning as in base roaring package.
+//	buf := bytes.NewBuffer(data)
+//	return rb.ReadFrom(buf)
+// }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for the bitmap
 // (same as ToBytes)
@@ -904,6 +908,7 @@ main:
 	return answer
 }
 
+// AddMany add all of the values in dat
 func (rb *Bitmap) AddMany(dat []uint64) {
 	if len(dat) == 0 {
 		return

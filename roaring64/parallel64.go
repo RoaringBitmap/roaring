@@ -13,7 +13,7 @@ var defaultWorkerCount = runtime.NumCPU()
 // where the parameter "parallelism" determines how many workers are to be used
 // (if it is set to 0, a default number of workers is chosen)
 func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
-	var lKey uint32 = MaxUint32
+	var lKey uint32 = maxUint32
 	var hKey uint32
 
 	bitmapsFiltered := bitmaps[:0]
@@ -29,7 +29,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 		hKey = maxOfUint32(hKey, b.highlowcontainer.keys[b.highlowcontainer.size()-1])
 	}
 
-	if lKey == MaxUint32 && hKey == 0 {
+	if lKey == maxUint32 && hKey == 0 {
 		return New()
 	} else if len(bitmaps) == 1 {
 		return bitmaps[0]

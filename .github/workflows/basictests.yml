@@ -15,8 +15,18 @@ jobs:
         - go test -race -run TestConcurrent*
         - go build -tags appengine
         - go test -tags appengine
-        - GOARCH=arm64 go build
+        - go test -v
+        - go test -v ./roaring64
+        - go test -v ./BitSliceIndexing
         - GOARCH=386 go build
-        - GOARCH=386 go test
         - GOARCH=arm go build
         - GOARCH=arm64 go build
+        - GOARCH=386 go build ./roaring64
+        - GOARCH=arm go build ./roaring64
+        - GOARCH=arm64 go build ./roaring64
+        - GOARCH=386 go build ./BitSliceIndexing
+        - GOARCH=arm go build ./BitSliceIndexing
+        - GOARCH=arm64 go build ./BitSliceIndexing
+        - GOARCH=386 go test -v 
+        - GOARCH=386 go test -v ./roaring64
+        - GOARCH=386 go test -v ./BitSliceIndexing
