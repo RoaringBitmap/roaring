@@ -285,12 +285,8 @@ func (b *BSI) Sum(foundSet *roaring.Bitmap) (sum int64, count uint64) {
 	sum = int64(0)
 	count = foundSet.GetCardinality()
 
-	iter := foundSet.Iterator()
-	for iter.HasNext() {
-		cID := iter.Next()
-		if value, ok := b.GetValue(uint64(cID)); ok {
-			sum += value
-		}
+	for i := 0; i < b.BitCount(); i++ {
+		sum += foundSet.AndCardinality(b.bA[i]) << i
 	}
 	return
 }
