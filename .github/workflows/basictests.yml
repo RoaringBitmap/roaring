@@ -1,22 +1,24 @@
 
 name: Go-CI
 
-on: push
-
+on: [push, pull_request]
+name: Test
 jobs:
-  build:
-    runs-on: ubuntu-16.04
+  test:
     strategy:
       matrix:
-        go: [ '1.13', '1.12', '1.14'  ]
-    name: Go ${{ matrix.go }} sample
+        go-version: [1.13.x, 1.14.x]
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup go
-        uses: actions/setup-go@v1
-        with:
-          go-version: ${{ matrix.go }}
-      - run: |
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Test
+      run: |
         go test -race -run TestConcurrent*
         go build -tags appengine
         go test -tags appengine
