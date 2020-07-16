@@ -1,5 +1,5 @@
 
-name: Go-CI
+name: Go-macos-CI
 
 on: [push, pull_request]
 
@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.13.x, 1.14.x]
-        platform: [ubuntu-latest]
+        platform: [macos-latest]
     runs-on: ${{ matrix.platform }}
     steps:
     - name: Install Go
