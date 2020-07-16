@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-
-
 func TestFastAggregationsAdvanced_run(t *testing.T) {
 	rb1 := NewBitmap()
 	rb2 := NewBitmap()
@@ -39,4 +37,3 @@ func TestFastAggregationsAdvanced_run(t *testing.T) {
 	assert.True(t, FastOr(rb1, rb2, rb3).Equals(rb1))
 	assert.True(t, FastAnd(rb1, rb2, rb3).Equals(bigand))
 }
-

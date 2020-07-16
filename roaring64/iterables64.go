@@ -164,4 +164,3 @@ func newManyIntIterator(a *Bitmap) *manyIntIterator {
 	p.init()
 	return p
 }
-
