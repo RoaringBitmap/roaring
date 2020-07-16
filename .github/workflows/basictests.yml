@@ -1,0 +1,22 @@
+jobs:
+  build:
+    runs-on: ubuntu-16.04
+    strategy:
+      matrix:
+        go: [ '1.13', '1.12', '1.14'  ]
+    name: Go ${{ matrix.go }} sample
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+      - run: 
+        - go test -race -run TestConcurrent*
+        - go build -tags appengine
+        - go test -tags appengine
+        - GOARCH=arm64 go build
+        - GOARCH=386 go build
+        - GOARCH=386 go test
+        - GOARCH=arm go build
+        - GOARCH=arm64 go build
