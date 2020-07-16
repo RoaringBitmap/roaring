@@ -12,6 +12,36 @@ import (
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
 
+// BenchmarkArrayIorMergeThreshold tests performance
+// when unioning two array containers when the cardinality sum is over 4096
+func BenchmarkArrayIorMergeThreshold(b *testing.B) {
+	testOddPoint := map[string]int{
+		"mostly-overlap": 4900,
+		"little-overlap": 2000,
+		"no-overlap":     0,
+	}
+	for name, oddPoint := range testOddPoint {
+		b.Run(name, func(b *testing.B) {
+			left := newArrayContainer()
+			right := newArrayContainer()
+			for i := 0; i < 5000; i++ {
+				if i%2 == 0 {
+					left.iadd(uint16(i))
+				}
+				if i%2 == 0 && i < oddPoint {
+					right.iadd(uint16(i))
+				} else if i%2 == 1 && i >= oddPoint {
+					right.iadd(uint16(i))
+				}
+			}
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				right.clone().ior(left)
+			}
+		})
+	}
+}
+
 // go test -bench BenchmarkOrs -benchmem -run -
 func BenchmarkOrs(b *testing.B) {
 
