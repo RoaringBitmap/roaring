@@ -280,13 +280,11 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 
 // Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet
 // is also returned (for calculating the average).
-func (b *BSI) Sum(foundSet *roaring.Bitmap) (sum int64, count uint64) {
-
-	sum = int64(0)
+func (b *BSI) Sum(foundSet *roaring.Bitmap) (sum uint64, count uint64) {
+	sum = uint64(0)
 	count = foundSet.GetCardinality()
-
 	for i := 0; i < b.BitCount(); i++ {
-		sum += foundSet.AndCardinality(b.bA[i]) << i
+		sum += uint64(foundSet.AndCardinality(b.bA[i]) << uint(i))
 	}
 	return
 }
