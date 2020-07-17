@@ -128,7 +128,7 @@ func TestSum(t *testing.T) {
 
 	sum, count := bsi.Sum(set)
 	assert.Equal(t, uint64(11), count)
-	assert.Equal(t, int64(550), sum)
+	assert.Equal(t, uint64(550), sum)
 }
 
 func TestTranspose(t *testing.T) {
