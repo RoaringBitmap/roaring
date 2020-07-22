@@ -2,7 +2,7 @@ package roaring
 
 import (
 	_ "fmt"
-	_ "github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
@@ -185,6 +185,17 @@ func TestParOr(t *testing.T) {
 		assert.Equal(t, int64(i), gv)
 	}
 	assert.Equal(t, uint64(200), bsi1.eBM.GetCardinality())
+}
+
+func TestNewBSIRetainSet(t *testing.T) {
+
+	bsi := setup()
+	foundSet := roaring.BitmapOf(50)
+	newBSI := bsi.NewBSIRetainSet(foundSet)
+	assert.Equal(t, uint64(1), newBSI.GetCardinality())
+	val, ok := newBSI.GetValue(50)
+	assert.True(t, ok)
+	assert.Equal(t, val, int64(50))
 }
 
 func TestLargeFile(t *testing.T) {
