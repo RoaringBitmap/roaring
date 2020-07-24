@@ -346,7 +346,9 @@ func newIntReverseIterator(a *Bitmap) *intReverseIterator {
 // ManyIntIterable allows you to iterate over the values in a Bitmap
 type ManyIntIterable interface {
 	// pass in a buffer to fill up with values, returns how many values were returned
-	NextMany([]uint32) int
+	NextMany(buf []uint32) int
+	// pass in a buffer to fill up with 64 bit values, returns how many values were returned
+	NextMany64(hs uint64, buf []uint64) int
 }
 
 type manyIntIterator struct {
@@ -372,6 +374,25 @@ func (ii *manyIntIterator) NextMany(buf []uint32) int {
 			break
 		}
 		moreN := ii.iter.nextMany(ii.hs, buf[n:])
+		n += moreN
+		if moreN == 0 {
+			ii.pos = ii.pos + 1
+			ii.init()
+		}
+	}
+
+	return n
+}
+
+func (ii *manyIntIterator) NextMany64(hs64 uint64, buf []uint64) int {
+	n := 0
+	for n < len(buf) {
+		if ii.iter == nil {
+			break
+		}
+
+		hs := uint64(ii.hs) | hs64
+		moreN := ii.iter.nextMany64(hs, buf[n:])
 		n += moreN
 		if moreN == 0 {
 			ii.pos = ii.pos + 1
@@ -1559,4 +1580,8 @@ func (rb *Bitmap) Stats() Statistics {
 		}
 	}
 	return stats
+}
+
+func (rb *Bitmap) FillLeastSignificant32bits(x []uint64, i uint64, mask uint64) {
+	rb.ManyIterator().NextMany64(mask, x[i:])
 }
