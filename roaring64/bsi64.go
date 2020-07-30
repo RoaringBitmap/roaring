@@ -1,7 +1,6 @@
 package roaring64
 
 import (
-	"math"
 	"math/bits"
 	"runtime"
 	"sync"
@@ -111,7 +110,7 @@ func parallelExecutor(parallelism int, t *task, e action,
 	resultsChan := make(chan *Bitmap, n)
 
 	card := foundSet.GetCardinality()
-	x := uint64(math.Floor(float64(card) / float64(n)))
+	x := card / uint64(n)
 
 	remainder := card - (x * uint64(n))
 	var batch []uint64
