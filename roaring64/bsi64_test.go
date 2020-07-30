@@ -227,7 +227,7 @@ func TestLargeFile(t *testing.T) {
 	assert.Equal(t, uint64(574600), resultA.GetCardinality())
 
 	resultB := bsi.BatchEqual(0, []int64{55, 57})
-	assert.Equal(t, uint64(574600 + 515233), resultB.GetCardinality())
+	assert.Equal(t, uint64(574600+515233), resultB.GetCardinality())
 
 	bsi.ClearValues(resultA)
 	resultC := bsi.BatchEqual(0, []int64{55, 57})

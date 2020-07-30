@@ -476,14 +476,14 @@ func (b *BSI) ClearValues(foundSet *Bitmap) {
 // NewBSIRetainSet
 func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 
-        newBSI := NewBSI(b.MaxValue, b.MinValue)
-        newBSI.bA = make([]*Bitmap, b.BitCount())
+	newBSI := NewBSI(b.MaxValue, b.MinValue)
+	newBSI.bA = make([]*Bitmap, b.BitCount())
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		newBSI.eBM = b.eBM.Clone()
-		newBSI.eBM.And(foundSet)       
+		newBSI.eBM.And(foundSet)
 	}()
 	for i := 0; i < b.BitCount(); i++ {
 		wg.Add(1)
@@ -494,5 +494,5 @@ func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 		}(i)
 	}
 	wg.Wait()
-        return newBSI
+	return newBSI
 }
