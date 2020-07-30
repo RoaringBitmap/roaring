@@ -1,7 +1,6 @@
 package roaring
 
 import (
-	"math"
 	"math/bits"
 	"runtime"
 	"sync"
@@ -113,7 +112,7 @@ func parallelExecutor(parallelism int, t *task, e action,
 	resultsChan := make(chan *roaring.Bitmap, n)
 
 	card := foundSet.GetCardinality()
-	x := uint64(math.Floor(float64(card) / float64(n)))
+	x := card / uint64(n)
 
 	remainder := card - (x * uint64(n))
 	var batch []uint32
@@ -456,7 +455,7 @@ func ClearBits(foundSet, target *roaring.Bitmap) {
 	}
 }
 
-// ClearValues removes the vallues found in foundSet
+// ClearValues removes the values found in foundSet
 func (b *BSI) ClearValues(foundSet *roaring.Bitmap) {
 
 	var wg sync.WaitGroup
@@ -473,4 +472,28 @@ func (b *BSI) ClearValues(foundSet *roaring.Bitmap) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+// NewBSIRetainSet
+func (b *BSI) NewBSIRetainSet(foundSet *roaring.Bitmap) *BSI {
+
+	newBSI := NewBSI(b.MaxValue, b.MinValue)
+	newBSI.bA = make([]*roaring.Bitmap, b.BitCount())
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		newBSI.eBM = b.eBM.Clone()
+		newBSI.eBM.And(foundSet)
+	}()
+	for i := 0; i < b.BitCount(); i++ {
+		wg.Add(1)
+		go func(j int) {
+			defer wg.Done()
+			newBSI.bA[j] = b.bA[j].Clone()
+			newBSI.bA[j].And(foundSet)
+		}(i)
+	}
+	wg.Wait()
+	return newBSI
 }
