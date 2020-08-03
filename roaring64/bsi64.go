@@ -15,10 +15,11 @@ import (
 // It depends upon the bitmap libraries.  It is not thread safe, so
 // upstream concurrency guards must be provided.
 type BSI struct {
-	bA       []*Bitmap
-	eBM      *Bitmap // Existence BitMap
-	MaxValue int64
-	MinValue int64
+	bA           []*Bitmap
+	eBM          *Bitmap // Existence BitMap
+	MaxValue     int64
+	MinValue     int64
+        runOptimized bool
 }
 
 // NewBSI constructs a new BSI.  Min/Max values are optional.  If set to 0
@@ -35,6 +36,23 @@ func NewBSI(maxValue int64, minValue int64) *BSI {
 // NewDefaultBSI constructs an auto-sized BSI
 func NewDefaultBSI() *BSI {
 	return NewBSI(int64(0), int64(0))
+}
+
+func (b *BSI) RunOptimize() {
+	b.eBM.RunOptimize()
+	for i := 0; i < len(b.bA); i++ {
+		b.bA[i].RunOptimize()
+	}
+	b.runOptimized = true;
+}
+
+func (b *BSI) HasRunCompression() bool {
+	return b.runOptimized
+}
+
+// Returns a pointer to existence bitmap
+func (b *BSI) GetEBM() *Bitmap {
+    return b.eBM
 }
 
 // ValueExists tests whether the value exists.
@@ -62,6 +80,9 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 		ba := make([]*Bitmap, bits.Len64(uint64(value)))
 		for i := len(ba) - b.BitCount(); i > 0; i-- {
 			b.bA = append(b.bA, NewBitmap())
+			if b.runOptimized {
+				b.bA[i].RunOptimize()
+			}
 		}
 	}
 
@@ -187,6 +208,10 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 	defer wg.Done()
 
 	results := NewBitmap()
+	if e.bsi.runOptimized {
+		results.RunOptimize()
+	}
+	
 
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
@@ -306,6 +331,9 @@ func transpose(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.WaitG
 	defer wg.Done()
 
 	results := NewBitmap()
+	if e.bsi.runOptimized {
+		results.RunOptimize()
+	}
 	for _, cID := range batch {
 		if value, ok := e.bsi.GetValue(uint64(cID)); ok {
 			results.Add(uint64(value))
@@ -329,7 +357,11 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 
 	// Make sure we have enough bit slices
 	for bits > b.BitCount() {
-		b.bA = append(b.bA, NewBitmap())
+		newBm := NewBitmap()
+		if b.runOptimized {
+			newBm.RunOptimize()
+		}
+		b.bA = append(b.bA, newBm)
 	}
 
 	a := make([][]*Bitmap, bits)
@@ -340,6 +372,9 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 				a[i] = append(a[i], x.bA[i])
 			} else {
 				a[i] = []*Bitmap{NewBitmap()}
+				if b.runOptimized {
+					a[i][0].RunOptimize()
+				}
 			}
 		}
 	}
@@ -378,19 +413,35 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 			continue
 		}
 		if b.BitCount() < i {
-			b.bA = append(b.bA, NewBitmap())
+			newBm := NewBitmap()
+			if b.runOptimized {
+				newBm.RunOptimize()
+			}	
+			b.bA = append(b.bA, newBm)
 		}
 		if err := b.bA[i-1].UnmarshalBinary(bitData[i]); err != nil {
 			return err
+		} else {
+			if b.runOptimized {
+				b.bA[i-1].RunOptimize()
+			}	
 		}
+     
 	}
 	// First element of bitData is the EBM
 	if bitData[0] == nil {
 		b.eBM = NewBitmap()
+		if b.runOptimized {
+			b.eBM.RunOptimize()
+		}	
 		return nil
 	}
 	if err := b.eBM.UnmarshalBinary(bitData[0]); err != nil {
 		return err
+	} else {
+		if b.runOptimized {
+			b.eBM.RunOptimize()
+		}	
 	}
 	return nil
 }
@@ -432,6 +483,10 @@ func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,
 	defer wg.Done()
 
 	results := NewBitmap()
+	if e.bsi.runOptimized {
+		results.RunOptimize()
+	}
+
 
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]

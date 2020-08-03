@@ -220,7 +220,13 @@ func TestLargeFile(t *testing.T) {
 	b := [][]byte{datEBM, dat1, dat2, dat3, dat4, dat5, dat6, dat7, dat8}
 
 	bsi := NewDefaultBSI()
+	//bsi.RunOptimize()
 	err = bsi.UnmarshalBinary(b)
+	for i := 0; i < bsi.BitCount(); i++ {
+		//assert.True(t, bsi.bA[i].HasRunCompression())
+                //bsi.bA[i].RunOptimize()
+	}
+	//assert.True(t, bsi.eBM.HasRunCompression())
 	require.Nil(t, err)
 
 	resultA := bsi.CompareValue(0, EQ, 55, 0, nil)
