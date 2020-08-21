@@ -1,6 +1,7 @@
 package roaring64
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -24,6 +25,26 @@ func TestRoaringIntervalCheck(t *testing.T) {
 	rangeb2.AddRange(10, 1000)
 
 	assert.False(t, r.Intersects(rangeb2))
+}
+
+func TestIssue266(t *testing.T) {
+	r := BitmapOf(12345, 5764607714248818780)
+	assert.EqualValues(t, 2, r.GetCardinality())
+	assert.EqualValues(t, 2, r.GetCardinality())
+	assert.EqualValues(t, true, r.Contains(12345))
+	assert.EqualValues(t, true, r.Contains(5764607714248818780))
+
+	i := r.Iterator()
+
+	if assert.True(t, i.HasNext()) {
+		assert.EqualValues(t, 12345, i.Next())
+		if assert.True(t, i.HasNext()) {
+			assert.EqualValues(t, uint64(5764607714248818780), i.Next())
+			assert.False(t, i.HasNext())
+		}
+	}
+
+	fmt.Println(r.String())
 }
 
 func TestRoaringRangeEnd(t *testing.T) {
