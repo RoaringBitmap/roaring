@@ -1,6 +1,8 @@
 package roaring64
 
-import "github.com/RoaringBitmap/roaring"
+import (
+	"github.com/RoaringBitmap/roaring"
+)
 
 // IntIterable64 allows you to iterate over the values in a Bitmap
 type IntIterable64 interface {
@@ -33,13 +35,14 @@ func (ii *intIterator) HasNext() bool {
 func (ii *intIterator) init() {
 	if ii.highlowcontainer.size() > ii.pos {
 		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).Iterator()
-		ii.hs = uint64(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+		ii.hs = uint64(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 32
 	}
 }
 
 // Next returns the next integer
 func (ii *intIterator) Next() uint64 {
-	x := uint64(ii.iter.Next()) | ii.hs
+	lowbits := ii.iter.Next()
+	x := uint64(lowbits) | ii.hs
 	if !ii.iter.HasNext() {
 		ii.pos = ii.pos + 1
 		ii.init()
