@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+    "time"
+    "log"
 )
 
 // BSI is at its simplest is an array of bitmaps that represent an encoded
@@ -166,6 +168,7 @@ type bsiAction func(input *BSI, batch []uint64, resultsChan chan *BSI, wg *sync.
 
 func parallelExecutorBSIResults(parallelism int, input *BSI, e bsiAction, foundSet *Bitmap, sumResults bool) *BSI {
 
+start := time.Now()
 	var n int = parallelism
 	if n == 0 {
 		n = runtime.NumCPU()
@@ -195,11 +198,14 @@ func parallelExecutorBSIResults(parallelism int, input *BSI, e bsiAction, foundS
 
 	close(resultsChan)
 
+log.Printf("Core elapsed time = %v", time.Since(start))
+
 	ba := make([]*BSI, 0)
 	for bm := range resultsChan {
 		ba = append(ba, bm)
 	}
 
+start = time.Now()
 	results := NewDefaultBSI()
 	if sumResults {
 		for _, v := range ba {
@@ -208,6 +214,7 @@ func parallelExecutorBSIResults(parallelism int, input *BSI, e bsiAction, foundS
 	} else {
 		results.ParOr(0, ba...)
 	}
+log.Printf("Summarize elapsed time = %v", time.Since(start))
 	return results
 
 }
