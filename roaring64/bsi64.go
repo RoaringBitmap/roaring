@@ -379,6 +379,9 @@ func (b *BSI) Transpose() *Bitmap {
 // in the returned bitmap. This is accomplished by iterating over the foundSet and only including
 // the column IDs in the source (foundSet) as compared with this BSI.  This can be useful for
 // vectoring one set of integers to another.
+//
+// TODO: This implementation is functional but not performant, needs to be re-written perhaps using SIMD SSE2 instructions.
+//
 func (b *BSI) IntersectAndTranspose(parallelism int, foundSet *Bitmap) *Bitmap {
 
 	trans := &task{bsi: b}
@@ -648,6 +651,8 @@ func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 // contained within the input BSI.   Given that for BSIs, different columnIDs can have the same value.  TransposeWithCounts
 // is useful for situations where there is a one-to-many relationship between the vectored integer sets.  The resulting BSI
 // contains the number of times a particular value appeared in the input BSI as an integer count.
+//
+// TODO: This implementation is functional but not performant, needs to be re-written perhaps using SIMD SSE2 instructions.
 //
 func (b *BSI) TransposeWithCounts(parallelism int, foundSet *Bitmap) *BSI {
 
