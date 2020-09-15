@@ -1,6 +1,6 @@
 module github.com/RoaringBitmap/roaring
 
-go 1.12
+go 1.14
 
 require (
 	github.com/glycerine/go-unsnap-stream v0.0.0-20181221182339-f9677308dec2

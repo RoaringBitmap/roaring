@@ -650,7 +650,7 @@ func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 // TransposeWithCounts is a matrix transpose function that returns a BSI that has a columnID system defined by the values
 // contained within the input BSI.   Given that for BSIs, different columnIDs can have the same value.  TransposeWithCounts
 // is useful for situations where there is a one-to-many relationship between the vectored integer sets.  The resulting BSI
-// contains the number of times a particular value appeared in the input BSI as an integer count.
+// contains the number of times a particular value appeared in the input BSI.
 //
 // TODO: This implementation is functional but not performant, needs to be re-written perhaps using SIMD SSE2 instructions.
 //
@@ -691,4 +691,42 @@ func (b *BSI) Increment(foundSet *Bitmap) {
 
 func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
+}
+
+func (b *BSI) TransposeWithCounts2(parallelism int, foundSet *Bitmap) *BSI {
+
+	var batch []uint64
+    cols := make(map[uint64]*uint64, len(batch))
+    batch = foundSet.ToArray()
+    for _, v := range batch {
+        cols[v] = new(uint64)
+    }
+
+	var wg sync.WaitGroup
+    for i := 0; i < b.BitCount(); i++ {
+        wg.Add(1)
+        go func(j int) {
+            defer wg.Done()
+            batch := b.bA[j].ToArray()
+            for _, v := range batch {
+			    atomic.AddUint64(cols[v], 1 << uint64(j))
+            }
+        }(i)
+    }
+    wg.Wait()
+
+    newCols := make(map[uint64]uint64, len(cols))
+    for _, v := range cols {
+        if i, ok := newCols[*v]; !ok {
+            newCols[*v] = 1
+        } else {
+            newCols[*v] = i + 1
+        }
+    }
+
+    newBSI := NewDefaultBSI()
+    for k, v := range newCols {
+        newBSI.SetValue(k, int64(v))
+    }
+    return newBSI
 }
