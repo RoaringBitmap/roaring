@@ -696,8 +696,8 @@ func (b *BSI) IncrementAll() {
 func (b *BSI) TransposeWithCounts2(parallelism int, foundSet *Bitmap) *BSI {
 
 	var batch []uint64
-    cols := make(map[uint64]*uint64, len(batch))
     batch = foundSet.ToArray()
+    cols := make(map[uint64]*uint64, len(batch))
     for _, v := range batch {
         cols[v] = new(uint64)
     }
