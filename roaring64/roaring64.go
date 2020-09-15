@@ -170,7 +170,7 @@ func (rb *Bitmap) ToArray() []uint64 {
 		hs := uint64(rb.highlowcontainer.getKeyAtIndex(pos)) << 32
 		c := rb.highlowcontainer.getContainerAtIndex(pos)
 		pos++
-		c.FillLeastSignificant32bits(array, pos2, hs)
+		c.ManyIterator().NextMany64(hs, array[pos2:])
 		pos2 += c.GetCardinality()
 	}
 	return array
