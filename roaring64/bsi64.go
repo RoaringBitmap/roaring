@@ -708,8 +708,12 @@ func (b *BSI) TransposeWithCounts2(parallelism int, foundSet *Bitmap) *BSI {
         go func(j int) {
             defer wg.Done()
             batch := b.bA[j].ToArray()
+            var a *uint64
             for _, v := range batch {
-			    atomic.AddUint64(cols[v], 1 << uint64(j))
+                a = cols[v]
+                if a != nil {
+			        atomic.AddUint64(a, 1 << uint64(j))
+                }
             }
         }(i)
     }
