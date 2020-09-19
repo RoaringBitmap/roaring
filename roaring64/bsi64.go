@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+    "time"
+    "log"
 )
 
 // BSI is at its simplest is an array of bitmaps that represent an encoded
@@ -695,13 +697,16 @@ func (b *BSI) IncrementAll() {
 
 func (b *BSI) TransposeWithCounts2(parallelism int, foundSet *Bitmap) *BSI {
 
+start := time.Now()
 	var batch []uint64
     batch = foundSet.ToArray()
     cols := make(map[uint64]*uint64, len(batch))
     for _, v := range batch {
         cols[v] = new(uint64)
     }
+log.Printf("Transpose init memory elapsed = %v", time.Since(start))
 
+start = time.Now()
 	var wg sync.WaitGroup
     for i := 0; i < b.BitCount(); i++ {
         wg.Add(1)
@@ -718,7 +723,9 @@ func (b *BSI) TransposeWithCounts2(parallelism int, foundSet *Bitmap) *BSI {
         }(i)
     }
     wg.Wait()
+log.Printf("Transpose core elapsed = %v", time.Since(start))
 
+start = time.Now()
     newCols := make(map[uint64]uint64, len(cols))
     for _, v := range cols {
         if i, ok := newCols[*v]; !ok {
@@ -727,10 +734,13 @@ func (b *BSI) TransposeWithCounts2(parallelism int, foundSet *Bitmap) *BSI {
             newCols[*v] = i + 1
         }
     }
+log.Printf("Transpose counts elapsed = %v", time.Since(start))
 
+start = time.Now()
     newBSI := NewDefaultBSI()
     for k, v := range newCols {
         newBSI.SetValue(k, int64(v))
     }
+log.Printf("Transpose create result BSI elapsed = %v", time.Since(start))
     return newBSI
 }
