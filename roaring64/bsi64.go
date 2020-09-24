@@ -695,11 +695,11 @@ func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
 }
 
-func (b *BSI) TransposeWithCounts2(parallelism int, foundSet *Bitmap) *BSI {
+func (b *BSI) TransposeWithCounts2(parallelism int, filterSet *Bitmap) *BSI {
 
 start := time.Now()
 	var batch []uint64
-    batch = foundSet.ToArray()
+    batch = b.eBM.ToArray()
     cols := make(map[uint64]*uint64, len(batch))
     for _, v := range batch {
         cols[v] = new(uint64)
@@ -728,6 +728,9 @@ log.Printf("Transpose core elapsed = %v", time.Since(start))
 start = time.Now()
     newCols := make(map[uint64]uint64, len(cols))
     for _, v := range cols {
+        if !filterSet.Contains(*v) {
+            continue
+        }
         if i, ok := newCols[*v]; !ok {
             newCols[*v] = 1
         } else {
