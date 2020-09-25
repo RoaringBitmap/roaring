@@ -164,9 +164,9 @@ func parallelExecutor(parallelism int, t *task, e action,
 
 }
 
-type bsiAction func(input *BSI, batch []uint64, resultsChan chan *BSI, wg *sync.WaitGroup)
+type bsiAction func(input *BSI, filterSet *Bitmap, batch []uint64, resultsChan chan *BSI, wg *sync.WaitGroup)
 
-func parallelExecutorBSIResults(parallelism int, input *BSI, e bsiAction, foundSet *Bitmap, sumResults bool) *BSI {
+func parallelExecutorBSIResults(parallelism int, input *BSI, e bsiAction, foundSet, filterSet *Bitmap, sumResults bool) *BSI {
 
 	var n int = parallelism
 	if n == 0 {
@@ -190,7 +190,7 @@ func parallelExecutorBSIResults(parallelism int, input *BSI, e bsiAction, foundS
 		}
 		iter.NextMany(batch)
 		wg.Add(1)
-		go e(input, batch, resultsChan, &wg)
+		go e(input, filterSet, batch, resultsChan, &wg)
 	}
 
 	wg.Wait()
@@ -656,12 +656,12 @@ func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 //
 // TODO: This implementation is functional but not performant, needs to be re-written perhaps using SIMD SSE2 instructions.
 //
-func (b *BSI) TransposeWithCounts(parallelism int, foundSet *Bitmap) *BSI {
+func (b *BSI) TransposeWithCounts(parallelism int, foundSet, filterSet *Bitmap) *BSI {
 
-	return parallelExecutorBSIResults(parallelism, b, transposeWithCounts, foundSet, true)
+	return parallelExecutorBSIResults(parallelism, b, transposeWithCounts, foundSet, filterSet, true)
 }
 
-func transposeWithCounts(input *BSI, batch []uint64, resultsChan chan *BSI, wg *sync.WaitGroup) {
+func transposeWithCounts(input *BSI, filterSet *Bitmap, batch []uint64, resultsChan chan *BSI, wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
@@ -671,6 +671,9 @@ func transposeWithCounts(input *BSI, batch []uint64, resultsChan chan *BSI, wg *
 	}
 	for _, cID := range batch {
 		if value, ok := input.GetValue(uint64(cID)); ok {
+            if ! filterSet.Contains(uint64(value)) {
+                continue
+            }
 			if val, ok2 := results.GetValue(uint64(value)); !ok2 {
 				results.SetValue(uint64(value), 1)
 			} else {
