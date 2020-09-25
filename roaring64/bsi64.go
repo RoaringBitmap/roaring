@@ -5,8 +5,6 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-    "time"
-    "log"
 )
 
 // BSI is at its simplest is an array of bitmaps that represent an encoded
@@ -41,6 +39,7 @@ func NewDefaultBSI() *BSI {
 	return NewBSI(int64(0), int64(0))
 }
 
+// RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
 func (b *BSI) RunOptimize() {
 	b.eBM.RunOptimize()
 	for i := 0; i < len(b.bA); i++ {
@@ -49,11 +48,12 @@ func (b *BSI) RunOptimize() {
 	b.runOptimized = true
 }
 
+// HasRunCompression returns true if the bitmap benefits from run compression
 func (b *BSI) HasRunCompression() bool {
 	return b.runOptimized
 }
 
-// Returns a pointer to existence bitmap
+// GetExistenceBitmap returns a pointer to the underlying existence bitmap of the BSI
 func (b *BSI) GetExistenceBitmap() *Bitmap {
 	return b.eBM
 }
@@ -196,7 +196,6 @@ func parallelExecutorBSIResults(parallelism int, input *BSI, e bsiAction, foundS
 	wg.Wait()
 
 	close(resultsChan)
-
 
 	ba := make([]*BSI, 0)
 	for bm := range resultsChan {
@@ -485,10 +484,9 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 		}
 		if err := b.bA[i-1].UnmarshalBinary(bitData[i]); err != nil {
 			return err
-		} else {
-			if b.runOptimized {
-				b.bA[i-1].RunOptimize()
-			}
+        }
+		if b.runOptimized {
+			b.bA[i-1].RunOptimize()
 		}
 
 	}
@@ -502,10 +500,9 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 	}
 	if err := b.eBM.UnmarshalBinary(bitData[0]); err != nil {
 		return err
-	} else {
-		if b.runOptimized {
-			b.eBM.RunOptimize()
-		}
+    }
+	if b.runOptimized {
+		b.eBM.RunOptimize()
 	}
 	return nil
 }
@@ -590,11 +587,7 @@ func (b *BSI) ClearValues(foundSet *Bitmap) {
 	wg.Wait()
 }
 
-/*
- * NewBSIRetainSet
- *
- * Construct a new BSI from a clone of existing BSI, retain only values contained in foundSet
- */
+// NewBSIRetainSet - Construct a new BSI from a clone of existing BSI, retain only values contained in foundSet
 func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 
 	newBSI := NewBSI(b.MaxValue, b.MinValue)
@@ -618,14 +611,12 @@ func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 	return newBSI
 }
 
+// Clone performs a deep copy of BSI contents.
 func (b *BSI) Clone() *BSI {
 	return b.NewBSIRetainSet(b.eBM)
 }
 
-// Add
-//
-// In-place sum the contents of another BSI with this BSI, column wise.
-//
+// Add. In-place sum the contents of another BSI with this BSI, column wise.
 func (b *BSI) Add(other *BSI) {
 
 	b.eBM.Or(other.eBM)
@@ -654,8 +645,6 @@ func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 // is useful for situations where there is a one-to-many relationship between the vectored integer sets.  The resulting BSI
 // contains the number of times a particular value appeared in the input BSI.
 //
-// TODO: This implementation is functional but not performant, needs to be re-written perhaps using SIMD SSE2 instructions.
-//
 func (b *BSI) TransposeWithCounts(parallelism int, foundSet, filterSet *Bitmap) *BSI {
 
 	return parallelExecutorBSIResults(parallelism, b, transposeWithCounts, foundSet, filterSet, true)
@@ -671,9 +660,9 @@ func transposeWithCounts(input *BSI, filterSet *Bitmap, batch []uint64, resultsC
 	}
 	for _, cID := range batch {
 		if value, ok := input.GetValue(uint64(cID)); ok {
-            if ! filterSet.Contains(uint64(value)) {
-                continue
-            }
+			if !filterSet.Contains(uint64(value)) {
+				continue
+			}
 			if val, ok2 := results.GetValue(uint64(value)); !ok2 {
 				results.SetValue(uint64(value), 1)
 			} else {
@@ -685,68 +674,12 @@ func transposeWithCounts(input *BSI, filterSet *Bitmap, batch []uint64, resultsC
 	resultsChan <- results
 }
 
-// Increment
-//
-// In-place increment of values in a BSI.  Found set select columns for incrementing.
-// It assumes that the column value already exists.
-//
+// Increment. In-place increment of values in a BSI.  Found set select columns for incrementing.
 func (b *BSI) Increment(foundSet *Bitmap) {
 	b.addDigit(foundSet, 0)
 }
 
+// Increment. In-place increment of all values in a BSI.
 func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
-}
-
-func (b *BSI) TransposeWithCounts2(parallelism int, filterSet *Bitmap) *BSI {
-
-start := time.Now()
-	var batch []uint64
-    batch = b.eBM.ToArray()
-    cols := make(map[uint64]*uint64, len(batch))
-    for _, v := range batch {
-        cols[v] = new(uint64)
-    }
-log.Printf("Transpose init memory elapsed = %v", time.Since(start))
-
-start = time.Now()
-	var wg sync.WaitGroup
-    for i := 0; i < b.BitCount(); i++ {
-        wg.Add(1)
-        go func(j int) {
-            defer wg.Done()
-            batch := b.bA[j].ToArray()
-            var a *uint64
-            for _, v := range batch {
-                a = cols[v]
-                if a != nil {
-			        atomic.AddUint64(a, 1 << uint64(j))
-                }
-            }
-        }(i)
-    }
-    wg.Wait()
-log.Printf("Transpose core elapsed = %v", time.Since(start))
-
-start = time.Now()
-    newCols := make(map[uint64]uint64, len(cols))
-    for _, v := range cols {
-        if !filterSet.Contains(*v) {
-            continue
-        }
-        if i, ok := newCols[*v]; !ok {
-            newCols[*v] = 1
-        } else {
-            newCols[*v] = i + 1
-        }
-    }
-log.Printf("Transpose counts elapsed = %v", time.Since(start))
-
-start = time.Now()
-    newBSI := NewDefaultBSI()
-    for k, v := range newCols {
-        newBSI.SetValue(k, int64(v))
-    }
-log.Printf("Transpose create result BSI elapsed = %v", time.Since(start))
-    return newBSI
 }
