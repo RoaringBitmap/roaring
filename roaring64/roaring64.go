@@ -196,7 +196,7 @@ func (rb *Bitmap) String() string {
 	counter := 0
 	if i.HasNext() {
 		counter = counter + 1
-		buffer.WriteString(strconv.FormatInt(int64(i.Next()), 10))
+		buffer.WriteString(strconv.FormatUint(uint64(i.Next()), 10))
 	}
 	for i.HasNext() {
 		buffer.WriteString(",")
@@ -206,7 +206,7 @@ func (rb *Bitmap) String() string {
 			buffer.WriteString("...")
 			break
 		}
-		buffer.WriteString(strconv.FormatInt(int64(i.Next()), 10))
+		buffer.WriteString(strconv.FormatUint(uint64(i.Next()), 10))
 	}
 	buffer.WriteString("}")
 	return buffer.String()
