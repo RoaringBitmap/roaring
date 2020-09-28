@@ -3,7 +3,6 @@ roaring [![Build Status](https://travis-ci.org/RoaringBitmap/roaring.png)](https
 ![Go-CI](https://github.com/RoaringBitmap/roaring/workflows/Go-CI/badge.svg)
 ![Go-ARM-CI](https://github.com/RoaringBitmap/roaring/workflows/Go-ARM-CI/badge.svg)
 ![Go-Windows-CI](https://github.com/RoaringBitmap/roaring/workflows/Go-Windows-CI/badge.svg)
-![Go-macos-CI](https://github.com/RoaringBitmap/roaring/workflows/Go-macos-CI/badge.svg)
 =============
 
 This is a go version of the Roaring bitmap data structure. 
