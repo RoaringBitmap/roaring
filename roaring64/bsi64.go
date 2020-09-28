@@ -484,7 +484,7 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 		}
 		if err := b.bA[i-1].UnmarshalBinary(bitData[i]); err != nil {
 			return err
-        }
+		}
 		if b.runOptimized {
 			b.bA[i-1].RunOptimize()
 		}
@@ -500,7 +500,7 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 	}
 	if err := b.eBM.UnmarshalBinary(bitData[0]); err != nil {
 		return err
-    }
+	}
 	if b.runOptimized {
 		b.eBM.RunOptimize()
 	}
@@ -616,7 +616,7 @@ func (b *BSI) Clone() *BSI {
 	return b.NewBSIRetainSet(b.eBM)
 }
 
-// Add. In-place sum the contents of another BSI with this BSI, column wise.
+// Add - In-place sum the contents of another BSI with this BSI, column wise.
 func (b *BSI) Add(other *BSI) {
 
 	b.eBM.Or(other.eBM)
@@ -674,12 +674,12 @@ func transposeWithCounts(input *BSI, filterSet *Bitmap, batch []uint64, resultsC
 	resultsChan <- results
 }
 
-// Increment. In-place increment of values in a BSI.  Found set select columns for incrementing.
+// Increment - In-place increment of values in a BSI.  Found set select columns for incrementing.
 func (b *BSI) Increment(foundSet *Bitmap) {
 	b.addDigit(foundSet, 0)
 }
 
-// Increment. In-place increment of all values in a BSI.
+// IncrementAll - In-place increment of all values in a BSI.
 func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
 }

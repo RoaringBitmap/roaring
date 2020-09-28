@@ -40,6 +40,7 @@ func NewDefaultBSI() *BSI {
 	return NewBSI(int64(0), int64(0))
 }
 
+// RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
 func (b *BSI) RunOptimize() {
 	b.eBM.RunOptimize()
 	for i := 0; i < len(b.bA); i++ {
@@ -48,11 +49,12 @@ func (b *BSI) RunOptimize() {
 	b.runOptimized = true
 }
 
+// HasRunCompression returns true if the bitmap benefits from run compression
 func (b *BSI) HasRunCompression() bool {
 	return b.runOptimized
 }
 
-// Returns a pointer to existence bitmap
+// GetExistenceBitmap returns a pointer to the underlying existence bitmap of the BSI
 func (b *BSI) GetExistenceBitmap() *roaring.Bitmap {
 	return b.eBM
 }
@@ -480,10 +482,9 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 		}
 		if err := b.bA[i-1].UnmarshalBinary(bitData[i]); err != nil {
 			return err
-		} else {
-			if b.runOptimized {
-				b.bA[i-1].RunOptimize()
-			}
+		}
+		if b.runOptimized {
+			b.bA[i-1].RunOptimize()
 		}
 
 	}
@@ -497,10 +498,9 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 	}
 	if err := b.eBM.UnmarshalBinary(bitData[0]); err != nil {
 		return err
-	} else {
-		if b.runOptimized {
-			b.eBM.RunOptimize()
-		}
+	}
+	if b.runOptimized {
+		b.eBM.RunOptimize()
 	}
 	return nil
 }
@@ -585,11 +585,7 @@ func (b *BSI) ClearValues(foundSet *roaring.Bitmap) {
 	wg.Wait()
 }
 
-/*
- * NewBSIRetainSet
- *
- * Construct a new BSI from a clone of existing BSI, retain only values contained in foundSet
- */
+// NewBSIRetainSet - Construct a new BSI from a clone of existing BSI, retain only values contained in foundSet
 func (b *BSI) NewBSIRetainSet(foundSet *roaring.Bitmap) *BSI {
 
 	newBSI := NewBSI(b.MaxValue, b.MinValue)
@@ -613,14 +609,12 @@ func (b *BSI) NewBSIRetainSet(foundSet *roaring.Bitmap) *BSI {
 	return newBSI
 }
 
+// Clone performs a deep copy of BSI contents.
 func (b *BSI) Clone() *BSI {
 	return b.NewBSIRetainSet(b.eBM)
 }
 
-// Add
-//
-// In-place sum the contents of another BSI with this BSI, column wise.
-//
+// Add - In-place sum the contents of another BSI with this BSI, column wise.
 func (b *BSI) Add(other *BSI) {
 
 	b.eBM.Or(other.eBM)
@@ -675,15 +669,12 @@ func transposeWithCounts(input *BSI, batch []uint32, resultsChan chan *BSI, wg *
 	resultsChan <- results
 }
 
-// Increment
-//
-// In-place increment of values in a BSI.  Found set select columns for incrementing.
-// It assumes that the column value already exists.
-//
+// Increment - In-place increment of values in a BSI.  Found set select columns for incrementing.
 func (b *BSI) Increment(foundSet *roaring.Bitmap) {
 	b.addDigit(foundSet, 0)
 }
 
+// IncrementAll - In-place increment of all values in a BSI.
 func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
 }
