@@ -126,7 +126,7 @@ func TestSum(t *testing.T) {
 
 	sum, count := bsi.Sum(set)
 	assert.Equal(t, uint64(11), count)
-	assert.Equal(t, uint64(550), sum)
+	assert.Equal(t, int64(550), sum)
 }
 
 func TestTranspose(t *testing.T) {
@@ -220,7 +220,13 @@ func TestLargeFile(t *testing.T) {
 	b := [][]byte{datEBM, dat1, dat2, dat3, dat4, dat5, dat6, dat7, dat8}
 
 	bsi := NewDefaultBSI()
+	//bsi.RunOptimize()
 	err = bsi.UnmarshalBinary(b)
+	for i := 0; i < bsi.BitCount(); i++ {
+		//assert.True(t, bsi.bA[i].HasRunCompression())
+		//bsi.bA[i].RunOptimize()
+	}
+	//assert.True(t, bsi.eBM.HasRunCompression())
 	require.Nil(t, err)
 
 	resultA := bsi.CompareValue(0, EQ, 55, 0, nil)
@@ -233,4 +239,56 @@ func TestLargeFile(t *testing.T) {
 	resultC := bsi.BatchEqual(0, []int64{55, 57})
 	assert.Equal(t, uint64(515233), resultC.GetCardinality())
 
+}
+
+func TestClone(t *testing.T) {
+	bsi := setup()
+	clone := bsi.Clone()
+	for i := 0; i < int(bsi.MaxValue); i++ {
+		a, _ := bsi.GetValue(uint64(i))
+		b, _ := clone.GetValue(uint64(i))
+		assert.Equal(t, a, b)
+	}
+}
+
+func TestAdd(t *testing.T) {
+	bsi := NewDefaultBSI()
+	// Setup values
+	for i := 1; i <= 10; i++ {
+		bsi.SetValue(uint64(i), int64(i))
+	}
+	clone := bsi.Clone()
+	bsi.Add(clone)
+	assert.Equal(t, uint64(10), bsi.GetCardinality())
+	for i := 1; i <= 10; i++ {
+		a, _ := bsi.GetValue(uint64(i))
+		b, _ := clone.GetValue(uint64(i))
+		assert.Equal(t, b*2, a)
+	}
+
+}
+
+func TestIncrement(t *testing.T) {
+	bsi := setup()
+	bsi.IncrementAll()
+	for i := 0; i < int(bsi.MaxValue); i++ {
+		a, _ := bsi.GetValue(uint64(i))
+		assert.Equal(t, int64(i+1), a)
+	}
+	bsi.Increment(BitmapOf(0))
+	x, _ := bsi.GetValue(uint64(0))
+	assert.Equal(t, int64(2), x)
+	for i := 1; i < int(bsi.MaxValue); i++ {
+		a, _ := bsi.GetValue(uint64(i))
+		assert.Equal(t, int64(i+1), a)
+	}
+}
+
+func TestTransposeWithCounts(t *testing.T) {
+	bsi := setup()
+	bsi.SetValue(101, 50)
+	transposed := bsi.TransposeWithCounts(0, bsi.GetExistenceBitmap(), bsi.GetExistenceBitmap())
+	a, ok := transposed.GetValue(uint64(50))
+	assert.True(t, ok)
+	assert.Equal(t, int64(2), a)
 }
