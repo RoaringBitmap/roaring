@@ -1939,3 +1939,38 @@ func TestCloneCOWContainers(t *testing.T) {
 
 	assert.EqualValues(t, rb.ToArray(), newRb1.ToArray())
 }
+
+func TestInPlaceCOWContainers(t *testing.T) {
+	// write bitmap
+	wb1 := NewBitmap()
+	wb2 := NewBitmap()
+
+	wb1.AddRange(0, 3000)
+	wb2.AddRange(2000, 5000)
+
+	buf1 := &bytes.Buffer{}
+	buf2 := &bytes.Buffer{}
+
+	wb1.WriteTo(buf1)
+	wb2.WriteTo(buf2)
+
+	// read bitmaps
+	rb1 := NewBitmap()
+	rb2 := NewBitmap()
+
+	rb1.FromBuffer(buf1.Bytes())
+	rb2.FromBuffer(buf2.Bytes())
+
+	assert.True(t, wb1.Equals(rb1))
+	assert.True(t, wb2.Equals(rb2))
+
+	rb1.Or(rb2)
+
+	assert.True(t, Or(wb1, wb2).Equals(rb1))
+	assert.True(t, wb2.Equals(rb2))
+
+	rb3 := NewBitmap()
+	rb3.FromBuffer(buf1.Bytes())
+
+	assert.True(t, rb3.Equals(wb1))
+}

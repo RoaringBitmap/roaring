@@ -3,6 +3,7 @@ package roaring
 import (
 	"bytes"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"math/rand"
 	"runtime"
 	"testing"
@@ -233,6 +234,75 @@ func BenchmarkUnionRoaring(b *testing.B) {
 		s3 := Or(s1, s2)
 		card = card + s3.GetCardinality()
 	}
+}
+
+// BenchmarkUnionInPlaceCopyOnWrite tests the performance of bitmap.Or()
+// when the bitmap was generated via FromBuffer.
+// In this case all left containers need to be copied in order to be updated.
+// The nested for-loops test a number of different scenarios
+// with respect to the ranges and densities of bitmaps.
+func BenchmarkUnionInPlaceCopyOnWrite(b *testing.B) {
+	//uint32s to maintain 1.12 compatibility, which requires unsigned shifts.
+	startingContainerPower := uint32(4)
+	finalContainerPower := uint32(10)
+	containerIncrement := uint32(3)
+	startingItemsPower := uint32(3)
+	finalItemsPower := uint32(10)
+	itemsIncrement := uint32(7)
+	for leftContainerPower := startingContainerPower; leftContainerPower <= finalContainerPower; leftContainerPower += containerIncrement {
+		for rightContainerPower := startingContainerPower; rightContainerPower <= finalContainerPower; rightContainerPower += containerIncrement {
+			for leftItemsPerContainerPower := startingItemsPower; leftItemsPerContainerPower <= finalItemsPower; leftItemsPerContainerPower += itemsIncrement {
+				for rightItemsPerContainerPower := startingItemsPower; rightItemsPerContainerPower <= finalItemsPower; rightItemsPerContainerPower += itemsIncrement {
+					b.Run(fmt.Sprintf("%d-%d-%d-%d", leftContainerPower, rightContainerPower, leftItemsPerContainerPower, rightItemsPerContainerPower),
+						func(b *testing.B) {
+							leftMax := (1 << 16) << leftContainerPower
+							rightMax := (1 << 16) << rightContainerPower
+							leftItems := 1 << (leftContainerPower + leftItemsPerContainerPower)
+							rightItems := 1 << (rightContainerPower + rightItemsPerContainerPower)
+							left := make([][]byte, 10)
+							right := make([]*Bitmap, 10)
+							for i := 0; i < 10; i++ {
+								right[i] = NewBitmap()
+								left[i] = generateRandomBitmap(b, leftMax, leftItems)
+								_, err := right[i].FromBuffer(generateRandomBitmap(b, rightMax, rightItems))
+								require.NoError(b, err)
+							}
+							// This tests a destructive operation, Or() so have to have a fresh bitmap per test.
+							targetLefts := make([]*Bitmap, b.N)
+							for i := 0; i < b.N; i++ {
+								targetLefts[i] = NewBitmap()
+								_, err := targetLefts[i].FromBuffer(left[i%10])
+								require.NoError(b, err)
+							}
+							runActualBenchmark(b, targetLefts, right)
+						})
+				}
+			}
+		}
+	}
+}
+
+// runActualBenchmark is broken out primarily so you can profile the tests,
+// as otherwise the generation overwhelms the actual test.
+func runActualBenchmark(b *testing.B, targetLefts []*Bitmap, right []*Bitmap) uint64 {
+	b.ResetTimer()
+	b.ReportAllocs()
+	total := uint64(0)
+	for i := 0; i < b.N; i++ {
+		targetLefts[i].Or(right[i%10])
+		total += targetLefts[i].GetCardinality()
+	}
+	return total
+}
+
+func generateRandomBitmap(b *testing.B, max, terms int) []byte {
+	bitmap := NewBitmap()
+	for i := 0; i < terms; i++ {
+		bitmap.Add(uint32(rand.Intn(max)))
+	}
+	result, err := bitmap.ToBytes()
+	require.NoError(b, err)
+	return result
 }
 
 // go test -bench BenchmarkSize -run -
