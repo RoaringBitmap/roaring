@@ -362,7 +362,14 @@ func (ac *arrayContainer) iorArray(value2 *arrayContainer) container {
 	if maxPossibleCardinality > cap(value1.content) {
 		// doubling the capacity reduces new slice allocations in the case of
 		// repeated calls to iorArray().
-		newcontent := make([]uint16, 0, 2*maxPossibleCardinality)
+		newSize := 2 * maxPossibleCardinality
+		// the second check is to handle overly large array containers
+		// and should not occur in normal usage,
+		// as all array containers should be at most arrayDefaultMaxSize
+		if newSize > 8192 && maxPossibleCardinality <= 8192 {
+			newSize = 8192
+		}
+		newcontent := make([]uint16, 0, newSize)
 		copy(newcontent[len2:maxPossibleCardinality], ac.content[0:len1])
 		ac.content = newcontent
 	} else {
