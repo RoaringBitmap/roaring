@@ -2384,3 +2384,116 @@ func TestIterateHalt(t *testing.T) {
 	expected = expected[0 : len(expected)-1]
 	assert.Equal(t, expected, values)
 }
+
+func BenchmarkEvenIntervalArrayUnions(b *testing.B) {
+	inputBitmaps := make([]*Bitmap, 40)
+	for i := 0; i < 40; i++ {
+		bitmap := NewBitmap()
+		for j := 0; j < 100; j++ {
+			bitmap.Add(uint32(2 * (j + 10*i)))
+		}
+		inputBitmaps[i] = bitmap
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		bitmap := NewBitmap()
+		for _, input := range inputBitmaps {
+			bitmap.Or(input)
+		}
+	}
+}
+
+func BenchmarkInPlaceArrayUnions(b *testing.B) {
+	rand.Seed(100)
+	b.ReportAllocs()
+	componentBitmaps := make([]*Bitmap, 100)
+	for i := 0; i < 100; i++ {
+		bitmap := NewBitmap()
+		for j := 0; j < 100; j++ {
+			//keep all entries in [0,4096), so they stay arrays.
+			bitmap.Add(uint32(rand.Intn(arrayDefaultMaxSize)))
+		}
+		componentBitmaps[i] = bitmap
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bitmap := NewBitmap()
+		for j := 0; j < 100; j++ {
+			bitmap.Or(componentBitmaps[rand.Intn(100)])
+		}
+	}
+}
+
+func BenchmarkAntagonisticArrayUnionsGrowth(b *testing.B) {
+	left := NewBitmap()
+	right := NewBitmap()
+	for i := 0; i < 4096; i++ {
+		left.Add(uint32(2 * i))
+		right.Add(uint32(2*i + 1))
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		left.Clone().Or(right)
+	}
+}
+
+func BenchmarkRepeatedGrowthArrayUnion(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		sink := NewBitmap()
+		source := NewBitmap()
+		for i := 0; i < 2048; i++ {
+			source.Add(uint32(2 * i))
+			sink.Or(source)
+		}
+	}
+}
+
+func BenchmarkRepeatedSelfArrayUnion(b *testing.B) {
+	bitmap := NewBitmap()
+	for i := 0; i < 4096; i++ {
+		bitmap.Add(uint32(2 * i))
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		receiver := NewBitmap()
+		for j := 0; j < 1000; j++ {
+			receiver.Or(bitmap)
+		}
+	}
+}
+
+// BenchmarkArrayIorMergeThreshold tests performance
+// when unioning two array containers when the cardinality sum is over 4096
+func BenchmarkArrayUnionThreshold(b *testing.B) {
+	testOddPoint := map[string]int{
+		"mostly-overlap": 4900,
+		"little-overlap": 2000,
+		"no-overlap":     0,
+	}
+	for name, oddPoint := range testOddPoint {
+		b.Run(name, func(b *testing.B) {
+			left := NewBitmap()
+			right := NewBitmap()
+			for i := 0; i < 5000; i++ {
+				if i%2 == 0 {
+					left.Add(uint32(i))
+				}
+				if i%2 == 0 && i < oddPoint {
+					right.Add(uint32(i))
+				} else if i%2 == 1 && i >= oddPoint {
+					right.Add(uint32(i))
+				}
+			}
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				right.Clone().Or(left)
+			}
+		})
+	}
+}
