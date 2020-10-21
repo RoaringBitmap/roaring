@@ -366,8 +366,8 @@ func (ac *arrayContainer) iorArray(value2 *arrayContainer) container {
 		// the second check is to handle overly large array containers
 		// and should not occur in normal usage,
 		// as all array containers should be at most arrayDefaultMaxSize
-		if newSize > 8192 && maxPossibleCardinality <= 8192 {
-			newSize = 8192
+		if newSize > 2*arrayDefaultMaxSize && maxPossibleCardinality <= 2*arrayDefaultMaxSize {
+			newSize = 2 * arrayDefaultMaxSize
 		}
 		newcontent := make([]uint16, 0, newSize)
 		copy(newcontent[len2:maxPossibleCardinality], ac.content[0:len1])
