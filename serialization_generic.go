@@ -1,4 +1,5 @@
 // +build !amd64,!386,!arm,!arm64,!ppc64le,!mipsle,!mips64le,!mips64p32le,!wasm appengine
+
 package roaring
 
 import (
