@@ -1,4 +1,4 @@
-// +build !amd64,!386 appengine
+// +build !arm64,!amd64,!386 appengine
 
 package roaring
 
