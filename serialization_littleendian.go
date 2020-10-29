@@ -1,4 +1,4 @@
-// +build 386 amd64,!appengine
+// +build 386 amd64 arm arm64 ppc64le mipsle mips64le mips64p32le wasm,!appengine
 
 package roaring
 
