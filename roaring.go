@@ -67,11 +67,11 @@ func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
-func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
+func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err error) {
 	stream := byteInputAdapterPool.Get().(*byteInputAdapter)
 	stream.reset(reader)
 
-	p, err = rb.highlowcontainer.readFrom(stream)
+	p, err = rb.highlowcontainer.readFrom(stream, cookieHeader...)
 	byteInputAdapterPool.Put(stream)
 
 	return

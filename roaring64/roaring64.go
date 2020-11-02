@@ -11,6 +11,9 @@ import (
 	"github.com/RoaringBitmap/roaring"
 )
 
+const serialCookieNoRunContainer = 12346 // only arrays and bitmaps
+const serialCookie = 12347               // runs, arrays, and bitmaps
+
 // Bitmap represents a compressed bitmap where you can add integers.
 type Bitmap struct {
 	highlowcontainer roaringArray64
@@ -89,6 +92,13 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 		return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read number of containers: %s", err)
 	}
 	p += int64(n)
+
+	var r32 bool
+	r32, p, err = tryReadFromRoaring32(rb, sizeBuf, stream)
+	if r32 && err == nil {
+		return p, err
+	}
+
 	size := binary.LittleEndian.Uint64(sizeBuf)
 	rb.highlowcontainer = roaringArray64{}
 	rb.highlowcontainer.keys = make([]uint32, size)
@@ -111,6 +121,25 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	}
 
 	return p, nil
+}
+
+func tryReadFromRoaring32(rb *Bitmap, cookieHeader []byte, stream io.Reader) (r32 bool, p int64, err error) {
+	// Verify the first two bytes are a valid MagicNumber.
+	fileMagic := int(binary.LittleEndian.Uint16(cookieHeader[0:2]))
+	if fileMagic == serialCookieNoRunContainer || fileMagic == serialCookie {
+		bm32 := roaring.NewBitmap()
+		p, err = bm32.ReadFrom(stream, cookieHeader...)
+		if err != nil {
+			return
+		}
+		rb.highlowcontainer = roaringArray64{
+			keys:            []uint32{0},
+			containers:      []*roaring.Bitmap{bm32},
+			needCopyOnWrite: []bool{false},
+		}
+		return true, p, nil
+	}
+	return
 }
 
 // FromBuffer creates a bitmap from its serialized version stored in buffer

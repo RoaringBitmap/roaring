@@ -566,11 +566,19 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (ra *roaringArray) readFrom(stream byteInput) (int64, error) {
-	cookie, err := stream.readUInt32()
-
-	if err != nil {
-		return stream.getReadBytes(), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
+func (ra *roaringArray) readFrom(stream byteInput, cookieHeader ...byte) (int64, error) {
+	var cookie uint32
+	var err error
+	if len(cookieHeader) > 0 && len(cookieHeader) != 8 {
+		return int64(len(cookieHeader)), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: incorrect size of cookie header")
+	}
+	if len(cookieHeader) == 8 {
+		cookie = binary.LittleEndian.Uint32(cookieHeader[:4])
+	} else {
+		cookie, err = stream.readUInt32()
+		if err != nil {
+			return stream.getReadBytes(), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
+		}
 	}
 
 	var size uint32
@@ -586,10 +594,13 @@ func (ra *roaringArray) readFrom(stream byteInput) (int64, error) {
 			return stream.getReadBytes(), fmt.Errorf("malformed bitmap, failed to read is-run bitmap, got: %s", err)
 		}
 	} else if cookie == serialCookieNoRunContainer {
-		size, err = stream.readUInt32()
-
-		if err != nil {
-			return stream.getReadBytes(), fmt.Errorf("malformed bitmap, failed to read a bitmap size: %s", err)
+		if len(cookieHeader) == 8 {
+			size = binary.LittleEndian.Uint32(cookieHeader[4:])
+		} else {
+			size, err = stream.readUInt32()
+			if err != nil {
+				return stream.getReadBytes(), fmt.Errorf("malformed bitmap, failed to read a bitmap size: %s", err)
+			}
 		}
 	} else {
 		return stream.getReadBytes(), fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
