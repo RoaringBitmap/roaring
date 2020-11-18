@@ -11,7 +11,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"sync"
+
+	"github.com/RoaringBitmap/roaring/internal"
 )
 
 // Bitmap represents a compressed bitmap where you can add integers.
@@ -52,13 +53,15 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
-// Deprecated: WriteToMsgpack writes a msgpack2/snappy-streaming compressed serialized
+// WriteToMsgpack writes a msgpack2/snappy-streaming compressed serialized
 // version of this bitmap to stream. The format is not
 // compatible with the WriteTo() format, and is
 // experimental: it may produce smaller on disk
 // footprint and/or be faster to read, depending
 // on your content. Currently only the Go roaring
 // implementation supports this format.
+//
+// Deprecated
 func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 	return 0, rb.highlowcontainer.writeToMsgpack(stream)
 }
@@ -68,12 +71,18 @@ func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
-	stream := byteInputAdapterPool.Get().(*byteInputAdapter)
-	stream.reset(reader)
+	stream := internal.ByteInputAdapterPool.Get().(*internal.ByteInputAdapter)
+	stream.Reset(reader)
 
 	p, err = rb.highlowcontainer.readFrom(stream)
-	byteInputAdapterPool.Put(stream)
+	internal.ByteInputAdapterPool.Put(stream)
 
+	return
+}
+
+// ReadFrom reads from internal bytes stream wrappers - used by roaring64
+func (rb *Bitmap) ReadFromStream(stream internal.ByteInput) (p int64, err error) {
+	p, err = rb.highlowcontainer.readFrom(stream)
 	return
 }
 
@@ -100,28 +109,14 @@ func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
 // call CloneCopyOnWriteContainers on all such bitmaps.
 //
 func (rb *Bitmap) FromBuffer(buf []byte) (p int64, err error) {
-	stream := byteBufferPool.Get().(*byteBuffer)
-	stream.reset(buf)
+	stream := internal.ByteBufferPool.Get().(*internal.ByteBuffer)
+	stream.Reset(buf)
 
 	p, err = rb.highlowcontainer.readFrom(stream)
-	byteBufferPool.Put(stream)
+	internal.ByteBufferPool.Put(stream)
 
 	return
 }
-
-var (
-	byteBufferPool = sync.Pool{
-		New: func() interface{} {
-			return &byteBuffer{}
-		},
-	}
-
-	byteInputAdapterPool = sync.Pool{
-		New: func() interface{} {
-			return &byteInputAdapter{}
-		},
-	}
-)
 
 // RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
 func (rb *Bitmap) RunOptimize() {
@@ -133,10 +128,12 @@ func (rb *Bitmap) HasRunCompression() bool {
 	return rb.highlowcontainer.hasRunCompression()
 }
 
-// Deprecated: ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
+// ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
 // version of this bitmap from stream. The format is
 // expected is that written by the WriteToMsgpack()
 // call; see additional notes there.
+//
+// Deprecated
 func (rb *Bitmap) ReadFromMsgpack(stream io.Reader) (int64, error) {
 	return 0, rb.highlowcontainer.readFromMsgpack(stream)
 }

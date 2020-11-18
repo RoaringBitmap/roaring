@@ -1,4 +1,4 @@
-package roaring
+package internal_test
 
 import (
 	"bytes"

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/RoaringBitmap/roaring/internal"
 	snappy "github.com/glycerine/go-unsnap-stream"
 	"github.com/tinylib/msgp/msgp"
 )
@@ -566,11 +567,11 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (ra *roaringArray) readFrom(stream byteInput) (int64, error) {
-	cookie, err := stream.readUInt32()
+func (ra *roaringArray) readFrom(stream internal.ByteInput) (int64, error) {
+	cookie, err := stream.ReadUInt32()
 
 	if err != nil {
-		return stream.getReadBytes(), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
+		return stream.GetReadBytes(), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
 	}
 
 	var size uint32
@@ -580,37 +581,37 @@ func (ra *roaringArray) readFrom(stream byteInput) (int64, error) {
 		size = uint32(uint16(cookie>>16) + 1)
 		// create is-run-container bitmap
 		isRunBitmapSize := (int(size) + 7) / 8
-		isRunBitmap, err = stream.next(isRunBitmapSize)
+		isRunBitmap, err = stream.Next(isRunBitmapSize)
 
 		if err != nil {
-			return stream.getReadBytes(), fmt.Errorf("malformed bitmap, failed to read is-run bitmap, got: %s", err)
+			return stream.GetReadBytes(), fmt.Errorf("malformed bitmap, failed to read is-run bitmap, got: %s", err)
 		}
 	} else if cookie == serialCookieNoRunContainer {
-		size, err = stream.readUInt32()
+		size, err = stream.ReadUInt32()
 
 		if err != nil {
-			return stream.getReadBytes(), fmt.Errorf("malformed bitmap, failed to read a bitmap size: %s", err)
+			return stream.GetReadBytes(), fmt.Errorf("malformed bitmap, failed to read a bitmap size: %s", err)
 		}
 	} else {
-		return stream.getReadBytes(), fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
+		return stream.GetReadBytes(), fmt.Errorf("error in roaringArray.readFrom: did not find expected serialCookie in header")
 	}
 
 	if size > (1 << 16) {
-		return stream.getReadBytes(), fmt.Errorf("it is logically impossible to have more than (1<<16) containers")
+		return stream.GetReadBytes(), fmt.Errorf("it is logically impossible to have more than (1<<16) containers")
 	}
 
 	// descriptive header
-	buf, err := stream.next(2 * 2 * int(size))
+	buf, err := stream.Next(2 * 2 * int(size))
 
 	if err != nil {
-		return stream.getReadBytes(), fmt.Errorf("failed to read descriptive header: %s", err)
+		return stream.GetReadBytes(), fmt.Errorf("failed to read descriptive header: %s", err)
 	}
 
-	keycard := byteSliceAsUint16Slice(buf)
+	keycard := internal.ByteSliceAsUint16Slice(buf)
 
 	if isRunBitmap == nil || size >= noOffsetThreshold {
-		if err := stream.skipBytes(int(size) * 4); err != nil {
-			return stream.getReadBytes(), fmt.Errorf("failed to skip bytes: %s", err)
+		if err := stream.SkipBytes(int(size) * 4); err != nil {
+			return stream.GetReadBytes(), fmt.Errorf("failed to skip bytes: %s", err)
 		}
 	}
 
@@ -641,16 +642,16 @@ func (ra *roaringArray) readFrom(stream byteInput) (int64, error) {
 
 		if isRunBitmap != nil && isRunBitmap[i/8]&(1<<(i%8)) != 0 {
 			// run container
-			nr, err := stream.readUInt16()
+			nr, err := stream.ReadUInt16()
 
 			if err != nil {
 				return 0, fmt.Errorf("failed to read runtime container size: %s", err)
 			}
 
-			buf, err := stream.next(int(nr) * 4)
+			buf, err := stream.Next(int(nr) * 4)
 
 			if err != nil {
-				return stream.getReadBytes(), fmt.Errorf("failed to read runtime container content: %s", err)
+				return stream.GetReadBytes(), fmt.Errorf("failed to read runtime container content: %s", err)
 			}
 
 			nb := runContainer16{
@@ -661,35 +662,35 @@ func (ra *roaringArray) readFrom(stream byteInput) (int64, error) {
 			ra.containers[i] = &nb
 		} else if card > arrayDefaultMaxSize {
 			// bitmap container
-			buf, err := stream.next(arrayDefaultMaxSize * 2)
+			buf, err := stream.Next(arrayDefaultMaxSize * 2)
 
 			if err != nil {
-				return stream.getReadBytes(), fmt.Errorf("failed to read bitmap container: %s", err)
+				return stream.GetReadBytes(), fmt.Errorf("failed to read bitmap container: %s", err)
 			}
 
 			nb := bitmapContainer{
 				cardinality: card,
-				bitmap:      byteSliceAsUint64Slice(buf),
+				bitmap:      internal.ByteSliceAsUint64Slice(buf),
 			}
 
 			ra.containers[i] = &nb
 		} else {
 			// array container
-			buf, err := stream.next(card * 2)
+			buf, err := stream.Next(card * 2)
 
 			if err != nil {
-				return stream.getReadBytes(), fmt.Errorf("failed to read array container: %s", err)
+				return stream.GetReadBytes(), fmt.Errorf("failed to read array container: %s", err)
 			}
 
 			nb := arrayContainer{
-				byteSliceAsUint16Slice(buf),
+				internal.ByteSliceAsUint16Slice(buf),
 			}
 
 			ra.containers[i] = &nb
 		}
 	}
 
-	return stream.getReadBytes(), nil
+	return stream.GetReadBytes(), nil
 }
 
 func (ra *roaringArray) hasRunCompression() bool {

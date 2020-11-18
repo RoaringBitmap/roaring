@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/RoaringBitmap/roaring/internal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -377,7 +378,7 @@ func TestByteSliceAsUint16Slice(t *testing.T) {
 		binary.LittleEndian.PutUint16(slice, 42)
 		binary.LittleEndian.PutUint16(slice[2:], 43)
 
-		uint16Slice := byteSliceAsUint16Slice(slice)
+		uint16Slice := internal.ByteSliceAsUint16Slice(slice)
 
 		assert.Equal(t, expectedSize, len(uint16Slice))
 		assert.Equal(t, expectedSize, cap(uint16Slice))
@@ -394,7 +395,7 @@ func TestByteSliceAsUint16Slice(t *testing.T) {
 
 	t.Run("empty slice", func(t *testing.T) {
 		slice := make([]byte, 0, 0)
-		uint16Slice := byteSliceAsUint16Slice(slice)
+		uint16Slice := internal.ByteSliceAsUint16Slice(slice)
 
 		assert.Equal(t, 0, len(uint16Slice))
 		assert.Equal(t, 0, cap(uint16Slice))
@@ -404,7 +405,7 @@ func TestByteSliceAsUint16Slice(t *testing.T) {
 		slice := make([]byte, 1, 1)
 
 		assert.Panics(t, func() {
-			byteSliceAsUint16Slice(slice)
+			internal.ByteSliceAsUint16Slice(slice)
 		})
 	})
 }
@@ -419,7 +420,7 @@ func singleSliceInArray() (*Bitmap, []*Bitmap) {
 
 func singleSlice() *Bitmap {
 	slice := make([]byte, 2)
-	return &Bitmap{highlowcontainer: roaringArray{keys: []uint16{0}, containers: []container{&arrayContainer{byteSliceAsUint16Slice(slice)}}}}
+	return &Bitmap{highlowcontainer: roaringArray{keys: []uint16{0}, containers: []container{&arrayContainer{internal.ByteSliceAsUint16Slice(slice)}}}}
 }
 
 func TestByteSliceAsUint64Slice(t *testing.T) {
@@ -429,7 +430,7 @@ func TestByteSliceAsUint64Slice(t *testing.T) {
 		binary.LittleEndian.PutUint64(slice, 42)
 		binary.LittleEndian.PutUint64(slice[8:], 43)
 
-		uint64Slice := byteSliceAsUint64Slice(slice)
+		uint64Slice := internal.ByteSliceAsUint64Slice(slice)
 
 		assert.Equal(t, expectedSize, len(uint64Slice))
 		assert.Equal(t, expectedSize, cap(uint64Slice))
@@ -438,7 +439,7 @@ func TestByteSliceAsUint64Slice(t *testing.T) {
 
 	t.Run("empty slice", func(t *testing.T) {
 		slice := make([]byte, 0, 0)
-		uint64Slice := byteSliceAsUint64Slice(slice)
+		uint64Slice := internal.ByteSliceAsUint64Slice(slice)
 
 		assert.Equal(t, 0, len(uint64Slice))
 		assert.Equal(t, 0, cap(uint64Slice))
@@ -448,7 +449,7 @@ func TestByteSliceAsUint64Slice(t *testing.T) {
 		slice := make([]byte, 1, 1)
 
 		assert.Panics(t, func() {
-			byteSliceAsUint64Slice(slice)
+			internal.ByteSliceAsUint64Slice(slice)
 		})
 	})
 }

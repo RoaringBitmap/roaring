@@ -1,6 +1,11 @@
 package roaring64
 
-import "github.com/RoaringBitmap/roaring"
+import (
+	"fmt"
+
+	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/internal"
+)
 
 type roaringArray64 struct {
 	keys            []uint32
@@ -385,4 +390,27 @@ func (ra *roaringArray64) needsCopyOnWrite(i int) bool {
 
 func (ra *roaringArray64) setNeedsCopyOnWrite(i int) {
 	ra.needCopyOnWrite[i] = true
+}
+
+func (ra *roaringArray64) readFrom(stream internal.ByteInput) (int64, error) {
+	size, err := stream.ReadUInt64()
+	if err != nil {
+		return stream.GetReadBytes(), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
+	}
+
+	ra.keys = make([]uint32, size)
+	ra.containers = make([]*roaring.Bitmap, size)
+	ra.needCopyOnWrite = make([]bool, size)
+	for i := uint64(0); i < size; i++ {
+		ra.keys[i], err = stream.ReadUInt32()
+		if err != nil {
+			return stream.GetReadBytes(), fmt.Errorf("error in bitmap.readFrom: could not read key #%d: %s", i, err)
+		}
+		ra.containers[i] = roaring.NewBitmap()
+		_, err = ra.containers[i].ReadFromStream(stream)
+		if err != nil {
+			return stream.GetReadBytes(), fmt.Errorf("could not deserialize bitmap for key #%d: %s", i, err)
+		}
+	}
+	return stream.GetReadBytes(), nil
 }
