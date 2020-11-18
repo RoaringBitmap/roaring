@@ -1183,3 +1183,11 @@ func (rb *Bitmap) Stats() roaring.Statistics {
 	}
 	return stats
 }
+
+// GetSerializedSizeInBytes computes the serialized size in bytes
+// of the Bitmap. It should correspond to the number
+// of bytes written when invoking WriteTo. You can expect
+// that this function is much cheaper computationally than WriteTo.
+func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
+	return rb.highlowcontainer.serializedSizeInBytes()
+}
