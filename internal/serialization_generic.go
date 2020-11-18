@@ -57,23 +57,3 @@ func ByteSliceAsUint64Slice(slice []byte) []uint64 {
 
 	return b
 }
-
-// ByteSliceAsInterval16Slice Converts a byte slice to a interval16 slice.
-// The function assumes that the slice byte buffer is run container data
-// encoded according to Roaring Format Spec
-func ByteSliceAsInterval16Slice(byteSlice []byte) []interval16 {
-	if len(byteSlice)%4 != 0 {
-		panic("Slice size should be divisible by 4")
-	}
-
-	intervalSlice := make([]interval16, len(byteSlice)/4)
-
-	for i := range intervalSlice {
-		intervalSlice[i] = interval16{
-			start:  binary.LittleEndian.Uint16(byteSlice[i*4:]),
-			length: binary.LittleEndian.Uint16(byteSlice[i*4+2:]),
-		}
-	}
-
-	return intervalSlice
-}
