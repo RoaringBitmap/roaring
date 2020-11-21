@@ -4,8 +4,6 @@ import (
 	"fmt"
 )
 
-//go:generate msgp -unexported
-
 type arrayContainer struct {
 	content []uint16
 }

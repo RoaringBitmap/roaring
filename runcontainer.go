@@ -44,8 +44,6 @@ import (
 	"unsafe"
 )
 
-//go:generate msgp -unexported
-
 // runContainer16 does run-length encoding of sets of
 // uint16 integers.
 type runContainer16 struct {
@@ -119,8 +117,6 @@ func (p uint16Slice) Less(i, j int) bool { return p[i] < p[j] }
 
 // Swap swaps elements i and j.
 func (p uint16Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
-
-//msgp:ignore addHelper
 
 // addHelper helps build a runContainer16.
 type addHelper16 struct {
@@ -1146,8 +1142,6 @@ func (rc *runContainer16) Add(k uint16) (wasNew bool) {
 	rc.iv = append(rc.iv[:left+1], tail...)
 	return
 }
-
-//msgp:ignore runIterator
 
 // runIterator16 advice: you must call hasNext()
 // before calling next()/peekNext() to insure there are contents.

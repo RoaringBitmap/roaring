@@ -5,8 +5,6 @@ import (
 	"unsafe"
 )
 
-//go:generate msgp -unexported
-
 type bitmapContainer struct {
 	cardinality int
 	bitmap      []uint64
