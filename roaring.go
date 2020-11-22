@@ -68,7 +68,7 @@ func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 // Since io.Reader is regarded as a stream and cannot be read twice.
-// So add cookieHeader to accept the 8-byte data that has been read in roaring64.ReadFrom.
+// So add cookieHeader to accept the 4-byte data that has been read in roaring64.ReadFrom.
 // It is not necessary to pass cookieHeader when call roaring.ReadFrom to read the roaring32 data directly.
 func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err error) {
 	stream := byteInputAdapterPool.Get().(*byteInputAdapter)
