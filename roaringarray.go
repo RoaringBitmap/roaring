@@ -5,13 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-
 	"github.com/RoaringBitmap/roaring/internal"
-	snappy "github.com/glycerine/go-unsnap-stream"
-	"github.com/tinylib/msgp/msgp"
 )
-
-//go:generate msgp -unexported
 
 type container interface {
 	addOffset(uint16) []container
@@ -104,18 +99,6 @@ type roaringArray struct {
 	containers      []container `msg:"-"` // don't try to serialize directly.
 	needCopyOnWrite []bool
 	copyOnWrite     bool
-
-	// conserz is used at serialization time
-	// to serialize containers. Otherwise empty.
-	conserz []containerSerz
-}
-
-// containerSerz facilitates serializing container (tricky to
-// serialize because it is an interface) by providing a
-// light wrapper with a type identifier.
-type containerSerz struct {
-	t contype  `msg:"t"` // type
-	r msgp.Raw `msg:"r"` // Raw msgpack of the actual container type
 }
 
 func newRoaringArray() *roaringArray {
@@ -247,7 +230,6 @@ func (ra *roaringArray) resize(newsize int) {
 func (ra *roaringArray) clear() {
 	ra.resize(0)
 	ra.copyOnWrite = false
-	ra.conserz = nil
 }
 
 func (ra *roaringArray) clone() *roaringArray {
@@ -701,84 +683,6 @@ func (ra *roaringArray) hasRunCompression() bool {
 		}
 	}
 	return false
-}
-
-func (ra *roaringArray) writeToMsgpack(stream io.Writer) error {
-
-	ra.conserz = make([]containerSerz, len(ra.containers))
-	for i, v := range ra.containers {
-		switch cn := v.(type) {
-		case *bitmapContainer:
-			bts, err := cn.MarshalMsg(nil)
-			if err != nil {
-				return err
-			}
-			ra.conserz[i].t = bitmapContype
-			ra.conserz[i].r = bts
-		case *arrayContainer:
-			bts, err := cn.MarshalMsg(nil)
-			if err != nil {
-				return err
-			}
-			ra.conserz[i].t = arrayContype
-			ra.conserz[i].r = bts
-		case *runContainer16:
-			bts, err := cn.MarshalMsg(nil)
-			if err != nil {
-				return err
-			}
-			ra.conserz[i].t = run16Contype
-			ra.conserz[i].r = bts
-		default:
-			panic(fmt.Errorf("Unrecognized container implementation: %T", cn))
-		}
-	}
-	w := snappy.NewWriter(stream)
-	err := msgp.Encode(w, ra)
-	ra.conserz = nil
-	return err
-}
-
-func (ra *roaringArray) readFromMsgpack(stream io.Reader) error {
-	r := snappy.NewReader(stream)
-	err := msgp.Decode(r, ra)
-	if err != nil {
-		return err
-	}
-
-	if len(ra.containers) != len(ra.keys) {
-		ra.containers = make([]container, len(ra.keys))
-	}
-
-	for i, v := range ra.conserz {
-		switch v.t {
-		case bitmapContype:
-			c := &bitmapContainer{}
-			_, err = c.UnmarshalMsg(v.r)
-			if err != nil {
-				return err
-			}
-			ra.containers[i] = c
-		case arrayContype:
-			c := &arrayContainer{}
-			_, err = c.UnmarshalMsg(v.r)
-			if err != nil {
-				return err
-			}
-			ra.containers[i] = c
-		case run16Contype:
-			c := &runContainer16{}
-			_, err = c.UnmarshalMsg(v.r)
-			if err != nil {
-				return err
-			}
-			ra.containers[i] = c
-		default:
-			return fmt.Errorf("unrecognized contype serialization code: '%v'", v.t)
-		}
-	}
-	ra.conserz = nil
-	return nil
 }
 
 func (ra *roaringArray) advanceUntil(min uint16, pos int) int {

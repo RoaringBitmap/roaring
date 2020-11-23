@@ -83,7 +83,6 @@ fuzz-stream:
 	go-fuzz-build -func FuzzSerializationStream github.com/RoaringBitmap/roaring
 	go-fuzz -bin=./roaring-fuzz.zip -workdir=workdir/ -timeout=200
 
-
 fuzz-buffer:
 	go-fuzz-build -func FuzzSerializationBuffer github.com/RoaringBitmap/roaring
 	go-fuzz -bin=./roaring-fuzz.zip -workdir=workdir/ -timeout=200
@@ -97,9 +96,6 @@ nuke:
 	rm -rf ./target
 	GOPATH=$(GOPATH) go clean -i ./...
 
-
-ser: 
-	go generate
 
 cover:
 	go test -coverprofile=coverage.out
