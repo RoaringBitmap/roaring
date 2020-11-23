@@ -52,17 +52,6 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
-// Deprecated: WriteToMsgpack writes a msgpack2/snappy-streaming compressed serialized
-// version of this bitmap to stream. The format is not
-// compatible with the WriteTo() format, and is
-// experimental: it may produce smaller on disk
-// footprint and/or be faster to read, depending
-// on your content. Currently only the Go roaring
-// implementation supports this format.
-func (rb *Bitmap) WriteToMsgpack(stream io.Writer) (int64, error) {
-	return 0, rb.highlowcontainer.writeToMsgpack(stream)
-}
-
 // ReadFrom reads a serialized version of this bitmap from stream.
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:
@@ -131,14 +120,6 @@ func (rb *Bitmap) RunOptimize() {
 // HasRunCompression returns true if the bitmap benefits from run compression
 func (rb *Bitmap) HasRunCompression() bool {
 	return rb.highlowcontainer.hasRunCompression()
-}
-
-// Deprecated: ReadFromMsgpack reads a msgpack2/snappy-streaming serialized
-// version of this bitmap from stream. The format is
-// expected is that written by the WriteToMsgpack()
-// call; see additional notes there.
-func (rb *Bitmap) ReadFromMsgpack(stream io.Reader) (int64, error) {
-	return 0, rb.highlowcontainer.readFromMsgpack(stream)
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for the bitmap
