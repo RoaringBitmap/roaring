@@ -11,7 +11,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"sync"
+
+	"github.com/RoaringBitmap/roaring/internal"
 )
 
 // Bitmap represents a compressed bitmap where you can add integers.
@@ -57,11 +58,11 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
-	stream := byteInputAdapterPool.Get().(*byteInputAdapter)
-	stream.reset(reader)
+	stream := internal.ByteInputAdapterPool.Get().(*internal.ByteInputAdapter)
+	stream.Reset(reader)
 
 	p, err = rb.highlowcontainer.readFrom(stream)
-	byteInputAdapterPool.Put(stream)
+	internal.ByteInputAdapterPool.Put(stream)
 
 	return
 }
@@ -89,28 +90,14 @@ func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
 // call CloneCopyOnWriteContainers on all such bitmaps.
 //
 func (rb *Bitmap) FromBuffer(buf []byte) (p int64, err error) {
-	stream := byteBufferPool.Get().(*byteBuffer)
-	stream.reset(buf)
+	stream := internal.ByteBufferPool.Get().(*internal.ByteBuffer)
+	stream.Reset(buf)
 
 	p, err = rb.highlowcontainer.readFrom(stream)
-	byteBufferPool.Put(stream)
+	internal.ByteBufferPool.Put(stream)
 
 	return
 }
-
-var (
-	byteBufferPool = sync.Pool{
-		New: func() interface{} {
-			return &byteBuffer{}
-		},
-	}
-
-	byteInputAdapterPool = sync.Pool{
-		New: func() interface{} {
-			return &byteInputAdapter{}
-		},
-	}
-)
 
 // RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
 func (rb *Bitmap) RunOptimize() {
