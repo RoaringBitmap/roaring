@@ -67,6 +67,12 @@ func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
 	return
 }
 
+// ReadFrom reads from internal bytes stream wrappers - used by roaring64
+func (rb *Bitmap) ReadFromStream(stream internal.ByteInput) (p int64, err error) {
+	p, err = rb.highlowcontainer.readFrom(stream)
+	return
+}
+
 // FromBuffer creates a bitmap from its serialized version stored in buffer
 //
 // The format specification is available here:

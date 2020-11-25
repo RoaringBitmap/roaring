@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/internal"
 )
 
 // Bitmap represents a compressed bitmap where you can add integers.
@@ -78,48 +79,48 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
-func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
+func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
 
 	// TODO: Add buffer interning as in base roaring package.
+	stream := internal.ByteInputAdapterPool.Get().(*internal.ByteInputAdapter)
+	stream.Reset(reader)
 
-	sizeBuf := make([]byte, 8)
-	var n int
-	n, err = stream.Read(sizeBuf)
-	if n == 0 || err != nil {
-		return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read number of containers: %s", err)
-	}
-	p += int64(n)
-	size := binary.LittleEndian.Uint64(sizeBuf)
-	rb.highlowcontainer = roaringArray64{}
-	rb.highlowcontainer.keys = make([]uint32, size)
-	rb.highlowcontainer.containers = make([]*roaring.Bitmap, size)
-	rb.highlowcontainer.needCopyOnWrite = make([]bool, size)
-	keyBuf := make([]byte, 4)
-	for i := uint64(0); i < size; i++ {
-		n, err = stream.Read(keyBuf)
-		if n == 0 || err != nil {
-			return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read key #%d: %s", i, err)
-		}
-		p += int64(n)
-		rb.highlowcontainer.keys[i] = binary.LittleEndian.Uint32(keyBuf)
-		rb.highlowcontainer.containers[i] = roaring.NewBitmap()
-		n, err := rb.highlowcontainer.containers[i].ReadFrom(stream)
-		if n == 0 || err != nil {
-			return int64(n), fmt.Errorf("Could not deserialize bitmap for key #%d: %s", i, err)
-		}
-		p += int64(n)
-	}
-
-	return p, nil
+	p, err = rb.highlowcontainer.readFrom(stream)
+	internal.ByteInputAdapterPool.Put(stream)
+	return
 }
 
 // FromBuffer creates a bitmap from its serialized version stored in buffer
-// func (rb *Bitmap) FromBuffer(data []byte) (p int64, err error) {
 //
-//	// TODO: Add buffer interning as in base roaring package.
-//	buf := bytes.NewBuffer(data)
-//	return rb.ReadFrom(buf)
-// }
+// The format specification is available here:
+// https://github.com/RoaringBitmap/RoaringFormatSpec
+//
+// The provided byte array (buf) is expected to be a constant.
+// The function makes the best effort attempt not to copy data.
+// You should take care not to modify buff as it will
+// likely result in unexpected program behavior.
+//
+// Resulting bitmaps are effectively immutable in the following sense:
+// a copy-on-write marker is used so that when you modify the resulting
+// bitmap, copies of selected data (containers) are made.
+// You should *not* change the copy-on-write status of the resulting
+// bitmaps (SetCopyOnWrite).
+//
+// If buf becomes unavailable, then a bitmap created with
+// FromBuffer would be effectively broken. Furthermore, any
+// bitmap derived from this bitmap (e.g., via Or, And) might
+// also be broken. Thus, before making buf unavailable, you should
+// call CloneCopyOnWriteContainers on all such bitmaps.
+//
+func (rb *Bitmap) FromBuffer(buf []byte) (p int64, err error) {
+	stream := internal.ByteBufferPool.Get().(*internal.ByteBuffer)
+	stream.Reset(buf)
+
+	p, err = rb.highlowcontainer.readFrom(stream)
+	internal.ByteBufferPool.Put(stream)
+
+	return
+}
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for the bitmap
 // (same as ToBytes)
