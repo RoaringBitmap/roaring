@@ -57,11 +57,14 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
-func (rb *Bitmap) ReadFrom(reader io.Reader) (p int64, err error) {
+// Since io.Reader is regarded as a stream and cannot be read twice.
+// So add cookieHeader to accept the 4-byte data that has been read in roaring64.ReadFrom.
+// It is not necessary to pass cookieHeader when call roaring.ReadFrom to read the roaring32 data directly.
+func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err error) {
 	stream := internal.ByteInputAdapterPool.Get().(*internal.ByteInputAdapter)
 	stream.Reset(reader)
 
-	p, err = rb.highlowcontainer.readFrom(stream)
+	p, err = rb.highlowcontainer.readFrom(stream, cookieHeader...)
 	internal.ByteInputAdapterPool.Put(stream)
 
 	return

@@ -11,6 +11,9 @@ import (
 	"github.com/RoaringBitmap/roaring"
 )
 
+const serialCookieNoRunContainer = 12346 // only arrays and bitmaps
+const serialCookie = 12347               // runs, arrays, and bitmaps
+
 // Bitmap represents a compressed bitmap where you can add integers.
 type Bitmap struct {
 	highlowcontainer roaringArray64
@@ -79,16 +82,23 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
-
+	cookie, r32, p, err := tryReadFromRoaring32(rb, stream)
+	if err != nil {
+		return p, err
+	} else if r32 {
+		return p, nil
+	}
 	// TODO: Add buffer interning as in base roaring package.
 
-	sizeBuf := make([]byte, 8)
+	sizeBuf := make([]byte, 4)
 	var n int
 	n, err = stream.Read(sizeBuf)
 	if n == 0 || err != nil {
 		return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read number of containers: %s", err)
 	}
 	p += int64(n)
+	sizeBuf = append(cookie, sizeBuf...)
+
 	size := binary.LittleEndian.Uint64(sizeBuf)
 	rb.highlowcontainer = roaringArray64{}
 	rb.highlowcontainer.keys = make([]uint32, size)
@@ -111,6 +121,30 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	}
 
 	return p, nil
+}
+
+func tryReadFromRoaring32(rb *Bitmap, stream io.Reader) (cookie []byte, r32 bool, p int64, err error) {
+	// Verify the first two bytes are a valid MagicNumber.
+	cookie = make([]byte, 4)
+	size, err := stream.Read(cookie)
+	if err != nil {
+		return cookie, false, int64(size), err
+	}
+	fileMagic := int(binary.LittleEndian.Uint16(cookie[0:2]))
+	if fileMagic == serialCookieNoRunContainer || fileMagic == serialCookie {
+		bm32 := roaring.NewBitmap()
+		p, err = bm32.ReadFrom(stream, cookie...)
+		if err != nil {
+			return
+		}
+		rb.highlowcontainer = roaringArray64{
+			keys:            []uint32{0},
+			containers:      []*roaring.Bitmap{bm32},
+			needCopyOnWrite: []bool{false},
+		}
+		return cookie, true, p, nil
+	}
+	return
 }
 
 // FromBuffer creates a bitmap from its serialized version stored in buffer
