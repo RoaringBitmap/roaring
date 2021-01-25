@@ -1,9 +1,10 @@
 package roaring
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // bitmapContainer's numberOfRuns() function should be correct against the runContainer equivalent
@@ -169,7 +170,7 @@ func TestBitmapNextSet(t *testing.T) {
 
 	m := 0
 
-	for n := 0; m < testSize; n, m = bc.NextSetBit(n+1), m+1 {
+	for n := 0; m < testSize; n, m = bc.NextSetBit(uint(n)+1), m+1 {
 		assert.Equal(t, m, n)
 	}
 

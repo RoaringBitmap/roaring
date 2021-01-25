@@ -1744,7 +1744,7 @@ func validate(bc *bitmapContainer, ac *arrayContainer) bool {
 	// Checking that the two containers contain the same values
 	counter := 0
 
-	for i := bc.NextSetBit(0); i >= 0; i = bc.NextSetBit(i + 1) {
+	for i := bc.NextSetBit(0); i >= 0; i = bc.NextSetBit(uint(i) + 1) {
 		counter++
 		if !ac.contains(uint16(i)) {
 			log.Println("content differs")
