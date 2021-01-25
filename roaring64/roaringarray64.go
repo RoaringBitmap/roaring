@@ -386,3 +386,13 @@ func (ra *roaringArray64) needsCopyOnWrite(i int) bool {
 func (ra *roaringArray64) setNeedsCopyOnWrite(i int) {
 	ra.needCopyOnWrite[i] = true
 }
+
+// should be dirt cheap
+func (ra *roaringArray64) serializedSizeInBytes() uint64 {
+	answer := uint64(8)
+	for _, c := range ra.containers {
+		answer += 4
+		answer += c.GetSerializedSizeInBytes()
+	}
+	return answer
+}

@@ -8,7 +8,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -274,100 +273,6 @@ func TestGobcoding043(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.True(t, b.Equals(rb))
-}
-
-// runContainer writeTo and readFrom should return logically equivalent containers
-func TestSerializationRunContainerMsgpack028(t *testing.T) {
-	seed := int64(42)
-	rand.Seed(seed)
-
-	trials := []trial{
-		{n: 10, percentFill: .2, ntrial: 10},
-		{n: 10, percentFill: .8, ntrial: 10},
-		{n: 10, percentFill: .50, ntrial: 10},
-	}
-
-	tester := func(tr trial) {
-		for j := 0; j < tr.ntrial; j++ {
-
-			ma := make(map[int]bool)
-
-			n := tr.n
-			a := []uint16{}
-
-			draw := int(float64(n) * tr.percentFill)
-			for i := 0; i < draw; i++ {
-				r0 := rand.Intn(n)
-				a = append(a, uint16(r0))
-				ma[r0] = true
-			}
-
-			orig := newRunContainer16FromVals(false, a...)
-
-			// serialize
-			var buf bytes.Buffer
-			_, err := orig.writeToMsgpack(&buf)
-			if err != nil {
-				panic(err)
-			}
-
-			// deserialize
-			restored := &runContainer16{}
-			_, err = restored.readFromMsgpack(&buf)
-			if err != nil {
-				panic(err)
-			}
-
-			// and compare
-			assert.True(t, restored.equals(orig))
-		}
-	}
-
-	for i := range trials {
-		tester(trials[i])
-	}
-}
-
-//roaringarray.writeToMsgpack and .readFromMsgpack should serialize and unserialize when containing all 3 container types
-func TestSerializationBasicMsgpack035(t *testing.T) {
-	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000, 10000, 100000, 1000000)
-	for i := 5000000; i < 5000000+2*(1<<16); i++ {
-		rb.AddInt(i)
-	}
-
-	// confirm all three types present
-	var bc, ac, rc bool
-	for _, v := range rb.highlowcontainer.containers {
-		switch cn := v.(type) {
-		case *bitmapContainer:
-			bc = true
-			assert.Equal(t, bitmapContype, cn.containerType())
-		case *arrayContainer:
-			ac = true
-			assert.Equal(t, arrayContype, cn.containerType())
-		case *runContainer16:
-			rc = true
-			assert.Equal(t, run16Contype, cn.containerType())
-		default:
-			panic(fmt.Errorf("Unrecognized container implementation: %T", cn))
-		}
-	}
-
-	assert.True(t, bc, "no bitmapContainer found, change your test input so we test all three!")
-	assert.True(t, ac, "no arrayContainer found, change your test input so we test all three!")
-	assert.True(t, rc, "no runContainer16 found, change your test input so we test all three!")
-
-	var buf bytes.Buffer
-	_, err := rb.WriteToMsgpack(&buf)
-
-	assert.NoError(t, err)
-
-	newrb := NewBitmap()
-	_, err = newrb.ReadFromMsgpack(&buf)
-
-	assert.NoError(t, err)
-	assert.Equal(t, rb.GetCardinality(), newrb.GetCardinality())
-	assert.True(t, newrb.Equals(rb))
 }
 
 func TestByteSliceAsUint16Slice(t *testing.T) {
