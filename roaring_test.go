@@ -2091,7 +2091,7 @@ func TestStats(t *testing.T) {
 		if intSize == 4 {
 			runContainerBytes = 40
 		} else {
-			runContainerBytes = 52
+			runContainerBytes = 36
 		}
 
 		expectedStats := Statistics{
