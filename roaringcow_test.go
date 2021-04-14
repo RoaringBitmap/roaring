@@ -1864,35 +1864,6 @@ func TestStatsCOW(t *testing.T) {
 		assert.EqualValues(t, expectedStats, rr.Stats())
 	})
 
-	t.Run("Test Stats with run Container", func(t *testing.T) {
-		// Given that we should have a single run container
-		intSize := int(unsafe.Sizeof(int(0)))
-		var runContainerBytes uint64
-		if intSize == 4 {
-			runContainerBytes = 40
-		} else {
-			runContainerBytes = 36
-		}
-
-		expectedStats := Statistics{
-			Cardinality: 60000,
-			Containers:  1,
-
-			BitmapContainers:      0,
-			BitmapContainerValues: 0,
-			BitmapContainerBytes:  0,
-
-			RunContainers:      1,
-			RunContainerBytes:  runContainerBytes,
-			RunContainerValues: 60000,
-		}
-		rr := NewBitmap()
-		rr.SetCopyOnWrite(true)
-		rr.AddRange(0, 60000)
-
-		assert.EqualValues(t, expectedStats, rr.Stats())
-	})
-
 	t.Run("Test Stats with Array Container", func(t *testing.T) {
 		// Given a bitmap that should have a single array container
 		expectedStats := Statistics{
