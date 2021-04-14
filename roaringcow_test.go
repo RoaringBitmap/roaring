@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"strconv"
 	"testing"
-	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/willf/bitset"
