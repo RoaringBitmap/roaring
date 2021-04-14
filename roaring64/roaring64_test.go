@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
-	"unsafe"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/stretchr/testify/assert"
