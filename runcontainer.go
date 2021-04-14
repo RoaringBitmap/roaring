@@ -613,10 +613,12 @@ func (rc *runContainer16) unionCardinality(b *runContainer16) uint64 {
 
 // indexOfIntervalAtOrAfter is a helper for union.
 func (rc *runContainer16) indexOfIntervalAtOrAfter(key int64, startIndex int64) int64 {
-	rc.myOpts.startIndex = startIndex
-	rc.myOpts.endxIndex = 0
+	myOpts := searchOptions{
+		startIndex: startIndex,
+		endxIndex: 0,
+	}
 
-	w, already, _ := rc.search(key, &rc.myOpts)
+	w, already, _ := rc.search(key, &myOpts)
 	if already {
 		return w
 	}
@@ -1451,12 +1453,13 @@ func intersectWithLeftover16(astart, alast, bstart, blast int64) (isOverlap, isL
 	return
 }
 
-func (rc *runContainer16) findNextIntervalThatIntersectsStartingFrom(startIndex int64, key int64) (index int64, done bool) {
+func (rc *runContainer16) findNextIntervalThatIntersectsStartingFrom(startIndex int64, key int64) (index int64, done bool) {	
+	myOpts := searchOptions{
+		startIndex: startIndex,
+		endxIndex: 0,
+	}
 
-	rc.myOpts.startIndex = startIndex
-	rc.myOpts.endxIndex = 0
-
-	w, _, _ := rc.search(key, &rc.myOpts)
+	w, _, _ := rc.search(key, &myOpts)
 	// rc.search always returns w < len(rc.iv)
 	if w < startIndex {
 		// not found and comes before lower bound startIndex,
