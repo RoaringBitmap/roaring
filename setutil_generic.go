@@ -23,9 +23,6 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	s2 := set2[k2]
 	buffer = buffer[:len1 + len2]
 	for pos < uint(len(buffer)) {
-		if pos >= uint(len(buffer)) {
-			panic("You provided a buffer with insufficient capacity")
-		}
 		if s1 < s2 {
 			buffer[pos] = s1
 			pos++
