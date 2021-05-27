@@ -111,7 +111,7 @@ func TestRleRunIterator16(t *testing.T) {
 			msg := rc.String()
 			_ = msg
 
-			assert.EqualValues(t, 0, rc.cardinality())
+			assert.EqualValues(t, 0, rc.getCardinality())
 
 			it := rc.newRunIterator16()
 
@@ -121,7 +121,7 @@ func TestRleRunIterator16(t *testing.T) {
 		}
 		{
 			rc := newRunContainer16TakeOwnership([]interval16{newInterval16Range(4, 4)})
-			assert.EqualValues(t, 1, rc.cardinality())
+			assert.EqualValues(t, 1, rc.getCardinality())
 
 			it := rc.newRunIterator16()
 
@@ -131,7 +131,7 @@ func TestRleRunIterator16(t *testing.T) {
 		}
 		{
 			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
-			assert.EqualValues(t, 6, rc.cardinality())
+			assert.EqualValues(t, 6, rc.getCardinality())
 
 			it := rc.newRunIterator16()
 			assert.True(t, it.hasNext())
@@ -146,7 +146,7 @@ func TestRleRunIterator16(t *testing.T) {
 		{
 			// basic nextMany test
 			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
-			assert.EqualValues(t, 6, rc.cardinality())
+			assert.EqualValues(t, 6, rc.getCardinality())
 
 			it := rc.newManyRunIterator16()
 			buf := make([]uint32, 10)
@@ -163,7 +163,7 @@ func TestRleRunIterator16(t *testing.T) {
 		{
 			// nextMany with len(buf) == 0
 			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 9)})
-			assert.EqualValues(t, 6, rc.cardinality())
+			assert.EqualValues(t, 6, rc.getCardinality())
 
 			it := rc.newManyRunIterator16()
 			var buf []uint32
@@ -179,7 +179,7 @@ func TestRleRunIterator16(t *testing.T) {
 				newInterval16Range(11, 13),
 				newInterval16Range(18, 21)})
 
-			assert.EqualValues(t, 11, rc.cardinality())
+			assert.EqualValues(t, 11, rc.getCardinality())
 
 			it := rc.newManyRunIterator16()
 			buf := make([]uint32, 15)
@@ -202,7 +202,7 @@ func TestRleRunIterator16(t *testing.T) {
 			expectedVals := []uint32{4, 5, 6, 7, 11, 12, 13, 18, 19, 20, 21}
 			hs := uint32(1 << 16)
 
-			assert.EqualValues(t, expectedCard, rc.cardinality())
+			assert.EqualValues(t, expectedCard, rc.getCardinality())
 
 			for bufSize := 2; bufSize < 15; bufSize++ {
 				buf := make([]uint32, bufSize)
@@ -228,7 +228,7 @@ func TestRleRunIterator16(t *testing.T) {
 		{
 			// basic nextMany interaction with hasNext
 			rc := newRunContainer16CopyIv([]interval16{newInterval16Range(4, 4)})
-			assert.EqualValues(t, 1, rc.cardinality())
+			assert.EqualValues(t, 1, rc.getCardinality())
 
 			it := rc.newManyRunIterator16()
 			assert.True(t, it.hasNext())
@@ -270,7 +270,7 @@ func TestRleRunIterator16(t *testing.T) {
 
 			rc = rc.union(rc1)
 
-			assert.EqualValues(t, 8, rc.cardinality())
+			assert.EqualValues(t, 8, rc.getCardinality())
 
 			it := rc.newRunIterator16()
 
@@ -379,7 +379,7 @@ func TestRleIntersection16(t *testing.T) {
 
 			isect := a.intersect(b)
 
-			assert.EqualValues(t, 3, isect.cardinality())
+			assert.EqualValues(t, 3, isect.getCardinality())
 			assert.True(t, isect.contains(4))
 			assert.True(t, isect.contains(6))
 			assert.True(t, isect.contains(8))
@@ -388,7 +388,7 @@ func TestRleIntersection16(t *testing.T) {
 			d := newRunContainer16TakeOwnership([]interval16{newInterval16Range(0, MaxUint16)})
 			isect = isect.intersect(d)
 
-			assert.EqualValues(t, 3, isect.cardinality())
+			assert.EqualValues(t, 3, isect.getCardinality())
 			assert.True(t, isect.contains(4))
 			assert.True(t, isect.contains(6))
 			assert.True(t, isect.contains(8))
@@ -409,7 +409,7 @@ func TestRleIntersection16(t *testing.T) {
 			{
 				isect = e.intersect(f)
 
-				assert.EqualValues(t, 8, isect.cardinality())
+				assert.EqualValues(t, 8, isect.getCardinality())
 				assert.True(t, isect.contains(3))
 				assert.True(t, isect.contains(4))
 				assert.True(t, isect.contains(8))
@@ -424,7 +424,7 @@ func TestRleIntersection16(t *testing.T) {
 				// check for symmetry
 				isect = f.intersect(e)
 
-				assert.EqualValues(t, 8, isect.cardinality())
+				assert.EqualValues(t, 8, isect.getCardinality())
 				assert.True(t, isect.contains(3))
 				assert.True(t, isect.contains(4))
 				assert.True(t, isect.contains(8))
@@ -512,7 +512,7 @@ func TestRleRandomIntersection16(t *testing.T) {
 					assert.True(t, isect.contains(uint16(k)))
 				}
 
-				assert.EqualValues(t, len(hashi), isect.cardinality())
+				assert.EqualValues(t, len(hashi), isect.getCardinality())
 			}
 		}
 
@@ -590,7 +590,7 @@ func TestRleRandomUnion16(t *testing.T) {
 					assert.True(t, union.contains(uint16(k)))
 				}
 
-				assert.EqualValues(t, len(hashu), union.cardinality())
+				assert.EqualValues(t, len(hashu), union.getCardinality())
 
 				// do the deletes, exercising the remove functionality
 				for i := 0; i < numDel; i++ {
@@ -601,7 +601,7 @@ func TestRleRandomUnion16(t *testing.T) {
 				}
 
 				// verify the same as in the hashu
-				assert.EqualValues(t, len(hashu), union.cardinality())
+				assert.EqualValues(t, len(hashu), union.getCardinality())
 
 				for k := range hashu {
 					assert.True(t, union.contains(uint16(k)))
@@ -643,17 +643,17 @@ func TestRleAndOrXor16(t *testing.T) {
 			onceler.content = append(onceler.content, uint16(0))
 			oneZero := newRunContainer16FromArray(onceler)
 
-			assert.EqualValues(t, 0, empty.cardinality())
-			assert.EqualValues(t, 1, oneZero.cardinality())
+			assert.EqualValues(t, 0, empty.getCardinality())
+			assert.EqualValues(t, 1, oneZero.getCardinality())
 			assert.EqualValues(t, 0, empty.And(b0).GetCardinality())
 			assert.EqualValues(t, 3, empty.Or(b0).GetCardinality())
 
 			// exercise newRunContainer16FromVals() with 0 and 1 inputs.
 			empty2 := newRunContainer16FromVals(false, []uint16{}...)
-			assert.EqualValues(t, 0, empty2.cardinality())
+			assert.EqualValues(t, 0, empty2.getCardinality())
 
 			one2 := newRunContainer16FromVals(false, []uint16{1}...)
-			assert.EqualValues(t, 1, one2.cardinality())
+			assert.EqualValues(t, 1, one2.getCardinality())
 		}
 	})
 }
@@ -708,13 +708,13 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			ra := newRunContainer16()
 			rb := newRunContainer16()
 
-			assert.EqualValues(t, 0, ra.intersect(rb).cardinality())
+			assert.EqualValues(t, 0, ra.intersect(rb).getCardinality())
 		}
 		{
 			ra := newRunContainer16FromVals(false, 1)
 			rb := newRunContainer16FromVals(false, 4)
 
-			assert.EqualValues(t, 0, ra.intersect(rb).cardinality())
+			assert.EqualValues(t, 0, ra.intersect(rb).getCardinality())
 		}
 
 		// runContainer.Add
@@ -722,12 +722,12 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			ra := newRunContainer16FromVals(false, 1)
 			rb := newRunContainer16FromVals(false, 4)
 
-			assert.EqualValues(t, 1, ra.cardinality())
-			assert.EqualValues(t, 1, rb.cardinality())
+			assert.EqualValues(t, 1, ra.getCardinality())
+			assert.EqualValues(t, 1, rb.getCardinality())
 
 			ra.Add(5)
 
-			assert.EqualValues(t, 2, ra.cardinality())
+			assert.EqualValues(t, 2, ra.getCardinality())
 
 			// newRunIterator16()
 			empty := newRunContainer16()
@@ -736,7 +736,7 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			assert.Panics(t, func() { it.next() })
 
 			it2 := ra.newRunIterator16()
-			it2.curIndex = int64(len(it2.rc.iv))
+			it2.curIndex = len(it2.rc.iv)
 
 			assert.Panics(t, func() { it2.next() })
 
@@ -750,7 +750,7 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			arr.content = []uint16{5, 5, 5, 6, 9}
 			rc3 := newRunContainer16FromArray(arr)
 
-			assert.EqualValues(t, 3, rc3.cardinality())
+			assert.EqualValues(t, 3, rc3.getCardinality())
 
 			// runContainer16SerializedSizeInBytes
 			// runContainer16.SerializedSizeInBytes
@@ -767,13 +767,13 @@ func TestRleCoverageOddsAndEnds16(t *testing.T) {
 			rc3.removeKey(10)
 			rc3.removeKey(9)
 
-			assert.EqualValues(t, 2, rc3.cardinality())
+			assert.EqualValues(t, 2, rc3.getCardinality())
 
 			rc3.Add(9)
 			rc3.Add(10)
 			rc3.Add(12)
 
-			assert.EqualValues(t, 5, rc3.cardinality())
+			assert.EqualValues(t, 5, rc3.getCardinality())
 
 			it3 := rc3.newRunIterator16()
 			it3.next()
@@ -807,36 +807,36 @@ func TestRleStoringMax16(t *testing.T) {
 		rc.Add(MaxUint16)
 
 		assert.True(t, rc.contains(MaxUint16))
-		assert.EqualValues(t, 1, rc.cardinality())
+		assert.EqualValues(t, 1, rc.getCardinality())
 
 		rc.removeKey(MaxUint16)
 
 		assert.False(t, rc.contains(MaxUint16))
-		assert.EqualValues(t, 0, rc.cardinality())
+		assert.EqualValues(t, 0, rc.getCardinality())
 
 		rc.set(false, MaxUint16-1, MaxUint16)
 
-		assert.EqualValues(t, 2, rc.cardinality())
+		assert.EqualValues(t, 2, rc.getCardinality())
 		assert.True(t, rc.contains(MaxUint16-1))
 		assert.True(t, rc.contains(MaxUint16))
 
 		rc.removeKey(MaxUint16 - 1)
 
-		assert.EqualValues(t, 1, rc.cardinality())
+		assert.EqualValues(t, 1, rc.getCardinality())
 
 		rc.removeKey(MaxUint16)
 
-		assert.EqualValues(t, 0, rc.cardinality())
+		assert.EqualValues(t, 0, rc.getCardinality())
 
 		rc.set(false, MaxUint16-2, MaxUint16-1, MaxUint16)
 
-		assert.EqualValues(t, 3, rc.cardinality())
+		assert.EqualValues(t, 3, rc.getCardinality())
 		assert.EqualValues(t, 1, rc.numIntervals())
 
 		rc.removeKey(MaxUint16 - 1)
 
 		assert.EqualValues(t, 2, rc.numIntervals())
-		assert.EqualValues(t, 2, rc.cardinality())
+		assert.EqualValues(t, 2, rc.getCardinality())
 	})
 }
 
@@ -1475,7 +1475,7 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 
 				inv := rc.invert()
 
-				assert.Equal(t, 1+MaxUint16-rc.cardinality(), inv.cardinality())
+				assert.Equal(t, 1+MaxUint16-rc.getCardinality(), inv.getCardinality())
 
 				for k := 0; k < n; k++ {
 					if hashNotA[k] {
@@ -1674,7 +1674,7 @@ func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
 				rc := newRunContainer16FromVals(false, a...)
 				flp := rc.Not(begin, last+1)
 
-				assert.EqualValues(t, len(flipped), flp.cardinality())
+				assert.EqualValues(t, len(flipped), flp.getCardinality())
 
 				for k := 0; k < n; k++ {
 					if flipped[k] {

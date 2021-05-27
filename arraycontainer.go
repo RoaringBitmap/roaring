@@ -882,7 +882,7 @@ func (ac *arrayContainer) resetTo(a container) {
 		x.fillArray(ac.content)
 
 	case *runContainer16:
-		card := int(x.cardinality())
+		card := int(x.getCardinality())
 		ac.realloc(card)
 		cur := 0
 		for _, r := range x.iv {
@@ -956,10 +956,10 @@ func (ac *arrayContainer) numberOfRuns() (nr int) {
 				runlen++
 			} else {
 				if cur < prev {
-					panic("then fundamental arrayContainer assumption of sorted ac.content was broken")
+					panic("the fundamental arrayContainer assumption of sorted ac.content was broken")
 				}
 				if cur == prev {
-					panic("then fundamental arrayContainer assumption of deduplicated content was broken")
+					panic("the fundamental arrayContainer assumption of deduplicated content was broken")
 				} else {
 					nr++
 					runlen = 0

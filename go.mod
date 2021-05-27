@@ -3,6 +3,8 @@ module github.com/RoaringBitmap/roaring
 go 1.14
 
 require (
+	github.com/dvyukov/go-fuzz v0.0.0-20210429054444-fca39067bc72 // indirect
+	github.com/elazarl/go-bindata-assetfs v1.0.1 // indirect
 	github.com/glycerine/go-unsnap-stream v0.0.0-20181221182339-f9677308dec2
 	github.com/glycerine/goconvey v0.0.0-20190410193231-58a59202ab31 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
@@ -10,6 +12,7 @@ require (
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/mschoch/smat v0.0.0-20160514031455-90eadee771ae
 	github.com/philhofer/fwd v1.0.0 // indirect
+	github.com/stephens2424/writerset v1.0.2 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/willf/bitset v1.1.10
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect

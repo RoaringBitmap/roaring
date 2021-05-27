@@ -645,7 +645,6 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 
 			nb := runContainer16{
 				iv:   byteSliceAsInterval16Slice(buf),
-				card: int64(card),
 			}
 
 			ra.containers[i] = &nb
