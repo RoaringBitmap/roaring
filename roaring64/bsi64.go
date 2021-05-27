@@ -632,7 +632,7 @@ func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 	}
 	carry := And(b.bA[i], foundSet)
 	b.bA[i].Xor(foundSet)
-	if !carry.isEmpty() {
+	if !carry.IsEmpty() {
 		if i+1 >= len(b.bA) {
 			b.bA = append(b.bA, NewBitmap())
 		}
