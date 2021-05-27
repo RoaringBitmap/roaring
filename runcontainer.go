@@ -957,7 +957,8 @@ func (rc *runContainer16) search(key int) (whichInterval16 int, alreadyPresent b
 }
 
 // getCardinality returns the count of the integers stored in the
-// runContainer16.
+// runContainer16. The running complexity depends on the size
+// of the container.
 func (rc *runContainer16) getCardinality() int {
 	// have to compute it
 	n := 0
@@ -966,6 +967,14 @@ func (rc *runContainer16) getCardinality() int {
 	}
 	return n
 }
+
+
+// isEmpty returns true if the container is empty.
+// It runs in constant time.
+func (rc *runContainer16) isEmpty() bool {
+	return len(rc.iv) == 0
+}
+
 
 // AsSlice decompresses the contents into a []uint16 slice.
 func (rc *runContainer16) AsSlice() []uint16 {
@@ -1920,17 +1929,18 @@ func (rc *runContainer16) andNot(a container) container {
 	panic("unsupported container type")
 }
 
-func (rc *runContainer16) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
-	k := 0
+func (rc *runContainer16) fillLeastSignificant16bits(x []uint32, i int, mask uint32) int {
+	k := i
 	var val int
 	for _, p := range rc.iv {
 		n := p.runlen()
 		for j := int(0); j < n; j++ {
 			val = int(p.start) + j
-			x[k+i] = uint32(val) | mask
+			x[k] = uint32(val) | mask
 			k++
 		}
 	}
+	return k
 }
 
 func (rc *runContainer16) getShortIterator() shortPeekable {
@@ -2249,9 +2259,9 @@ func (rc *runContainer16) lazyOR(a container) container {
 }
 
 func (rc *runContainer16) intersects(a container) bool {
-	// TODO: optimize by doing inplace/less allocation, possibly?
+	// TODO: optimize by doing inplace/less allocation
 	isect := rc.and(a)
-	return isect.getCardinality() > 0
+	return !isect.isEmpty()
 }
 
 func (rc *runContainer16) xor(a container) container {

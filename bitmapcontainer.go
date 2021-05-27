@@ -264,7 +264,7 @@ func bitmapEquals(a, b []uint64) bool {
 	return true
 }
 
-func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
+func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) int {
 	// TODO: should be written as optimized assembly
 	pos := i
 	base := mask
@@ -278,6 +278,7 @@ func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask ui
 		}
 		base += 64
 	}
+	return pos
 }
 
 func (bc *bitmapContainer) equals(o container) bool {
@@ -347,6 +348,11 @@ func (bc *bitmapContainer) isFull() bool {
 
 func (bc *bitmapContainer) getCardinality() int {
 	return bc.cardinality
+}
+
+
+func (bc *bitmapContainer) isEmpty() bool {
+	return bc.cardinality == 0
 }
 
 func (bc *bitmapContainer) clone() container {

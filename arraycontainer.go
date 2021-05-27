@@ -16,10 +16,11 @@ func (ac *arrayContainer) String() string {
 	return s + "}"
 }
 
-func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
+func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) int {
 	for k := 0; k < len(ac.content); k++ {
 		x[k+i] = uint32(ac.content[k]) | mask
 	}
+	return i + len(ac.content)
 }
 
 func (ac *arrayContainer) iterate(cb func(x uint16) bool) bool {
@@ -841,6 +842,10 @@ func (ac *arrayContainer) iandArray(value2 *arrayContainer) container {
 
 func (ac *arrayContainer) getCardinality() int {
 	return len(ac.content)
+}
+
+func (ac *arrayContainer) isEmpty() bool {
+	return len(ac.content) == 0
 }
 
 func (ac *arrayContainer) rank(x uint16) int {
