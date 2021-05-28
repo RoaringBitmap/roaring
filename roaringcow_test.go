@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/willf/bitset"
+	"github.com/bits-and-blooms/bitset"
 )
 
 func TestCloneOfCOW(t *testing.T) {

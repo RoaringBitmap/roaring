@@ -13,7 +13,7 @@ import (
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/stretchr/testify/assert"
-	"github.com/willf/bitset"
+	"github.com/bits-and-blooms/bitset"
 )
 
 func TestRoaringIntervalCheck(t *testing.T) {
