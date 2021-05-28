@@ -384,11 +384,13 @@ You can help us test further the library with fuzzy testing:
          go get github.com/dvyukov/go-fuzz/go-fuzz-build
          go test -tags=gofuzz -run=TestGenerateSmatCorpus
          go-fuzz-build github.com/RoaringBitmap/roaring
-         go-fuzz -bin=./roaring-fuzz.zip -workdir=workdir/ -timeout=200
+         go-fuzz -bin=./roaring-fuzz.zip -workdir=workdir/ -timeout=200 -func FuzzSmat
 
 Let it run, and if the # of crashers is > 0, check out the reports in
 the workdir where you should be able to find the panic goroutine stack
 traces.
+
+You may also replace `-func FuzzSmat`  by `-func FuzzSerializationBuffer` or `-func FuzzSerializationStream`.
 
 ### Alternative in Go
 

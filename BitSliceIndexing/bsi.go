@@ -630,7 +630,7 @@ func (b *BSI) addDigit(foundSet *roaring.Bitmap, i int) {
 	}
 	carry := roaring.And(b.bA[i], foundSet)
 	b.bA[i].Xor(foundSet)
-	if carry.GetCardinality() > 0 {
+	if !carry.IsEmpty() {
 		if i+1 >= len(b.bA) {
 			b.bA = append(b.bA, roaring.NewBitmap())
 		}

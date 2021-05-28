@@ -16,10 +16,11 @@ func (ac *arrayContainer) String() string {
 	return s + "}"
 }
 
-func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) {
+func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) int {
 	for k := 0; k < len(ac.content); k++ {
 		x[k+i] = uint32(ac.content[k]) | mask
 	}
+	return i + len(ac.content)
 }
 
 func (ac *arrayContainer) iterate(cb func(x uint16) bool) bool {
@@ -843,6 +844,10 @@ func (ac *arrayContainer) getCardinality() int {
 	return len(ac.content)
 }
 
+func (ac *arrayContainer) isEmpty() bool {
+	return len(ac.content) == 0
+}
+
 func (ac *arrayContainer) rank(x uint16) int {
 	answer := binarySearch(ac.content, x)
 	if answer >= 0 {
@@ -882,7 +887,7 @@ func (ac *arrayContainer) resetTo(a container) {
 		x.fillArray(ac.content)
 
 	case *runContainer16:
-		card := int(x.cardinality())
+		card := int(x.getCardinality())
 		ac.realloc(card)
 		cur := 0
 		for _, r := range x.iv {
@@ -956,10 +961,10 @@ func (ac *arrayContainer) numberOfRuns() (nr int) {
 				runlen++
 			} else {
 				if cur < prev {
-					panic("then fundamental arrayContainer assumption of sorted ac.content was broken")
+					panic("the fundamental arrayContainer assumption of sorted ac.content was broken")
 				}
 				if cur == prev {
-					panic("then fundamental arrayContainer assumption of deduplicated content was broken")
+					panic("the fundamental arrayContainer assumption of deduplicated content was broken")
 				} else {
 					nr++
 					runlen = 0

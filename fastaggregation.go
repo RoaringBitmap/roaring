@@ -319,7 +319,7 @@ func (x1 *Bitmap) AndAny(bitmaps ...*Bitmap) {
 		}
 
 		result := x1.highlowcontainer.getWritableContainerAtIndex(basePos).iand(ored)
-		if result.getCardinality() > 0 {
+		if !result.isEmpty() {
 			x1.highlowcontainer.replaceKeyAndContainerAtIndex(intersections, baseKey, result, false)
 			intersections++
 		}

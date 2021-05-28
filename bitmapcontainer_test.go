@@ -288,12 +288,12 @@ func TestBitmapContainerResetTo(t *testing.T) {
 	t.Run("to run container", func(t *testing.T) {
 		clean := newBitmapContainer()
 		clean.resetTo(run)
-		assert.EqualValues(t, clean.cardinality, run.cardinality())
+		assert.EqualValues(t, clean.cardinality, run.getCardinality())
 		assert.True(t, clean.toEfficientContainer().equals(run))
 
 		dirty := makeDirty()
 		dirty.resetTo(run)
-		assert.EqualValues(t, dirty.cardinality, run.cardinality())
+		assert.EqualValues(t, dirty.cardinality, run.getCardinality())
 		assert.True(t, dirty.toEfficientContainer().equals(run))
 	})
 }
