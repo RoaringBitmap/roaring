@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/willf/bitset"
+	"github.com/bits-and-blooms/bitset"
 )
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
