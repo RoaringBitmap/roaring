@@ -2253,7 +2253,7 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 
 							// In-place operation are best effort
 							// User should not assume the receiver is modified, returned container has to be used
-							if strings.HasPrefix(z, "i") {
+							if strings.HasPrefix(z, "i") || z == "lazyIOR" {
 								c1.cn = res1
 								c2.cn = res2
 								c3.cn = res3
