@@ -395,11 +395,19 @@ func (ac *arrayContainer) iorBitmap(bc2 *bitmapContainer) container {
 }
 
 func (ac *arrayContainer) iorRun16(rc *runContainer16) container {
-	bc1 := ac.toBitmapContainer()
-	bc2 := rc.toBitmapContainer()
-	bc1.iorBitmap(bc2)
-	*ac = *newArrayContainerFromBitmap(bc1)
-	return ac
+	runCardinality := rc.getCardinality()
+	// heuristic for if the container should maybe be an
+	// array container.
+	if runCardinality < ac.getCardinality() &&
+		runCardinality+ac.getCardinality() < arrayDefaultMaxSize {
+		var result container
+		result = ac
+		for _, run := range rc.iv {
+			result = result.iaddRange(int(run.start), int(run.start)+int(run.length))
+		}
+		return result
+	}
+	return rc.orArray(ac)
 }
 
 func (ac *arrayContainer) lazyIOR(a container) container {
