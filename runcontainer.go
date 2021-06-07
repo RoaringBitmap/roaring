@@ -2212,7 +2212,9 @@ func (rc *runContainer16) iorArray(ac *arrayContainer) container {
 		return rc
 	}
 	var cardMinusOne uint16
-	//TODO:
+	//TODO: perform the union algorithm in-place using rc.iv
+	// this can be done with methods like the in-place array container union
+	// but maybe lazily moving the remaining elements back.
 	rc.iv, cardMinusOne = runArrayUnionToRuns(rc, ac)
 	if len(rc.iv) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
 		return newBitmapContainerFromRun(rc)
