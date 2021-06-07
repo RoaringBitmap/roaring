@@ -47,7 +47,7 @@ import (
 // runContainer16 does run-length encoding of sets of
 // uint16 integers.
 type runContainer16 struct {
-	iv   []interval16
+	iv []interval16
 }
 
 // interval16 is the internal to runContainer16
@@ -849,7 +849,7 @@ func (rc *runContainer16) numIntervals() int {
 //
 // runContainer16.search always returns whichInterval16 < len(rc.iv).
 //
-// The search space is from startIndex to endxIndex. If endxIndex is set to zero, then there 
+// The search space is from startIndex to endxIndex. If endxIndex is set to zero, then there
 // no upper bound.
 //
 func (rc *runContainer16) searchRange(key int, startIndex int, endxIndex int) (whichInterval16 int, alreadyPresent bool, numCompares int) {
@@ -968,13 +968,11 @@ func (rc *runContainer16) getCardinality() int {
 	return n
 }
 
-
 // isEmpty returns true if the container is empty.
 // It runs in constant time.
 func (rc *runContainer16) isEmpty() bool {
 	return len(rc.iv) == 0
 }
-
 
 // AsSlice decompresses the contents into a []uint16 slice.
 func (rc *runContainer16) AsSlice() []uint16 {
@@ -1198,7 +1196,7 @@ func (ri *runIterator16) advanceIfNeeded(minval uint16) {
 // before calling next() to insure there are contents.
 type runReverseIterator16 struct {
 	rc            *runContainer16
-	curIndex      int  // index into rc.iv
+	curIndex      int    // index into rc.iv
 	curPosInIndex uint16 // offset in rc.iv[curIndex]
 }
 
@@ -1287,7 +1285,6 @@ func (ri *runIterator16) nextMany(hs uint32, buf []uint32) int {
 
 	return n
 }
-
 
 func (ri *runIterator16) nextMany64(hs uint64, buf []uint64) int {
 	n := 0
@@ -1424,7 +1421,7 @@ func intersectWithLeftover16(astart, alast, bstart, blast int) (isOverlap, isLef
 	return
 }
 
-func (rc *runContainer16) findNextIntervalThatIntersectsStartingFrom(startIndex int, key int) (index int, done bool) {	
+func (rc *runContainer16) findNextIntervalThatIntersectsStartingFrom(startIndex int, key int) (index int, done bool) {
 	w, _, _ := rc.searchRange(key, startIndex, 0)
 	// rc.search always returns w < len(rc.iv)
 	if w < startIndex {
@@ -1447,7 +1444,6 @@ func sliceToString16(m []interval16) string {
 	}
 	return s
 }
-
 
 // helper for invert
 func (rc *runContainer16) invertlastInterval(origin uint16, lastIdx int) []interval16 {
@@ -2152,9 +2148,21 @@ func (rc *runContainer16) orBitmapContainerCardinality(bc *bitmapContainer) int 
 
 // orArray finds the union of rc and ac.
 func (rc *runContainer16) orArray(ac *arrayContainer) container {
-	bc1 := newBitmapContainerFromRun(rc)
-	bc2 := ac.toBitmapContainer()
-	return bc1.orBitmap(bc2)
+	if ac.isEmpty() {
+		return rc.clone()
+	}
+	if rc.isEmpty() {
+		return ac.clone()
+	}
+	intervals, cardMinusOne := runArrayUnionToRuns(rc, ac)
+	result := newRunContainer16TakeOwnership(intervals)
+	if len(intervals) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
+		return newBitmapContainerFromRun(result)
+	}
+	if len(intervals)*2 > 1+int(cardMinusOne) {
+		return result.toArrayContainer()
+	}
+	return result
 }
 
 // orArray finds the union of rc and ac.
@@ -2197,11 +2205,86 @@ func (rc *runContainer16) iorBitmapContainer(bc *bitmapContainer) container {
 }
 
 func (rc *runContainer16) iorArray(ac *arrayContainer) container {
-	it := ac.getShortIterator()
-	for it.hasNext() {
-		rc.Add(it.next())
+	if rc.isEmpty() {
+		return ac.clone()
+	}
+	if ac.isEmpty() {
+		return rc
+	}
+	var cardMinusOne uint16
+	//TODO: perform the union algorithm in-place using rc.iv
+	// this can be done with methods like the in-place array container union
+	// but maybe lazily moving the remaining elements back.
+	rc.iv, cardMinusOne = runArrayUnionToRuns(rc, ac)
+	if len(rc.iv) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
+		return newBitmapContainerFromRun(rc)
+	}
+	if len(rc.iv)*2 > 1+int(cardMinusOne) {
+		return rc.toArrayContainer()
 	}
 	return rc
+}
+
+func runArrayUnionToRuns(rc *runContainer16, ac *arrayContainer) ([]interval16, uint16) {
+	pos1 := 0
+	pos2 := 0
+	length1 := len(ac.content)
+	length2 := len(rc.iv)
+	target := make([]interval16, 0, len(rc.iv))
+	// have to find the first range
+	// options are
+	// 1. from array container
+	// 2. from run container
+	var previousInterval interval16
+	var cardMinusOne uint16
+	if ac.content[0] < rc.iv[0].start {
+		previousInterval.start = ac.content[0]
+		previousInterval.length = 0
+		pos1++
+	} else {
+		previousInterval.start = rc.iv[0].start
+		previousInterval.length = rc.iv[0].length
+		pos2++
+	}
+
+	for pos1 < length1 || pos2 < length2 {
+		if pos1 < length1 {
+			s1 := ac.content[pos1]
+			if s1 <= previousInterval.start+previousInterval.length {
+				pos1++
+				continue
+			}
+			if previousInterval.last() < MaxUint16 && previousInterval.last()+1 == s1 {
+				previousInterval.length++
+				pos1++
+				continue
+			}
+		}
+		if pos2 < length2 {
+			range2 := rc.iv[pos2]
+			if range2.start <= previousInterval.last() || range2.start > 0 && range2.start-1 == previousInterval.last() {
+				pos2++
+				if previousInterval.last() < range2.last() {
+					previousInterval.length = range2.last() - previousInterval.start
+				}
+				continue
+			}
+		}
+		cardMinusOne += previousInterval.length + 1
+		target = append(target, previousInterval)
+		if pos2 == length2 || pos1 < length1 && ac.content[pos1] < rc.iv[pos2].start {
+			previousInterval.start = ac.content[pos1]
+			previousInterval.length = 0
+			pos1++
+		} else {
+			previousInterval = rc.iv[pos2]
+			pos2++
+		}
+	}
+	cardMinusOne += previousInterval.length + 1
+	target = append(target, previousInterval)
+
+	return target, cardMinusOne
 }
 
 // lazyIOR is described (not yet implemented) in
