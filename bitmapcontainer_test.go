@@ -213,7 +213,7 @@ func BenchmarkShortIteratorNextBitmap(b *testing.B) {
 }
 
 func TestBitmapOffset(t *testing.T) {
-	nums := []uint16{10, 100, 1000}
+	nums := []uint16{10, 60, 70, 100, 1000}
 	expected := make([]int, len(nums))
 	offtest := uint16(65000)
 	v := container(newBitmapContainer())
@@ -225,7 +225,7 @@ func TestBitmapOffset(t *testing.T) {
 	w0card := w[0].getCardinality()
 	w1card := w[1].getCardinality()
 
-	assert.Equal(t, 3, w0card+w1card)
+	assert.Equal(t, v.getCardinality(), w0card+w1card)
 
 	wout := make([]int, len(nums))
 	for i := 0; i < w0card; i++ {

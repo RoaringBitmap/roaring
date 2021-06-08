@@ -1138,16 +1138,12 @@ func (bc *bitmapContainer) addOffset(x uint16) []container {
 		low.bitmap[b] = bc.bitmap[0] << i
 		for k := uint32(1); k < end; k++ {
 			newval := bc.bitmap[k] << i
-			if newval == 0 {
-				newval = bc.bitmap[k-1] >> (64 - i)
-			}
+			newval |= bc.bitmap[k-1] >> (64 - i)
 			low.bitmap[b+k] = newval
 		}
 		for k := end; k < 1024; k++ {
 			newval := bc.bitmap[k] << i
-			if newval == 0 {
-				newval = bc.bitmap[k-1] >> (64 - i)
-			}
+			newval |= bc.bitmap[k-1] >> (64 - i)
 			high.bitmap[k-end] = newval
 		}
 		high.bitmap[b] = bc.bitmap[1023] >> (64 - i)
