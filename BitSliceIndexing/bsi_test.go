@@ -1,7 +1,7 @@
 package roaring
 
 import (
-    "fmt"
+    _ "fmt"
 	"github.com/RoaringBitmap/roaring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -339,19 +339,12 @@ func TestSumWithNegative(t *testing.T) {
 }
 
 func TestGEWithNegative(t *testing.T) {
-    fmt.Println("running TestGEWithNegative");
 	bsi := setupNegativeBoundary()
-    fmt.Println("running TestGEWithNegative -- setupNegativeBoundary done");
 	assert.Equal(t, uint64(11), bsi.GetCardinality())
-    fmt.Println("running TestGEWithNegative -- assert.Equal(t, uint64(11), bsi.GetCardinality()) done");
 	set := bsi.CompareValue(0, GE, 3, 0, nil)
-    fmt.Println("running TestGEWithNegative -- set := bsi.CompareValue(0, GE, 3, 0, nil) done");
 	assert.Equal(t, uint64(3), set.GetCardinality())
-    fmt.Println("running TestGEWithNegative -- assert.Equal(t, uint64(3), set.GetCardinality()) done");
 	set = bsi.CompareValue(0, GE, -3, 0, nil)
-    fmt.Println("running TestGEWithNegative -- set = bsi.CompareValue(0, GE, -3, 0, nil) done");
 	assert.Equal(t, uint64(9), set.GetCardinality())
-    fmt.Println("running TestGEWithNegative -- assert.Equal(t, uint64(9), set.GetCardinality()) done");
 }
 
 func TestLEWithNegative(t *testing.T) {
