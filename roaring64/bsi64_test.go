@@ -29,6 +29,34 @@ func setup() *BSI {
 	return bsi
 }
 
+func setupNegativeBoundary() *BSI {
+
+	bsi := NewBSI(5, -5)
+	// Setup values
+	for i := int(bsi.MinValue); i <= int(bsi.MaxValue); i++ {
+		bsi.SetValue(uint64(i), int64(i))
+	}
+	return bsi
+}
+
+func setupAllNegative() *BSI {
+	bsi := NewBSI(-1, -100)
+	// Setup values
+	for i := int(bsi.MinValue); i <= int(bsi.MaxValue); i++ {
+		bsi.SetValue(uint64(i), int64(i))
+	}
+	return bsi
+}
+
+func setupAutoSizeNegativeBoundary() *BSI {
+	bsi := NewDefaultBSI()
+	// Setup values
+	for i := int(-5); i <= int(5); i++ {
+		bsi.SetValue(uint64(i), int64(i))
+	}
+	return bsi
+}
+
 func TestEQ(t *testing.T) {
 
 	bsi := setup()
@@ -291,4 +319,74 @@ func TestTransposeWithCounts(t *testing.T) {
 	a, ok := transposed.GetValue(uint64(50))
 	assert.True(t, ok)
 	assert.Equal(t, int64(2), a)
+}
+
+func TestRangeAllNegative(t *testing.T) {
+	bsi := setupAllNegative()
+	assert.Equal(t, uint64(100), bsi.GetCardinality())
+	set := bsi.CompareValue(0, RANGE, -55, -45, nil)
+	assert.Equal(t, uint64(11), set.GetCardinality())
+
+	i := set.Iterator()
+	for i.HasNext() {
+		val, _ := bsi.GetValue(uint64(i.Next()))
+		assert.GreaterOrEqual(t, val, int64(-55))
+		assert.LessOrEqual(t, val, int64(-45))
+	}
+}
+
+func TestSumWithNegative(t *testing.T) {
+	bsi := setupNegativeBoundary()
+	assert.Equal(t, uint64(11), bsi.GetCardinality())
+	sum, cnt := bsi.Sum(bsi.GetExistenceBitmap())
+	assert.Equal(t, uint64(11), cnt)
+	assert.Equal(t, int64(0), sum)
+}
+
+func TestGEWithNegative(t *testing.T) {
+
+	bsi := setupNegativeBoundary()
+	assert.Equal(t, uint64(11), bsi.GetCardinality())
+	set := bsi.CompareValue(0, GE, 3, 0, nil)
+	assert.Equal(t, uint64(3), set.GetCardinality())
+	set = bsi.CompareValue(0, GE, -3, 0, nil)
+	assert.Equal(t, uint64(9), set.GetCardinality())
+}
+
+func TestLEWithNegative(t *testing.T) {
+	bsi := setupNegativeBoundary()
+	assert.Equal(t, uint64(11), bsi.GetCardinality())
+	set := bsi.CompareValue(0, LE, -3, 0, nil)
+	assert.Equal(t, uint64(3), set.GetCardinality())
+	set = bsi.CompareValue(0, LE, 3, 0, nil)
+	assert.Equal(t, uint64(9), set.GetCardinality())
+}
+
+func TestRangeWithNegative(t *testing.T) {
+	bsi := setupNegativeBoundary()
+	assert.Equal(t, uint64(11), bsi.GetCardinality())
+	set := bsi.CompareValue(0, RANGE, -3, 3, nil)
+	assert.Equal(t, uint64(7), set.GetCardinality())
+
+	i := set.Iterator()
+	for i.HasNext() {
+		val, _ := bsi.GetValue(uint64(i.Next()))
+		assert.GreaterOrEqual(t, val, int64(-3))
+		assert.LessOrEqual(t, val, int64(3))
+	}
+}
+
+func TestAutoSizeWithNegative(t *testing.T) {
+	bsi := setupAutoSizeNegativeBoundary()
+	assert.Equal(t, uint64(11), bsi.GetCardinality())
+	assert.Equal(t, 64, bsi.BitCount())
+	set := bsi.CompareValue(0, RANGE, -3, 3, nil)
+	assert.Equal(t, uint64(7), set.GetCardinality())
+
+	i := set.Iterator()
+	for i.HasNext() {
+		val, _ := bsi.GetValue(uint64(i.Next()))
+		assert.GreaterOrEqual(t, val, int64(-3))
+		assert.LessOrEqual(t, val, int64(3))
+	}
 }
