@@ -47,18 +47,18 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	if parallelism == 0 {
 		parallelism = defaultWorkerCount
 	}
-
-	var chunkSize int
-	var chunkCount int
-	if parallelism*4 > int(keyRange) {
+	// We cannot use int since int is 32-bit on 32-bit systems.
+	var chunkSize int64
+	var chunkCount int64
+	if int64(parallelism)*4 > int64(keyRange) {
 		chunkSize = 1
-		chunkCount = int(keyRange)
+		chunkCount = int64(keyRange)
 	} else {
-		chunkCount = parallelism * 4
-		chunkSize = (int(keyRange) + chunkCount - 1) / chunkCount
+		chunkCount = int64(parallelism) * 4
+		chunkSize = (int64(keyRange) + chunkCount - 1) / chunkCount
 	}
 
-	if chunkCount*chunkSize < int(keyRange) {
+	if chunkCount*chunkSize < int64(keyRange) {
 		// it's fine to panic to indicate an implementation error
 		panic(fmt.Sprintf("invariant check failed: chunkCount * chunkSize < keyRange, %d * %d < %d", chunkCount, chunkSize, keyRange))
 	}
@@ -84,10 +84,10 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	}
 
 	go func() {
-		for i := 0; i < chunkCount; i++ {
+		for i := int64(0); i < chunkCount; i++ {
 			spec := parChunkSpec{
-				start: uint32(int(lKey) + i*chunkSize),
-				end:   uint32(minOfInt(int(lKey)+(i+1)*chunkSize-1, int(hKey))),
+				start: uint32(int64(lKey) + i*chunkSize),
+				end:   uint32(minOfInt64(int64(lKey)+(i+1)*chunkSize-1, int64(hKey))),
 				idx:   int(i),
 			}
 			chunkSpecChan <- spec
