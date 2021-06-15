@@ -1,6 +1,7 @@
 package roaring64
 
 import (
+    "fmt"
 	"math/bits"
 	"runtime"
 	"sync"
@@ -27,7 +28,11 @@ type BSI struct {
 // then the underlying BSI will be automatically sized.
 func NewBSI(maxValue int64, minValue int64) *BSI {
 
-	ba := make([]*Bitmap, bits.Len64(uint64(maxValue)))
+    bitsz := bits.Len64(uint64(minValue))
+    if bits.Len64(uint64(maxValue)) > bitsz {
+        bitsz = bits.Len64(uint64(maxValue))
+    }
+    ba := make([]*Bitmap, bitsz)
 	for i := 0; i < len(ba); i++ {
 		ba[i] = NewBitmap()
 	}
@@ -266,53 +271,90 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 		results.RunOptimize()
 	}
 
+    x := e.bsi.BitCount()
+    startIsNegative := x == 64 && uint64(e.valueOrStart)&(1<<uint64(x-1)) > 0
+    endIsNegative := x == 64 && uint64(e.end)&(1<<uint64(x-1)) > 0
+
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
 		eq1, eq2 := true, true
 		lt1, lt2, gt1 := false, false, false
-		for j := e.bsi.BitCount() - 1; j >= 0; j-- {
+        j := e.bsi.BitCount() - 1
+        isNegative := false
+        if x == 64 {
+            isNegative = e.bsi.bA[j].Contains(cID)
+            j--
+        }
+        compStartValue := e.valueOrStart
+        compEndValue := e.end
+        if isNegative != startIsNegative {
+            compStartValue = ^e.valueOrStart + 1
+        }
+        if isNegative != endIsNegative {
+            compEndValue = ^e.end + 1
+        }
+		for ; j >= 0; j-- {
 			sliceContainsBit := e.bsi.bA[j].Contains(cID)
 
-			if uint64(e.valueOrStart)&(1<<uint64(j)) > 0 {
+            if uint64(compStartValue)&(1<<uint64(j)) > 0 {
 				// BIT in value is SET
 				if !sliceContainsBit {
-					if eq1 {
-						if e.op == LT || e.op == LE {
-							lt1 = true
-						}
-						eq1 = false
-						break
-					}
+                    if eq1 {
+                        if (e.op == GT || e.op == GE || e.op == RANGE) && startIsNegative && !isNegative {
+                            gt1 = true
+                        }
+                        if e.op == LT || e.op == LE {
+                            if !startIsNegative || (startIsNegative == isNegative) {
+                                lt1 = true
+                            }
+                        }
+                        eq1 = false
+                        break
+                    }
 				}
 			} else {
 				// BIT in value is CLEAR
 				if sliceContainsBit {
-					if eq1 {
-						if e.op == GT || e.op == GE || e.op == RANGE {
-							gt1 = true
-						}
-						eq1 = false
-						if e.op != RANGE {
-							break
-						}
-					}
+                    if eq1 {
+                        if (e.op == LT || e.op == LE) && isNegative && !startIsNegative {
+                            lt1 = true
+                        }
+                        if e.op == GT || e.op == GE || e.op == RANGE {
+                            if startIsNegative || (startIsNegative == isNegative) {
+                                gt1 = true
+                            }
+                        }
+                        eq1 = false
+                        if e.op != RANGE {
+                            break
+                        }
+                    }
 				}
 			}
 
-			if e.op == RANGE && uint64(e.end)&(1<<uint64(j)) > 0 {
-				// BIT in value is SET
-				if !sliceContainsBit {
-					if eq2 {
-						lt2 = true
-						eq2 = false
-					}
-				}
-			} else {
+            if e.op == RANGE && uint64(compEndValue)&(1<<uint64(j)) > 0 {
+                // BIT in value is SET
+                if !sliceContainsBit {
+                    if eq2 {
+                        if !endIsNegative || (endIsNegative == isNegative) {
+                            lt2 = true
+                        }
+                        eq2 = false
+                        if startIsNegative && !endIsNegative {
+                            break
+                        }
+                    }
+                }
+            } else if e.op == RANGE {
 				// BIT in value is CLEAR
 				if sliceContainsBit {
-					if eq2 {
-						eq2 = false
-					}
+                    if eq2 {
+                        if isNegative && !endIsNegative {
+                            lt2 = true
+                        }
+                        eq2 = false
+                        break
+                    }
 				}
 			}
 
@@ -324,7 +366,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 				results.Add(cID)
 			}
 		case LE:
-			if eq1 || lt1 {
+        	if lt1 || (eq1 && (!startIsNegative || (startIsNegative && isNegative))) {
 				results.Add(cID)
 			}
 		case EQ:
@@ -332,7 +374,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 				results.Add(cID)
 			}
 		case GE:
-			if eq1 || gt1 {
+            if gt1 || (eq1 && (startIsNegative || (!startIsNegative && !isNegative))) {
 				results.Add(cID)
 			}
 		case GT:
@@ -344,9 +386,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 				results.Add(cID)
 			}
 		default:
-			if eq1 {
-				results.Add(cID)
-			}
+            panic(fmt.Sprintf("Unknown operation [%v]", e.op))
 		}
 	}
 
