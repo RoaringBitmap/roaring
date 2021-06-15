@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/RoaringBitmap/roaring"
-	"github.com/stretchr/testify/assert"
 	"github.com/bits-and-blooms/bitset"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRoaringIntervalCheck(t *testing.T) {
@@ -27,6 +27,14 @@ func TestRoaringIntervalCheck(t *testing.T) {
 	rangeb2.AddRange(10, 1000)
 
 	assert.False(t, r.Intersects(rangeb2))
+}
+
+func TestIssue316(t *testing.T) {
+	a := BitmapOf(5, 18446744073709551613, 18446744073709551614, 18446744073709551615)
+	b := BitmapOf(0, 1, 2, 3, 4)
+	c := ParOr(0, a, b)
+	expected := BitmapOf(0, 1, 2, 3, 4, 5, 18446744073709551613, 18446744073709551614, 18446744073709551615)
+	assert.True(t, c.Equals(expected))
 }
 
 func TestIssue266(t *testing.T) {

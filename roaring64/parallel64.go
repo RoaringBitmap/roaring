@@ -34,8 +34,10 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	} else if len(bitmaps) == 1 {
 		return bitmaps[0]
 	}
-
-	keyRange := hKey - lKey + 1
+	// The following might overflow and we do not want that!
+	// as it might lead to a channel of size 0 later which,
+	// on some systems, would block indefinitely.
+	keyRange := uint64(hKey) - uint64(lKey) + 1
 	if keyRange == 1 {
 		// revert to FastOr. Since the key range is 0
 		// no container-level aggregation parallelism is achievable
