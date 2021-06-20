@@ -215,7 +215,7 @@ func (rb *Bitmap) ToArray() []uint64 {
 func (rb *Bitmap) GetSizeInBytes() uint64 {
 	size := uint64(8)
 	for _, c := range rb.highlowcontainer.containers {
-		size += uint64(2) + c.GetSizeInBytes()
+		size += uint64(4) + c.GetSizeInBytes()
 	}
 	return size
 }
