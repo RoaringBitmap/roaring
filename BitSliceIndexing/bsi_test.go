@@ -1,12 +1,14 @@
 package roaring
 
 import (
-    _ "fmt"
+	_ "fmt"
 	"github.com/RoaringBitmap/roaring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
+	"math/rand"
 	"testing"
+	"time"
 )
 
 func TestSetAndGet(t *testing.T) {
@@ -55,6 +57,20 @@ func setupAutoSizeNegativeBoundary() *BSI {
 	// Setup values
 	for i := int(-5); i <= int(5); i++ {
 		bsi.SetValue(uint64(i), int64(i))
+	}
+	return bsi
+}
+
+func setupRandom() *BSI {
+	bsi := NewBSI(99, 0)
+	rg := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Setup values
+	for i := 0; bsi.GetCardinality() < 100; i++ {
+		rv := rg.Int63n(bsi.MaxValue)
+		if bsi.GetExistenceBitmap().Contains(uint32(rv)) {
+			continue
+		}
+		bsi.SetValue(uint64(i), rv)
 	}
 	return bsi
 }
@@ -383,4 +399,16 @@ func TestAutoSizeWithNegative(t *testing.T) {
 		assert.GreaterOrEqual(t, val, int64(-3))
 		assert.LessOrEqual(t, val, int64(3))
 	}
+}
+
+func TestMinMaxWithNegative(t *testing.T) {
+	bsi := setupNegativeBoundary()
+	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
+	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
+}
+
+func testMinMaxWithRandom(t *testing.T) {
+	bsi := setupRandom()
+	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
+	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
 }
