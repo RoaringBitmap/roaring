@@ -61,11 +61,11 @@ func setupAutoSizeNegativeBoundary() *BSI {
 }
 
 func setupRandom() *BSI {
-	bsi := NewBSI(99, 0)
+	bsi := NewBSI(99, -1)
 	rg := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// Setup values
 	for i := 0; bsi.GetExistenceBitmap().GetCardinality() < 100; {
-		rv := rg.Int63n(bsi.MaxValue)
+		rv := rg.Int63n(bsi.MaxValue) - 50
         _, ok := bsi.GetValue(uint64(i))
 		if ok {
 			continue
@@ -424,12 +424,6 @@ func TestAutoSizeWithNegative(t *testing.T) {
 		assert.GreaterOrEqual(t, val, int64(-3))
 		assert.LessOrEqual(t, val, int64(3))
 	}
-}
-
-func TestMinMaxWithNegative(t *testing.T) {
-	bsi := setupNegativeBoundary()
-	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
-	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
 }
 
 func TestMinMaxWithRandom(t *testing.T) {

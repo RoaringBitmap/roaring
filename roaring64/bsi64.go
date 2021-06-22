@@ -442,7 +442,7 @@ func (b *BSI) MinMax(parallelism int, op Operation, foundSet *Bitmap) int64 {
 	}
 
 	for val := range resultsChan {
-		if (op == MAX && val > minMax) || (op == MIN && val < minMax) {
+		if (op == MAX && val > minMax) || (op == MIN && val <= minMax) {
 			minMax = val
 		}
 	}
