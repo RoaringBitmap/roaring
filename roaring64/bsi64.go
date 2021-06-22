@@ -1,11 +1,18 @@
 package roaring64
 
 import (
-    "fmt"
+	"fmt"
 	"math/bits"
 	"runtime"
 	"sync"
 	"sync/atomic"
+)
+
+const (
+	// Min64BitSigned - Minimum 64 bit value
+	Min64BitSigned = -9223372036854775808
+	// Max64BitSigned - Maximum 64 bit value
+	Max64BitSigned = 9223372036854775807
 )
 
 // BSI is at its simplest is an array of bitmaps that represent an encoded
@@ -28,11 +35,11 @@ type BSI struct {
 // then the underlying BSI will be automatically sized.
 func NewBSI(maxValue int64, minValue int64) *BSI {
 
-    bitsz := bits.Len64(uint64(minValue))
-    if bits.Len64(uint64(maxValue)) > bitsz {
-        bitsz = bits.Len64(uint64(maxValue))
-    }
-    ba := make([]*Bitmap, bitsz)
+	bitsz := bits.Len64(uint64(minValue))
+	if bits.Len64(uint64(maxValue)) > bitsz {
+		bitsz = bits.Len64(uint64(maxValue))
+	}
+	ba := make([]*Bitmap, bitsz)
 	for i := 0; i < len(ba); i++ {
 		ba[i] = NewBitmap()
 	}
@@ -128,8 +135,7 @@ func (b *BSI) GetValue(columnID uint64) (int64, bool) {
 
 type action func(t *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.WaitGroup)
 
-func parallelExecutor(parallelism int, t *task, e action,
-	foundSet *Bitmap) *Bitmap {
+func parallelExecutor(parallelism int, t *task, e action, foundSet *Bitmap) *Bitmap {
 
 	var n int = parallelism
 	if n == 0 {
@@ -235,6 +241,10 @@ const (
 	GT
 	// RANGE range
 	RANGE
+	// MIN find minimum
+	MIN
+	// MAX find maximum
+	MAX
 )
 
 type task struct {
@@ -271,90 +281,90 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 		results.RunOptimize()
 	}
 
-    x := e.bsi.BitCount()
-    startIsNegative := x == 64 && uint64(e.valueOrStart)&(1<<uint64(x-1)) > 0
-    endIsNegative := x == 64 && uint64(e.end)&(1<<uint64(x-1)) > 0
+	x := e.bsi.BitCount()
+	startIsNegative := x == 64 && uint64(e.valueOrStart)&(1<<uint64(x-1)) > 0
+	endIsNegative := x == 64 && uint64(e.end)&(1<<uint64(x-1)) > 0
 
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
 		eq1, eq2 := true, true
 		lt1, lt2, gt1 := false, false, false
-        j := e.bsi.BitCount() - 1
-        isNegative := false
-        if x == 64 {
-            isNegative = e.bsi.bA[j].Contains(cID)
-            j--
-        }
-        compStartValue := e.valueOrStart
-        compEndValue := e.end
-        if isNegative != startIsNegative {
-            compStartValue = ^e.valueOrStart + 1
-        }
-        if isNegative != endIsNegative {
-            compEndValue = ^e.end + 1
-        }
+		j := e.bsi.BitCount() - 1
+		isNegative := false
+		if x == 64 {
+			isNegative = e.bsi.bA[j].Contains(cID)
+			j--
+		}
+		compStartValue := e.valueOrStart
+		compEndValue := e.end
+		if isNegative != startIsNegative {
+			compStartValue = ^e.valueOrStart + 1
+		}
+		if isNegative != endIsNegative {
+			compEndValue = ^e.end + 1
+		}
 		for ; j >= 0; j-- {
 			sliceContainsBit := e.bsi.bA[j].Contains(cID)
 
-            if uint64(compStartValue)&(1<<uint64(j)) > 0 {
+			if uint64(compStartValue)&(1<<uint64(j)) > 0 {
 				// BIT in value is SET
 				if !sliceContainsBit {
-                    if eq1 {
-                        if (e.op == GT || e.op == GE || e.op == RANGE) && startIsNegative && !isNegative {
-                            gt1 = true
-                        }
-                        if e.op == LT || e.op == LE {
-                            if !startIsNegative || (startIsNegative == isNegative) {
-                                lt1 = true
-                            }
-                        }
-                        eq1 = false
-                        break
-                    }
+					if eq1 {
+						if (e.op == GT || e.op == GE || e.op == RANGE) && startIsNegative && !isNegative {
+							gt1 = true
+						}
+						if e.op == LT || e.op == LE {
+							if !startIsNegative || (startIsNegative == isNegative) {
+								lt1 = true
+							}
+						}
+						eq1 = false
+						break
+					}
 				}
 			} else {
 				// BIT in value is CLEAR
 				if sliceContainsBit {
-                    if eq1 {
-                        if (e.op == LT || e.op == LE) && isNegative && !startIsNegative {
-                            lt1 = true
-                        }
-                        if e.op == GT || e.op == GE || e.op == RANGE {
-                            if startIsNegative || (startIsNegative == isNegative) {
-                                gt1 = true
-                            }
-                        }
-                        eq1 = false
-                        if e.op != RANGE {
-                            break
-                        }
-                    }
+					if eq1 {
+						if (e.op == LT || e.op == LE) && isNegative && !startIsNegative {
+							lt1 = true
+						}
+						if e.op == GT || e.op == GE || e.op == RANGE {
+							if startIsNegative || (startIsNegative == isNegative) {
+								gt1 = true
+							}
+						}
+						eq1 = false
+						if e.op != RANGE {
+							break
+						}
+					}
 				}
 			}
 
-            if e.op == RANGE && uint64(compEndValue)&(1<<uint64(j)) > 0 {
-                // BIT in value is SET
-                if !sliceContainsBit {
-                    if eq2 {
-                        if !endIsNegative || (endIsNegative == isNegative) {
-                            lt2 = true
-                        }
-                        eq2 = false
-                        if startIsNegative && !endIsNegative {
-                            break
-                        }
-                    }
-                }
-            } else if e.op == RANGE {
+			if e.op == RANGE && uint64(compEndValue)&(1<<uint64(j)) > 0 {
+				// BIT in value is SET
+				if !sliceContainsBit {
+					if eq2 {
+						if !endIsNegative || (endIsNegative == isNegative) {
+							lt2 = true
+						}
+						eq2 = false
+						if startIsNegative && !endIsNegative {
+							break
+						}
+					}
+				}
+			} else if e.op == RANGE {
 				// BIT in value is CLEAR
 				if sliceContainsBit {
-                    if eq2 {
-                        if isNegative && !endIsNegative {
-                            lt2 = true
-                        }
-                        eq2 = false
-                        break
-                    }
+					if eq2 {
+						if isNegative && !endIsNegative {
+							lt2 = true
+						}
+						eq2 = false
+						break
+					}
 				}
 			}
 
@@ -366,7 +376,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 				results.Add(cID)
 			}
 		case LE:
-        	if lt1 || (eq1 && (!startIsNegative || (startIsNegative && isNegative))) {
+			if lt1 || (eq1 && (!startIsNegative || (startIsNegative && isNegative))) {
 				results.Add(cID)
 			}
 		case EQ:
@@ -374,7 +384,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 				results.Add(cID)
 			}
 		case GE:
-            if gt1 || (eq1 && (startIsNegative || (!startIsNegative && !isNegative))) {
+			if gt1 || (eq1 && (startIsNegative || (!startIsNegative && !isNegative))) {
 				results.Add(cID)
 			}
 		case GT:
@@ -386,11 +396,128 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 				results.Add(cID)
 			}
 		default:
-            panic(fmt.Sprintf("Unknown operation [%v]", e.op))
+			panic(fmt.Sprintf("Operation [%v] not supported here", e.op))
 		}
 	}
 
 	resultsChan <- results
+}
+
+// MinMax - Find minimum or maximum value.
+func (b *BSI) MinMax(parallelism int, op Operation, foundSet *Bitmap) int64 {
+
+	var n int = parallelism
+	if n == 0 {
+		n = runtime.NumCPU()
+	}
+
+	resultsChan := make(chan int64, n)
+
+	card := foundSet.GetCardinality()
+	x := card / uint64(n)
+
+	remainder := card - (x * uint64(n))
+	var batch []uint64
+	var wg sync.WaitGroup
+	iter := foundSet.ManyIterator()
+	for i := 0; i < n; i++ {
+		if i == n-1 {
+			batch = make([]uint64, x+remainder)
+		} else {
+			batch = make([]uint64, x)
+		}
+		iter.NextMany(batch)
+		wg.Add(1)
+		go b.minOrMax(op, batch, resultsChan, &wg)
+	}
+
+	wg.Wait()
+
+	close(resultsChan)
+	var minMax int64
+	if op == MAX {
+		minMax = Min64BitSigned
+	} else {
+		minMax = Max64BitSigned
+	}
+
+	for val := range resultsChan {
+		if (op == MAX && val > minMax) || (op == MIN && val <= minMax) {
+			minMax = val
+		}
+	}
+	return minMax
+}
+
+func (b *BSI) minOrMax(op Operation, batch []uint64, resultsChan chan int64, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
+	x := b.BitCount()
+	var value int64 = Max64BitSigned
+	if op == MAX {
+		value = Min64BitSigned
+	}
+
+	for i := 0; i < len(batch); i++ {
+		cID := batch[i]
+		eq := true
+		lt, gt := false, false
+		j := b.BitCount() - 1
+		var cVal int64
+		valueIsNegative := uint64(value)&(1<<uint64(x-1)) > 0 && bits.Len64(uint64(value)) == 64
+		isNegative := false
+		if x == 64 {
+			isNegative = b.bA[j].Contains(cID)
+			if isNegative {
+				cVal |= 1 << uint64(j)
+			}
+			j--
+		}
+		compValue := value
+		if isNegative != valueIsNegative {
+			compValue = ^value + 1
+		}
+		for ; j >= 0; j-- {
+			sliceContainsBit := b.bA[j].Contains(cID)
+			if sliceContainsBit {
+				cVal |= 1 << uint64(j)
+			}
+			if uint64(compValue)&(1<<uint64(j)) > 0 {
+				// BIT in value is SET
+				if !sliceContainsBit {
+					if eq {
+						eq = false
+						if op == MAX && valueIsNegative && !isNegative {
+							gt = true
+							break
+						}
+						if op == MIN && (!valueIsNegative || (valueIsNegative == isNegative)) {
+							lt = true
+						}
+					}
+				}
+			} else {
+				// BIT in value is CLEAR
+				if sliceContainsBit {
+					if eq {
+						eq = false
+						if op == MIN && isNegative && !valueIsNegative {
+							lt = true
+						}
+						if op == MAX && (valueIsNegative || (valueIsNegative == isNegative)) {
+							gt = true
+						}
+					}
+				}
+			}
+		}
+		if lt || gt {
+			value = cVal
+		}
+	}
+
+	resultsChan <- value
 }
 
 // Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet

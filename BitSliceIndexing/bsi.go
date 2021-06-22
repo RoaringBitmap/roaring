@@ -9,6 +9,13 @@ import (
 	"sync/atomic"
 )
 
+const (
+	// Min64BitSigned - Minimum 64 bit value
+	Min64BitSigned = -9223372036854775808
+	// Max64BitSigned - Maximum 64 bit value
+	Max64BitSigned = 9223372036854775807
+)
+
 // BSI is at its simplest is an array of bitmaps that represent an encoded
 // binary value.  The advantage of a BSI is that comparisons can be made
 // across ranges of values whereas a bitmap can only represent the existence
@@ -236,6 +243,10 @@ const (
 	GT
 	// RANGE range
 	RANGE
+	// MIN find minimum
+	MIN
+	// MAX find maximum
+	MAX
 )
 
 type task struct {
@@ -391,6 +402,123 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 	}
 
 	resultsChan <- results
+}
+
+// MinMax - Find minimum or maximum value.
+func (b *BSI) MinMax(parallelism int, op Operation, foundSet *roaring.Bitmap) int64 {
+
+	var n int = parallelism
+	if n == 0 {
+		n = runtime.NumCPU()
+	}
+
+	resultsChan := make(chan int64, n)
+
+	card := foundSet.GetCardinality()
+	x := card / uint64(n)
+
+	remainder := card - (x * uint64(n))
+	var batch []uint32
+	var wg sync.WaitGroup
+	iter := foundSet.ManyIterator()
+	for i := 0; i < n; i++ {
+		if i == n-1 {
+			batch = make([]uint32, x+remainder)
+		} else {
+			batch = make([]uint32, x)
+		}
+		iter.NextMany(batch)
+		wg.Add(1)
+		go b.minOrMax(op, batch, resultsChan, &wg)
+	}
+
+	wg.Wait()
+
+	close(resultsChan)
+	var minMax int64
+	if op == MAX {
+		minMax = Min64BitSigned
+	} else {
+		minMax = Max64BitSigned
+	}
+
+	for val := range resultsChan {
+		if (op == MAX && val > minMax) || (op == MIN && val < minMax) {
+			minMax = val
+		}
+	}
+	return minMax
+}
+
+func (b *BSI) minOrMax(op Operation, batch []uint32, resultsChan chan int64, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
+	x := b.BitCount()
+	var value int64 = Max64BitSigned
+	if op == MAX {
+		value = Min64BitSigned
+	}
+
+	for i := 0; i < len(batch); i++ {
+		cID := batch[i]
+		eq := true
+		lt, gt := false, false
+		j := b.BitCount() - 1
+		var cVal int64
+		valueIsNegative := uint64(value)&(1<<uint64(x-1)) > 0 && bits.Len64(uint64(value)) == 64
+		isNegative := false
+		if x == 64 {
+			isNegative = b.bA[j].Contains(cID)
+			if isNegative {
+				cVal |= 1 << uint64(j)
+			}
+			j--
+		}
+		compValue := value
+		if isNegative != valueIsNegative {
+			compValue = ^value + 1
+		}
+		for ; j >= 0; j-- {
+			sliceContainsBit := b.bA[j].Contains(cID)
+			if sliceContainsBit {
+				cVal |= 1 << uint64(j)
+			}
+			if uint64(compValue)&(1<<uint64(j)) > 0 {
+				// BIT in value is SET
+				if !sliceContainsBit {
+					if eq {
+						eq = false
+						if op == MAX && valueIsNegative && !isNegative {
+							gt = true
+							break
+						}
+						if op == MIN && (!valueIsNegative || (valueIsNegative == isNegative)) {
+							lt = true
+						}
+					}
+				}
+			} else {
+				// BIT in value is CLEAR
+				if sliceContainsBit {
+					if eq {
+						eq = false
+						if op == MIN && isNegative && !valueIsNegative {
+							lt = true
+						}
+						if op == MAX && (valueIsNegative || (valueIsNegative == isNegative)) {
+							gt = true
+						}
+					}
+				}
+			}
+		}
+		if lt || gt {
+			value = cVal
+		}
+	}
+
+	resultsChan <- value
 }
 
 // Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet

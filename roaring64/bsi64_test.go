@@ -1,10 +1,13 @@
 package roaring64
 
 import (
+	_ "fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
+	"math/rand"
 	"testing"
+	"time"
 )
 
 func TestSetAndGet(t *testing.T) {
@@ -54,6 +57,39 @@ func setupAutoSizeNegativeBoundary() *BSI {
 	for i := int(-5); i <= int(5); i++ {
 		bsi.SetValue(uint64(i), int64(i))
 	}
+	return bsi
+}
+
+func setupRandom() *BSI {
+	bsi := NewBSI(99, -1)
+	rg := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Setup values
+	for i := 0; bsi.GetExistenceBitmap().GetCardinality() < 100; {
+		rv := rg.Int63n(bsi.MaxValue) - 50
+		_, ok := bsi.GetValue(uint64(i))
+		if ok {
+			continue
+		}
+		bsi.SetValue(uint64(i), rv)
+		i++
+	}
+	batch := make([]uint64, 100)
+	iter := bsi.GetExistenceBitmap().ManyIterator()
+	iter.NextMany(batch)
+	var min, max int64
+	min = Max64BitSigned
+	max = Min64BitSigned
+	for i := 0; i < len(batch); i++ {
+		v, _ := bsi.GetValue(batch[i])
+		if v > max {
+			max = v
+		}
+		if v < min {
+			min = v
+		}
+	}
+	bsi.MinValue = min
+	bsi.MaxValue = max
 	return bsi
 }
 
@@ -344,7 +380,6 @@ func TestSumWithNegative(t *testing.T) {
 }
 
 func TestGEWithNegative(t *testing.T) {
-
 	bsi := setupNegativeBoundary()
 	assert.Equal(t, uint64(11), bsi.GetCardinality())
 	set := bsi.CompareValue(0, GE, 3, 0, nil)
@@ -389,4 +424,10 @@ func TestAutoSizeWithNegative(t *testing.T) {
 		assert.GreaterOrEqual(t, val, int64(-3))
 		assert.LessOrEqual(t, val, int64(3))
 	}
+}
+
+func TestMinMaxWithRandom(t *testing.T) {
+	bsi := setupRandom()
+	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
+	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
 }
