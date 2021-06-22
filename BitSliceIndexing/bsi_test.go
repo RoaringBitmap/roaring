@@ -65,16 +65,34 @@ func setupRandom() *BSI {
 	bsi := NewBSI(99, 0)
 	rg := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// Setup values
-	for i := 0; bsi.GetCardinality() < 100; i++ {
+	for i := 0; bsi.GetExistenceBitmap().GetCardinality() < 100; {
 		rv := rg.Int63n(bsi.MaxValue)
-		if bsi.GetExistenceBitmap().Contains(uint32(rv)) {
+        _, ok := bsi.GetValue(uint64(i))
+		if ok {
 			continue
 		}
 		bsi.SetValue(uint64(i), rv)
+        i++
 	}
+    batch := make([]uint32, 100)
+    iter := bsi.GetExistenceBitmap().ManyIterator()
+    iter.NextMany(batch)
+    var min, max int64
+    min = Max64BitSigned
+    max = Min64BitSigned
+    for i := 0; i < len(batch); i++ {
+        v, _ := bsi.GetValue(uint64(batch[i]))
+        if v > max {
+            max = v
+        }
+        if v < min {
+            min = v
+        }
+	}
+    bsi.MinValue = min
+    bsi.MaxValue = max
 	return bsi
 }
-
 func TestEQ(t *testing.T) {
 	bsi := setup()
 	eq := bsi.CompareValue(0, EQ, 50, 0, nil)
@@ -407,7 +425,7 @@ func TestMinMaxWithNegative(t *testing.T) {
 	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
 }
 
-func testMinMaxWithRandom(t *testing.T) {
+func TestMinMaxWithRandom(t *testing.T) {
 	bsi := setupRandom()
 	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
 	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))

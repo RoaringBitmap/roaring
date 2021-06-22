@@ -487,15 +487,13 @@ func (b *BSI) minOrMax(op Operation, batch []uint64, resultsChan chan int64, wg 
 				// BIT in value is SET
 				if !sliceContainsBit {
 					if eq {
+						eq = false
 						if op == MAX && valueIsNegative && !isNegative {
 							gt = true
+                            break
 						}
 						if op == MIN && (!valueIsNegative || (valueIsNegative == isNegative)) {
 							lt = true
-						}
-						eq = false
-						if op == MAX {
-							break
 						}
 					}
 				}
@@ -503,15 +501,12 @@ func (b *BSI) minOrMax(op Operation, batch []uint64, resultsChan chan int64, wg 
 				// BIT in value is CLEAR
 				if sliceContainsBit {
 					if eq {
+						eq = false
 						if op == MIN && isNegative && !valueIsNegative {
 							lt = true
 						}
 						if op == MAX && (valueIsNegative || (valueIsNegative == isNegative)) {
 							gt = true
-						}
-						eq = false
-						if op == MAX {
-							break
 						}
 					}
 				}
