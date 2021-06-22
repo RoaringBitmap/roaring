@@ -420,12 +420,6 @@ func TestAutoSizeWithNegative(t *testing.T) {
 	}
 }
 
-func TestMinMaxWithNegative(t *testing.T) {
-	bsi := setupNegativeBoundary()
-	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
-	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
-}
-
 func TestMinMaxWithRandom(t *testing.T) {
 	bsi := setupRandom()
 	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
