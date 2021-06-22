@@ -66,30 +66,30 @@ func setupRandom() *BSI {
 	// Setup values
 	for i := 0; bsi.GetExistenceBitmap().GetCardinality() < 100; {
 		rv := rg.Int63n(bsi.MaxValue) - 50
-        _, ok := bsi.GetValue(uint64(i))
+		_, ok := bsi.GetValue(uint64(i))
 		if ok {
 			continue
 		}
 		bsi.SetValue(uint64(i), rv)
-        i++
+		i++
 	}
-    batch := make([]uint64, 100)
-    iter := bsi.GetExistenceBitmap().ManyIterator()
-    iter.NextMany(batch)
-    var min, max int64
-    min = Max64BitSigned
-    max = Min64BitSigned
-    for i := 0; i < len(batch); i++ {
-        v, _ := bsi.GetValue(batch[i])
-        if v > max {
-            max = v
-        }
-        if v < min {
-            min = v
-        }
+	batch := make([]uint64, 100)
+	iter := bsi.GetExistenceBitmap().ManyIterator()
+	iter.NextMany(batch)
+	var min, max int64
+	min = Max64BitSigned
+	max = Min64BitSigned
+	for i := 0; i < len(batch); i++ {
+		v, _ := bsi.GetValue(batch[i])
+		if v > max {
+			max = v
+		}
+		if v < min {
+			min = v
+		}
 	}
-    bsi.MinValue = min
-    bsi.MaxValue = max
+	bsi.MinValue = min
+	bsi.MaxValue = max
 	return bsi
 }
 

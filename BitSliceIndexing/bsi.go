@@ -491,7 +491,7 @@ func (b *BSI) minOrMax(op Operation, batch []uint32, resultsChan chan int64, wg 
 						eq = false
 						if op == MAX && valueIsNegative && !isNegative {
 							gt = true
-                            break
+							break
 						}
 						if op == MIN && (!valueIsNegative || (valueIsNegative == isNegative)) {
 							lt = true
