@@ -113,7 +113,8 @@ func BenchmarkMemoryUsage(b *testing.B) {
 
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
-	b.Logf("HeapInUse: %d, HeapObjects: %d", stats.HeapInuse, stats.HeapObjects)
+	b.ReportMetric(float64(stats.HeapInuse), "HeapInUse")
+	b.ReportMetric(float64(stats.HeapObjects), "HeapObjects")
 	b.StartTimer()
 }
 
