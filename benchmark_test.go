@@ -94,6 +94,7 @@ func BenchmarkEmptyArray(b *testing.B) {
 var c9 uint
 
 // go test -bench BenchmarkMemoryUsage -run -
+// +build go1.13
 func BenchmarkMemoryUsage(b *testing.B) {
 	b.StopTimer()
 	bitmaps := make([]*Bitmap, 0, 10)
