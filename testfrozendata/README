@@ -1,0 +1,3 @@
+Auxiliary files to test CRoaring's frozen format views and serialization.
+*.stats gives a file level description of each pair of .frozen and .portable files.
+The latter are frozen and portable (Go/Java native) serializations of bitmaps made with gocroaring.
