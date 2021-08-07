@@ -68,7 +68,9 @@ func testAggregations(t *testing.T,
 		rb2.Add(200000)
 		rb3.Add(1)
 		rb3.Add(300000)
-
+		assert.True(t, rb1.checkValidity())
+		assert.True(t, rb2.checkValidity())
+		assert.True(t, rb3.checkValidity())
 		assertAggregation(t, 0, and, rb2, rb1, rb3)
 		assertAggregation(t, 4, or, rb2, rb1, rb3)
 		assertAggregation(t, 3, xor, rb2, rb1, rb3)
@@ -83,7 +85,9 @@ func testAggregations(t *testing.T,
 		rb2.Add(200000)
 		rb3.Add(1)
 		rb3.Add(300000)
-
+		assert.True(t, rb1.checkValidity())
+		assert.True(t, rb2.checkValidity())
+		assert.True(t, rb3.checkValidity())
 		assertAggregation(t, 0, and, rb2, rb1, rb3)
 		assertAggregation(t, 4, or, rb2, rb1, rb3)
 		assertAggregation(t, 3, xor, rb2, rb1, rb3)
@@ -98,7 +102,9 @@ func testAggregations(t *testing.T,
 		rb2.Add(200000)
 		rb3.Add(1)
 		rb3.Add(300000)
-
+		assert.True(t, rb1.checkValidity())
+		assert.True(t, rb2.checkValidity())
+		assert.True(t, rb3.checkValidity())
 		assertAggregation(t, 0, and, rb1, rb2, rb3)
 		assertAggregation(t, 4, or, rb1, rb2, rb3)
 		assertAggregation(t, 3, xor, rb1, rb2, rb3)
@@ -116,6 +122,10 @@ func testAggregations(t *testing.T,
 		rb2.Add(200000)
 		rb3.Add(1)
 		rb3.Add(300000)
+
+		assert.True(t, rb1.checkValidity())
+		assert.True(t, rb2.checkValidity())
+		assert.True(t, rb3.checkValidity())
 
 		assertAggregation(t, 0, and, rb1, rb2, rb3)
 		assertAggregation(t, 4, or, rb1, rb2, rb3)
@@ -149,7 +159,8 @@ func testAggregations(t *testing.T,
 		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
 		bigxor := Xor(Xor(rb1, rb2), rb3)
-
+		assert.True(t, bigand.checkValidity())
+		assert.True(t, bigxor.checkValidity())
 		if or != nil {
 			assert.True(t, or(rb1, rb2, rb3).Equals(rb1))
 		}
@@ -191,7 +202,8 @@ func testAggregations(t *testing.T,
 		rb1.Or(rb3)
 		bigand := And(And(rb1, rb2), rb3)
 		bigxor := Xor(Xor(rb1, rb2), rb3)
-
+		assert.True(t, bigand.checkValidity())
+		assert.True(t, bigxor.checkValidity())
 		if or != nil {
 			assert.True(t, or(rb1, rb2, rb3).Equals(rb1))
 		}
@@ -293,4 +305,8 @@ func TestIssue330(t *testing.T) {
 	assert.Equal(t, agg012.GetCardinality(), uint64(1040))
 	assert.Equal(t, agg210.GetCardinality(), uint64(1040))
 	assert.True(t, agg210.Equals(agg012))
+	assert.True(t, agg210.checkValidity())
+	assert.True(t, agg012.checkValidity())
+	assert.True(t, FastOr(bitmaps[0], bitmaps[1], bitmaps[2]).checkValidity())
+	assert.True(t, FastOr(bitmaps[2], bitmaps[1], bitmaps[0]).checkValidity())
 }

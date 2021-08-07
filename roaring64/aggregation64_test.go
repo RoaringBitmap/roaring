@@ -249,20 +249,6 @@ func TestParAggregations2(t *testing.T) {
 	})
 }
 
-/*
-func TestParHeapAggregations(t *testing.T) {
-	orFunc := func(bitmaps ...*Bitmap) *Bitmap {
-		return ParHeapOr(0, bitmaps...)
-	}
-
-	testAggregations(t, nil, orFunc, nil)
-}
-*/
-
 func TestFastAggregations(t *testing.T) {
 	testAggregations(t, nil, FastOr, nil)
 }
-
-//func TestHeapAggregations(t *testing.T) {
-//	testAggregations(t, nil, HeapOr, HeapXor)
-//}
