@@ -893,7 +893,9 @@ func TestBitmap(t *testing.T) {
 			rb.AddInt(i)
 			rb3.AddInt(i)
 		}
-
+		assert.True(t, rb.checkValidity())
+		assert.True(t, rb2.checkValidity())
+		assert.True(t, rb3.checkValidity())
 		arrayrr := rb.ToArray()
 		arrayrr3 := rb3.ToArray()
 		ok := true
@@ -907,7 +909,7 @@ func TestBitmap(t *testing.T) {
 		assert.True(t, ok)
 	})
 
-	t.Run("constainer factory ", func(t *testing.T) {
+	t.Run("container factory ", func(t *testing.T) {
 		bc1 := newBitmapContainer()
 		bc2 := newBitmapContainer()
 		bc3 := newBitmapContainer()
@@ -973,7 +975,8 @@ func TestBitmap(t *testing.T) {
 		for i := uint(100000); i < 200000; i++ {
 			bs.Set(i)
 		}
-
+		assert.True(t, rb1.checkValidity())
+		assert.True(t, rb.checkValidity())
 		assert.True(t, equalsBitSet(bs, rb1))
 	})
 
@@ -1264,6 +1267,7 @@ func TestBitmap(t *testing.T) {
 
 		rror := Or(rr, rr2)
 
+		assert.True(t, rror.checkValidity())
 		arrayor := rror.ToArray()
 
 		assert.True(t, IntsEquals(arrayor, arrayrr))
@@ -1328,7 +1332,7 @@ func TestBitmap(t *testing.T) {
 
 		rror := Or(rr, rr2)
 		valide := true
-
+		assert.True(t, rror.checkValidity())
 		for _, k := range rror.ToArray() {
 			_, found := V1[int(k)]
 			if !found {
@@ -1374,7 +1378,7 @@ func TestBitmap(t *testing.T) {
 		}
 		// check or against an empty bitmap
 		orresult2 := Or(rb, rb2)
-
+		assert.True(t, orresult2.checkValidity())
 		assert.Equal(t, orresult.GetCardinality(), rb2card)
 		assert.Equal(t, rb2.GetCardinality()+rb.GetCardinality(), orresult2.GetCardinality())
 
@@ -1453,6 +1457,8 @@ func TestBitmap(t *testing.T) {
 		}
 
 		correct := Xor(rr, rr2)
+		assert.True(t, correct.checkValidity())
+
 		rr.Xor(rr2)
 
 		assert.True(t, correct.Equals(rr))

@@ -17,20 +17,15 @@ func FastAnd(bitmaps ...*Bitmap) *Bitmap {
 }
 
 // FastOr computes the union between many bitmaps quickly, as opposed to having to call Or repeatedly.
-// It might also be faster than calling Or repeatedly.
 func FastOr(bitmaps ...*Bitmap) *Bitmap {
 	if len(bitmaps) == 0 {
 		return NewBitmap()
 	} else if len(bitmaps) == 1 {
 		return bitmaps[0].Clone()
 	}
-	//answer := lazyOR(bitmaps[0], bitmaps[1])
 	answer := Or(bitmaps[0], bitmaps[1])
 	for _, bm := range bitmaps[2:] {
-		//answer = answer.lazyOR(bm)
 		answer.Or(bm)
 	}
-	// here is where repairAfterLazy is called.
-	//answer.repairAfterLazy()
 	return answer
 }
