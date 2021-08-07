@@ -273,10 +273,9 @@ func TestIssue330(t *testing.T) {
 	
 	bitmaps := []*Bitmap{}
 	
-	for i, v := range values {
+	for _, v := range values {
 		bitmap := BitmapOf(v...)
 		bitmap.RunOptimize()
-		fmt.Printf("%d: %+v\n", i, bitmap.Stats())
 		bitmaps = append(bitmaps, bitmap)
 		array_result := bitmap.ToArray()
 		sort.Sort(uints(v))
@@ -287,12 +286,11 @@ func TestIssue330(t *testing.T) {
 	assert.Equal(t, FastAnd(bitmaps[1], bitmaps[2]).GetCardinality(), uint64(0))
 	assert.Equal(t, FastOr(bitmaps[0], bitmaps[1], bitmaps[2]).GetCardinality(), uint64(1040))
 	assert.Equal(t, FastOr(bitmaps[2], bitmaps[1], bitmaps[0]).GetCardinality(), uint64(1040))
-
-	fmt.Println("|0 & 1| =", FastAnd(bitmaps[0], bitmaps[1]).GetCardinality())
-	fmt.Println("|0 & 2| =", FastAnd(bitmaps[0], bitmaps[2]).GetCardinality())
-	fmt.Println("|1 & 2| =", FastAnd(bitmaps[1], bitmaps[2]).GetCardinality())
-	
-	fmt.Println("|0 + 1 + 2| =", FastOr(bitmaps[0], bitmaps[1], bitmaps[2]).GetCardinality())
-	
-	fmt.Println("|2 + 1 + 0| =", FastOr(bitmaps[2], bitmaps[1], bitmaps[0]).GetCardinality())
+	agg012 := Or(bitmaps[0], bitmaps[1])
+	agg012.Or(bitmaps[2])
+	agg210 := Or(bitmaps[2], bitmaps[1])
+	agg210.Or(bitmaps[0])
+	assert.Equal(t, agg012.GetCardinality(), uint64(1040))
+	assert.Equal(t, agg210.GetCardinality(), uint64(1040))
+	assert.True(t, agg210.Equals(agg012))
 }

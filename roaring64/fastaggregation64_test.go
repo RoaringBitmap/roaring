@@ -5,7 +5,6 @@ package roaring64
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"fmt"
 	"sort"
 )
 
@@ -57,33 +56,19 @@ func TestIssue330_64bits(t *testing.T) {
 	
 	bitmaps := []*Bitmap{}
 	
-	for i, v := range values {
+	for _, v := range values {
 		bitmap := BitmapOf(v...)
 		bitmap.RunOptimize()
-		fmt.Printf("%d: %+v\n", i, bitmap.Stats())
 		bitmaps = append(bitmaps, bitmap)
 		sort.Sort(uints(v))
 		array_result := bitmap.ToArray()
 		assert.Equal(t, array_result, v)
 	}
-	fmt.Println("|0 & 1| =", FastAnd(bitmaps[0], bitmaps[1]).GetCardinality())
-	fmt.Println("|0 & 2| =", FastAnd(bitmaps[0], bitmaps[2]).GetCardinality())
-	fmt.Println("|1 & 2| =", FastAnd(bitmaps[1], bitmaps[2]).GetCardinality())
 	assert.Equal(t, FastAnd(bitmaps[0], bitmaps[1]).GetCardinality(), uint64(0))
 	assert.Equal(t, FastAnd(bitmaps[0], bitmaps[2]).GetCardinality(), uint64(0))
 	assert.Equal(t, FastAnd(bitmaps[1], bitmaps[2]).GetCardinality(), uint64(0))
-	fmt.Println("|2 + 1| =", FastOr(bitmaps[2], bitmaps[1]).GetCardinality())
-	fmt.Println("|1 + 2| =", FastOr(bitmaps[1], bitmaps[2]).GetCardinality())
 	assert.True(t, FastOr(bitmaps[1], bitmaps[2]).Equals(FastOr(bitmaps[2], bitmaps[1])))
-	fmt.Println("|1 + 0| =", FastOr(bitmaps[1], bitmaps[0]).GetCardinality())
-	fmt.Println("|0 + 1| =", FastOr(bitmaps[0], bitmaps[1]).GetCardinality())
 	assert.True(t, FastOr(bitmaps[1], bitmaps[0]).Equals(FastOr(bitmaps[0], bitmaps[1])))
-
-	fmt.Println("|2 + 0| =", FastOr(bitmaps[2], bitmaps[0]).GetCardinality())
-	fmt.Println("|0 + 2| =", FastOr(bitmaps[0], bitmaps[2]).GetCardinality())
-
-	fmt.Println("|0 + 1 + 2| =", FastOr(bitmaps[0], bitmaps[1], bitmaps[2]).GetCardinality())
-	fmt.Println("|2 + 1 + 0| =", FastOr(bitmaps[2], bitmaps[1], bitmaps[0]).GetCardinality())
 	assert.Equal(t, FastOr(bitmaps[0], bitmaps[1], bitmaps[2]).GetCardinality(), uint64(1040))
 	assert.Equal(t, FastOr(bitmaps[2], bitmaps[1], bitmaps[0]).GetCardinality(), uint64(1040))
 	assert.True(t, FastOr(bitmaps[2], bitmaps[0]).Equals(FastOr(bitmaps[0], bitmaps[2])))
