@@ -3,6 +3,7 @@
 package roaring
 
 import (
+	"bytes"
 	"io/ioutil"
 	"reflect"
 	"testing"
@@ -90,6 +91,35 @@ func TestFrozenFormat(t *testing.T) {
 				t.Fatalf("can't freeze %s: %s", ppath, err)
 			}
 			if !reflect.DeepEqual(frozen, frozenBuf) {
+				t.Fatalf("frozen file for %s and %s differ", fpath, ppath)
+			}
+		})
+		t.Run("freeze with writer" + name, func(t *testing.T) {
+			t.Parallel()
+
+			frozenBuf, err := ioutil.ReadFile(fpath)
+			if err != nil {
+				t.Fatalf("failed to open %s: %s", fpath, err)
+			}
+			portableBuf, err := ioutil.ReadFile(ppath)
+			if err != nil {
+				t.Fatalf("failed to open %s: %s", ppath, err)
+			}
+
+			portable := New()
+			if _, err := portable.FromBuffer(portableBuf); err != nil {
+				t.Fatalf("failed to load bitmap from %s: %s", ppath, err)
+			}
+
+			wr := &bytes.Buffer{}
+			frozenSize, err := portable.WriteFrozenTo(wr)
+			if err != nil {
+				t.Fatalf("can't freeze %s: %s", ppath, err)
+			}
+			if int(frozenSize) != len(frozenBuf) {
+				t.Errorf("size for serializing %s differs from %s's size", ppath, fpath)
+			}
+			if !reflect.DeepEqual(wr.Bytes(), frozenBuf) {
 				t.Fatalf("frozen file for %s and %s differ", fpath, ppath)
 			}
 		})

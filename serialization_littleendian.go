@@ -56,6 +56,22 @@ func uint16SliceAsByteSlice(slice []uint16) []byte {
 	return result
 }
 
+func interval16SliceAsByteSlice(slice []interval16) []byte {
+	// make a new slice header
+	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
+
+	// update its capacity and length
+	header.Len *= 4
+	header.Cap *= 4
+
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	result := *(*[]byte)(unsafe.Pointer(&header))
+	runtime.KeepAlive(&slice)
+
+	// return it
+	return result
+}
+
 func (bc *bitmapContainer) asLittleEndianByteSlice() []byte {
 	return uint64SliceAsByteSlice(bc.bitmap)
 }
@@ -134,7 +150,7 @@ func byteSliceAsInterval16Slice(slice []byte) (result []interval16) {
 	return
 }
 
-// FromBuffer creates a bitmap from its serialized version stored in buffer.
+// FrozenView creates a static view of a serialized bitmap stored in buf.
 // It uses CRoaring's frozen bitmap format.
 //
 // The format specification is available here:
@@ -414,4 +430,88 @@ func (bm *Bitmap) FreezeTo(buf []byte) (int, error) {
 	}
 
 	return serialSize, nil
+}
+
+func (bm *Bitmap) WriteFrozenTo(wr io.Writer) (int, error) {
+	// FIXME: this is a naive version that iterates 4 times through the
+	// containers and allocates 3*len(containers) bytes; it's quite likely
+	// it can be done more efficiently.
+	containers := bm.highlowcontainer.containers
+	written := 0
+
+	for _, c := range containers {
+		c, ok := c.(*bitmapContainer)
+		if !ok {
+			continue
+		}
+		n, err := wr.Write(uint64SliceAsByteSlice(c.bitmap))
+		written += n
+		if err != nil {
+			return written, err
+		}
+	}
+
+	for _, c := range containers {
+		c, ok := c.(*runContainer16)
+		if !ok {
+			continue
+		}
+		n, err := wr.Write(interval16SliceAsByteSlice(c.iv))
+		written += n
+		if err != nil {
+			return written, err
+		}
+	}
+
+	for _, c := range containers {
+		c, ok := c.(*arrayContainer)
+		if !ok {
+			continue
+		}
+		n, err := wr.Write(uint16SliceAsByteSlice(c.content))
+		written += n
+		if err != nil {
+			return written, err
+		}
+	}
+
+	n, err := wr.Write(uint16SliceAsByteSlice(bm.highlowcontainer.keys))
+	written += n
+	if err != nil {
+		return written, err
+	}
+
+	countTypeBuf := make([]byte, 3*len(containers))
+	counts := byteSliceAsUint16Slice(countTypeBuf[:2*len(containers)])
+	types := countTypeBuf[2*len(containers):]
+
+	for i, c := range containers {
+		switch c := c.(type) {
+		case *bitmapContainer:
+			counts[i] = uint16(c.cardinality-1)
+			types[i] = 1
+		case *arrayContainer:
+			elems := len(c.content)
+			counts[i] = uint16(elems-1)
+			types[i] = 2
+		case *runContainer16:
+			runs := len(c.iv)
+			counts[i] = uint16(runs)
+			types[i] = 3
+		}
+	}
+
+	n, err = wr.Write(countTypeBuf)
+	written += n
+	if err != nil {
+		return written, err
+	}
+
+	header := uint32(FROZEN_COOKIE|(len(containers) << 15))
+	if err := binary.Write(wr, binary.LittleEndian, header); err != nil {
+		return written, err
+	}
+	written += 4
+
+	return written, nil
 }
