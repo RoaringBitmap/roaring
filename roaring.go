@@ -496,11 +496,17 @@ func (rb *Bitmap) Clone() *Bitmap {
 
 // Minimum get the smallest value stored in this roaring bitmap, assumes that it is not empty
 func (rb *Bitmap) Minimum() uint32 {
+	if len(rb.highlowcontainer.containers) == 0 {
+		panic("Empty bitmap")
+	}
 	return uint32(rb.highlowcontainer.containers[0].minimum()) | (uint32(rb.highlowcontainer.keys[0]) << 16)
 }
 
 // Maximum get the largest value stored in this roaring bitmap, assumes that it is not empty
 func (rb *Bitmap) Maximum() uint32 {
+	if len(rb.highlowcontainer.containers) == 0 {
+		panic("Empty bitmap")
+	}
 	lastindex := len(rb.highlowcontainer.containers) - 1
 	return uint32(rb.highlowcontainer.containers[lastindex].maximum()) | (uint32(rb.highlowcontainer.keys[lastindex]) << 16)
 }

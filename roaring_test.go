@@ -68,6 +68,27 @@ func TestRoaringRangeEnd(t *testing.T) {
 	assert.EqualValues(t, 0, r.GetCardinality())
 }
 
+func TestMaxPanic(t *testing.T) {
+    defer func() {
+        if r := recover(); r != nil {
+        }
+    }()
+	bm := New()
+	bm.Maximum()
+    t.Errorf("The code did not panic")
+}
+
+func TestMinPanic(t *testing.T) {
+    defer func() {
+        if r := recover(); r != nil {
+        }
+    }()
+	bm := New()
+	bm.Minimum()
+    t.Errorf("The code did not panic")
+}
+
+
 func TestFirstLast(t *testing.T) {
 	bm := New()
 	bm.AddInt(2)
