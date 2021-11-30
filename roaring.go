@@ -866,6 +866,27 @@ main:
 	return answer
 }
 
+// IntersectsWithInterval checks whether a bitmap 'rb' and an open interval '[x,y)' intersect.
+func (rb *Bitmap) IntersectsWithInterval(x, y uint64) bool {
+	if x >= y {
+		return false
+	}
+	if x > MaxUint32 {
+		return false
+	}
+
+	it := newIntIterator(rb)
+	it.AdvanceIfNeeded(uint32(x))
+	if !it.HasNext() {
+		return false
+	}
+	if uint64(it.Next()) >= y {
+		return false
+	}
+
+	return true
+}
+
 // Intersects checks whether two bitmap intersects, bitmaps are not modified
 func (rb *Bitmap) Intersects(x2 *Bitmap) bool {
 	pos1 := 0

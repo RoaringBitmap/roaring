@@ -285,6 +285,38 @@ func TestIntersects1(t *testing.T) {
 	assert.True(t, bm2.Intersects(bm))
 }
 
+func TestIntersectsWithInterval(t *testing.T) {
+	bm := NewBitmap()
+	bm.AddRange(21, 26)
+
+	// Empty interval in range
+	assert.False(t, bm.IntersectsWithInterval(22, 22))
+	// Empty interval out of range
+	assert.False(t, bm.IntersectsWithInterval(27, 27))
+
+	// Non-empty interval in range, fully included
+	assert.True(t, bm.IntersectsWithInterval(22, 23))
+	// Non-empty intervals partially overlapped
+	assert.True(t, bm.IntersectsWithInterval(19, 23))
+	assert.True(t, bm.IntersectsWithInterval(23, 30))
+	// Non-empty interval covering the full range
+	assert.True(t, bm.IntersectsWithInterval(19, 30))
+
+	// Non-empty interval before start of bitmap
+	assert.False(t, bm.IntersectsWithInterval(19, 20))
+	// Non-empty interval after end of bitmap
+	assert.False(t, bm.IntersectsWithInterval(28, 30))
+
+	// Non-empty interval inside "hole" in bitmap
+	bm.AddRange(30, 40)
+	assert.False(t, bm.IntersectsWithInterval(28, 29))
+
+	// Non-empty interval, non-overlapping on the open side
+	assert.False(t, bm.IntersectsWithInterval(28, 30))
+	// Non-empty interval, overlapping on the open side
+	assert.True(t, bm.IntersectsWithInterval(28, 31))
+}
+
 func TestRangePanic(t *testing.T) {
 	bm := NewBitmap()
 	bm.Add(1)
