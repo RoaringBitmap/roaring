@@ -9,7 +9,7 @@ import (
 )
 
 type container interface {
-	addOffset(uint16) []container
+	addOffset(uint16) (container, container)
 
 	clone() container
 	and(container) container

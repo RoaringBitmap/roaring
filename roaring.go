@@ -545,9 +545,9 @@ func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 			key += containerOffset
 
 			c := x.highlowcontainer.getContainerAtIndex(pos)
-			offsetted := c.addOffset(inOffset)
+			lo, hi := c.addOffset(inOffset)
 
-			if !offsetted[0].isEmpty() && (key >= 0 && key <= MaxUint16) {
+			if !lo.isEmpty() && (key >= 0 && key <= MaxUint16) {
 				curSize := answer.highlowcontainer.size()
 				lastkey := int32(0)
 
@@ -557,15 +557,15 @@ func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 
 				if curSize > 0 && lastkey == key {
 					prev := answer.highlowcontainer.getContainerAtIndex(curSize - 1)
-					orrseult := prev.ior(offsetted[0])
+					orrseult := prev.ior(lo)
 					answer.highlowcontainer.setContainerAtIndex(curSize-1, orrseult)
 				} else {
-					answer.highlowcontainer.appendContainer(uint16(key), offsetted[0], false)
+					answer.highlowcontainer.appendContainer(uint16(key), lo, false)
 				}
 			}
 
-			if !offsetted[1].isEmpty() && ((key+1) >= 0 && (key+1) <= MaxUint16) {
-				answer.highlowcontainer.appendContainer(uint16(key+1), offsetted[1], false)
+			if !hi.isEmpty() && ((key+1) >= 0 && (key+1) <= MaxUint16) {
+				answer.highlowcontainer.appendContainer(uint16(key+1), hi, false)
 			}
 		}
 	}

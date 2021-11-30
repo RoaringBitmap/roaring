@@ -2582,7 +2582,7 @@ func (rc *runContainer16) serializedSizeInBytes() int {
 	return 2 + len(rc.iv)*4
 }
 
-func (rc *runContainer16) addOffset(x uint16) []container {
+func (rc *runContainer16) addOffset(x uint16) (container, container) {
 	low := newRunContainer16()
 	high := newRunContainer16()
 
@@ -2600,5 +2600,5 @@ func (rc *runContainer16) addOffset(x uint16) []container {
 			high.iv = append(high.iv, interval16{uint16(val & 0xffff), iv.length})
 		}
 	}
-	return []container{low, high}
+	return low, high
 }

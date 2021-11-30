@@ -1125,7 +1125,7 @@ func (bc *bitmapContainer) containerType() contype {
 	return bitmapContype
 }
 
-func (bc *bitmapContainer) addOffset(x uint16) []container {
+func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 	low := newBitmapContainer()
 	high := newBitmapContainer()
 	b := uint32(x) >> 6
@@ -1150,5 +1150,5 @@ func (bc *bitmapContainer) addOffset(x uint16) []container {
 	}
 	low.computeCardinality()
 	high.computeCardinality()
-	return []container{low, high}
+	return low, high
 }

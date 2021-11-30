@@ -69,18 +69,18 @@ func TestArrayOffset(t *testing.T) {
 		v = v.iaddReturnMinimized(n)
 		expected[i] = int(n) + int(offtest)
 	}
-	w := v.addOffset(offtest)
-	w0card := w[0].getCardinality()
-	w1card := w[1].getCardinality()
+	l, h := v.addOffset(offtest)
+	w0card := l.getCardinality()
+	w1card := h.getCardinality()
 
 	assert.Equal(t, 3, w0card+w1card)
 
 	wout := make([]int, len(nums))
 	for i := 0; i < w0card; i++ {
-		wout[i] = w[0].selectInt(uint16(i))
+		wout[i] = l.selectInt(uint16(i))
 	}
 	for i := 0; i < w1card; i++ {
-		wout[i+w0card] = w[1].selectInt(uint16(i)) + 65536
+		wout[i+w0card] = h.selectInt(uint16(i)) + 65536
 	}
 	for i, x := range wout {
 		assert.Equal(t, expected[i], x)

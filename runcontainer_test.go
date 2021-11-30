@@ -80,9 +80,9 @@ func TestRleInterval16s(t *testing.T) {
 func TestRunOffset(t *testing.T) {
 	v := newRunContainer16TakeOwnership([]interval16{newInterval16Range(34, 39)})
 	offtest := uint16(65500)
-	w := v.addOffset(offtest)
-	w0card := w[0].getCardinality()
-	w1card := w[1].getCardinality()
+	l, h := v.addOffset(offtest)
+	w0card := l.getCardinality()
+	w1card := h.getCardinality()
 
 	if w0card+w1card != 6 {
 		t.Errorf("Bogus cardinality.")
@@ -91,10 +91,10 @@ func TestRunOffset(t *testing.T) {
 	expected := []int{65534, 65535, 65536, 65537, 65538, 65539}
 	wout := make([]int, len(expected))
 	for i := 0; i < w0card; i++ {
-		wout[i] = w[0].selectInt(uint16(i))
+		wout[i] = l.selectInt(uint16(i))
 	}
 	for i := 0; i < w1card; i++ {
-		wout[i+w0card] = w[1].selectInt(uint16(i)) + 65536
+		wout[i+w0card] = h.selectInt(uint16(i)) + 65536
 	}
 
 	for i, x := range wout {

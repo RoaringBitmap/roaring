@@ -1007,7 +1007,7 @@ func (ac *arrayContainer) containerType() contype {
 	return arrayContype
 }
 
-func (ac *arrayContainer) addOffset(x uint16) []container {
+func (ac *arrayContainer) addOffset(x uint16) (container, container) {
 	low := &arrayContainer{}
 	high := &arrayContainer{}
 	for _, val := range ac.content {
@@ -1018,5 +1018,5 @@ func (ac *arrayContainer) addOffset(x uint16) []container {
 			low.content = append(low.content, lowbits(y))
 		}
 	}
-	return []container{low, high}
+	return low, high
 }
