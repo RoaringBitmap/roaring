@@ -155,8 +155,12 @@ func testAddOffset(t *testing.T, arr []uint32, offset int64) {
 
 	cop := AddOffset64(bmp, offset)
 
-	assert.EqualValues(t, len(expected), cop.GetCardinality())
-	assert.EqualValues(t, expected, cop.ToArray())
+	if !assert.EqualValues(t, len(expected), cop.GetCardinality()) {
+		t.Logf("Applying offset %d", offset)
+	}
+	if !assert.EqualValues(t, expected, cop.ToArray()) {
+		t.Logf("Applying offset %d", offset)
+	}
 
 	// Now check backing off gets us back all non-discarded numbers
 	expected2 := make([]uint32, 0, len(expected))
@@ -169,8 +173,12 @@ func testAddOffset(t *testing.T, arr []uint32, offset int64) {
 
 	cop2 := AddOffset64(cop, -offset)
 
-	assert.EqualValues(t, len(expected2), cop2.GetCardinality())
-	assert.EqualValues(t, expected2, cop2.ToArray())
+	if !assert.EqualValues(t, len(expected2), cop2.GetCardinality()) {
+		t.Logf("Restoring from offset %d", offset)
+	}
+	if !assert.EqualValues(t, expected2, cop2.ToArray()) {
+		t.Logf("Restoring from offset %d", offset)
+	}
 }
 
 func TestRoaringBitmapAddOffset(t *testing.T) {
