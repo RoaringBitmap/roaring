@@ -557,8 +557,8 @@ func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 
 				if curSize > 0 && lastkey == key {
 					prev := answer.highlowcontainer.getContainerAtIndex(curSize - 1)
-					orrseult := prev.ior(lo)
-					answer.highlowcontainer.setContainerAtIndex(curSize-1, orrseult)
+					orresult := prev.ior(lo)
+					answer.highlowcontainer.setContainerAtIndex(curSize-1, orresult)
 				} else {
 					answer.highlowcontainer.appendContainer(uint16(key), lo, false)
 				}
