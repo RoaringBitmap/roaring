@@ -522,7 +522,7 @@ func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 
 	answer = New()
 
-	if containerOffset64 >= (1<<16) || containerOffset64 <= -(1<<16) {
+	if containerOffset64 >= (1<<16) || containerOffset64 < -(1<<16) {
 		return answer
 	}
 
