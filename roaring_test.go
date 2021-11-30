@@ -141,52 +141,110 @@ func TestRoaringBitmapAddMany(t *testing.T) {
 	assert.EqualValues(t, len(array), bmp.GetCardinality())
 }
 
+func testAddOffset(t *testing.T, arr []uint32, offset int64) {
+	expected := make([]uint32, 0, len(arr))
+	for _, i := range arr {
+		v := int64(i) + offset
+		if v >= 0 && v <= MaxUint32 {
+			expected = append(expected, uint32(v))
+		}
+	}
+
+	bmp := NewBitmap()
+	bmp.AddMany(arr)
+
+	cop := AddOffset64(bmp, offset)
+
+	if !assert.EqualValues(t, len(expected), cop.GetCardinality()) {
+		t.Logf("Applying offset %d", offset)
+	}
+	if !assert.EqualValues(t, expected, cop.ToArray()) {
+		t.Logf("Applying offset %d", offset)
+	}
+
+	// Now check backing off gets us back all non-discarded numbers
+	expected2 := make([]uint32, 0, len(expected))
+	for _, i := range expected {
+		v := int64(i) - offset
+		if v >= 0 && v <= MaxUint32 {
+			expected2 = append(expected2, uint32(v))
+		}
+	}
+
+	cop2 := AddOffset64(cop, -offset)
+
+	if !assert.EqualValues(t, len(expected2), cop2.GetCardinality()) {
+		t.Logf("Restoring from offset %d", offset)
+	}
+	if !assert.EqualValues(t, expected2, cop2.ToArray()) {
+		t.Logf("Restoring from offset %d", offset)
+	}
+}
+
 func TestRoaringBitmapAddOffset(t *testing.T) {
-	cases := []struct {
+	type testCase struct {
 		arr      []uint32
 		offset   int64
-		expected []uint32
-	}{
+	}
+	cases := []testCase{
 		{
 			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
 			offset:   25000,
-			expected: []uint32{30580, 58722, 69031, 82276, 108097},
 		},
 		{
 			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
 			offset:   -25000,
-			expected: []uint32{8722, 19031, 32276, 58097},
 		},
 		{
 			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
 			offset:   -83097,
-			expected: []uint32{0},
 		},
 		{
 			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
 			offset:   MaxUint32,
-			expected: []uint32{},
 		},
 		{
 			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
 			offset:   -MaxUint32,
-			expected: []uint32{},
 		},
 		{
 			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
 			offset:   0,
-			expected: []uint32{5580, 33722, 44031, 57276, 83097},
+		},
+		{
+			arr:      []uint32{0},
+			offset:   100,
+		},
+		{
+			arr:      []uint32{0},
+			offset:   0xffff0000,
+		},
+		{
+			arr:      []uint32{0},
+			offset:   0xffff0001,
 		},
 	}
 
+	arr := []uint32{10, 0xffff, 0x010101}
+	for i := uint32(100000); i < 200000; i += 4 {
+		arr = append(arr, i)
+	}
+	arr = append(arr, 400000)
+	arr = append(arr, 1400000)
+	for offset := int64(3); offset < 1000000; offset *= 3 {
+		c := testCase{arr, offset}
+		cases = append(cases, c)
+	}
+	for offset := int64(1024); offset < 1000000; offset *= 2 {
+		c := testCase{arr, offset}
+		cases = append(cases, c)
+	}
+
 	for _, c := range cases {
-		bmp := NewBitmap()
-		bmp.AddMany(c.arr)
-
-		cop := AddOffset64(bmp, c.offset)
-
-		assert.EqualValues(t, len(c.expected), cop.GetCardinality())
-		assert.EqualValues(t, c.expected, cop.ToArray())
+		// Positive offset
+		testAddOffset(t, c.arr, c.offset)
+		// Negative offset
+		testAddOffset(t, c.arr, -c.offset)
 	}
 }
 

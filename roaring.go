@@ -520,26 +520,26 @@ func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 		containerOffset64 = offset >> 16
 	}
 
-	if containerOffset64 >= (1<<16) || containerOffset64 <= -(1<<16) {
-		return New()
+	answer = New()
+
+	if containerOffset64 >= (1<<16) || containerOffset64 < -(1<<16) {
+		return answer
 	}
 
 	containerOffset := int32(containerOffset64)
 	inOffset := (uint16)(offset - containerOffset64*(1<<16))
 
 	if inOffset == 0 {
-		answer = x.Clone()
-		for pos := 0; pos < answer.highlowcontainer.size(); pos++ {
-			key := int32(answer.highlowcontainer.getKeyAtIndex(pos))
+		for pos := 0; pos < x.highlowcontainer.size(); pos++ {
+			key := int32(x.highlowcontainer.getKeyAtIndex(pos))
 			key += containerOffset
 
 			if key >= 0 && key <= MaxUint16 {
-				answer.highlowcontainer.keys[pos] = uint16(key)
+				c := x.highlowcontainer.getContainerAtIndex(pos).clone()
+				answer.highlowcontainer.appendContainer(uint16(key), c, false)
 			}
 		}
 	} else {
-		answer = New()
-
 		for pos := 0; pos < x.highlowcontainer.size(); pos++ {
 			key := int32(x.highlowcontainer.getKeyAtIndex(pos))
 			key += containerOffset
