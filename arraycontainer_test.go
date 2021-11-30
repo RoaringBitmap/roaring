@@ -70,18 +70,27 @@ func TestArrayOffset(t *testing.T) {
 		expected[i] = int(n) + int(offtest)
 	}
 	l, h := v.addOffset(offtest)
-	w0card := l.getCardinality()
-	w1card := h.getCardinality()
+
+	var w0card, w1card int
+	wout := make([]int, len(nums))
+
+	if l != nil {
+		w0card = l.getCardinality()
+
+		for i := 0; i < w0card; i++ {
+			wout[i] = l.selectInt(uint16(i))
+		}
+	}
+
+	if h != nil {
+		w1card = h.getCardinality()
+
+		for i := 0; i < w1card; i++ {
+			wout[i+w0card] = h.selectInt(uint16(i)) + 65536
+		}
+	}
 
 	assert.Equal(t, 3, w0card+w1card)
-
-	wout := make([]int, len(nums))
-	for i := 0; i < w0card; i++ {
-		wout[i] = l.selectInt(uint16(i))
-	}
-	for i := 0; i < w1card; i++ {
-		wout[i+w0card] = h.selectInt(uint16(i)) + 65536
-	}
 	for i, x := range wout {
 		assert.Equal(t, expected[i], x)
 	}

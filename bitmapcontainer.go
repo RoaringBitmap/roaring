@@ -1126,14 +1126,19 @@ func (bc *bitmapContainer) containerType() contype {
 }
 
 func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
-	low := newBitmapContainer()
-	high := newBitmapContainer()
+	var low, high *bitmapContainer
+
+	if bc.cardinality == 0 {
+		return nil, nil
+	}
+
 	b := uint32(x) >> 6
 	i := uint32(x) % 64
 	end := uint32(1024) - b
+
+	low = newBitmapContainer()
 	if i == 0 {
 		copy(low.bitmap[b:], bc.bitmap[:end])
-		copy(high.bitmap[:b], bc.bitmap[end:])
 	} else {
 		low.bitmap[b] = bc.bitmap[0] << i
 		for k := uint32(1); k < end; k++ {
@@ -1141,6 +1146,26 @@ func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 			newval |= bc.bitmap[k-1] >> (64 - i)
 			low.bitmap[b+k] = newval
 		}
+	}
+	low.computeCardinality()
+
+	if low.cardinality == bc.cardinality {
+		// All elements from bc ended up in low, meaning high will be empty.
+		return low, nil
+	}
+
+	if low.cardinality == 0 {
+		// low is empty, let's reuse the container for high.
+		high = low
+		low = nil
+	} else {
+		// None of the containers will be empty, so allocate both.
+		high = newBitmapContainer()
+	}
+
+	if i == 0 {
+		copy(high.bitmap[:b], bc.bitmap[end:])
+	} else {
 		for k := end; k < 1024; k++ {
 			newval := bc.bitmap[k] << i
 			newval |= bc.bitmap[k-1] >> (64 - i)
@@ -1148,7 +1173,12 @@ func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 		}
 		high.bitmap[b] = bc.bitmap[1023] >> (64 - i)
 	}
-	low.computeCardinality()
 	high.computeCardinality()
+
+	// Ensure proper nil interface.
+	if low == nil {
+		return nil, high
+	}
+
 	return low, high
 }

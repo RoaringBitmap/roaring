@@ -81,26 +81,31 @@ func TestRunOffset(t *testing.T) {
 	v := newRunContainer16TakeOwnership([]interval16{newInterval16Range(34, 39)})
 	offtest := uint16(65500)
 	l, h := v.addOffset(offtest)
-	w0card := l.getCardinality()
-	w1card := h.getCardinality()
-
-	if w0card+w1card != 6 {
-		t.Errorf("Bogus cardinality.")
-	}
 
 	expected := []int{65534, 65535, 65536, 65537, 65538, 65539}
 	wout := make([]int, len(expected))
-	for i := 0; i < w0card; i++ {
-		wout[i] = l.selectInt(uint16(i))
-	}
-	for i := 0; i < w1card; i++ {
-		wout[i+w0card] = h.selectInt(uint16(i)) + 65536
+
+	var w0card, w1card int
+
+	if l != nil {
+		w0card = l.getCardinality()
+
+		for i := 0; i < w0card; i++ {
+			wout[i] = l.selectInt(uint16(i))
+		}
 	}
 
-	for i, x := range wout {
-		if x != expected[i] {
-			t.Errorf("found discrepancy %d!=%d", x, expected[i])
+	if h != nil {
+		w1card = h.getCardinality()
+
+		for i := 0; i < w1card; i++ {
+			wout[i+w0card] = h.selectInt(uint16(i)) + 65536
 		}
+	}
+
+	assert.Equal(t, v.getCardinality(), w0card+w1card)
+	for i, x := range wout {
+		assert.Equal(t, expected[i], x)
 	}
 }
 

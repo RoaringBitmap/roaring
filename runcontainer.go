@@ -2583,8 +2583,26 @@ func (rc *runContainer16) serializedSizeInBytes() int {
 }
 
 func (rc *runContainer16) addOffset(x uint16) (container, container) {
-	low := newRunContainer16()
-	high := newRunContainer16()
+	var low, high *runContainer16
+
+	if len(rc.iv) == 0 {
+		return nil, nil
+	}
+
+	first := uint32(rc.iv[0].start) + uint32(x)
+	if highbits(first) == 0 {
+		// Some elements will fall into low part, allocate a container.
+		// Checking the first one is enough because they are ordered.
+		low = newRunContainer16()
+	}
+	last := uint32(rc.iv[len(rc.iv)-1].start)
+	last += uint32(rc.iv[len(rc.iv)-1].length)
+	last += uint32(x)
+	if highbits(last) > 0 {
+		// Some elements will fall into high part, allocate a container.
+		// Checking the last one is enough because they are ordered.
+		high = newRunContainer16()
+	}
 
 	for _, iv := range rc.iv {
 		val := int(iv.start) + int(x)
@@ -2600,5 +2618,14 @@ func (rc *runContainer16) addOffset(x uint16) (container, container) {
 			high.iv = append(high.iv, interval16{uint16(val & 0xffff), iv.length})
 		}
 	}
+
+	// Ensure proper nil interface.
+	if low == nil {
+		return nil, high
+	}
+	if high == nil {
+		return low, nil
+	}
+
 	return low, high
 }

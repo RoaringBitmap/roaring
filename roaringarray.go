@@ -9,6 +9,9 @@ import (
 )
 
 type container interface {
+	// addOffset returns the (low, high) parts of the shifted container.
+	// Whenever one of them would be empty, nil will be returned instead to
+	// avoid unnecessary allocations.
 	addOffset(uint16) (container, container)
 
 	clone() container
