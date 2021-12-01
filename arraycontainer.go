@@ -1007,16 +1007,42 @@ func (ac *arrayContainer) containerType() contype {
 	return arrayContype
 }
 
-func (ac *arrayContainer) addOffset(x uint16) []container {
-	low := &arrayContainer{}
-	high := &arrayContainer{}
+func (ac *arrayContainer) addOffset(x uint16) (container, container) {
+	var low, high *arrayContainer
+
+	if len(ac.content) == 0 {
+		return nil, nil
+	}
+
+	if y := uint32(ac.content[0]) + uint32(x); highbits(y) == 0 {
+		// Some elements will fall into low part, allocate a container.
+		// Checking the first one is enough because they are ordered.
+		low = &arrayContainer{}
+	}
+	if y := uint32(ac.content[len(ac.content)-1]) + uint32(x); highbits(y) > 0 {
+		// Some elements will fall into high part, allocate a container.
+		// Checking the last one is enough because they are ordered.
+		high = &arrayContainer{}
+	}
+
 	for _, val := range ac.content {
 		y := uint32(val) + uint32(x)
 		if highbits(y) > 0 {
+			// OK, if high == nil then highbits(y) == 0 for all y.
 			high.content = append(high.content, lowbits(y))
 		} else {
+			// OK, if low == nil then highbits(y) > 0 for all y.
 			low.content = append(low.content, lowbits(y))
 		}
 	}
-	return []container{low, high}
+
+	// Ensure proper nil interface.
+	if low == nil {
+		return nil, high
+	}
+	if high == nil {
+		return low, nil
+	}
+
+	return low, high
 }
