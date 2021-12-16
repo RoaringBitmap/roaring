@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"github.com/RoaringBitmap/roaring/internal"
+	"io"
 )
 
 type container interface {
@@ -554,9 +554,9 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 }
 
 func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte) (int64, error) {
-  var cookie uint32
+	var cookie uint32
 	var err error
-  if len(cookieHeader) > 0 && len(cookieHeader) != 4 {
+	if len(cookieHeader) > 0 && len(cookieHeader) != 4 {
 		return int64(len(cookieHeader)), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: incorrect size of cookie header")
 	}
 	if len(cookieHeader) == 4 {
@@ -648,7 +648,7 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 			}
 
 			nb := runContainer16{
-				iv:   byteSliceAsInterval16Slice(buf),
+				iv: byteSliceAsInterval16Slice(buf),
 			}
 
 			ra.containers[i] = &nb

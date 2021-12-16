@@ -350,7 +350,6 @@ func (bc *bitmapContainer) getCardinality() int {
 	return bc.cardinality
 }
 
-
 func (bc *bitmapContainer) isEmpty() bool {
 	return bc.cardinality == 0
 }

@@ -1,3 +1,4 @@
+//go:build go1.13
 // +build go1.13
 
 package roaring
@@ -72,4 +73,3 @@ func BenchmarkSizeRoaring(b *testing.B) {
 	}
 	b.ReportMetric(float64(s1.GetSerializedSizeInBytes()+s2.GetSerializedSizeInBytes())/(1024.0*1024), "RoaringSizeInMB")
 }
-
