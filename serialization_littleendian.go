@@ -1,3 +1,4 @@
+//go:build (386 && !appengine) || (amd64 && !appengine) || (arm && !appengine) || (arm64 && !appengine) || (ppc64le && !appengine) || (mipsle && !appengine) || (mips64le && !appengine) || (mips64p32le && !appengine) || (wasm && !appengine)
 // +build 386,!appengine amd64,!appengine arm,!appengine arm64,!appengine ppc64le,!appengine mipsle,!appengine mips64le,!appengine mips64p32le,!appengine wasm,!appengine
 
 package roaring
@@ -214,13 +215,13 @@ func (rb *Bitmap) FrozenView(buf []byte) error {
 const FROZEN_COOKIE = 13766
 
 var (
-	FrozenBitmapInvalidCookie = errors.New("header does not contain the FROZEN_COOKIE")
-	FrozenBitmapBigEndian = errors.New("loading big endian frozen bitmaps is not supported")
-	FrozenBitmapIncomplete = errors.New("input buffer too small to contain a frozen bitmap")
-	FrozenBitmapOverpopulated = errors.New("too many containers")
-	FrozenBitmapUnexpectedData = errors.New("spurious data in input")
+	FrozenBitmapInvalidCookie   = errors.New("header does not contain the FROZEN_COOKIE")
+	FrozenBitmapBigEndian       = errors.New("loading big endian frozen bitmaps is not supported")
+	FrozenBitmapIncomplete      = errors.New("input buffer too small to contain a frozen bitmap")
+	FrozenBitmapOverpopulated   = errors.New("too many containers")
+	FrozenBitmapUnexpectedData  = errors.New("spurious data in input")
 	FrozenBitmapInvalidTypecode = errors.New("unrecognized typecode")
-	FrozenBitmapBufferTooSmall = errors.New("buffer too small")
+	FrozenBitmapBufferTooSmall  = errors.New("buffer too small")
 )
 
 func (ra *roaringArray) frozenView(buf []byte) error {
@@ -229,14 +230,14 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 	}
 
 	headerBE := binary.BigEndian.Uint32(buf[len(buf)-4:])
-	if headerBE & 0x7fff == FROZEN_COOKIE {
+	if headerBE&0x7fff == FROZEN_COOKIE {
 		return FrozenBitmapBigEndian
 	}
 
 	header := binary.LittleEndian.Uint32(buf[len(buf)-4:])
 	buf = buf[:len(buf)-4]
 
-	if header & 0x7fff != FROZEN_COOKIE {
+	if header&0x7fff != FROZEN_COOKIE {
 		return FrozenBitmapInvalidCookie
 	}
 
@@ -262,12 +263,12 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 	nBitmap, nArray, nRun := uint64(0), uint64(0), uint64(0)
 	nArrayEl, nRunEl := uint64(0), uint64(0)
 	for i, t := range types {
-		switch (t) {
+		switch t {
 		case 1:
 			nBitmap++
 		case 2:
 			nArray++
-			nArrayEl += uint64(counts[i])+1
+			nArrayEl += uint64(counts[i]) + 1
 		case 3:
 			nRun++
 			nRunEl += uint64(counts[i])
@@ -276,12 +277,12 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 		}
 	}
 
-	if uint64(len(buf)) < (1 << 13)*nBitmap + 4*nRunEl + 2*nArrayEl {
+	if uint64(len(buf)) < (1<<13)*nBitmap+4*nRunEl+2*nArrayEl {
 		return FrozenBitmapIncomplete
 	}
 
-	bitsetsArena := byteSliceAsUint64Slice(buf[:(1 << 13)*nBitmap])
-	buf = buf[(1 << 13)*nBitmap:]
+	bitsetsArena := byteSliceAsUint64Slice(buf[:(1<<13)*nBitmap])
+	buf = buf[(1<<13)*nBitmap:]
 
 	runsArena := byteSliceAsInterval16Slice(buf[:4*nRunEl])
 	buf = buf[4*nRunEl:]
@@ -304,16 +305,16 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 	for i, t := range types {
 		needCOW[i] = true
 
-		switch (t) {
+		switch t {
 		case 1:
 			containers[i] = &bitsets[iBitset]
-			bitsets[iBitset].cardinality = int(counts[i])+1
+			bitsets[iBitset].cardinality = int(counts[i]) + 1
 			bitsets[iBitset].bitmap = bitsetsArena[:1024]
 			bitsetsArena = bitsetsArena[1024:]
 			iBitset++
 		case 2:
 			containers[i] = &arrays[iArray]
-			sz := int(counts[i])+1
+			sz := int(counts[i]) + 1
 			arrays[iArray].content = arraysArena[:sz]
 			arraysArena = arraysArena[sz:]
 			iArray++
@@ -379,13 +380,13 @@ func (bm *Bitmap) FreezeTo(buf []byte) (int, error) {
 		}
 	}
 
-	serialSize := 4 + 5*nCont + (1 << 13)*nBits + 4*nRunEl + 2*nArrayEl
+	serialSize := 4 + 5*nCont + (1<<13)*nBits + 4*nRunEl + 2*nArrayEl
 	if len(buf) < serialSize {
 		return 0, FrozenBitmapBufferTooSmall
 	}
 
-	bitsArena := byteSliceAsUint64Slice(buf[:(1 << 13)*nBits])
-	buf = buf[(1 << 13)*nBits:]
+	bitsArena := byteSliceAsUint64Slice(buf[:(1<<13)*nBits])
+	buf = buf[(1<<13)*nBits:]
 
 	runsArena := byteSliceAsInterval16Slice(buf[:4*nRunEl])
 	buf = buf[4*nRunEl:]
@@ -402,7 +403,7 @@ func (bm *Bitmap) FreezeTo(buf []byte) (int, error) {
 	types := buf[:nCont]
 	buf = buf[nCont:]
 
-	header := uint32(FROZEN_COOKIE|(nCont << 15))
+	header := uint32(FROZEN_COOKIE | (nCont << 15))
 	binary.LittleEndian.PutUint32(buf[:4], header)
 
 	copy(keys, bm.highlowcontainer.keys[:])
@@ -412,13 +413,13 @@ func (bm *Bitmap) FreezeTo(buf []byte) (int, error) {
 		case *bitmapContainer:
 			copy(bitsArena, v.bitmap)
 			bitsArena = bitsArena[1024:]
-			counts[i] = uint16(v.cardinality-1)
+			counts[i] = uint16(v.cardinality - 1)
 			types[i] = 1
 		case *arrayContainer:
 			copy(arraysArena, v.content)
 			arraysArena = arraysArena[len(v.content):]
 			elems := len(v.content)
-			counts[i] = uint16(elems-1)
+			counts[i] = uint16(elems - 1)
 			types[i] = 2
 		case *runContainer16:
 			copy(runsArena, v.iv)
@@ -488,11 +489,11 @@ func (bm *Bitmap) WriteFrozenTo(wr io.Writer) (int, error) {
 	for i, c := range containers {
 		switch c := c.(type) {
 		case *bitmapContainer:
-			counts[i] = uint16(c.cardinality-1)
+			counts[i] = uint16(c.cardinality - 1)
 			types[i] = 1
 		case *arrayContainer:
 			elems := len(c.content)
-			counts[i] = uint16(elems-1)
+			counts[i] = uint16(elems - 1)
 			types[i] = 2
 		case *runContainer16:
 			runs := len(c.iv)
@@ -507,7 +508,7 @@ func (bm *Bitmap) WriteFrozenTo(wr io.Writer) (int, error) {
 		return written, err
 	}
 
-	header := uint32(FROZEN_COOKIE|(len(containers) << 15))
+	header := uint32(FROZEN_COOKIE | (len(containers) << 15))
 	if err := binary.Write(wr, binary.LittleEndian, header); err != nil {
 		return written, err
 	}

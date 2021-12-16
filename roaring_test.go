@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/bits-and-blooms/bitset"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestReverseIteratorCount(t *testing.T) {
@@ -68,25 +68,24 @@ func TestRoaringRangeEnd(t *testing.T) {
 }
 
 func TestMaxPanic(t *testing.T) {
-    defer func() {
-        if r := recover(); r != nil {
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
 	bm := New()
 	bm.Maximum()
-    t.Errorf("The code did not panic")
+	t.Errorf("The code did not panic")
 }
 
 func TestMinPanic(t *testing.T) {
-    defer func() {
-        if r := recover(); r != nil {
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
 	bm := New()
 	bm.Minimum()
-    t.Errorf("The code did not panic")
+	t.Errorf("The code did not panic")
 }
-
 
 func TestFirstLast(t *testing.T) {
 	bm := New()
@@ -183,45 +182,45 @@ func testAddOffset(t *testing.T, arr []uint32, offset int64) {
 
 func TestRoaringBitmapAddOffset(t *testing.T) {
 	type testCase struct {
-		arr      []uint32
-		offset   int64
+		arr    []uint32
+		offset int64
 	}
 	cases := []testCase{
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   25000,
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: 25000,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   -25000,
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: -25000,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   -83097,
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: -83097,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   MaxUint32,
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: MaxUint32,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   -MaxUint32,
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: -MaxUint32,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   0,
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: 0,
 		},
 		{
-			arr:      []uint32{0},
-			offset:   100,
+			arr:    []uint32{0},
+			offset: 100,
 		},
 		{
-			arr:      []uint32{0},
-			offset:   0xffff0000,
+			arr:    []uint32{0},
+			offset: 0xffff0000,
 		},
 		{
-			arr:      []uint32{0},
-			offset:   0xffff0001,
+			arr:    []uint32{0},
+			offset: 0xffff0001,
 		},
 	}
 
