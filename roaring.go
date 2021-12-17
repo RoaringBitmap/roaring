@@ -544,6 +544,10 @@ func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 			key := int32(x.highlowcontainer.getKeyAtIndex(pos))
 			key += containerOffset
 
+			if key+1 < 0 || key > MaxUint16 {
+				continue
+			}
+
 			c := x.highlowcontainer.getContainerAtIndex(pos)
 			lo, hi := c.addOffset(inOffset)
 
