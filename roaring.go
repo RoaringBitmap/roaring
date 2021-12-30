@@ -703,10 +703,6 @@ func (rb *Bitmap) Rank(x uint32) uint64 {
 // the smallest element. Note that this function differs in convention from
 // the Rank function which returns 1 on the smallest value.
 func (rb *Bitmap) Select(x uint32) (uint32, error) {
-	if rb.GetCardinality() <= uint64(x) {
-		return 0, fmt.Errorf("can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
-	}
-
 	remaining := x
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
 		c := rb.highlowcontainer.getContainerAtIndex(i)
