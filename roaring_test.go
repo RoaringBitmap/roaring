@@ -33,6 +33,45 @@ func checkValidity(t *testing.T, rb *Bitmap) {
 	}
 }
 
+func hashTest(t *testing.T, N uint64) {
+	t.Log("rtest N=", N)
+
+	hashes := map[uint64]struct{}{}
+	count := 0
+
+	for gap := uint64(1); gap <= 65536; gap *= 2 {
+		rb1, rb2 := NewBitmap(), NewBitmap()
+		for x := uint64(0); x <= N*gap; x += gap {
+			rb1.AddInt(int(x))
+			rb2.AddInt(int(x))
+		}
+
+		assert.EqualValues(t, rb1.Checksum(), rb2.Checksum())
+		count++
+		hashes[rb1.Checksum()] = struct{}{}
+
+		rb1, rb2 = NewBitmap(), NewBitmap()
+		for x := uint64(0); x <= N*gap; x += gap {
+			// x+3 guarantees runs, gap/2 guarantees some variety
+			if x + 3 + gap/2 > MaxUint32 {
+				break
+			}
+			rb1.AddRange(uint64(x), uint64(x + 3 + gap/2))
+			rb2.AddRange(uint64(x), uint64(x + 3 + gap/2))
+		}
+
+		rb1.RunOptimize()
+		rb2.RunOptimize()
+
+		assert.EqualValues(t, rb1.Checksum(), rb2.Checksum())
+		count++
+		hashes[rb1.Checksum()] = struct{}{}
+	}
+
+	// Make sure that at least for this reduced set we have no collisions.
+	assert.Equal(t, count, len(hashes))
+}
+
 func TestReverseIteratorCount(t *testing.T) {
 	array := []int{2, 63, 64, 65, 4095, 4096, 4097, 4159, 4160, 4161, 5000, 20000, 66666}
 	for _, testSize := range array {
@@ -1775,6 +1814,19 @@ func TestBigRandom(t *testing.T) {
 	rTest(t, 4097)
 	rTest(t, 65536)
 	rTest(t, 65536*16)
+}
+
+func TestHash(t *testing.T) {
+	hashTest(t, 15)
+	hashTest(t, 100)
+	hashTest(t, 512)
+	hashTest(t, 1023)
+	hashTest(t, 1025)
+	hashTest(t, 4095)
+	hashTest(t, 4096)
+	hashTest(t, 4097)
+	hashTest(t, 65536)
+	hashTest(t, 65536*16)
 }
 
 func rTest(t *testing.T, N int) {

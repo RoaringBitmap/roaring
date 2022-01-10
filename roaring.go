@@ -53,6 +53,59 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
+// Checksum computes a hash (currently FNV-1a) for a bitmap that is suitable for
+// using bitmaps as elements in hash sets or as keys in hash maps, as well as
+// generally quicker comparisons.
+// The implementation is biased towards efficiency in little endian machines, so
+// expect some extra CPU cycles and memory to be used if your machine is big endian.
+// Likewise, don't use this to verify integrity unless you're certain you'll load
+// the bitmap on a machine with the same endianess used to create it.
+func (rb *Bitmap) Checksum() uint64 {
+	const (
+		offset = 14695981039346656037
+		prime = 1099511628211
+	)
+
+	var bytes []byte
+
+	hash := uint64(offset)
+
+	bytes = uint16SliceAsByteSlice(rb.highlowcontainer.keys)
+
+	for _, b := range bytes {
+		hash ^= uint64(b)
+		hash *= prime
+	}
+
+	for _, c := range rb.highlowcontainer.containers {
+		// 0 separator
+		hash ^= 0
+		hash *= prime
+
+		switch c := c.(type) {
+		case *bitmapContainer:
+			bytes = uint64SliceAsByteSlice(c.bitmap)
+		case *arrayContainer:
+			bytes = uint16SliceAsByteSlice(c.content)
+		case *runContainer16:
+			bytes = interval16SliceAsByteSlice(c.iv)
+		default:
+			panic("invalid container type")
+		}
+
+		if len(bytes) == 0 {
+			panic("empty containers are not supported")
+		}
+
+		for _, b := range bytes {
+			hash ^= uint64(b)
+			hash *= prime
+		}
+	}
+
+	return hash
+}
+
 // ReadFrom reads a serialized version of this bitmap from stream.
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:

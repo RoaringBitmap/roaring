@@ -94,19 +94,6 @@ func interval16SliceAsByteSlice(slice []interval16) []byte {
 	}
 
 	return by
-	// make a new slice header
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
-
-	// update its capacity and length
-	header.Len *= 4
-	header.Cap *= 4
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	result := *(*[]byte)(unsafe.Pointer(&header))
-	runtime.KeepAlive(&slice)
-
-	// return it
-	return result
 }
 
 func byteSliceAsUint16Slice(slice []byte) []uint16 {

@@ -280,6 +280,29 @@ func generateRandomBitmap(b *testing.B, max, terms int) []byte {
 	return result
 }
 
+func BenchmarkChecksum(b *testing.B) {
+	for terms := 1; terms <= (1 << 20); terms *= 2 {
+		rb1, rb2 := NewBitmap(), NewBitmap()
+		set := map[uint32]struct{}{}
+		for len(set) < terms {
+			v := uint32(rand.Intn(1500000))
+			set[v] = struct{}{}
+			rb1.Add(v)
+			rb2.AddRange(uint64(v), uint64(v)+100)
+		}
+		rb2.RunOptimize()
+
+		b.Run(fmt.Sprintf("checksum-%d", terms), func(b *testing.B) {
+			b.ReportAllocs()
+			rb1.Checksum()
+		})
+		b.Run(fmt.Sprintf("checksum-compressed-%d", terms), func(b *testing.B) {
+			b.ReportAllocs()
+			rb2.Checksum()
+		})
+	}
+}
+
 // go test -bench BenchmarkSet -run -
 func BenchmarkSetRoaring(b *testing.B) {
 	b.StopTimer()
