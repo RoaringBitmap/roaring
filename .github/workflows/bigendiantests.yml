@@ -15,14 +15,11 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go-version }}
-    - name: Install QEMU
-      uses: docker/setup-qemu-action@v1
-      with:
-        platforms: ppc64
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Test
       run: |
+        apt install -y qemu-system-ppc64
         GOARCH=ppc64 go test -c -o roaring_test
         GOARCH=ppc64 go test ./roaring64 -c -o roaring64_test
         GOARCH=ppc64 go test ./BitSliceIndexing -c -o BitSliceIndexing_test
