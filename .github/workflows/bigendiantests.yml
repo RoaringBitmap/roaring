@@ -23,7 +23,7 @@ jobs:
         GOARCH=ppc64 go test -c -o roaring_test
         GOARCH=ppc64 go test ./roaring64 -c -o roaring64_test
         GOARCH=ppc64 go test ./BitSliceIndexing -c -o BitSliceIndexing_test
-        qemu-system-ppc64 ./roaring_test -v -race -run TestConcurrent*
-        qemu-system-ppc64 ./roaring_test -v
-        qemu-system-ppc64 ./roaring64_test -v
-        qemu-system-ppc64 ./BitSliceIndexing_test -v
+        #qemu-system-ppc64 ./roaring_test -v -race -run TestConcurrent*
+        qemu-system-ppc64 ./roaring_test
+        qemu-system-ppc64 ./roaring64_test
+        qemu-system-ppc64 ./BitSliceIndexing_test
