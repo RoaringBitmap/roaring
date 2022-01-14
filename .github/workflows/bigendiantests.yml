@@ -1,5 +1,5 @@
 
-name: Go-CI
+name: Go-PPC64-CI
 
 on: [push, pull_request]
 
