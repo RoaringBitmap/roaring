@@ -155,7 +155,7 @@ func TestSerializationFromJava051(t *testing.T) {
 	}()
 
 	_, _ = newrb.ReadFrom(fin)
-	fmt.Println(newrb.GetCardinality())
+	t.Log(newrb.GetCardinality())
 	rb := NewBitmap()
 	for k := uint32(0); k < 100000; k += 1000 {
 		rb.Add(k)
@@ -236,7 +236,7 @@ func TestSerializationBasic3_042(t *testing.T) {
 		case *runContainer16:
 			rc = true
 		default:
-			panic(fmt.Errorf("Unrecognized container implementation: %T", cn))
+			t.Fatalf("Unrecognized container implementation: %T", cn)
 		}
 	}
 

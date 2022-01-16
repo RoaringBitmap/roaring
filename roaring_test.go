@@ -2,7 +2,6 @@ package roaring
 
 import (
 	"bytes"
-	"log"
 	"math"
 	"math/rand"
 	"strconv"
@@ -11,6 +10,28 @@ import (
 	"github.com/bits-and-blooms/bitset"
 	"github.com/stretchr/testify/assert"
 )
+
+func checkValidity(t *testing.T, rb *Bitmap) {
+	t.Helper()
+
+	for _, c := range rb.highlowcontainer.containers {
+
+		switch c.(type) {
+		case *arrayContainer:
+			if c.getCardinality() > arrayDefaultMaxSize {
+				t.Error("Array containers are limited to size ", arrayDefaultMaxSize)
+			}
+		case *bitmapContainer:
+			if c.getCardinality() <= arrayDefaultMaxSize {
+				t.Error("Bitmaps would be more concise as an array!")
+			}
+		case *runContainer16:
+			if c.getSizeInBytes() > minOfInt(bitmapContainerSizeInBytes(), arrayContainerSizeInBytes(c.getCardinality())) {
+				t.Error("Inefficient run container!")
+			}
+		}
+	}
+}
 
 func TestReverseIteratorCount(t *testing.T) {
 	array := []int{2, 63, 64, 65, 4095, 4096, 4097, 4159, 4160, 4161, 5000, 20000, 66666}
@@ -783,11 +804,11 @@ func TestBitmap(t *testing.T) {
 		for i := range arrayres {
 			if i < len(arrayand) {
 				if arrayres[i] != arrayand[i] {
-					log.Println(i, arrayres[i], arrayand[i])
+					t.Log(i, arrayres[i], arrayand[i])
 					ok = false
 				}
 			} else {
-				log.Println('x', arrayres[i])
+				t.Log('x', arrayres[i])
 				ok = false
 			}
 		}
@@ -885,7 +906,7 @@ func TestBitmap(t *testing.T) {
 		ok := true
 		for i := range a {
 			if array[i] != a[i] {
-				log.Println("rr : ", array[i], " a : ", a[i])
+				t.Log("rr : ", array[i], " a : ", a[i])
 				ok = false
 			}
 		}
@@ -1003,9 +1024,9 @@ func TestBitmap(t *testing.T) {
 			rb.AddInt(i)
 			rb3.AddInt(i)
 		}
-		assert.True(t, rb.checkValidity())
-		assert.True(t, rb2.checkValidity())
-		assert.True(t, rb3.checkValidity())
+		checkValidity(t, rb)
+		checkValidity(t, rb2)
+		checkValidity(t, rb3)
 		arrayrr := rb.ToArray()
 		arrayrr3 := rb3.ToArray()
 		ok := true
@@ -1047,13 +1068,13 @@ func TestBitmap(t *testing.T) {
 		}
 
 		rbc := ac1.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac1))
+		validate(t, rbc, ac1)
 
 		rbc = ac2.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac2))
+		validate(t, rbc, ac2)
 
 		rbc = ac3.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac3))
+		validate(t, rbc, ac3)
 	})
 
 	t.Run("flipTest1 ", func(t *testing.T) {
@@ -1085,8 +1106,8 @@ func TestBitmap(t *testing.T) {
 		for i := uint(100000); i < 200000; i++ {
 			bs.Set(i)
 		}
-		assert.True(t, rb1.checkValidity())
-		assert.True(t, rb.checkValidity())
+		checkValidity(t, rb1)
+		checkValidity(t, rb)
 		assert.True(t, equalsBitSet(bs, rb1))
 	})
 
@@ -1377,7 +1398,7 @@ func TestBitmap(t *testing.T) {
 
 		rror := Or(rr, rr2)
 
-		assert.True(t, rror.checkValidity())
+		checkValidity(t, rror)
 		arrayor := rror.ToArray()
 
 		assert.True(t, IntsEquals(arrayor, arrayrr))
@@ -1442,7 +1463,7 @@ func TestBitmap(t *testing.T) {
 
 		rror := Or(rr, rr2)
 		valide := true
-		assert.True(t, rror.checkValidity())
+		checkValidity(t, rror)
 		for _, k := range rror.ToArray() {
 			_, found := V1[int(k)]
 			if !found {
@@ -1488,7 +1509,7 @@ func TestBitmap(t *testing.T) {
 		}
 		// check or against an empty bitmap
 		orresult2 := Or(rb, rb2)
-		assert.True(t, orresult2.checkValidity())
+		checkValidity(t, orresult2)
 		assert.Equal(t, orresult.GetCardinality(), rb2card)
 		assert.Equal(t, rb2.GetCardinality()+rb.GetCardinality(), orresult2.GetCardinality())
 
@@ -1567,7 +1588,7 @@ func TestBitmap(t *testing.T) {
 		}
 
 		correct := Xor(rr, rr2)
-		assert.True(t, correct.checkValidity())
+		checkValidity(t, correct)
 
 		rr.Xor(rr2)
 
@@ -1757,7 +1778,7 @@ func TestBigRandom(t *testing.T) {
 }
 
 func rTest(t *testing.T, N int) {
-	log.Println("rtest N=", N)
+	t.Log("rtest N=", N)
 	for gap := 1; gap <= 65536; gap *= 2 {
 		bs1 := bitset.New(0)
 		rb1 := NewBitmap()
@@ -1849,12 +1870,12 @@ func IntsEquals(a, b []uint32) bool {
 	return true
 }
 
-func validate(bc *bitmapContainer, ac *arrayContainer) bool {
+func validate(t *testing.T, bc *bitmapContainer, ac *arrayContainer) {
 	// Checking the cardinalities of each container
+	t.Helper()
 
 	if bc.getCardinality() != ac.getCardinality() {
-		log.Println("cardinality differs")
-		return false
+		t.Error("cardinality differs")
 	}
 	// Checking that the two containers contain the same values
 	counter := 0
@@ -1862,16 +1883,16 @@ func validate(bc *bitmapContainer, ac *arrayContainer) bool {
 	for i := bc.NextSetBit(0); i >= 0; i = bc.NextSetBit(uint(i) + 1) {
 		counter++
 		if !ac.contains(uint16(i)) {
-			log.Println("content differs")
-			log.Println(bc)
-			log.Println(ac)
-			return false
+			t.Log("content differs")
+			t.Log(bc)
+			t.Log(ac)
+			t.Fail()
 		}
 
 	}
 
 	// checking the cardinality of the BitmapContainer
-	return counter == bc.getCardinality()
+	assert.Equal(t, counter, bc.getCardinality())
 }
 
 func TestRoaringArray(t *testing.T) {

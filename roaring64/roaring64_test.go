@@ -1,9 +1,7 @@
 package roaring64
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -46,6 +44,8 @@ func TestIssue266(t *testing.T) {
 
 	i := r.Iterator()
 
+	t.Log(r.String())
+
 	if assert.True(t, i.HasNext()) {
 		assert.EqualValues(t, 12345, i.Next())
 		if assert.True(t, i.HasNext()) {
@@ -53,8 +53,6 @@ func TestIssue266(t *testing.T) {
 			assert.False(t, i.HasNext())
 		}
 	}
-
-	fmt.Println(r.String())
 }
 
 func TestRoaringRangeEnd(t *testing.T) {
@@ -618,11 +616,11 @@ func TestBitmap(t *testing.T) {
 		for i := range arrayres {
 			if i < len(arrayand) {
 				if arrayres[i] != arrayand[i] {
-					log.Println(i, arrayres[i], arrayand[i])
+					t.Log(i, arrayres[i], arrayand[i])
 					ok = false
 				}
 			} else {
-				log.Println('x', arrayres[i])
+				t.Log('x', arrayres[i])
 				ok = false
 			}
 		}
@@ -708,7 +706,7 @@ func TestBitmap(t *testing.T) {
 		ok := true
 		for i := range a {
 			if array[i] != a[i] {
-				log.Println("rr : ", array[i], " a : ", a[i])
+				t.Log("rr : ", array[i], " a : ", a[i])
 				ok = false
 			}
 		}
@@ -1508,7 +1506,7 @@ func TestBigRandom(t *testing.T) {
 }
 
 func rTest(t *testing.T, N int) {
-	log.Println("rtest N=", N)
+	t.Log("rtest N=", N)
 	for gap := 1; gap <= 65536; gap *= 2 {
 		bs1 := bitset.New(0)
 		rb1 := NewBitmap()
