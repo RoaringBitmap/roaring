@@ -21,9 +21,9 @@ jobs:
       run: |
         sudo apt install -y qemu-system-ppc64 qemu-user
         GOARCH=ppc64 go test -c -o roaring_test
-        GOARCH=ppc64 go test ./roaring64 -c -o roaring64_test
-        GOARCH=ppc64 go test ./BitSliceIndexing -c -o BitSliceIndexing_test
+        GOARCH=ppc64 go test ./roaring64 -c -o ./roaring64/roaring64_test
+        GOARCH=ppc64 go test ./BitSliceIndexing -c -o ./BitSliceIndexing/BitSliceIndexing_test
         #qemu-ppc64 ./roaring_test -v -race -run TestConcurrent*
         qemu-ppc64 ./roaring_test
-        qemu-ppc64 ./roaring64_test
-        qemu-ppc64 ./BitSliceIndexing_test
+        qemu-ppc64 ./roaring64/roaring64_test
+        qemu-ppc64 ./BitSliceIndexing/BitSliceIndexing_test
