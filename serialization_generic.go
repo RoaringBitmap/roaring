@@ -85,6 +85,30 @@ func uint16SliceAsByteSlice(slice []uint16) []byte {
 	return by
 }
 
+func interval16SliceAsByteSlice(slice []interval16) []byte {
+	by := make([]byte, len(slice)*4)
+
+	for i, v := range slice {
+		binary.LittleEndian.PutUint16(by[i*2:], v.start)
+		binary.LittleEndian.PutUint16(by[i*2+2:], v.length)
+	}
+
+	return by
+	// make a new slice header
+	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
+
+	// update its capacity and length
+	header.Len *= 4
+	header.Cap *= 4
+
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	result := *(*[]byte)(unsafe.Pointer(&header))
+	runtime.KeepAlive(&slice)
+
+	// return it
+	return result
+}
+
 func byteSliceAsUint16Slice(slice []byte) []uint16 {
 	if len(slice)%2 != 0 {
 		panic("Slice size should be divisible by 2")
