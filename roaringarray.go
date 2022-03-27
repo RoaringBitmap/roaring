@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/RoaringBitmap/roaring/internal"
 	"io"
+
+	"github.com/lindb/roaring/internal"
 )
 
 type container interface {
@@ -112,9 +113,10 @@ func newRoaringArray() *roaringArray {
 // runOptimize compresses the element containers to minimize space consumed.
 // Q: how does this interact with copyOnWrite and needCopyOnWrite?
 // A: since we aren't changing the logical content, just the representation,
-//    we don't bother to check the needCopyOnWrite bits. We replace
-//    (possibly all) elements of ra.containers in-place with space
-//    optimized versions.
+//
+//	we don't bother to check the needCopyOnWrite bits. We replace
+//	(possibly all) elements of ra.containers in-place with space
+//	optimized versions.
 func (ra *roaringArray) runOptimize() {
 	for i := range ra.containers {
 		ra.containers[i] = ra.containers[i].toEfficientContainer()
@@ -465,9 +467,7 @@ func (ra *roaringArray) serializedSizeInBytes() uint64 {
 	return answer
 }
 
-//
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
-//
 func (ra *roaringArray) writeTo(w io.Writer) (n int64, err error) {
 	hasRun := ra.hasRunCompression()
 	isRunSizeInBytes := 0
@@ -544,9 +544,7 @@ func (ra *roaringArray) writeTo(w io.Writer) (n int64, err error) {
 	return n, nil
 }
 
-//
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
-//
 func (ra *roaringArray) toBytes() ([]byte, error) {
 	var buf bytes.Buffer
 	_, err := ra.writeTo(&buf)
