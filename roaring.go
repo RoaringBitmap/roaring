@@ -271,6 +271,14 @@ type intIterator struct {
 	hs               uint32
 	iter             shortPeekable
 	highlowcontainer *roaringArray
+
+	// These embedded iterators per container type help reduce load in the GC.
+	// This way, instead of making up-to 64k allocations per full iteration
+	// we get a single allocation and simply reinitialize the appropriate
+	// iterator and point to it in the generic `iter` member on each key bound.
+	shortIter        shortIterator
+	runIter          runIterator16
+	bitmapIter       bitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -280,8 +288,19 @@ func (ii *intIterator) HasNext() bool {
 
 func (ii *intIterator) init() {
 	if ii.highlowcontainer.size() > ii.pos {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getShortIterator()
 		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+		c := ii.highlowcontainer.getContainerAtIndex(ii.pos)
+		switch t := c.(type) {
+		case *arrayContainer:
+			ii.shortIter = shortIterator{t.content, 0}
+			ii.iter = &ii.shortIter
+		case *runContainer16:
+			ii.runIter = runIterator16{rc: t, curIndex: 0, curPosInIndex: 0}
+			ii.iter = &ii.runIter
+		case *bitmapContainer:
+			ii.bitmapIter = bitmapContainerShortIterator{t, t.NextSetBit(0)}
+			ii.iter = &ii.bitmapIter
+		}
 	}
 }
 
@@ -332,6 +351,10 @@ type intReverseIterator struct {
 	hs               uint32
 	iter             shortIterable
 	highlowcontainer *roaringArray
+
+	shortIter        reverseIterator
+	runIter          runReverseIterator16
+	bitmapIter       reverseBitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -341,8 +364,30 @@ func (ii *intReverseIterator) HasNext() bool {
 
 func (ii *intReverseIterator) init() {
 	if ii.pos >= 0 {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getReverseIterator()
 		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+		c := ii.highlowcontainer.getContainerAtIndex(ii.pos)
+		switch t := c.(type) {
+		case *arrayContainer:
+			ii.shortIter = reverseIterator{t.content, len(t.content) - 1}
+			ii.iter = &ii.shortIter
+		case *runContainer16:
+			index := int(len(t.iv)) - 1
+			pos := uint16(0)
+
+			if index >= 0 {
+				pos = t.iv[index].length
+			}
+
+			ii.runIter = runReverseIterator16{rc: t, curIndex: index, curPosInIndex: pos}
+			ii.iter = &ii.runIter
+		case *bitmapContainer:
+			pos := -1
+			if t.cardinality > 0 {
+				pos = int(t.maximum())
+			}
+			ii.bitmapIter = reverseBitmapContainerShortIterator{t, pos}
+			ii.iter = &ii.bitmapIter
+		}
 	} else {
 		ii.iter = nil
 	}
@@ -379,12 +424,27 @@ type manyIntIterator struct {
 	hs               uint32
 	iter             manyIterable
 	highlowcontainer *roaringArray
+
+	shortIter        shortIterator
+	runIter          runIterator16
+	bitmapIter       bitmapContainerManyIterator
 }
 
 func (ii *manyIntIterator) init() {
 	if ii.highlowcontainer.size() > ii.pos {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getManyIterator()
 		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+		c := ii.highlowcontainer.getContainerAtIndex(ii.pos)
+		switch t := c.(type) {
+		case *arrayContainer:
+			ii.shortIter = shortIterator{t.content, 0}
+			ii.iter = &ii.shortIter
+		case *runContainer16:
+			ii.runIter = runIterator16{rc: t, curIndex: 0, curPosInIndex: 0}
+			ii.iter = &ii.runIter
+		case *bitmapContainer:
+			ii.bitmapIter = bitmapContainerManyIterator{t, -1, 0}
+			ii.iter = &ii.bitmapIter
+		}
 	} else {
 		ii.iter = nil
 	}
