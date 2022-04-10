@@ -321,14 +321,14 @@ func (ii *intIterator) PeekNext() uint32 {
 
 // AdvanceIfNeeded advances as long as the next value is smaller than minval
 func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
-	to := minval >> 16
+	to := minval & 0xffff0000
 
-	for ii.HasNext() && (ii.hs>>16) < to {
+	for ii.HasNext() && ii.hs < to {
 		ii.pos++
 		ii.init()
 	}
 
-	if ii.HasNext() && (ii.hs>>16) == to {
+	if ii.HasNext() && ii.hs == to {
 		ii.iter.advanceIfNeeded(lowbits(minval))
 
 		if !ii.iter.hasNext() {
