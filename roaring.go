@@ -338,12 +338,17 @@ func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
 	}
 }
 
-func newIntIterator(a *Bitmap) *intIterator {
-	p := new(intIterator)
+// IntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
+type IntIterator = intIterator
+
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (p *intIterator) Initialize(a *Bitmap) {
 	p.pos = 0
 	p.highlowcontainer = &a.highlowcontainer
 	p.init()
-	return p
 }
 
 type intReverseIterator struct {
@@ -403,12 +408,16 @@ func (ii *intReverseIterator) Next() uint32 {
 	return x
 }
 
-func newIntReverseIterator(a *Bitmap) *intReverseIterator {
-	p := new(intReverseIterator)
+// IntReverseIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
+type IntReverseIterator = intReverseIterator
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (p *intReverseIterator) Initialize(a *Bitmap) {
 	p.highlowcontainer = &a.highlowcontainer
 	p.pos = a.highlowcontainer.size() - 1
 	p.init()
-	return p
 }
 
 // ManyIntIterable allows you to iterate over the values in a Bitmap
@@ -486,12 +495,17 @@ func (ii *manyIntIterator) NextMany64(hs64 uint64, buf []uint64) int {
 	return n
 }
 
-func newManyIntIterator(a *Bitmap) *manyIntIterator {
-	p := new(manyIntIterator)
+
+// ManyIntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
+type ManyIntIterator = manyIntIterator
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (p *manyIntIterator) Initialize(a *Bitmap) {
 	p.pos = 0
 	p.highlowcontainer = &a.highlowcontainer
 	p.init()
-	return p
 }
 
 // String creates a string representation of the Bitmap
@@ -523,7 +537,7 @@ func (rb *Bitmap) String() string {
 // Iterate iterates over the bitmap, calling the given callback with each value in the bitmap.  If the callback returns
 // false, the iteration is halted.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
-// There is no guarantee as to what order the values will be iterated
+// There is no guarantee as to what order the values will be iterated.
 func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
 		hs := uint32(rb.highlowcontainer.getKeyAtIndex(i)) << 16
@@ -555,19 +569,25 @@ func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 // Iterator creates a new IntPeekable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) Iterator() IntPeekable {
-	return newIntIterator(rb)
+    p := new(intIterator)
+	p.Initialize(rb)
+	return p
 }
 
 // ReverseIterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) ReverseIterator() IntIterable {
-	return newIntReverseIterator(rb)
+	p := new(intReverseIterator)
+	p.Initialize(rb)
+	return p
 }
 
 // ManyIterator creates a new ManyIntIterable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) ManyIterator() ManyIntIterable {
-	return newManyIntIterator(rb)
+	p := new(manyIntIterator)
+	p.Initialize(rb)
+	return p
 }
 
 // Clone creates a copy of the Bitmap
@@ -988,7 +1008,8 @@ func (rb *Bitmap) IntersectsWithInterval(x, y uint64) bool {
 		return false
 	}
 
-	it := newIntIterator(rb)
+	it := intIterator{}
+	it.Initialize(rb)
 	it.AdvanceIfNeeded(uint32(x))
 	if !it.HasNext() {
 		return false
