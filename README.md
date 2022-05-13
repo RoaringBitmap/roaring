@@ -8,7 +8,7 @@ roaring [![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring/roaring64?s
 This is a go version of the Roaring bitmap data structure. 
 
 Roaring bitmaps are used by several major systems such as [Apache Lucene][lucene] and derivative systems such as [Solr][solr] and
-[Elasticsearch][elasticsearch], [Apache Druid (Incubating)][druid], [LinkedIn Pinot][pinot], [Netflix Atlas][atlas],  [Apache Spark][spark], [OpenSearchServer][opensearchserver], [Cloud Torrent][cloudtorrent], [Whoosh][whoosh],  [Pilosa][pilosa],  [Microsoft Visual Studio Team Services (VSTS)][vsts], and eBay's [Apache Kylin][kylin]. The YouTube SQL Engine, [Google Procella](https://research.google/pubs/pub48388/), uses Roaring bitmaps for indexing.
+[Elasticsearch][elasticsearch], [Apache Druid (Incubating)][druid], [LinkedIn Pinot][pinot], [Netflix Atlas][atlas],  [Apache Spark][spark], [OpenSearchServer][opensearchserver], [anacrolix/torrent][anacrolix/torrent], [Whoosh][whoosh],  [Pilosa][pilosa],  [Microsoft Visual Studio Team Services (VSTS)][vsts], and eBay's [Apache Kylin][kylin]. The YouTube SQL Engine, [Google Procella](https://research.google/pubs/pub48388/), uses Roaring bitmaps for indexing.
 
 [lucene]: https://lucene.apache.org/
 [solr]: https://lucene.apache.org/solr/
@@ -16,7 +16,7 @@ Roaring bitmaps are used by several major systems such as [Apache Lucene][lucene
 [druid]: https://druid.apache.org/
 [spark]: https://spark.apache.org/
 [opensearchserver]: http://www.opensearchserver.com
-[cloudtorrent]: https://github.com/jpillora/cloud-torrent
+[anacrolix/torrent]: https://github.com/anacrolix/torrent
 [whoosh]: https://bitbucket.org/mchaput/whoosh/wiki/Home
 [pilosa]: https://www.pilosa.com/
 [kylin]: http://kylin.apache.org/
@@ -30,7 +30,7 @@ Roaring bitmaps are found to work well in many important applications:
 
 
 The ``roaring`` Go library is used by
-* [Cloud Torrent](https://github.com/jpillora/cloud-torrent)
+* [anacrolix/torrent]
 * [runv](https://github.com/hyperhq/runv)
 * [InfluxDB](https://www.influxdata.com)
 * [Pilosa](https://www.pilosa.com/)
