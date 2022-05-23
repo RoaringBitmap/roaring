@@ -3,3 +3,4 @@ roaring-fuzz.zip
 workdir
 coverage.out
 testdata/all3.classic
+.idea/
