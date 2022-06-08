@@ -23,6 +23,7 @@ Roaring bitmaps are used by several major systems such as [Apache Lucene][lucene
 [pinot]: http://github.com/linkedin/pinot/wiki
 [vsts]: https://www.visualstudio.com/team-services/
 [atlas]: https://github.com/Netflix/atlas
+[husky]: https://www.datadoghq.com/blog/engineering/introducing-husky/
 
 Roaring bitmaps are found to work well in many important applications:
 
