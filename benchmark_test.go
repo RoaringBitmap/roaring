@@ -12,6 +12,112 @@ import (
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
 
+
+// go test -bench BenchmarkIteratorAlloc -benchmem -run -
+func BenchmarkIteratorAlloc(b *testing.B) {
+	bm := NewBitmap()
+	domain := 100000000
+	count := 10000
+	for j := 0; j < count; j++ {
+		v := uint32(rand.Intn(domain))
+		bm.Add(v)
+	}
+	i := IntIterator{}
+	expected_cardinality := bm.GetCardinality()
+	counter := uint64(0)
+	b.Run("simple iteration with alloc", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			counter = 0
+			i := bm.Iterator()
+			for i.HasNext() {
+				i.Next()
+				counter++
+			}
+		}
+		b.StopTimer()
+	})
+	if counter != expected_cardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	}
+	b.Run("simple iteration", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			counter = 0
+			i.Initialize(bm)
+			for i.HasNext() {
+				i.Next()
+				counter++
+			}
+		}
+		b.StopTimer()
+	})
+	if counter != expected_cardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	}
+	b.Run("reverse iteration with alloc", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			counter = 0
+			ir := bm.ReverseIterator()
+			for ir.HasNext() {
+				ir.Next()
+				counter++
+			}
+		}
+		b.StopTimer()
+	})
+	if counter != expected_cardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	}
+	ir := IntReverseIterator{}
+
+	b.Run("reverse iteration", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			counter = 0
+			ir.Initialize(bm)
+			for ir.HasNext() {
+				ir.Next()
+				counter++
+			}
+		}
+		b.StopTimer()
+	})
+	if counter != expected_cardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	}
+
+
+	b.Run("many iteration with alloc", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			counter = 0
+			buf := make([]uint32, 1024)
+			im := bm.ManyIterator()
+			for n := im.NextMany(buf); n != 0; n = im.NextMany(buf) {
+				counter += uint64(n)
+			}
+		}
+		b.StopTimer()
+	})
+	if counter != expected_cardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	}
+	im := ManyIntIterator{}
+	buf := make([]uint32, 1024)
+
+	b.Run("many iteration", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			counter = 0
+			im.Initialize(bm)
+			for n := im.NextMany(buf); n != 0; n = im.NextMany(buf) {
+				counter += uint64(n)
+			}
+		}
+		b.StopTimer()
+	})
+	if counter != expected_cardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	}
+}
+
+
 // go test -bench BenchmarkOrs -benchmem -run -
 func BenchmarkOrs(b *testing.B) {
 
@@ -278,6 +384,29 @@ func generateRandomBitmap(b *testing.B, max, terms int) []byte {
 	result, err := bitmap.ToBytes()
 	require.NoError(b, err)
 	return result
+}
+
+func BenchmarkChecksum(b *testing.B) {
+	for terms := 1; terms <= (1 << 20); terms *= 2 {
+		rb1, rb2 := NewBitmap(), NewBitmap()
+		set := map[uint32]struct{}{}
+		for len(set) < terms {
+			v := uint32(rand.Intn(1500000))
+			set[v] = struct{}{}
+			rb1.Add(v)
+			rb2.AddRange(uint64(v), uint64(v)+100)
+		}
+		rb2.RunOptimize()
+
+		b.Run(fmt.Sprintf("checksum-%d", terms), func(b *testing.B) {
+			b.ReportAllocs()
+			rb1.Checksum()
+		})
+		b.Run(fmt.Sprintf("checksum-compressed-%d", terms), func(b *testing.B) {
+			b.ReportAllocs()
+			rb2.Checksum()
+		})
+	}
 }
 
 // go test -bench BenchmarkSet -run -

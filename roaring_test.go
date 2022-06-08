@@ -2,15 +2,75 @@ package roaring
 
 import (
 	"bytes"
-	"log"
 	"math"
 	"math/rand"
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/bits-and-blooms/bitset"
+	"github.com/stretchr/testify/assert"
 )
+
+func checkValidity(t *testing.T, rb *Bitmap) {
+	t.Helper()
+
+	for _, c := range rb.highlowcontainer.containers {
+
+		switch c.(type) {
+		case *arrayContainer:
+			if c.getCardinality() > arrayDefaultMaxSize {
+				t.Error("Array containers are limited to size ", arrayDefaultMaxSize)
+			}
+		case *bitmapContainer:
+			if c.getCardinality() <= arrayDefaultMaxSize {
+				t.Error("Bitmaps would be more concise as an array!")
+			}
+		case *runContainer16:
+			if c.getSizeInBytes() > minOfInt(bitmapContainerSizeInBytes(), arrayContainerSizeInBytes(c.getCardinality())) {
+				t.Error("Inefficient run container!")
+			}
+		}
+	}
+}
+
+func hashTest(t *testing.T, N uint64) {
+	t.Log("rtest N=", N)
+
+	hashes := map[uint64]struct{}{}
+	count := 0
+
+	for gap := uint64(1); gap <= 65536; gap *= 2 {
+		rb1, rb2 := NewBitmap(), NewBitmap()
+		for x := uint64(0); x <= N*gap; x += gap {
+			rb1.AddInt(int(x))
+			rb2.AddInt(int(x))
+		}
+
+		assert.EqualValues(t, rb1.Checksum(), rb2.Checksum())
+		count++
+		hashes[rb1.Checksum()] = struct{}{}
+
+		rb1, rb2 = NewBitmap(), NewBitmap()
+		for x := uint64(0); x <= N*gap; x += gap {
+			// x+3 guarantees runs, gap/2 guarantees some variety
+			if x + 3 + gap/2 > MaxUint32 {
+				break
+			}
+			rb1.AddRange(uint64(x), uint64(x + 3 + gap/2))
+			rb2.AddRange(uint64(x), uint64(x + 3 + gap/2))
+		}
+
+		rb1.RunOptimize()
+		rb2.RunOptimize()
+
+		assert.EqualValues(t, rb1.Checksum(), rb2.Checksum())
+		count++
+		hashes[rb1.Checksum()] = struct{}{}
+	}
+
+	// Make sure that at least for this reduced set we have no collisions.
+	assert.Equal(t, count, len(hashes))
+}
 
 func TestReverseIteratorCount(t *testing.T) {
 	array := []int{2, 63, 64, 65, 4095, 4096, 4097, 4159, 4160, 4161, 5000, 20000, 66666}
@@ -67,6 +127,26 @@ func TestRoaringRangeEnd(t *testing.T) {
 	assert.EqualValues(t, 0, r.GetCardinality())
 }
 
+func TestMaxPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	bm := New()
+	bm.Maximum()
+	t.Errorf("The code did not panic")
+}
+
+func TestMinPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	bm := New()
+	bm.Minimum()
+	t.Errorf("The code did not panic")
+}
+
 func TestFirstLast(t *testing.T) {
 	bm := New()
 	bm.AddInt(2)
@@ -120,52 +200,110 @@ func TestRoaringBitmapAddMany(t *testing.T) {
 	assert.EqualValues(t, len(array), bmp.GetCardinality())
 }
 
+func testAddOffset(t *testing.T, arr []uint32, offset int64) {
+	expected := make([]uint32, 0, len(arr))
+	for _, i := range arr {
+		v := int64(i) + offset
+		if v >= 0 && v <= MaxUint32 {
+			expected = append(expected, uint32(v))
+		}
+	}
+
+	bmp := NewBitmap()
+	bmp.AddMany(arr)
+
+	cop := AddOffset64(bmp, offset)
+
+	if !assert.EqualValues(t, len(expected), cop.GetCardinality()) {
+		t.Logf("Applying offset %d", offset)
+	}
+	if !assert.EqualValues(t, expected, cop.ToArray()) {
+		t.Logf("Applying offset %d", offset)
+	}
+
+	// Now check backing off gets us back all non-discarded numbers
+	expected2 := make([]uint32, 0, len(expected))
+	for _, i := range expected {
+		v := int64(i) - offset
+		if v >= 0 && v <= MaxUint32 {
+			expected2 = append(expected2, uint32(v))
+		}
+	}
+
+	cop2 := AddOffset64(cop, -offset)
+
+	if !assert.EqualValues(t, len(expected2), cop2.GetCardinality()) {
+		t.Logf("Restoring from offset %d", offset)
+	}
+	if !assert.EqualValues(t, expected2, cop2.ToArray()) {
+		t.Logf("Restoring from offset %d", offset)
+	}
+}
+
 func TestRoaringBitmapAddOffset(t *testing.T) {
-	cases := []struct {
-		arr      []uint32
-		offset   int64
-		expected []uint32
-	}{
+	type testCase struct {
+		arr    []uint32
+		offset int64
+	}
+	cases := []testCase{
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   25000,
-			expected: []uint32{30580, 58722, 69031, 82276, 108097},
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: 25000,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   -25000,
-			expected: []uint32{8722, 19031, 32276, 58097},
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: -25000,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   -83097,
-			expected: []uint32{0},
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: -83097,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   MaxUint32,
-			expected: []uint32{},
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: MaxUint32,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   -MaxUint32,
-			expected: []uint32{},
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: -MaxUint32,
 		},
 		{
-			arr:      []uint32{5580, 33722, 44031, 57276, 83097},
-			offset:   0,
-			expected: []uint32{5580, 33722, 44031, 57276, 83097},
+			arr:    []uint32{5580, 33722, 44031, 57276, 83097},
+			offset: 0,
+		},
+		{
+			arr:    []uint32{0},
+			offset: 100,
+		},
+		{
+			arr:    []uint32{0},
+			offset: 0xffff0000,
+		},
+		{
+			arr:    []uint32{0},
+			offset: 0xffff0001,
 		},
 	}
 
+	arr := []uint32{10, 0xffff, 0x010101}
+	for i := uint32(100000); i < 200000; i += 4 {
+		arr = append(arr, i)
+	}
+	arr = append(arr, 400000)
+	arr = append(arr, 1400000)
+	for offset := int64(3); offset < 1000000; offset *= 3 {
+		c := testCase{arr, offset}
+		cases = append(cases, c)
+	}
+	for offset := int64(1024); offset < 1000000; offset *= 2 {
+		c := testCase{arr, offset}
+		cases = append(cases, c)
+	}
+
 	for _, c := range cases {
-		bmp := NewBitmap()
-		bmp.AddMany(c.arr)
-
-		cop := AddOffset64(bmp, c.offset)
-
-		assert.EqualValues(t, len(c.expected), cop.GetCardinality())
-		assert.EqualValues(t, c.expected, cop.ToArray())
+		// Positive offset
+		testAddOffset(t, c.arr, c.offset)
+		// Negative offset
+		testAddOffset(t, c.arr, -c.offset)
 	}
 }
 
@@ -262,6 +400,38 @@ func TestIntersects1(t *testing.T) {
 
 	bm.AddRange(1, 100000)
 	assert.True(t, bm2.Intersects(bm))
+}
+
+func TestIntersectsWithInterval(t *testing.T) {
+	bm := NewBitmap()
+	bm.AddRange(21, 26)
+
+	// Empty interval in range
+	assert.False(t, bm.IntersectsWithInterval(22, 22))
+	// Empty interval out of range
+	assert.False(t, bm.IntersectsWithInterval(27, 27))
+
+	// Non-empty interval in range, fully included
+	assert.True(t, bm.IntersectsWithInterval(22, 23))
+	// Non-empty intervals partially overlapped
+	assert.True(t, bm.IntersectsWithInterval(19, 23))
+	assert.True(t, bm.IntersectsWithInterval(23, 30))
+	// Non-empty interval covering the full range
+	assert.True(t, bm.IntersectsWithInterval(19, 30))
+
+	// Non-empty interval before start of bitmap
+	assert.False(t, bm.IntersectsWithInterval(19, 20))
+	// Non-empty interval after end of bitmap
+	assert.False(t, bm.IntersectsWithInterval(28, 30))
+
+	// Non-empty interval inside "hole" in bitmap
+	bm.AddRange(30, 40)
+	assert.False(t, bm.IntersectsWithInterval(28, 29))
+
+	// Non-empty interval, non-overlapping on the open side
+	assert.False(t, bm.IntersectsWithInterval(28, 30))
+	// Non-empty interval, overlapping on the open side
+	assert.True(t, bm.IntersectsWithInterval(28, 31))
 }
 
 func TestRangePanic(t *testing.T) {
@@ -673,11 +843,11 @@ func TestBitmap(t *testing.T) {
 		for i := range arrayres {
 			if i < len(arrayand) {
 				if arrayres[i] != arrayand[i] {
-					log.Println(i, arrayres[i], arrayand[i])
+					t.Log(i, arrayres[i], arrayand[i])
 					ok = false
 				}
 			} else {
-				log.Println('x', arrayres[i])
+				t.Log('x', arrayres[i])
 				ok = false
 			}
 		}
@@ -775,7 +945,7 @@ func TestBitmap(t *testing.T) {
 		ok := true
 		for i := range a {
 			if array[i] != a[i] {
-				log.Println("rr : ", array[i], " a : ", a[i])
+				t.Log("rr : ", array[i], " a : ", a[i])
 				ok = false
 			}
 		}
@@ -893,9 +1063,9 @@ func TestBitmap(t *testing.T) {
 			rb.AddInt(i)
 			rb3.AddInt(i)
 		}
-		assert.True(t, rb.checkValidity())
-		assert.True(t, rb2.checkValidity())
-		assert.True(t, rb3.checkValidity())
+		checkValidity(t, rb)
+		checkValidity(t, rb2)
+		checkValidity(t, rb3)
 		arrayrr := rb.ToArray()
 		arrayrr3 := rb3.ToArray()
 		ok := true
@@ -937,13 +1107,13 @@ func TestBitmap(t *testing.T) {
 		}
 
 		rbc := ac1.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac1))
+		validate(t, rbc, ac1)
 
 		rbc = ac2.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac2))
+		validate(t, rbc, ac2)
 
 		rbc = ac3.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac3))
+		validate(t, rbc, ac3)
 	})
 
 	t.Run("flipTest1 ", func(t *testing.T) {
@@ -975,8 +1145,8 @@ func TestBitmap(t *testing.T) {
 		for i := uint(100000); i < 200000; i++ {
 			bs.Set(i)
 		}
-		assert.True(t, rb1.checkValidity())
-		assert.True(t, rb.checkValidity())
+		checkValidity(t, rb1)
+		checkValidity(t, rb)
 		assert.True(t, equalsBitSet(bs, rb1))
 	})
 
@@ -1267,7 +1437,7 @@ func TestBitmap(t *testing.T) {
 
 		rror := Or(rr, rr2)
 
-		assert.True(t, rror.checkValidity())
+		checkValidity(t, rror)
 		arrayor := rror.ToArray()
 
 		assert.True(t, IntsEquals(arrayor, arrayrr))
@@ -1332,7 +1502,7 @@ func TestBitmap(t *testing.T) {
 
 		rror := Or(rr, rr2)
 		valide := true
-		assert.True(t, rror.checkValidity())
+		checkValidity(t, rror)
 		for _, k := range rror.ToArray() {
 			_, found := V1[int(k)]
 			if !found {
@@ -1378,7 +1548,7 @@ func TestBitmap(t *testing.T) {
 		}
 		// check or against an empty bitmap
 		orresult2 := Or(rb, rb2)
-		assert.True(t, orresult2.checkValidity())
+		checkValidity(t, orresult2)
 		assert.Equal(t, orresult.GetCardinality(), rb2card)
 		assert.Equal(t, rb2.GetCardinality()+rb.GetCardinality(), orresult2.GetCardinality())
 
@@ -1457,7 +1627,7 @@ func TestBitmap(t *testing.T) {
 		}
 
 		correct := Xor(rr, rr2)
-		assert.True(t, correct.checkValidity())
+		checkValidity(t, correct)
 
 		rr.Xor(rr2)
 
@@ -1646,8 +1816,21 @@ func TestBigRandom(t *testing.T) {
 	rTest(t, 65536*16)
 }
 
+func TestHash(t *testing.T) {
+	hashTest(t, 15)
+	hashTest(t, 100)
+	hashTest(t, 512)
+	hashTest(t, 1023)
+	hashTest(t, 1025)
+	hashTest(t, 4095)
+	hashTest(t, 4096)
+	hashTest(t, 4097)
+	hashTest(t, 65536)
+	hashTest(t, 65536*16)
+}
+
 func rTest(t *testing.T, N int) {
-	log.Println("rtest N=", N)
+	t.Log("rtest N=", N)
 	for gap := 1; gap <= 65536; gap *= 2 {
 		bs1 := bitset.New(0)
 		rb1 := NewBitmap()
@@ -1739,12 +1922,12 @@ func IntsEquals(a, b []uint32) bool {
 	return true
 }
 
-func validate(bc *bitmapContainer, ac *arrayContainer) bool {
+func validate(t *testing.T, bc *bitmapContainer, ac *arrayContainer) {
 	// Checking the cardinalities of each container
+	t.Helper()
 
 	if bc.getCardinality() != ac.getCardinality() {
-		log.Println("cardinality differs")
-		return false
+		t.Error("cardinality differs")
 	}
 	// Checking that the two containers contain the same values
 	counter := 0
@@ -1752,16 +1935,16 @@ func validate(bc *bitmapContainer, ac *arrayContainer) bool {
 	for i := bc.NextSetBit(0); i >= 0; i = bc.NextSetBit(uint(i) + 1) {
 		counter++
 		if !ac.contains(uint16(i)) {
-			log.Println("content differs")
-			log.Println(bc)
-			log.Println(ac)
-			return false
+			t.Log("content differs")
+			t.Log(bc)
+			t.Log(ac)
+			t.Fail()
 		}
 
 	}
 
 	// checking the cardinality of the BitmapContainer
-	return counter == bc.getCardinality()
+	assert.Equal(t, counter, bc.getCardinality())
 }
 
 func TestRoaringArray(t *testing.T) {

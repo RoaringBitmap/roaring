@@ -2,13 +2,12 @@ package roaring
 
 import (
 	"bytes"
-	"log"
 	"math/rand"
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/bits-and-blooms/bitset"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCloneOfCOW(t *testing.T) {
@@ -538,11 +537,11 @@ func TestBitmapCOW(t *testing.T) {
 		for i := range arrayres {
 			if i < len(arrayand) {
 				if arrayres[i] != arrayand[i] {
-					log.Println(i, arrayres[i], arrayand[i])
+					t.Log(i, arrayres[i], arrayand[i])
 					ok = false
 				}
 			} else {
-				log.Println('x', arrayres[i])
+				t.Log('x', arrayres[i])
 				ok = false
 			}
 		}
@@ -643,7 +642,7 @@ func TestBitmapCOW(t *testing.T) {
 		ok := true
 		for i := range a {
 			if array[i] != a[i] {
-				log.Println("rr : ", array[i], " a : ", a[i])
+				t.Log("rr : ", array[i], " a : ", a[i])
 				ok = false
 			}
 		}
@@ -807,13 +806,13 @@ func TestBitmapCOW(t *testing.T) {
 		}
 
 		rbc := ac1.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac1))
+		validate(t, rbc, ac1)
 
 		rbc = ac2.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac2))
+		validate(t, rbc, ac2)
 
 		rbc = ac3.clone().(*arrayContainer).toBitmapContainer()
-		assert.True(t, validate(rbc, ac3))
+		validate(t, rbc, ac3)
 	})
 
 	t.Run("flipTest1 ", func(t *testing.T) {
@@ -1505,7 +1504,7 @@ func TestBigRandomCOW(t *testing.T) {
 }
 
 func rTestCOW(t *testing.T, N int) {
-	log.Println("rtest N=", N)
+	t.Log("rtest N=", N)
 	for gap := 1; gap <= 65536; gap *= 2 {
 		bs1 := bitset.New(0)
 		rb1 := NewBitmap()

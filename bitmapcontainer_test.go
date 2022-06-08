@@ -221,20 +221,28 @@ func TestBitmapOffset(t *testing.T) {
 		v.iadd(n)
 		expected[i] = int(n) + int(offtest)
 	}
-	w := v.addOffset(offtest)
-	w0card := w[0].getCardinality()
-	w1card := w[1].getCardinality()
+	l, h := v.addOffset(offtest)
+
+	var w0card, w1card int
+	wout := make([]int, len(nums))
+
+	if l != nil {
+		w0card = l.getCardinality()
+
+		for i := 0; i < w0card; i++ {
+			wout[i] = l.selectInt(uint16(i))
+		}
+	}
+
+	if h != nil {
+		w1card = h.getCardinality()
+
+		for i := 0; i < w1card; i++ {
+			wout[i+w0card] = h.selectInt(uint16(i)) + 65536
+		}
+	}
 
 	assert.Equal(t, v.getCardinality(), w0card+w1card)
-
-	wout := make([]int, len(nums))
-	for i := 0; i < w0card; i++ {
-		wout[i] = w[0].selectInt(uint16(i))
-	}
-	for i := 0; i < w1card; i++ {
-		wout[i+w0card] = w[1].selectInt(uint16(i)) + 65536
-	}
-
 	for i, x := range wout {
 		assert.Equal(t, expected[i], x)
 	}

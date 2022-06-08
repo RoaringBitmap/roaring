@@ -53,6 +53,59 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
+// Checksum computes a hash (currently FNV-1a) for a bitmap that is suitable for
+// using bitmaps as elements in hash sets or as keys in hash maps, as well as
+// generally quicker comparisons.
+// The implementation is biased towards efficiency in little endian machines, so
+// expect some extra CPU cycles and memory to be used if your machine is big endian.
+// Likewise, don't use this to verify integrity unless you're certain you'll load
+// the bitmap on a machine with the same endianess used to create it.
+func (rb *Bitmap) Checksum() uint64 {
+	const (
+		offset = 14695981039346656037
+		prime = 1099511628211
+	)
+
+	var bytes []byte
+
+	hash := uint64(offset)
+
+	bytes = uint16SliceAsByteSlice(rb.highlowcontainer.keys)
+
+	for _, b := range bytes {
+		hash ^= uint64(b)
+		hash *= prime
+	}
+
+	for _, c := range rb.highlowcontainer.containers {
+		// 0 separator
+		hash ^= 0
+		hash *= prime
+
+		switch c := c.(type) {
+		case *bitmapContainer:
+			bytes = uint64SliceAsByteSlice(c.bitmap)
+		case *arrayContainer:
+			bytes = uint16SliceAsByteSlice(c.content)
+		case *runContainer16:
+			bytes = interval16SliceAsByteSlice(c.iv)
+		default:
+			panic("invalid container type")
+		}
+
+		if len(bytes) == 0 {
+			panic("empty containers are not supported")
+		}
+
+		for _, b := range bytes {
+			hash ^= uint64(b)
+			hash *= prime
+		}
+	}
+
+	return hash
+}
+
 // ReadFrom reads a serialized version of this bitmap from stream.
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:
@@ -218,6 +271,14 @@ type intIterator struct {
 	hs               uint32
 	iter             shortPeekable
 	highlowcontainer *roaringArray
+
+	// These embedded iterators per container type help reduce load in the GC.
+	// This way, instead of making up-to 64k allocations per full iteration
+	// we get a single allocation and simply reinitialize the appropriate
+	// iterator and point to it in the generic `iter` member on each key bound.
+	shortIter        shortIterator
+	runIter          runIterator16
+	bitmapIter       bitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -227,8 +288,19 @@ func (ii *intIterator) HasNext() bool {
 
 func (ii *intIterator) init() {
 	if ii.highlowcontainer.size() > ii.pos {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getShortIterator()
 		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+		c := ii.highlowcontainer.getContainerAtIndex(ii.pos)
+		switch t := c.(type) {
+		case *arrayContainer:
+			ii.shortIter = shortIterator{t.content, 0}
+			ii.iter = &ii.shortIter
+		case *runContainer16:
+			ii.runIter = runIterator16{rc: t, curIndex: 0, curPosInIndex: 0}
+			ii.iter = &ii.runIter
+		case *bitmapContainer:
+			ii.bitmapIter = bitmapContainerShortIterator{t, t.NextSetBit(0)}
+			ii.iter = &ii.bitmapIter
+		}
 	}
 }
 
@@ -249,14 +321,14 @@ func (ii *intIterator) PeekNext() uint32 {
 
 // AdvanceIfNeeded advances as long as the next value is smaller than minval
 func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
-	to := minval >> 16
+	to := minval & 0xffff0000
 
-	for ii.HasNext() && (ii.hs>>16) < to {
+	for ii.HasNext() && ii.hs < to {
 		ii.pos++
 		ii.init()
 	}
 
-	if ii.HasNext() && (ii.hs>>16) == to {
+	if ii.HasNext() && ii.hs == to {
 		ii.iter.advanceIfNeeded(lowbits(minval))
 
 		if !ii.iter.hasNext() {
@@ -266,12 +338,17 @@ func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
 	}
 }
 
-func newIntIterator(a *Bitmap) *intIterator {
-	p := new(intIterator)
+// IntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
+type IntIterator = intIterator
+
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (p *intIterator) Initialize(a *Bitmap) {
 	p.pos = 0
 	p.highlowcontainer = &a.highlowcontainer
 	p.init()
-	return p
 }
 
 type intReverseIterator struct {
@@ -279,6 +356,10 @@ type intReverseIterator struct {
 	hs               uint32
 	iter             shortIterable
 	highlowcontainer *roaringArray
+
+	shortIter        reverseIterator
+	runIter          runReverseIterator16
+	bitmapIter       reverseBitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -288,8 +369,30 @@ func (ii *intReverseIterator) HasNext() bool {
 
 func (ii *intReverseIterator) init() {
 	if ii.pos >= 0 {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getReverseIterator()
 		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+		c := ii.highlowcontainer.getContainerAtIndex(ii.pos)
+		switch t := c.(type) {
+		case *arrayContainer:
+			ii.shortIter = reverseIterator{t.content, len(t.content) - 1}
+			ii.iter = &ii.shortIter
+		case *runContainer16:
+			index := int(len(t.iv)) - 1
+			pos := uint16(0)
+
+			if index >= 0 {
+				pos = t.iv[index].length
+			}
+
+			ii.runIter = runReverseIterator16{rc: t, curIndex: index, curPosInIndex: pos}
+			ii.iter = &ii.runIter
+		case *bitmapContainer:
+			pos := -1
+			if t.cardinality > 0 {
+				pos = int(t.maximum())
+			}
+			ii.bitmapIter = reverseBitmapContainerShortIterator{t, pos}
+			ii.iter = &ii.bitmapIter
+		}
 	} else {
 		ii.iter = nil
 	}
@@ -305,12 +408,16 @@ func (ii *intReverseIterator) Next() uint32 {
 	return x
 }
 
-func newIntReverseIterator(a *Bitmap) *intReverseIterator {
-	p := new(intReverseIterator)
+// IntReverseIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
+type IntReverseIterator = intReverseIterator
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (p *intReverseIterator) Initialize(a *Bitmap) {
 	p.highlowcontainer = &a.highlowcontainer
 	p.pos = a.highlowcontainer.size() - 1
 	p.init()
-	return p
 }
 
 // ManyIntIterable allows you to iterate over the values in a Bitmap
@@ -326,12 +433,27 @@ type manyIntIterator struct {
 	hs               uint32
 	iter             manyIterable
 	highlowcontainer *roaringArray
+
+	shortIter        shortIterator
+	runIter          runIterator16
+	bitmapIter       bitmapContainerManyIterator
 }
 
 func (ii *manyIntIterator) init() {
 	if ii.highlowcontainer.size() > ii.pos {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).getManyIterator()
 		ii.hs = uint32(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 16
+		c := ii.highlowcontainer.getContainerAtIndex(ii.pos)
+		switch t := c.(type) {
+		case *arrayContainer:
+			ii.shortIter = shortIterator{t.content, 0}
+			ii.iter = &ii.shortIter
+		case *runContainer16:
+			ii.runIter = runIterator16{rc: t, curIndex: 0, curPosInIndex: 0}
+			ii.iter = &ii.runIter
+		case *bitmapContainer:
+			ii.bitmapIter = bitmapContainerManyIterator{t, -1, 0}
+			ii.iter = &ii.bitmapIter
+		}
 	} else {
 		ii.iter = nil
 	}
@@ -373,12 +495,17 @@ func (ii *manyIntIterator) NextMany64(hs64 uint64, buf []uint64) int {
 	return n
 }
 
-func newManyIntIterator(a *Bitmap) *manyIntIterator {
-	p := new(manyIntIterator)
+
+// ManyIntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
+type ManyIntIterator = manyIntIterator
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (p *manyIntIterator) Initialize(a *Bitmap) {
 	p.pos = 0
 	p.highlowcontainer = &a.highlowcontainer
 	p.init()
-	return p
 }
 
 // String creates a string representation of the Bitmap
@@ -410,7 +537,7 @@ func (rb *Bitmap) String() string {
 // Iterate iterates over the bitmap, calling the given callback with each value in the bitmap.  If the callback returns
 // false, the iteration is halted.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
-// There is no guarantee as to what order the values will be iterated
+// There is no guarantee as to what order the values will be iterated.
 func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
 		hs := uint32(rb.highlowcontainer.getKeyAtIndex(i)) << 16
@@ -442,19 +569,25 @@ func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 // Iterator creates a new IntPeekable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) Iterator() IntPeekable {
-	return newIntIterator(rb)
+    p := new(intIterator)
+	p.Initialize(rb)
+	return p
 }
 
 // ReverseIterator creates a new IntIterable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) ReverseIterator() IntIterable {
-	return newIntReverseIterator(rb)
+	p := new(intReverseIterator)
+	p.Initialize(rb)
+	return p
 }
 
 // ManyIterator creates a new ManyIntIterable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) ManyIterator() ManyIntIterable {
-	return newManyIntIterator(rb)
+	p := new(manyIntIterator)
+	p.Initialize(rb)
+	return p
 }
 
 // Clone creates a copy of the Bitmap
@@ -466,11 +599,17 @@ func (rb *Bitmap) Clone() *Bitmap {
 
 // Minimum get the smallest value stored in this roaring bitmap, assumes that it is not empty
 func (rb *Bitmap) Minimum() uint32 {
+	if len(rb.highlowcontainer.containers) == 0 {
+		panic("Empty bitmap")
+	}
 	return uint32(rb.highlowcontainer.containers[0].minimum()) | (uint32(rb.highlowcontainer.keys[0]) << 16)
 }
 
 // Maximum get the largest value stored in this roaring bitmap, assumes that it is not empty
 func (rb *Bitmap) Maximum() uint32 {
+	if len(rb.highlowcontainer.containers) == 0 {
+		panic("Empty bitmap")
+	}
 	lastindex := len(rb.highlowcontainer.containers) - 1
 	return uint32(rb.highlowcontainer.containers[lastindex].maximum()) | (uint32(rb.highlowcontainer.keys[lastindex]) << 16)
 }
@@ -514,34 +653,38 @@ func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 		containerOffset64 = offset >> 16
 	}
 
-	if containerOffset64 >= (1<<16) || containerOffset64 <= -(1<<16) {
-		return New()
+	answer = New()
+
+	if containerOffset64 >= (1<<16) || containerOffset64 < -(1<<16) {
+		return answer
 	}
 
 	containerOffset := int32(containerOffset64)
 	inOffset := (uint16)(offset - containerOffset64*(1<<16))
 
 	if inOffset == 0 {
-		answer = x.Clone()
-		for pos := 0; pos < answer.highlowcontainer.size(); pos++ {
-			key := int32(answer.highlowcontainer.getKeyAtIndex(pos))
-			key += containerOffset
-
-			if key >= 0 && key <= MaxUint16 {
-				answer.highlowcontainer.keys[pos] = uint16(key)
-			}
-		}
-	} else {
-		answer = New()
-
 		for pos := 0; pos < x.highlowcontainer.size(); pos++ {
 			key := int32(x.highlowcontainer.getKeyAtIndex(pos))
 			key += containerOffset
 
-			c := x.highlowcontainer.getContainerAtIndex(pos)
-			offsetted := c.addOffset(inOffset)
+			if key >= 0 && key <= MaxUint16 {
+				c := x.highlowcontainer.getContainerAtIndex(pos).clone()
+				answer.highlowcontainer.appendContainer(uint16(key), c, false)
+			}
+		}
+	} else {
+		for pos := 0; pos < x.highlowcontainer.size(); pos++ {
+			key := int32(x.highlowcontainer.getKeyAtIndex(pos))
+			key += containerOffset
 
-			if !offsetted[0].isEmpty() && (key >= 0 && key <= MaxUint16) {
+			if key+1 < 0 || key > MaxUint16 {
+				continue
+			}
+
+			c := x.highlowcontainer.getContainerAtIndex(pos)
+			lo, hi := c.addOffset(inOffset)
+
+			if lo != nil && key >= 0 {
 				curSize := answer.highlowcontainer.size()
 				lastkey := int32(0)
 
@@ -551,15 +694,15 @@ func AddOffset64(x *Bitmap, offset int64) (answer *Bitmap) {
 
 				if curSize > 0 && lastkey == key {
 					prev := answer.highlowcontainer.getContainerAtIndex(curSize - 1)
-					orrseult := prev.ior(offsetted[0])
-					answer.highlowcontainer.setContainerAtIndex(curSize-1, orrseult)
+					orresult := prev.ior(lo)
+					answer.highlowcontainer.setContainerAtIndex(curSize-1, orresult)
 				} else {
-					answer.highlowcontainer.appendContainer(uint16(key), offsetted[0], false)
+					answer.highlowcontainer.appendContainer(uint16(key), lo, false)
 				}
 			}
 
-			if !offsetted[1].isEmpty() && ((key+1) >= 0 && (key+1) <= MaxUint16) {
-				answer.highlowcontainer.appendContainer(uint16(key+1), offsetted[1], false)
+			if hi != nil && key+1 <= MaxUint16 {
+				answer.highlowcontainer.appendContainer(uint16(key+1), hi, false)
 			}
 		}
 	}
@@ -693,10 +836,6 @@ func (rb *Bitmap) Rank(x uint32) uint64 {
 // the smallest element. Note that this function differs in convention from
 // the Rank function which returns 1 on the smallest value.
 func (rb *Bitmap) Select(x uint32) (uint32, error) {
-	if rb.GetCardinality() <= uint64(x) {
-		return 0, fmt.Errorf("can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
-	}
-
 	remaining := x
 	for i := 0; i < rb.highlowcontainer.size(); i++ {
 		c := rb.highlowcontainer.getContainerAtIndex(i)
@@ -858,6 +997,28 @@ main:
 		}
 	}
 	return answer
+}
+
+// IntersectsWithInterval checks whether a bitmap 'rb' and an open interval '[x,y)' intersect.
+func (rb *Bitmap) IntersectsWithInterval(x, y uint64) bool {
+	if x >= y {
+		return false
+	}
+	if x > MaxUint32 {
+		return false
+	}
+
+	it := intIterator{}
+	it.Initialize(rb)
+	it.AdvanceIfNeeded(uint32(x))
+	if !it.HasNext() {
+		return false
+	}
+	if uint64(it.Next()) >= y {
+		return false
+	}
+
+	return true
 }
 
 // Intersects checks whether two bitmap intersects, bitmaps are not modified
@@ -1551,28 +1712,4 @@ func (rb *Bitmap) Stats() Statistics {
 		}
 	}
 	return stats
-}
-
-func (rb *Bitmap) checkValidity() bool {
-	for _, c := range rb.highlowcontainer.containers {
-
-		switch c.(type) {
-		case *arrayContainer:
-			if c.getCardinality() > arrayDefaultMaxSize {
-				fmt.Println("Array containers are limited to size ", arrayDefaultMaxSize)
-				return false
-			}
-		case *bitmapContainer:
-			if c.getCardinality() <= arrayDefaultMaxSize {
-				fmt.Println("Bitmaps would be more concise as an array!")
-				return false
-			}
-		case *runContainer16:
-			if c.getSizeInBytes() > minOfInt(bitmapContainerSizeInBytes(), arrayContainerSizeInBytes(c.getCardinality())) {
-				fmt.Println("Inefficient run container!")
-				return false
-			}
-		}
-	}
-	return true
 }
