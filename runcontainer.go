@@ -2148,21 +2148,9 @@ func (rc *runContainer16) orBitmapContainerCardinality(bc *bitmapContainer) int 
 
 // orArray finds the union of rc and ac.
 func (rc *runContainer16) orArray(ac *arrayContainer) container {
-	if ac.isEmpty() {
-		return rc.clone()
-	}
-	if rc.isEmpty() {
-		return ac.clone()
-	}
-	intervals, cardMinusOne := runArrayUnionToRuns(rc, ac)
-	result := newRunContainer16TakeOwnership(intervals)
-	if len(intervals) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
-		return newBitmapContainerFromRun(result)
-	}
-	if len(intervals)*2 > 1+int(cardMinusOne) {
-		return result.toArrayContainer()
-	}
-	return result
+	bc1 := newBitmapContainerFromRun(rc)
+	bc2 := ac.toBitmapContainer()
+	return bc1.orBitmap(bc2)
 }
 
 // orArray finds the union of rc and ac.
@@ -2211,80 +2199,12 @@ func (rc *runContainer16) iorArray(ac *arrayContainer) container {
 	if ac.isEmpty() {
 		return rc
 	}
-	var cardMinusOne uint16
-	//TODO: perform the union algorithm in-place using rc.iv
-	// this can be done with methods like the in-place array container union
-	// but maybe lazily moving the remaining elements back.
-	rc.iv, cardMinusOne = runArrayUnionToRuns(rc, ac)
-	if len(rc.iv) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
-		return newBitmapContainerFromRun(rc)
-	}
-	if len(rc.iv)*2 > 1+int(cardMinusOne) {
-		return rc.toArrayContainer()
+
+	it := ac.getShortIterator()
+	for it.hasNext() {
+		rc.Add(it.next())
 	}
 	return rc
-}
-
-func runArrayUnionToRuns(rc *runContainer16, ac *arrayContainer) ([]interval16, uint16) {
-	pos1 := 0
-	pos2 := 0
-	length1 := len(ac.content)
-	length2 := len(rc.iv)
-	target := make([]interval16, 0, len(rc.iv))
-	// have to find the first range
-	// options are
-	// 1. from array container
-	// 2. from run container
-	var previousInterval interval16
-	var cardMinusOne uint16
-	if ac.content[0] < rc.iv[0].start {
-		previousInterval.start = ac.content[0]
-		previousInterval.length = 0
-		pos1++
-	} else {
-		previousInterval.start = rc.iv[0].start
-		previousInterval.length = rc.iv[0].length
-		pos2++
-	}
-
-	for pos1 < length1 || pos2 < length2 {
-		if pos1 < length1 {
-			s1 := ac.content[pos1]
-			if s1 <= previousInterval.start+previousInterval.length {
-				pos1++
-				continue
-			}
-			if previousInterval.last() < MaxUint16 && previousInterval.last()+1 == s1 {
-				previousInterval.length++
-				pos1++
-				continue
-			}
-		}
-		if pos2 < length2 {
-			range2 := rc.iv[pos2]
-			if range2.start <= previousInterval.last() || range2.start > 0 && range2.start-1 == previousInterval.last() {
-				pos2++
-				if previousInterval.last() < range2.last() {
-					previousInterval.length = range2.last() - previousInterval.start
-				}
-				continue
-			}
-		}
-		cardMinusOne += previousInterval.length + 1
-		target = append(target, previousInterval)
-		if pos2 == length2 || pos1 < length1 && ac.content[pos1] < rc.iv[pos2].start {
-			previousInterval.start = ac.content[pos1]
-			previousInterval.length = 0
-			pos1++
-		} else {
-			previousInterval = rc.iv[pos2]
-			pos2++
-		}
-	}
-	cardMinusOne += previousInterval.length + 1
-	target = append(target, previousInterval)
-
-	return target, cardMinusOne
 }
 
 // lazyIOR is described (not yet implemented) in
@@ -2512,7 +2432,7 @@ func (rc *runContainer16) toEfficientContainer() container {
 func (rc *runContainer16) toArrayContainer() *arrayContainer {
 	ac := newArrayContainer()
 	for i := range rc.iv {
-		ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		ac = ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last())+1).(*arrayContainer)
 	}
 	return ac
 }
