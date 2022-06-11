@@ -84,8 +84,8 @@ func genPropTestInputs(rand *rand.Rand) (*Bitmap, *Bitmap, *reference, *referenc
 	for _, v := range bValues {
 		if rand.Intn(20) == 0 {
 			rangeStart := rand.Uint32()
-			roaring2.AddRange(uint64(rangeStart), uint64(rangeStart+1000))
-			reference2.AddRange(uint64(rangeStart), uint64(rangeStart+1000))
+			roaring2.AddRange(uint64(rangeStart), uint64(rangeStart+100))
+			reference2.AddRange(uint64(rangeStart), uint64(rangeStart+100))
 			continue
 		}
 
