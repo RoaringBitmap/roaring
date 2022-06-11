@@ -2,7 +2,6 @@ package roaring
 
 import (
 	"encoding/base64"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,9 +28,6 @@ func TestCorruption(t *testing.T) {
 	require.NoError(t, err)
 
 	roundTripRoaring(t, bm2)
-
-	fmt.Println(bm1.String())
-	fmt.Println(bm2.String())
 
 	bm1.Or(bm2)
 
