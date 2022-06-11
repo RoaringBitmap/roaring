@@ -50,13 +50,15 @@ func TestPropertyAnd(t *testing.T) {
 
 func genPropTestInputs(rand *rand.Rand) (*Bitmap, *Bitmap, *reference, *reference) {
 	var (
-		aSize   = rand.Intn(10_000)
-		bSize   = rand.Intn(10_000)
+		aSize   = rand.Intn(1_000)
+		bSize   = rand.Intn(1_000)
 		aValues = make([]uint32, 0, aSize)
 		bValues = make([]uint32, 0, bSize)
 	)
 	for j := 0; j < aSize; j++ {
 		aValues = append(aValues, rand.Uint32())
+	}
+	for j := 0; j < bSize; j++ {
 		bValues = append(bValues, rand.Uint32())
 	}
 
@@ -68,11 +70,25 @@ func genPropTestInputs(rand *rand.Rand) (*Bitmap, *Bitmap, *reference, *referenc
 		reference2 = newReference()
 	)
 	for _, v := range aValues {
+		if rand.Intn(20) == 0 {
+			rangeStart := rand.Uint32()
+			roaring1.AddRange(uint64(rangeStart), uint64(rangeStart+100))
+			reference1.AddRange(uint64(rangeStart), uint64(rangeStart+100))
+			continue
+		}
+
 		roaring1.Add(v)
 		reference1.Add(v)
 	}
 
 	for _, v := range bValues {
+		if rand.Intn(20) == 0 {
+			rangeStart := rand.Uint32()
+			roaring2.AddRange(uint64(rangeStart), uint64(rangeStart+1000))
+			reference2.AddRange(uint64(rangeStart), uint64(rangeStart+1000))
+			continue
+		}
+
 		roaring2.Add(v)
 		reference2.Add(v)
 	}
@@ -94,6 +110,12 @@ func newReference() *reference {
 
 func (r *reference) Add(x uint32) {
 	r.m[x] = struct{}{}
+}
+
+func (r *reference) AddRange(start, end uint64) {
+	for i := start; i < end; i++ {
+		r.m[uint32(i)] = struct{}{}
+	}
 }
 
 func (r *reference) Contains(x uint32) bool {

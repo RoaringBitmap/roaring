@@ -35,6 +35,8 @@ func TestCorruption(t *testing.T) {
 }
 
 func roundTripRoaring(t *testing.T, b *Bitmap) *Bitmap {
+	b.RunOptimize()
+
 	marshaled, err := b.ToBytes()
 	require.NoError(t, err)
 
