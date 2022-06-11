@@ -34,10 +34,14 @@ func TestCorruption(t *testing.T) {
 	roundTripRoaring(t, bm1)
 }
 
-func roundTripRoaring(t *testing.T, b *Bitmap) {
+func roundTripRoaring(t *testing.T, b *Bitmap) *Bitmap {
 	marshaled, err := b.ToBytes()
 	require.NoError(t, err)
-	p, err := New().FromBuffer(marshaled)
+
+	unmarshaled := New()
+	p, err := unmarshaled.FromBuffer(marshaled)
 	require.NoError(t, err)
 	require.Equal(t, int64(len(marshaled)), p)
+
+	return unmarshaled
 }
