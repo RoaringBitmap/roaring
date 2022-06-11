@@ -2432,7 +2432,13 @@ func (rc *runContainer16) toEfficientContainer() container {
 func (rc *runContainer16) toArrayContainer() *arrayContainer {
 	ac := newArrayContainer()
 	for i := range rc.iv {
-		ac = ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last())+1).(*arrayContainer)
+		// TODO: Is this function call safe? ac.iaddRange may return a
+		//       new bitmapcontainer that will just be ignored here by
+		//       the caller.
+		//
+		//       Are other parts of the code vulnerable to this, or just
+		//       this function?
+		ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last())+1)
 	}
 	return ac
 }
