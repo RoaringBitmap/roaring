@@ -2193,13 +2193,6 @@ func (rc *runContainer16) iorBitmapContainer(bc *bitmapContainer) container {
 }
 
 func (rc *runContainer16) iorArray(ac *arrayContainer) container {
-	if rc.isEmpty() {
-		return ac.clone()
-	}
-	if ac.isEmpty() {
-		return rc
-	}
-
 	it := ac.getShortIterator()
 	for it.hasNext() {
 		rc.Add(it.next())
