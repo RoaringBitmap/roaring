@@ -109,6 +109,14 @@ func TestRunOffset(t *testing.T) {
 	}
 }
 
+func TestRunArrayUnionToRuns(t *testing.T) {
+	arrayArg := newArrayContainerRange(0, 10)
+	runArg := newRunContainer16Range(11, 65535)
+	intervals, cardMinusOne := runArrayUnionToRuns(runArg, arrayArg)
+	assert.Equal(t, uint16(65535), cardMinusOne)
+	assert.Equal(t, []interval16{{start: 0, length: 65535}}, intervals)
+}
+
 func TestRleRunIterator16(t *testing.T) {
 	t.Run("RunIterator16 unit tests for next, hasNext, and peekNext should pass", func(t *testing.T) {
 		{
