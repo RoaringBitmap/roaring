@@ -2281,7 +2281,7 @@ func runArrayUnionToRuns(rc *runContainer16, ac *arrayContainer) ([]interval16, 
 			pos2++
 		}
 	}
-	cardMinusOne += previousInterval.length + 1
+	cardMinusOne += previousInterval.length
 	target = append(target, previousInterval)
 
 	return target, cardMinusOne

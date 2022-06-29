@@ -151,6 +151,123 @@ func byteSliceAsInterval16Slice(slice []byte) (result []interval16) {
 	return
 }
 
+func byteSliceAsContainerSlice(slice []byte) (result []container) {
+	var c container
+	containerSize := int(unsafe.Sizeof(c))
+
+	if len(slice)%containerSize != 0 {
+		panic("Slice size should be divisible by unsafe.Sizeof(container)")
+	}
+	// reference: https://go101.org/article/unsafe.html
+
+	// make a new slice header
+	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
+
+	// transfer the data from the given slice to a new variable (our result)
+	rHeader.Data = bHeader.Data
+	rHeader.Len = bHeader.Len / containerSize
+	rHeader.Cap = bHeader.Cap / containerSize
+
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
+
+	// return result
+	return
+}
+
+func byteSliceAsBitsetSlice(slice []byte) (result []bitmapContainer) {
+	bitsetSize := int(unsafe.Sizeof(bitmapContainer{}))
+	if len(slice)%bitsetSize != 0 {
+		panic("Slice size should be divisible by unsafe.Sizeof(bitmapContainer)")
+	}
+	// reference: https://go101.org/article/unsafe.html
+
+	// make a new slice header
+	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
+
+	// transfer the data from the given slice to a new variable (our result)
+	rHeader.Data = bHeader.Data
+	rHeader.Len = bHeader.Len / bitsetSize
+	rHeader.Cap = bHeader.Cap / bitsetSize
+
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
+
+	// return result
+	return
+}
+
+func byteSliceAsArraySlice(slice []byte) (result []arrayContainer) {
+	arraySize := int(unsafe.Sizeof(arrayContainer{}))
+	if len(slice)%arraySize != 0 {
+		panic("Slice size should be divisible by unsafe.Sizeof(arrayContainer)")
+	}
+	// reference: https://go101.org/article/unsafe.html
+
+	// make a new slice header
+	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
+
+	// transfer the data from the given slice to a new variable (our result)
+	rHeader.Data = bHeader.Data
+	rHeader.Len = bHeader.Len / arraySize
+	rHeader.Cap = bHeader.Cap / arraySize
+
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
+
+	// return result
+	return
+}
+
+func byteSliceAsRun16Slice(slice []byte) (result []runContainer16) {
+	run16Size := int(unsafe.Sizeof(runContainer16{}))
+	if len(slice)%run16Size != 0 {
+		panic("Slice size should be divisible by unsafe.Sizeof(runContainer16)")
+	}
+	// reference: https://go101.org/article/unsafe.html
+
+	// make a new slice header
+	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
+
+	// transfer the data from the given slice to a new variable (our result)
+	rHeader.Data = bHeader.Data
+	rHeader.Len = bHeader.Len / run16Size
+	rHeader.Cap = bHeader.Cap / run16Size
+
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
+
+	// return result
+	return
+}
+
+func byteSliceAsBoolSlice(slice []byte) (result []bool) {
+	boolSize := int(unsafe.Sizeof(true))
+	if len(slice)%boolSize != 0 {
+		panic("Slice size should be divisible by unsafe.Sizeof(bool)")
+	}
+	// reference: https://go101.org/article/unsafe.html
+
+	// make a new slice header
+	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
+
+	// transfer the data from the given slice to a new variable (our result)
+	rHeader.Data = bHeader.Data
+	rHeader.Len = bHeader.Len / boolSize
+	rHeader.Cap = bHeader.Cap / boolSize
+
+	// instantiate result and use KeepAlive so data isn't unmapped.
+	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
+
+	// return result
+	return
+}
+
 // FrozenView creates a static view of a serialized bitmap stored in buf.
 // It uses CRoaring's frozen bitmap format.
 //
@@ -260,24 +377,24 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 	keys := byteSliceAsUint16Slice(buf[len(buf)-2*nCont:])
 	buf = buf[:len(buf)-2*nCont]
 
-	nBitmap, nArray, nRun := uint64(0), uint64(0), uint64(0)
-	nArrayEl, nRunEl := uint64(0), uint64(0)
+	nBitmap, nArray, nRun := 0, 0, 0
+	nArrayEl, nRunEl := 0, 0
 	for i, t := range types {
 		switch t {
 		case 1:
 			nBitmap++
 		case 2:
 			nArray++
-			nArrayEl += uint64(counts[i]) + 1
+			nArrayEl += int(counts[i]) + 1
 		case 3:
 			nRun++
-			nRunEl += uint64(counts[i])
+			nRunEl += int(counts[i])
 		default:
 			return FrozenBitmapInvalidTypecode
 		}
 	}
 
-	if uint64(len(buf)) < (1<<13)*nBitmap+4*nRunEl+2*nArrayEl {
+	if len(buf) < (1<<13)*nBitmap+4*nRunEl+2*nArrayEl {
 		return FrozenBitmapIncomplete
 	}
 
@@ -294,14 +411,31 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 		return FrozenBitmapUnexpectedData
 	}
 
-	// TODO: maybe arena_alloc all this.
-	containers := make([]container, nCont)
-	bitsets := make([]bitmapContainer, nBitmap)
-	arrays := make([]arrayContainer, nArray)
-	runs := make([]runContainer16, nRun)
-	needCOW := make([]bool, nCont)
+	var c container
+	containersSz := int(unsafe.Sizeof(c))*nCont
+	bitsetsSz := int(unsafe.Sizeof(bitmapContainer{}))*nBitmap
+	arraysSz := int(unsafe.Sizeof(arrayContainer{}))*nArray
+	runsSz := int(unsafe.Sizeof(runContainer16{}))*nRun
+	needCOWSz := int(unsafe.Sizeof(true))*nCont
 
-	iBitset, iArray, iRun := uint64(0), uint64(0), uint64(0)
+	bitmapArenaSz := containersSz + bitsetsSz + arraysSz + runsSz + needCOWSz
+	bitmapArena := make([]byte, bitmapArenaSz)
+
+	containers := byteSliceAsContainerSlice(bitmapArena[:containersSz])
+	bitmapArena = bitmapArena[containersSz:]
+
+	bitsets := byteSliceAsBitsetSlice(bitmapArena[:bitsetsSz])
+	bitmapArena = bitmapArena[bitsetsSz:]
+
+	arrays := byteSliceAsArraySlice(bitmapArena[:arraysSz])
+	bitmapArena = bitmapArena[arraysSz:]
+
+	runs := byteSliceAsRun16Slice(bitmapArena[:runsSz])
+	bitmapArena = bitmapArena[runsSz:]
+
+	needCOW := byteSliceAsBoolSlice(bitmapArena)
+
+	iBitset, iArray, iRun := 0, 0, 0
 	for i, t := range types {
 		needCOW[i] = true
 
