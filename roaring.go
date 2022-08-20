@@ -723,7 +723,13 @@ func (rb *Bitmap) Add(x uint32) {
 		c := ra.getWritableContainerAtIndex(i).iaddReturnMinimized(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 	} else {
-		newac := newArrayContainer()
+		var newac container
+		if len(rb.highlowcontainer.arrayContainerCache) > 0 {
+			newac = rb.highlowcontainer.arrayContainerCache[len(rb.highlowcontainer.arrayContainerCache)-1]
+			rb.highlowcontainer.arrayContainerCache = rb.highlowcontainer.arrayContainerCache[:len(rb.highlowcontainer.arrayContainerCache)-1]
+		} else {
+			newac = newArrayContainer()
+		}
 		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.iaddReturnMinimized(lowbits(x)))
 	}
 }

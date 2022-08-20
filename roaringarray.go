@@ -106,7 +106,8 @@ type roaringArray struct {
 	needCopyOnWrite []bool
 	copyOnWrite     bool
 	// TODO: Clear in clear, retain in clearretain?
-	serializationBuf []byte
+	serializationBuf    []byte
+	arrayContainerCache []container
 }
 
 func newRoaringArray() *roaringArray {
@@ -242,8 +243,12 @@ func (ra *roaringArray) clear() {
 
 func (ra *roaringArray) clearRetainStructures() {
 	for _, c := range ra.containers {
-		c.clear()
+		if c.containerType() == arrayContype {
+			c.clear()
+			ra.arrayContainerCache = append(ra.arrayContainerCache, c)
+		}
 	}
+	ra.resize(0)
 
 	// ra.keys = ra.keys[:newsize]
 	// ra.containers = ra.containers[:newsize]
