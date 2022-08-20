@@ -101,11 +101,10 @@ func rangeOfOnes(start, last int) container {
 }
 
 type roaringArray struct {
-	keys            []uint16
-	containers      []container `msg:"-"` // don't try to serialize directly.
-	needCopyOnWrite []bool
-	copyOnWrite     bool
-	// TODO: Clear in clear, retain in clearretain?
+	keys                []uint16
+	containers          []container `msg:"-"` // don't try to serialize directly.
+	needCopyOnWrite     []bool
+	copyOnWrite         bool
 	serializationBuf    []byte
 	arrayContainerCache []container
 }
@@ -239,6 +238,7 @@ func (ra *roaringArray) resize(newsize int) {
 func (ra *roaringArray) clear() {
 	ra.resize(0)
 	ra.copyOnWrite = false
+	ra.serializationBuf = nil
 }
 
 func (ra *roaringArray) clearRetainStructures() {
@@ -249,10 +249,7 @@ func (ra *roaringArray) clearRetainStructures() {
 		}
 	}
 	ra.resize(0)
-
-	// ra.keys = ra.keys[:newsize]
-	// ra.containers = ra.containers[:newsize]
-	// ra.needCopyOnWrite = ra.needCopyOnWrite[:newsize]
+	ra.serializationBuf = ra.serializationBuf[:0]
 }
 
 func (ra *roaringArray) clone() *roaringArray {
