@@ -21,9 +21,13 @@ type Bitmap struct {
 
 	// Used to cache reusable array containers. Usually empty and will be drained
 	// by a call to clear(). Will be filled with any existing array containers by
-	// a call to clearRetainDatastructures(). If len(arrayContainerCache is > 0)
-	// then
-	arrayContainerCache []container
+	// a call to clearRetainDatastructures(). If len(arrayContainerPool) is > 0
+	// then new array containers will be created by removing one from this cache
+	// instead of allocation.
+	//
+	// TODO: There is an obvious opportunity to extend this to bitmap containers
+	//       as well, but leaving that out of the first implementation.
+	arrayContainerPool []container
 }
 
 // ToBase64 serializes a bitmap as Base64
@@ -198,10 +202,10 @@ func New() *Bitmap {
 // some memory allocations that may speed up future operations
 func (rb *Bitmap) Clear() {
 	rb.highlowcontainer.clear()
-	for i := range rb.arrayContainerCache {
-		rb.arrayContainerCache[i] = nil
+	for i := range rb.arrayContainerPool {
+		rb.arrayContainerPool[i] = nil
 	}
-	rb.arrayContainerCache = rb.arrayContainerCache[:0]
+	rb.arrayContainerPool = rb.arrayContainerPool[:0]
 }
 
 // ClearRetainStructures is the same as Clear(), but it is much more
@@ -210,7 +214,7 @@ func (rb *Bitmap) ClearRetainStructures() {
 	for _, c := range rb.highlowcontainer.containers {
 		if c.containerType() == arrayContype {
 			c.clear()
-			rb.arrayContainerCache = append(rb.arrayContainerCache, c)
+			rb.arrayContainerPool = append(rb.arrayContainerPool, c)
 		}
 	}
 	rb.highlowcontainer.clearRetainStructures()
@@ -1733,12 +1737,12 @@ func (rb *Bitmap) Stats() Statistics {
 	return stats
 }
 
-// getNewArrayContainer checks the arrayContainerCache for an existing array
+// getNewArrayContainer checks the arrayContainerPool for an existing array
 // container, and if it doesn't find one it just allocates a new one.
 func (rb *Bitmap) getNewArrayContainer() container {
-	if len(rb.arrayContainerCache) > 0 {
-		newac := rb.arrayContainerCache[len(rb.arrayContainerCache)-1]
-		rb.arrayContainerCache = rb.arrayContainerCache[:len(rb.arrayContainerCache)-1]
+	if len(rb.arrayContainerPool) > 0 {
+		newac := rb.arrayContainerPool[len(rb.arrayContainerPool)-1]
+		rb.arrayContainerPool = rb.arrayContainerPool[:len(rb.arrayContainerPool)-1]
 		return newac
 	} else {
 		return newArrayContainer()
