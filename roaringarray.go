@@ -101,12 +101,15 @@ func rangeOfOnes(start, last int) container {
 }
 
 type roaringArray struct {
-	keys                []uint16
-	containers          []container `msg:"-"` // don't try to serialize directly.
-	needCopyOnWrite     []bool
-	copyOnWrite         bool
-	serializationBuf    []byte
-	arrayContainerCache []container
+	keys            []uint16
+	containers      []container `msg:"-"` // don't try to serialize directly.
+	needCopyOnWrite []bool
+	copyOnWrite     bool
+
+	// Used to buffer data in writeTo() calls. Will be reset to nil after a call
+	// to clear(), or retained (but resized to 0) after a call to
+	// clearRetainDatastructures().
+	serializationBuf []byte
 }
 
 func newRoaringArray() *roaringArray {
@@ -242,13 +245,8 @@ func (ra *roaringArray) clear() {
 }
 
 func (ra *roaringArray) clearRetainStructures() {
-	for _, c := range ra.containers {
-		if c.containerType() == arrayContype {
-			c.clear()
-			ra.arrayContainerCache = append(ra.arrayContainerCache, c)
-		}
-	}
 	ra.resize(0)
+	ra.copyOnWrite = false
 	ra.serializationBuf = ra.serializationBuf[:0]
 }
 

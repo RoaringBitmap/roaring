@@ -18,6 +18,12 @@ import (
 // Bitmap represents a compressed bitmap where you can add integers.
 type Bitmap struct {
 	highlowcontainer roaringArray
+
+	// Used to cache reusable array containers. Usually empty and will be drained
+	// by a call to clear(). Will be filled with any existing array containers by
+	// a call to clearRetainDatastructures(). If len(arrayContainerCache is > 0)
+	// then
+	arrayContainerCache []container
 }
 
 // ToBase64 serializes a bitmap as Base64
@@ -192,11 +198,21 @@ func New() *Bitmap {
 // some memory allocations that may speed up future operations
 func (rb *Bitmap) Clear() {
 	rb.highlowcontainer.clear()
+	for i := range rb.arrayContainerCache {
+		rb.arrayContainerCache[i] = nil
+	}
+	rb.arrayContainerCache = rb.arrayContainerCache[:0]
 }
 
 // ClearRetainStructures is the same as Clear(), but it is much more
 // aggressive in how it will preserve existing datastructures.
 func (rb *Bitmap) ClearRetainStructures() {
+	for _, c := range rb.highlowcontainer.containers {
+		if c.containerType() == arrayContype {
+			c.clear()
+			rb.arrayContainerCache = append(rb.arrayContainerCache, c)
+		}
+	}
 	rb.highlowcontainer.clearRetainStructures()
 }
 
@@ -723,13 +739,7 @@ func (rb *Bitmap) Add(x uint32) {
 		c := ra.getWritableContainerAtIndex(i).iaddReturnMinimized(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 	} else {
-		var newac container
-		if len(rb.highlowcontainer.arrayContainerCache) > 0 {
-			newac = rb.highlowcontainer.arrayContainerCache[len(rb.highlowcontainer.arrayContainerCache)-1]
-			rb.highlowcontainer.arrayContainerCache = rb.highlowcontainer.arrayContainerCache[:len(rb.highlowcontainer.arrayContainerCache)-1]
-		} else {
-			newac = newArrayContainer()
-		}
+		newac := rb.getNewArrayContainer()
 		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.iaddReturnMinimized(lowbits(x)))
 	}
 }
@@ -745,7 +755,7 @@ func (rb *Bitmap) addwithptr(x uint32) (int, container) {
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 		return i, c
 	}
-	newac := newArrayContainer()
+	newac := rb.getNewArrayContainer()
 	c = newac.iaddReturnMinimized(lowbits(x))
 	rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, c)
 	return -i - 1, c
@@ -763,7 +773,7 @@ func (rb *Bitmap) CheckedAdd(x uint32) bool {
 		rb.highlowcontainer.setContainerAtIndex(i, C)
 		return C.getCardinality() > oldcard
 	}
-	newac := newArrayContainer()
+	newac := rb.getNewArrayContainer()
 	rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.iaddReturnMinimized(lowbits(x)))
 	return true
 
@@ -1721,4 +1731,16 @@ func (rb *Bitmap) Stats() Statistics {
 		}
 	}
 	return stats
+}
+
+// getNewArrayContainer checks the arrayContainerCache for an existing array
+// container, and if it doesn't find one it just allocates a new one.
+func (rb *Bitmap) getNewArrayContainer() container {
+	if len(rb.arrayContainerCache) > 0 {
+		newac := rb.arrayContainerCache[len(rb.arrayContainerCache)-1]
+		rb.arrayContainerCache = rb.arrayContainerCache[:len(rb.arrayContainerCache)-1]
+		return newac
+	} else {
+		return newArrayContainer()
+	}
 }
