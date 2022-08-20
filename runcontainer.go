@@ -1009,7 +1009,7 @@ func (rc *runContainer16) Clone() *runContainer16 {
 }
 
 func (rc *runContainer16) clear() {
-	panic("no good")
+	rc.iv = rc.iv[:0]
 }
 
 // newRunContainer16TakeOwnership returns a new runContainer16
