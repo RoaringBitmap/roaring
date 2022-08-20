@@ -360,6 +360,13 @@ func (bc *bitmapContainer) clone() container {
 	return &ptr
 }
 
+func (bc *bitmapContainer) clear() {
+	for i := range bc.bitmap {
+		bc.bitmap[i] = 0
+	}
+	bc.cardinality = 0
+}
+
 // add all values in range [firstOfRange,lastOfRange)
 func (bc *bitmapContainer) iaddRange(firstOfRange, lastOfRange int) container {
 	bc.cardinality += setBitmapRangeAndCardinalityChange(bc.bitmap, firstOfRange, lastOfRange)

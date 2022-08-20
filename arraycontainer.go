@@ -875,6 +875,10 @@ func (ac *arrayContainer) clone() container {
 	return &ptr
 }
 
+func (ac *arrayContainer) clear() {
+	ac.content = ac.content[:0]
+}
+
 func (ac *arrayContainer) contains(x uint16) bool {
 	return binarySearch(ac.content, x) >= 0
 }

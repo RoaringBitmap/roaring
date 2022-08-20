@@ -1008,6 +1008,10 @@ func (rc *runContainer16) Clone() *runContainer16 {
 	return rc2
 }
 
+func (rc *runContainer16) clear() {
+	panic("no good")
+}
+
 // newRunContainer16TakeOwnership returns a new runContainer16
 // backed by the provided iv slice, which we will
 // assume exclusive control over from now on.

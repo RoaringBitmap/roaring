@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/RoaringBitmap/roaring/internal"
 	"io"
+
+	"github.com/RoaringBitmap/roaring/internal"
 )
 
 type container interface {
@@ -15,6 +16,7 @@ type container interface {
 	addOffset(uint16) (container, container)
 
 	clone() container
+	clear()
 	and(container) container
 	andCardinality(container) int
 	iand(container) container // i stands for inplace
@@ -103,6 +105,8 @@ type roaringArray struct {
 	containers      []container `msg:"-"` // don't try to serialize directly.
 	needCopyOnWrite []bool
 	copyOnWrite     bool
+	// TODO: Clear in clear, retain in clearretain?
+	serializationBuf []byte
 }
 
 func newRoaringArray() *roaringArray {
@@ -234,6 +238,16 @@ func (ra *roaringArray) resize(newsize int) {
 func (ra *roaringArray) clear() {
 	ra.resize(0)
 	ra.copyOnWrite = false
+}
+
+func (ra *roaringArray) clearRetainStructures() {
+	for _, c := range ra.containers {
+		c.clear()
+	}
+
+	// ra.keys = ra.keys[:newsize]
+	// ra.containers = ra.containers[:newsize]
+	// ra.needCopyOnWrite = ra.needCopyOnWrite[:newsize]
 }
 
 func (ra *roaringArray) clone() *roaringArray {
@@ -469,19 +483,33 @@ func (ra *roaringArray) serializedSizeInBytes() uint64 {
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
 //
 func (ra *roaringArray) writeTo(w io.Writer) (n int64, err error) {
-	hasRun := ra.hasRunCompression()
-	isRunSizeInBytes := 0
-	cookieSize := 8
+	var (
+		hasRun           = ra.hasRunCompression()
+		isRunSizeInBytes = 0
+		cookieSize       = 8
+	)
 	if hasRun {
 		cookieSize = 4
 		isRunSizeInBytes = (len(ra.keys) + 7) / 8
 	}
-	descriptiveHeaderSize := 4 * len(ra.keys)
-	preambleSize := cookieSize + isRunSizeInBytes + descriptiveHeaderSize
 
-	buf := make([]byte, preambleSize+4*len(ra.keys))
-
-	nw := 0
+	var (
+		descriptiveHeaderSize = 4 * len(ra.keys)
+		preambleSize          = cookieSize + isRunSizeInBytes + descriptiveHeaderSize
+		buf                   []byte
+		bufSizeRequired       = preambleSize + 4*len(ra.keys)
+		nw                    = 0
+	)
+	if cap(ra.serializationBuf) < bufSizeRequired {
+		buf = make([]byte, bufSizeRequired)
+		ra.serializationBuf = buf // Capture for next time.
+	} else {
+		buf = ra.serializationBuf[:bufSizeRequired]
+		for i := range buf {
+			// Memclear just to be safe.
+			buf[i] = 0
+		}
+	}
 
 	if hasRun {
 		binary.LittleEndian.PutUint16(buf[0:], uint16(serialCookie))

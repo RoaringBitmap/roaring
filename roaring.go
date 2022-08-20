@@ -63,7 +63,7 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 func (rb *Bitmap) Checksum() uint64 {
 	const (
 		offset = 14695981039346656037
-		prime = 1099511628211
+		prime  = 1099511628211
 	)
 
 	var bytes []byte
@@ -194,6 +194,12 @@ func (rb *Bitmap) Clear() {
 	rb.highlowcontainer.clear()
 }
 
+// ClearRetainStructures is the same as Clear(), but it is much more
+// aggressive in how it will preserve existing datastructures.
+func (rb *Bitmap) ClearRetainStructures() {
+	rb.highlowcontainer.clearRetainStructures()
+}
+
 // ToArray creates a new slice containing all of the integers stored in the Bitmap in sorted order
 func (rb *Bitmap) ToArray() []uint32 {
 	array := make([]uint32, rb.GetCardinality())
@@ -276,9 +282,9 @@ type intIterator struct {
 	// This way, instead of making up-to 64k allocations per full iteration
 	// we get a single allocation and simply reinitialize the appropriate
 	// iterator and point to it in the generic `iter` member on each key bound.
-	shortIter        shortIterator
-	runIter          runIterator16
-	bitmapIter       bitmapContainerShortIterator
+	shortIter  shortIterator
+	runIter    runIterator16
+	bitmapIter bitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -341,7 +347,6 @@ func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
 // IntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
 type IntIterator = intIterator
 
-
 // Initialize configures the existing iterator so that it can iterate through the values of
 // the provided bitmap.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
@@ -357,9 +362,9 @@ type intReverseIterator struct {
 	iter             shortIterable
 	highlowcontainer *roaringArray
 
-	shortIter        reverseIterator
-	runIter          runReverseIterator16
-	bitmapIter       reverseBitmapContainerShortIterator
+	shortIter  reverseIterator
+	runIter    runReverseIterator16
+	bitmapIter reverseBitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -434,9 +439,9 @@ type manyIntIterator struct {
 	iter             manyIterable
 	highlowcontainer *roaringArray
 
-	shortIter        shortIterator
-	runIter          runIterator16
-	bitmapIter       bitmapContainerManyIterator
+	shortIter  shortIterator
+	runIter    runIterator16
+	bitmapIter bitmapContainerManyIterator
 }
 
 func (ii *manyIntIterator) init() {
@@ -494,7 +499,6 @@ func (ii *manyIntIterator) NextMany64(hs64 uint64, buf []uint64) int {
 
 	return n
 }
-
 
 // ManyIntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
 type ManyIntIterator = manyIntIterator
@@ -569,7 +573,7 @@ func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 // Iterator creates a new IntPeekable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) Iterator() IntPeekable {
-    p := new(intIterator)
+	p := new(intIterator)
 	p.Initialize(rb)
 	return p
 }
@@ -716,8 +720,7 @@ func (rb *Bitmap) Add(x uint32) {
 	ra := &rb.highlowcontainer
 	i := ra.getIndex(hb)
 	if i >= 0 {
-		var c container
-		c = ra.getWritableContainerAtIndex(i).iaddReturnMinimized(lowbits(x))
+		c := ra.getWritableContainerAtIndex(i).iaddReturnMinimized(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 	} else {
 		newac := newArrayContainer()

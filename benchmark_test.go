@@ -1139,7 +1139,7 @@ func BenchmarkRepeatedSparseSerialization(b *testing.B) {
 		buf = bytes.NewBuffer(nil)
 	)
 	for i := 0; i < b.N; i++ {
-		l.Clear()
+		l.ClearRetainStructures()
 		for j := 0; j < 16; j++ {
 			l.Add(uint32(j))
 		}
