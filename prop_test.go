@@ -40,15 +40,21 @@ func TestPropertyRepeatedSerializationWithClearRetainStructures(t *testing.T) {
 }
 
 func TestPropertyOr(t *testing.T) {
-	// Make test deterministic.
-	rand := rand.New(rand.NewSource(0))
-
+	var (
+		// Make test deterministic.
+		rand     = rand.New(rand.NewSource(0))
+		reusable = NewBitmap()
+	)
 	testFn := func(t *testing.T) {
 		roaring1, roaring2, reference1, reference2 := genPropTestInputs(rand)
 
+		reusable.ClearRetainStructures()
+		reusable.Or(roaring1)
+		reusable.Or(roaring2)
 		roaring1.Or(roaring2)
 		reference1.Or(reference2)
 
+		assertRoaringEqualsReference(t, reusable, reference1)
 		assertRoaringEqualsReference(t, roaring1, reference1)
 	}
 
@@ -60,15 +66,21 @@ func TestPropertyOr(t *testing.T) {
 }
 
 func TestPropertyAnd(t *testing.T) {
-	// Make test deterministic.
-	rand := rand.New(rand.NewSource(0))
-
+	var (
+		// Make test deterministic.
+		rand     = rand.New(rand.NewSource(0))
+		reusable = NewBitmap()
+	)
 	testFn := func(t *testing.T) {
 		roaring1, roaring2, reference1, reference2 := genPropTestInputs(rand)
 
+		reusable.ClearRetainStructures()
+		reusable.And(roaring1)
+		reusable.And(roaring2)
 		roaring1.And(roaring2)
 		reference1.And(reference2)
 
+		assertRoaringEqualsReference(t, reusable, reference1)
 		assertRoaringEqualsReference(t, roaring1, reference1)
 	}
 
