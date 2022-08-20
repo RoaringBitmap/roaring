@@ -81,8 +81,8 @@ func TestPropertyAnd(t *testing.T) {
 
 func genPropTestInputs(rand *rand.Rand) (*Bitmap, *Bitmap, *reference, *reference) {
 	var (
-		aSize   = rand.Intn(1_000)
-		bSize   = rand.Intn(1_000)
+		aSize   = rand.Intn(1000)
+		bSize   = rand.Intn(1000)
 		aValues = make([]uint32, 0, aSize)
 		bValues = make([]uint32, 0, bSize)
 	)
