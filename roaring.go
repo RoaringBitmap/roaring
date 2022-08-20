@@ -20,8 +20,8 @@ type Bitmap struct {
 	highlowcontainer roaringArray
 
 	// Used to cache reusable array containers. Usually empty and will be drained
-	// by a call to clear(). Will be filled with any existing array containers by
-	// a call to clearRetainDatastructures(). If len(arrayContainerPool) is > 0
+	// by a call to Clear(). Will be filled with any existing array containers by
+	// a call to ClearRetainStructures(). If len(arrayContainerPool) is > 0
 	// then new array containers will be created by removing one from this cache
 	// instead of allocation.
 	//
@@ -209,7 +209,9 @@ func (rb *Bitmap) Clear() {
 }
 
 // ClearRetainStructures is the same as Clear(), but it is much more
-// aggressive in how it will preserve existing datastructures.
+// aggressive in how it will preserve existing datastructures, and it
+// will also return any allocated array containers to the(bitmap-local)
+// pool for subsequent reuse.
 func (rb *Bitmap) ClearRetainStructures() {
 	for _, c := range rb.highlowcontainer.containers {
 		if c.containerType() == arrayContype {
