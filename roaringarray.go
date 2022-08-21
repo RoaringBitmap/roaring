@@ -108,7 +108,7 @@ type roaringArray struct {
 
 	// Used to buffer data in writeTo() calls. Will be reset to nil after a call
 	// to clear(), or retained (but resized to 0) after a call to
-	// clearRetainDatastructures().
+	// clearRetainStructures().
 	serializationBuf []byte
 }
 

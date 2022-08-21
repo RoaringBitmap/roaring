@@ -1743,7 +1743,13 @@ func (rb *Bitmap) Stats() Statistics {
 // container, and if it doesn't find one it just allocates a new one.
 func (rb *Bitmap) getNewArrayContainer() container {
 	if len(rb.arrayContainerPool) > 0 {
+		// Take the last item out of the pool.
 		newac := rb.arrayContainerPool[len(rb.arrayContainerPool)-1]
+		// Nil out the reference in the pool before resizing it so that it can be
+		// reclaimed by the G.C later if necessary (otherwise even if it is never
+		// returned to the pool, the G.C will be able to reach it via the underlying
+		// capacity of the slice even if it has been resized).
+		rb.arrayContainerPool[len(rb.arrayContainerPool)-1] = nil
 		rb.arrayContainerPool = rb.arrayContainerPool[:len(rb.arrayContainerPool)-1]
 		return newac
 	} else {
