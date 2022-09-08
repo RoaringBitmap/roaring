@@ -1138,18 +1138,18 @@ type benchAllocator struct {
 	uint16s []uint16
 }
 
-func (a benchAllocator) AllocateBytes(size, capacity int) []byte {
-	if size <= cap(a.buf) && capacity <= cap(a.buf) {
+func (a benchAllocator) AllocateBytes(size int) []byte {
+	if size <= cap(a.buf) {
 		return a.buf[:size]
 	}
-	return make([]byte, size, capacity)
+	return make([]byte, size)
 }
 
-func (a benchAllocator) AllocateUInt16s(size, capacity int) []uint16 {
-	if size <= cap(a.uint16s) && capacity <= cap(a.uint16s) {
+func (a benchAllocator) AllocateUInt16s(size int) []uint16 {
+	if size <= cap(a.uint16s) {
 		return a.uint16s[:size]
 	}
-	return make([]uint16, size, capacity)
+	return make([]uint16, size)
 }
 
 func BenchmarkRepeatedSparseSerialization(b *testing.B) {

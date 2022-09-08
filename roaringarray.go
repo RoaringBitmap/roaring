@@ -488,7 +488,7 @@ func (ra *roaringArray) writeTo(w io.Writer, allocator Allocator) (n int64, err 
 		nw                    = 0
 	)
 	if allocator != nil {
-		buf = allocator.AllocateBytes(bufSizeRequired, bufSizeRequired)
+		buf = allocator.AllocateBytes(bufSizeRequired)
 	} else {
 		buf = make([]byte, bufSizeRequired)
 	}
