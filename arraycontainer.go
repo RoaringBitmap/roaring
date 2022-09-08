@@ -925,7 +925,9 @@ func newArrayContainer() *arrayContainer {
 
 func newArrayContainerFromAllocator(allocator Allocator) *arrayContainer {
 	p := new(arrayContainer)
-	p.content = allocator.AllocateUInt16s(0, arrayDefaultMaxSize)[:0]
+	if allocator != nil {
+		p.content = allocator.AllocateUInt16s(0, arrayDefaultMaxSize)[:0]
+	}
 	return p
 }
 

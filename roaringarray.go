@@ -484,9 +484,14 @@ func (ra *roaringArray) writeTo(w io.Writer, allocator Allocator) (n int64, err 
 		descriptiveHeaderSize = 4 * len(ra.keys)
 		preambleSize          = cookieSize + isRunSizeInBytes + descriptiveHeaderSize
 		bufSizeRequired       = preambleSize + 4*len(ra.keys)
-		buf                   = allocator.AllocateBytes(bufSizeRequired, bufSizeRequired)
+		buf                   []byte
 		nw                    = 0
 	)
+	if allocator != nil {
+		buf = allocator.AllocateBytes(bufSizeRequired, bufSizeRequired)
+	} else {
+		buf = make([]byte, bufSizeRequired)
+	}
 	if hasRun {
 		binary.LittleEndian.PutUint16(buf[0:], uint16(serialCookie))
 		nw += 2

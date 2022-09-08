@@ -187,9 +187,7 @@ func NewBitmap() *Bitmap {
 
 // New creates a new empty Bitmap (same as NewBitmap)
 func New() *Bitmap {
-	return &Bitmap{
-		allocator: defaultAllocator{},
-	}
+	return &Bitmap{}
 }
 
 // NewWithAllocator creates a new empty Bitmap with the provided
@@ -602,7 +600,7 @@ func (rb *Bitmap) ManyIterator() ManyIntIterable {
 
 // Clone creates a copy of the Bitmap
 func (rb *Bitmap) Clone() *Bitmap {
-	ptr := new(Bitmap)
+	ptr := New()
 	ptr.highlowcontainer = *rb.highlowcontainer.clone()
 	return ptr
 }
