@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/RoaringBitmap/roaring/internal"
 	"io"
+
+	"github.com/RoaringBitmap/roaring/internal"
 )
 
 type container interface {
@@ -468,21 +469,24 @@ func (ra *roaringArray) serializedSizeInBytes() uint64 {
 //
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
 //
-func (ra *roaringArray) writeTo(w io.Writer) (n int64, err error) {
-	hasRun := ra.hasRunCompression()
-	isRunSizeInBytes := 0
-	cookieSize := 8
+func (ra *roaringArray) writeTo(w io.Writer, allocator Allocator) (n int64, err error) {
+	var (
+		hasRun           = ra.hasRunCompression()
+		isRunSizeInBytes = 0
+		cookieSize       = 8
+	)
 	if hasRun {
 		cookieSize = 4
 		isRunSizeInBytes = (len(ra.keys) + 7) / 8
 	}
-	descriptiveHeaderSize := 4 * len(ra.keys)
-	preambleSize := cookieSize + isRunSizeInBytes + descriptiveHeaderSize
 
-	buf := make([]byte, preambleSize+4*len(ra.keys))
-
-	nw := 0
-
+	var (
+		descriptiveHeaderSize = 4 * len(ra.keys)
+		preambleSize          = cookieSize + isRunSizeInBytes + descriptiveHeaderSize
+		bufSizeRequired       = preambleSize + 4*len(ra.keys)
+		buf                   = allocator.AllocateBytes(bufSizeRequired, bufSizeRequired)
+		nw                    = 0
+	)
 	if hasRun {
 		binary.LittleEndian.PutUint16(buf[0:], uint16(serialCookie))
 		nw += 2
@@ -547,9 +551,9 @@ func (ra *roaringArray) writeTo(w io.Writer) (n int64, err error) {
 //
 // spec: https://github.com/RoaringBitmap/RoaringFormatSpec
 //
-func (ra *roaringArray) toBytes() ([]byte, error) {
+func (ra *roaringArray) toBytes(allocator Allocator) ([]byte, error) {
 	var buf bytes.Buffer
-	_, err := ra.writeTo(&buf)
+	_, err := ra.writeTo(&buf, allocator)
 	return buf.Bytes(), err
 }
 

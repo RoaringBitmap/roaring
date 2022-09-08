@@ -923,6 +923,12 @@ func newArrayContainer() *arrayContainer {
 	return p
 }
 
+func newArrayContainerFromAllocator(allocator Allocator) *arrayContainer {
+	p := new(arrayContainer)
+	p.content = allocator.AllocateUInt16s(0, arrayDefaultMaxSize)[:0]
+	return p
+}
+
 func newArrayContainerFromBitmap(bc *bitmapContainer) *arrayContainer {
 	ac := &arrayContainer{}
 	ac.loadData(bc)

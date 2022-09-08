@@ -3,15 +3,15 @@ package roaring
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/bits-and-blooms/bitset"
 )
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
-
 
 // go test -bench BenchmarkIteratorAlloc -benchmem -run -
 func BenchmarkIteratorAlloc(b *testing.B) {
@@ -84,7 +84,6 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
 	}
 
-
 	b.Run("many iteration with alloc", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
 			counter = 0
@@ -116,7 +115,6 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
 	}
 }
-
 
 // go test -bench BenchmarkOrs -benchmem -run -
 func BenchmarkOrs(b *testing.B) {
@@ -1133,4 +1131,45 @@ func BenchmarkAndAny(b *testing.B) {
 	runSet("small-base", genOne(r, smallSize, domain), genMulti(r, filtersNum, largeSize, domain))
 	runSet("small-filters", genOne(r, largeSize, domain), genMulti(r, filtersNum, smallSize, domain))
 	runSet("equal", genOne(r, defaultSize, domain), genMulti(r, filtersNum, defaultSize, domain))
+}
+
+type benchAllocator struct {
+	buf     []byte
+	uint16s []uint16
+}
+
+func (a benchAllocator) AllocateBytes(size, capacity int) []byte {
+	if size <= cap(a.buf) && capacity <= cap(a.buf) {
+		return a.buf[:size:capacity]
+	}
+	return make([]byte, size, capacity)
+}
+
+func (a benchAllocator) AllocateUInt16s(size, capacity int) []uint16 {
+	if size <= cap(a.uint16s) && capacity <= cap(a.uint16s) {
+		return a.uint16s[:size:capacity]
+	}
+	return make([]uint16, size, capacity)
+}
+
+func BenchmarkRepeatedSparseSerialization(b *testing.B) {
+	var (
+		allocator = benchAllocator{
+			buf:     make([]byte, 4096),
+			uint16s: make([]uint16, 4096),
+		}
+		l   = NewWithAllocator(allocator)
+		buf = bytes.NewBuffer(nil)
+	)
+	for i := 0; i < b.N; i++ {
+		l.Clear()
+		for j := 0; j < 16; j++ {
+			l.Add(uint32(j))
+		}
+		buf.Reset()
+		_, err := l.WriteTo(buf)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
