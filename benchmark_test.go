@@ -1140,14 +1140,14 @@ type benchAllocator struct {
 
 func (a benchAllocator) AllocateBytes(size, capacity int) []byte {
 	if size <= cap(a.buf) && capacity <= cap(a.buf) {
-		return a.buf[:size:capacity]
+		return a.buf[:size]
 	}
 	return make([]byte, size, capacity)
 }
 
 func (a benchAllocator) AllocateUInt16s(size, capacity int) []uint16 {
 	if size <= cap(a.uint16s) && capacity <= cap(a.uint16s) {
-		return a.uint16s[:size:capacity]
+		return a.uint16s[:size]
 	}
 	return make([]uint16, size, capacity)
 }
