@@ -47,6 +47,9 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 }
 
 // WriteTo writes a serialized version of this bitmap to stream.
+// The format is compatible with other 64-bit RoaringBitmap
+// implementations (Java, Go, C++) and it has a specification :
+// https://github.com/RoaringBitmap/RoaringFormatSpec#extention-for-64-bit-implementations
 func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 
 	var n int64
@@ -78,9 +81,9 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 }
 
 // ReadFrom reads a serialized version of this bitmap from stream.
-// The format is compatible with other RoaringBitmap
-// implementations (Java, C) and is documented here:
-// https://github.com/RoaringBitmap/RoaringFormatSpec
+// The format is compatible with other 64-bit RoaringBitmap
+// implementations (Java, Go, C++) and it has a specification :
+// https://github.com/RoaringBitmap/RoaringFormatSpec#extention-for-64-bit-implementations
 func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	cookie, r32, p, err := tryReadFromRoaring32(rb, stream)
 	if err != nil {
