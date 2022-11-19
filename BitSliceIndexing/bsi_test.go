@@ -2,13 +2,15 @@ package roaring
 
 import (
 	_ "fmt"
-	"github.com/RoaringBitmap/roaring"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/lindb/roaring"
 )
 
 func TestSetAndGet(t *testing.T) {

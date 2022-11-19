@@ -1,12 +1,5 @@
 .PHONY: help all test format fmtcheck vet lint     qa deps clean nuke ser fetch-real-roaring-datasets
 
-
-
-
-
-
-
-
 # Display general help about this command
 help:
 	@echo ""

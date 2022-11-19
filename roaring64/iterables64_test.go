@@ -4,8 +4,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/RoaringBitmap/roaring"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/lindb/roaring"
 )
 
 func TestReverseIteratorCount(t *testing.T) {

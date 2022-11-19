@@ -1,6 +1,6 @@
 package roaring64
 
-import "github.com/RoaringBitmap/roaring"
+import "github.com/lindb/roaring"
 
 func highbits(x uint64) uint32 {
 	return uint32(x >> 32)

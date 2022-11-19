@@ -2,11 +2,12 @@ package roaring
 
 import (
 	"fmt"
-	"github.com/RoaringBitmap/roaring"
 	"math/bits"
 	"runtime"
 	"sync"
 	"sync/atomic"
+
+	"github.com/lindb/roaring"
 )
 
 const (
@@ -263,7 +264,6 @@ type task struct {
 // For the RANGE parameter the comparison criteria is >= valueOrStart and <= end.
 // The parallelism parameter indicates the number of CPU threads to be applied for processing.  A value
 // of zero indicates that all available CPU resources will be potentially utilized.
-//
 func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int64,
 	foundSet *roaring.Bitmap) *roaring.Bitmap {
 
@@ -523,7 +523,6 @@ func (b *BSI) minOrMax(op Operation, batch []uint32, resultsChan chan int64, wg 
 
 // Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet
 // is also returned (for calculating the average).
-//
 func (b *BSI) Sum(foundSet *roaring.Bitmap) (sum int64, count uint64) {
 
 	count = foundSet.GetCardinality()
@@ -809,7 +808,6 @@ func (b *BSI) addDigit(foundSet *roaring.Bitmap, i int) {
 // contained within the input BSI.   Given that for BSIs, different columnIDs can have the same value.  TransposeWithCounts
 // is useful for situations where there is a one-to-many relationship between the vectored integer sets.  The resulting BSI
 // contains the number of times a particular value appeared in the input BSI as an integer count.
-//
 func (b *BSI) TransposeWithCounts(parallelism int, foundSet *roaring.Bitmap) *BSI {
 
 	return parallelExecutorBSIResults(parallelism, b, transposeWithCounts, foundSet, true)

@@ -1,6 +1,6 @@
 package roaring64
 
-import "github.com/RoaringBitmap/roaring"
+import "github.com/lindb/roaring"
 
 type roaringArray64 struct {
 	keys            []uint32
@@ -12,9 +12,10 @@ type roaringArray64 struct {
 // runOptimize compresses the element containers to minimize space consumed.
 // Q: how does this interact with copyOnWrite and needCopyOnWrite?
 // A: since we aren't changing the logical content, just the representation,
-//    we don't bother to check the needCopyOnWrite bits. We replace
-//    (possibly all) elements of ra.containers in-place with space
-//    optimized versions.
+//
+//	we don't bother to check the needCopyOnWrite bits. We replace
+//	(possibly all) elements of ra.containers in-place with space
+//	optimized versions.
 func (ra *roaringArray64) runOptimize() {
 	for i := range ra.containers {
 		ra.containers[i].RunOptimize()
