@@ -322,7 +322,7 @@ Only the 32-bit roaring format is standard and cross-operable between Java, C++,
 
 ### Documentation
 
-Current documentation is available at http://godoc.org/github.com/RoaringBitmap/roaring and http://godoc.org/github.com/RoaringBitmap/roaring64
+Current documentation is available at https://pkg.go.dev/github.com/RoaringBitmap/roaring and https://pkg.go.dev/github.com/RoaringBitmap/roaring/roaring64
 
 ### Goroutine safety
 
