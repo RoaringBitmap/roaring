@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSerializationOfEmptyBitmap(t *testing.T) {
@@ -18,13 +19,13 @@ func TestSerializationOfEmptyBitmap(t *testing.T) {
 	buf := &bytes.Buffer{}
 	_, err := rb.WriteTo(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -38,7 +39,7 @@ func TestBase64_036(t *testing.T) {
 
 	_, err := newrb.FromBase64(bstr)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -48,13 +49,13 @@ func TestSerializationBasic037(t *testing.T) {
 	buf := &bytes.Buffer{}
 	_, err := rb.WriteTo(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -62,13 +63,17 @@ func TestSerializationToFile038(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
 	fname := "myfile.bin"
 	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	if(err != nil) {
+		fmt.Println("IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		return
+	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var l int64
 	l, err = rb.WriteTo(fout)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, l, rb.GetSerializedSizeInBytes())
 
 	fout.Close()
@@ -76,11 +81,11 @@ func TestSerializationToFile038(t *testing.T) {
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		fin.Close()
-		assert.NoError(t, os.Remove(fname))
+		require.NoError(t, os.Remove(fname))
 	}()
 
 	_, _ = newrb.ReadFrom(fin)
@@ -94,13 +99,13 @@ func TestSerializationBasic2_041(t *testing.T) {
 	l := int(rb.GetSerializedSizeInBytes())
 	_, err := rb.WriteTo(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, l, buf.Len())
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -114,13 +119,13 @@ func TestSerializationBasic3_042(t *testing.T) {
 	var buf bytes.Buffer
 	_, err := rb.WriteTo(&buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), int(rb.GetSerializedSizeInBytes()))
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(&buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, newrb.Equals(rb))
 }
 
@@ -134,13 +139,13 @@ func TestHoldReference(t *testing.T) {
 		}
 
 		_, err := rb.WriteTo(buf)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		nb := New()
 		data := buf.Bytes()
 		_, err = nb.ReadFrom(bytes.NewReader(data))
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		buf = nil
 		rb = nil

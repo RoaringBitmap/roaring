@@ -6,6 +6,7 @@ import (
 
 	"github.com/RoaringBitmap/roaring/internal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestByteInputFlow(t *testing.T) {
@@ -47,18 +48,18 @@ func TestByteInputFlow(t *testing.T) {
 		for _, input := range instances {
 			n, err := input.ReadUInt16()
 			assert.EqualValues(t, 1, n)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			p, err := input.ReadUInt32()
 			assert.EqualValues(t, 2097162, p) // 32 << 16 | 10
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			b, err := input.Next(2)
 			assert.EqualValues(t, []byte{66, 0}, b)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = input.SkipBytes(2)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			b, err = input.Next(1)
 			assert.Nil(t, b)

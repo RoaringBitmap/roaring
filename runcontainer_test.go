@@ -2198,7 +2198,6 @@ type twofer struct {
 
 func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 	t.Run("each of the container methods that takes two containers should handle all 3x3==9 possible ways of being called -- and return results that agree with each other", func(t *testing.T) {
-		//rleVerbose = true
 
 		seed := int64(42)
 		rand.Seed(seed)

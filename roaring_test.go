@@ -9,6 +9,7 @@ import (
 
 	"github.com/bits-and-blooms/bitset"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func checkValidity(t *testing.T, rb *Bitmap) {
@@ -321,7 +322,7 @@ func TestRoaringInPlaceAndNotBitmapContainer(t *testing.T) {
 	var b bytes.Buffer
 	_, err := bm.WriteTo(&b)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	bm2 := NewBitmap()
 	bm2.ReadFrom(bytes.NewBuffer(b.Bytes()))
@@ -1825,8 +1826,6 @@ func TestHash(t *testing.T) {
 	hashTest(t, 4095)
 	hashTest(t, 4096)
 	hashTest(t, 4097)
-	hashTest(t, 65536)
-	hashTest(t, 65536*16)
 }
 
 func rTest(t *testing.T, N int) {

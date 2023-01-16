@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSerializationOfEmptyBitmap(t *testing.T) {
@@ -22,13 +23,13 @@ func TestSerializationOfEmptyBitmap(t *testing.T) {
 	buf := &bytes.Buffer{}
 	_, err := rb.WriteTo(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -42,7 +43,7 @@ func TestBase64_036(t *testing.T) {
 
 	_, err := newrb.FromBase64(bstr)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -52,13 +53,13 @@ func TestSerializationBasic037(t *testing.T) {
 	buf := &bytes.Buffer{}
 	_, err := rb.WriteTo(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -66,13 +67,17 @@ func TestSerializationToFile038(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
 	fname := "myfile.bin"
 	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	if(err != nil) {
+		fmt.Println("IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		return
+	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var l int64
 	l, err = rb.WriteTo(fout)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, l, rb.GetSerializedSizeInBytes())
 
 	fout.Close()
@@ -80,11 +85,11 @@ func TestSerializationToFile038(t *testing.T) {
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		fin.Close()
-		assert.NoError(t, os.Remove(fname))
+		require.NoError(t, os.Remove(fname))
 	}()
 
 	_, _ = newrb.ReadFrom(fin)
@@ -95,12 +100,12 @@ func TestSerializationReadRunsFromFile039(t *testing.T) {
 	fn := "testdata/bitmapwithruns.bin"
 
 	by, err := ioutil.ReadFile(fn)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(bytes.NewBuffer(by))
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSerializationBasic4WriteAndReadFile040(t *testing.T) {
@@ -120,26 +125,26 @@ func TestSerializationBasic4WriteAndReadFile040(t *testing.T) {
 	rb.highlowcontainer.runOptimize()
 	fout, err := os.Create(fname)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var l int64
 
 	l, err = rb.WriteTo(fout)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, l, rb.GetSerializedSizeInBytes())
 
 	fout.Close()
 	fin, err := os.Open(fname)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer fin.Close()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(fin)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -148,7 +153,7 @@ func TestSerializationFromJava051(t *testing.T) {
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		fin.Close()
@@ -176,7 +181,7 @@ func TestSerializationFromJavaWithRuns052(t *testing.T) {
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		fin.Close()
@@ -208,13 +213,13 @@ func TestSerializationBasic2_041(t *testing.T) {
 	l := int(rb.GetSerializedSizeInBytes())
 	_, err := rb.WriteTo(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, l, buf.Len())
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
 }
 
@@ -247,13 +252,13 @@ func TestSerializationBasic3_042(t *testing.T) {
 	var buf bytes.Buffer
 	_, err := rb.WriteTo(&buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(&buf)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, rb.GetCardinality(), newrb.GetCardinality())
 	assert.True(t, newrb.Equals(rb))
 }
@@ -265,13 +270,13 @@ func TestGobcoding043(t *testing.T) {
 	encoder := gob.NewEncoder(buf)
 	err := encoder.Encode(rb)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var b Bitmap
 	decoder := gob.NewDecoder(buf)
 	err = decoder.Decode(&b)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, b.Equals(rb))
 }
 
@@ -402,13 +407,13 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		buf := &bytes.Buffer{}
 		_, err := rb.WriteTo(buf)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
 
 		newRb := NewBitmap()
 		newRb.FromBuffer(buf.Bytes())
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, rb.Equals(newRb))
 	})
 
@@ -418,12 +423,12 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		buf := &bytes.Buffer{}
 		_, err := rb.WriteTo(buf)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		newRb := NewBitmap()
 		_, err = newRb.FromBuffer(buf.Bytes())
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, rb.Equals(newRb))
 	})
 
@@ -431,12 +436,12 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
 
 		buf, err := ioutil.ReadFile(file)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rb := NewBitmap()
 		_, err = rb.FromBuffer(buf)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.EqualValues(t, 3, rb.Stats().RunContainers)
 		assert.EqualValues(t, 11, rb.Stats().Containers)
 	})
@@ -445,12 +450,12 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		fn := "testdata/bitmapwithruns.bin"
 		buf, err := ioutil.ReadFile(fn)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rb := NewBitmap()
 		_, err = rb.FromBuffer(buf)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	// all3.classic somehow created by other tests.
@@ -458,31 +463,31 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		file := "testdata/all3.classic"
 		buf, err := ioutil.ReadFile(file)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rb := NewBitmap()
 		_, err = rb.FromBuffer(buf)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("testdata/bitmapwithruns.bin bitmap Ops", func(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
 		buf, err := ioutil.ReadFile(file)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		empt := NewBitmap()
 
 		rb1 := NewBitmap()
 		_, err = rb1.FromBuffer(buf)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rb2 := NewBitmap()
 		_, err = rb2.FromBuffer(buf)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rbor := Or(rb1, rb2)
 		rbfastor := FastOr(rb1, rb2)
@@ -501,12 +506,12 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
 		buf, err := ioutil.ReadFile(file)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rb := NewBitmap()
 		_, err = rb.FromBuffer(buf)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		for i, cow := range rb.highlowcontainer.needCopyOnWrite {
 			assert.Truef(t, cow, "Container at pos %d was not marked as needs-copy-on-write", i)
@@ -517,11 +522,11 @@ func TestBitmap_FromBuffer(t *testing.T) {
 func TestSerializationCrashers(t *testing.T) {
 	crashers, err := filepath.Glob("testdata/crash*")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, crasher := range crashers {
 		data, err := ioutil.ReadFile(crasher)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// take a copy in case the stream is modified during unpacking attempt
 		orig := make([]byte, len(data))
@@ -582,13 +587,13 @@ func TestHoldReference(t *testing.T) {
 		}
 
 		_, err := rb.WriteTo(buf)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		nb := New()
 		data := buf.Bytes()
 		_, err = nb.ReadFrom(bytes.NewReader(data))
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		buf = nil
 		rb = nil
