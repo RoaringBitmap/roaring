@@ -167,6 +167,13 @@ Note that the smat library requires Go 1.6 or better.
 
   - go get -t github.com/RoaringBitmap/roaring
 
+### Instructions for contributors
+
+````
+$ git clone git@github.com:RoaringBitmap/roaring.git
+$ go mod tidy
+$ go test
+```
 
 ### Example
 
