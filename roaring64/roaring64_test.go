@@ -2003,7 +2003,7 @@ func Test_tryReadFromRoaring32(t *testing.T) {
 func Test_tryReadFromRoaring32_File(t *testing.T) {
 	tempDir, err := ioutil.TempDir("./", "testdata")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	defer os.RemoveAll(tempDir)
@@ -2019,7 +2019,7 @@ func Test_tryReadFromRoaring32_File(t *testing.T) {
 	}
 	file, err := os.Open(name)
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	defer file.Close()
@@ -2049,7 +2049,7 @@ func Test_tryReadFromRoaring32WithRoaring64(t *testing.T) {
 func Test_tryReadFromRoaring32WithRoaring64_File(t *testing.T) {
 	tempDir, err := ioutil.TempDir("./", "testdata")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	defer os.RemoveAll(tempDir)
@@ -2066,7 +2066,7 @@ func Test_tryReadFromRoaring32WithRoaring64_File(t *testing.T) {
 	}
 	file, err := os.Open(name)
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	defer file.Close()

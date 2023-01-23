@@ -266,47 +266,47 @@ func TestLargeFile(t *testing.T) {
 
 	datEBM, err := ioutil.ReadFile("./testdata/age/EBM")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat1, err := ioutil.ReadFile("./testdata/age/1")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat2, err := ioutil.ReadFile("./testdata/age/2")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat3, err := ioutil.ReadFile("./testdata/age/3")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat4, err := ioutil.ReadFile("./testdata/age/4")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat5, err := ioutil.ReadFile("./testdata/age/5")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat6, err := ioutil.ReadFile("./testdata/age/6")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat7, err := ioutil.ReadFile("./testdata/age/7")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat8, err := ioutil.ReadFile("./testdata/age/8")
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 

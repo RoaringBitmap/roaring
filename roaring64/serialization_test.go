@@ -64,14 +64,14 @@ func TestSerializationToFile038(t *testing.T) {
 	fname := "myfile.bin"
 	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 
 	var l int64
 	l, err = rb.WriteTo(fout)
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 
@@ -82,7 +82,7 @@ func TestSerializationToFile038(t *testing.T) {
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
 	if(err != nil) {
-		fmt.Fprintf(os.Stderr, "IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 
