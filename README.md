@@ -169,9 +169,11 @@ Note that the smat library requires Go 1.6 or better.
 
 ### Instructions for contributors
 
+Using bash or other common shells:
 ```
 $ git clone git@github.com:RoaringBitmap/roaring.git
-$ GO111MODULE=on go mod tidy
+$ export GO111MODULE=on 
+$ go mod tidy
 $ go test -v
 ```
 

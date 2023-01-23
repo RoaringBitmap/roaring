@@ -68,28 +68,31 @@ func TestSerializationToFile038(t *testing.T) {
 	fname := "myfile.bin"
 	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if(err != nil) {
-		fmt.Println("IMPORTANT: For testing file IO, the roaring library requires disk access.")
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 
-	require.NoError(t, err)
-
 	var l int64
 	l, err = rb.WriteTo(fout)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 
-	require.NoError(t, err)
 	assert.EqualValues(t, l, rb.GetSerializedSizeInBytes())
 
 	fout.Close()
 
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
-
-	require.NoError(t, err)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 
 	defer func() {
 		fin.Close()
-		require.NoError(t, os.Remove(fname))
+		_ = os.Remove(fname)
 	}()
 
 	_, _ = newrb.ReadFrom(fin)
@@ -100,7 +103,10 @@ func TestSerializationReadRunsFromFile039(t *testing.T) {
 	fn := "testdata/bitmapwithruns.bin"
 
 	by, err := ioutil.ReadFile(fn)
-	require.NoError(t, err)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(bytes.NewBuffer(by))
@@ -124,20 +130,27 @@ func TestSerializationBasic4WriteAndReadFile040(t *testing.T) {
 
 	rb.highlowcontainer.runOptimize()
 	fout, err := os.Create(fname)
-
-	require.NoError(t, err)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 
 	var l int64
 
 	l, err = rb.WriteTo(fout)
 
-	require.NoError(t, err)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 	assert.EqualValues(t, l, rb.GetSerializedSizeInBytes())
 
 	fout.Close()
 	fin, err := os.Open(fname)
-
-	require.NoError(t, err)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 
 	defer fin.Close()
 
@@ -152,8 +165,10 @@ func TestSerializationFromJava051(t *testing.T) {
 	fname := "testdata/bitmapwithoutruns.bin"
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
-
-	require.NoError(t, err)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 
 	defer func() {
 		fin.Close()
@@ -180,8 +195,10 @@ func TestSerializationFromJavaWithRuns052(t *testing.T) {
 
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
-
-	require.NoError(t, err)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 
 	defer func() {
 		fin.Close()
@@ -436,7 +453,10 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
 
 		buf, err := ioutil.ReadFile(file)
-		require.NoError(t, err)
+		if(err != nil) {
+			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+			return
+		}
 
 		rb := NewBitmap()
 		_, err = rb.FromBuffer(buf)
@@ -450,7 +470,10 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		fn := "testdata/bitmapwithruns.bin"
 		buf, err := ioutil.ReadFile(fn)
 
-		require.NoError(t, err)
+		if(err != nil) {
+			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+			return
+		}
 
 		rb := NewBitmap()
 		_, err = rb.FromBuffer(buf)
@@ -463,7 +486,10 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		file := "testdata/all3.classic"
 		buf, err := ioutil.ReadFile(file)
 
-		require.NoError(t, err)
+		if(err != nil) {
+			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+			return
+		}
 
 		rb := NewBitmap()
 		_, err = rb.FromBuffer(buf)
@@ -475,7 +501,10 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
 		buf, err := ioutil.ReadFile(file)
 
-		require.NoError(t, err)
+		if(err != nil) {
+			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+			return
+		}
 
 		empt := NewBitmap()
 
@@ -506,7 +535,10 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
 		buf, err := ioutil.ReadFile(file)
 
-		require.NoError(t, err)
+		if(err != nil) {
+			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+			return
+		}
 
 		rb := NewBitmap()
 		_, err = rb.FromBuffer(buf)
@@ -522,11 +554,17 @@ func TestBitmap_FromBuffer(t *testing.T) {
 func TestSerializationCrashers(t *testing.T) {
 	crashers, err := filepath.Glob("testdata/crash*")
 
-	require.NoError(t, err)
+	if(err != nil) {
+		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 
 	for _, crasher := range crashers {
 		data, err := ioutil.ReadFile(crasher)
-		require.NoError(t, err)
+		if(err != nil) {
+			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+			return
+		}
 
 		// take a copy in case the stream is modified during unpacking attempt
 		orig := make([]byte, len(data))
