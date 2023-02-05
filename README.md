@@ -35,6 +35,7 @@ The ``roaring`` Go library is used by
 * [InfluxDB](https://www.influxdata.com)
 * [Pilosa](https://www.pilosa.com/)
 * [Bleve](http://www.blevesearch.com)
+* [Weaviate](https://github.com/weaviate/weaviate)
 * [lindb](https://github.com/lindb/lindb)
 * [Elasticell](https://github.com/deepfabric/elasticell)
 * [SourceGraph](https://github.com/sourcegraph/sourcegraph)
