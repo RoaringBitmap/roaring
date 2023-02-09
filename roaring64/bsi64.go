@@ -1,7 +1,9 @@
 package roaring64
 
 import (
+	"encoding/binary"
 	"fmt"
+	"io"
 	"math/bits"
 	"runtime"
 	"sync"
@@ -13,6 +15,8 @@ const (
 	Min64BitSigned = -9223372036854775808
 	// Max64BitSigned - Maximum 64 bit value
 	Max64BitSigned = 9223372036854775807
+	// BSISerialFlag - BSI data detection header
+	BSISerialFlag = "BSI"
 )
 
 // BSI is at its simplest is an array of bitmaps that represent an encoded
@@ -261,7 +265,6 @@ type task struct {
 // For the RANGE parameter the comparison criteria is >= valueOrStart and <= end.
 // The parallelism parameter indicates the number of CPU threads to be applied for processing.  A value
 // of zero indicates that all available CPU resources will be potentially utilized.
-//
 func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int64,
 	foundSet *Bitmap) *Bitmap {
 
@@ -522,7 +525,6 @@ func (b *BSI) minOrMax(op Operation, batch []uint64, resultsChan chan int64, wg 
 
 // Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet
 // is also returned (for calculating the average).
-//
 func (b *BSI) Sum(foundSet *Bitmap) (sum int64, count uint64) {
 
 	count = foundSet.GetCardinality()
@@ -549,7 +551,6 @@ func (b *BSI) Transpose() *Bitmap {
 // vectoring one set of integers to another.
 //
 // TODO: This implementation is functional but not performant, needs to be re-written perhaps using SIMD SSE2 instructions.
-//
 func (b *BSI) IntersectAndTranspose(parallelism int, foundSet *Bitmap) *Bitmap {
 
 	trans := &task{bsi: b}
@@ -674,6 +675,68 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 	return nil
 }
 
+// ReadFrom reads a serialized version of this BSI from stream.
+func (b *BSI) ReadFrom(stream io.Reader) (p int64, err error) {
+	// check BSI flag
+	bsiSFBuf := make([]byte, len(BSISerialFlag))
+	var n int
+	n, err = stream.Read(bsiSFBuf)
+	if n == 0 || err != nil {
+		return int64(n), fmt.Errorf("error in bsi.ReadFrom: could not read serial number: %v", err)
+	}
+	p += int64(n)
+	if string(bsiSFBuf) != BSISerialFlag {
+		return p, fmt.Errorf("error in bsi.ReadFrom: invalid BSI flag: %s", bsiSFBuf)
+	}
+	// read bsi number of containers
+	bsiSizeBuf := make([]byte, 4)
+	n, err = stream.Read(bsiSizeBuf)
+	if n == 0 || err != nil {
+		return int64(n), fmt.Errorf("error in bsi.ReadFrom: could not read number of containers: %v", err)
+	}
+	p += int64(n)
+	bsiSize := binary.LittleEndian.Uint32(bsiSizeBuf)
+	if bsiSize == 0 {
+		return int64(n), fmt.Errorf("error in bsi.ReadFrom: invalid number of containers: %d", bsiSize)
+	}
+	// read eBM,bA...
+	for i, l := 0, int(bsiSize); i < l; i++ {
+		bm, n, err := readBSIContainerFromStream(stream)
+		if err != nil {
+			return n, fmt.Errorf("error in bsi.ReadFrom on container[%d]: %v", i, err)
+		}
+		p += n
+		if i == 0 {
+			b.eBM = bm
+		} else {
+			b.bA = append(b.bA, bm)
+		}
+	}
+	return p, nil
+}
+
+func readBSIContainerFromStream(stream io.Reader) (*Bitmap, int64, error) {
+	var p int64
+	bmSizeBuf := make([]byte, 8)
+	n, err := stream.Read(bmSizeBuf)
+	if n == 0 || err != nil {
+		return nil, int64(n), fmt.Errorf("could not read size of bitmap: %v", err)
+	}
+	p += int64(n)
+	bmSize := binary.LittleEndian.Uint64(bmSizeBuf)
+	bmBuf := make([]byte, bmSize)
+	n, err = stream.Read(bmBuf)
+	if n == 0 || err != nil {
+		return nil, int64(n), fmt.Errorf("could not read data of bitmap: %v", err)
+	}
+	p += int64(n)
+	bm := NewBitmap()
+	if err := bm.UnmarshalBinary(bmBuf); err != nil {
+		return nil, p, err
+	}
+	return bm, p, nil
+}
+
 // MarshalBinary serializes a BSI
 func (b *BSI) MarshalBinary() ([][]byte, error) {
 
@@ -692,6 +755,58 @@ func (b *BSI) MarshalBinary() ([][]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+// WriteTo writes a serialized version of this BSI to stream.
+// data format: [3]byte("BSI")+[4]bytes(b.BitCount()+1)+eBM([8]bytes(bm.GetSerializedSizeInBytes())+bm.Bytes())...
+func (b *BSI) WriteTo(stream io.Writer) (int64, error) {
+	var n int64
+	written, err := stream.Write([]byte(BSISerialFlag))
+	if err != nil {
+		return n, err
+	}
+	n += int64(written)
+	// write bsi container size
+	bitSizeBuf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(bitSizeBuf, uint32(b.BitCount()+1))
+	written, err = stream.Write(bitSizeBuf)
+	if err != nil {
+		return n, err
+	}
+	n += int64(written)
+	// write ebm
+	if written, err := writeBSIContainerToStream(b.eBM, stream); err != nil {
+		return n, err
+	} else {
+		n += written
+	}
+	// write ba
+	for i := 0; i < b.BitCount(); i++ {
+		if written, err := writeBSIContainerToStream(b.bA[i], stream); err != nil {
+			return n, err
+		} else {
+			n += written
+		}
+	}
+	return n, nil
+}
+
+func writeBSIContainerToStream(bm *Bitmap, stream io.Writer) (int64, error) {
+	var n int64
+	bmSize := bm.GetSerializedSizeInBytes()
+	bmSizeBuf := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bmSizeBuf, bmSize)
+	written, err := stream.Write(bmSizeBuf)
+	if err != nil {
+		return n, err
+	}
+	n += int64(written)
+	if written, err := bm.WriteTo(stream); err != nil {
+		return n, err
+	} else {
+		n += written
+	}
+	return n, nil
 }
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
@@ -811,7 +926,6 @@ func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 // contained within the input BSI.   Given that for BSIs, different columnIDs can have the same value.  TransposeWithCounts
 // is useful for situations where there is a one-to-many relationship between the vectored integer sets.  The resulting BSI
 // contains the number of times a particular value appeared in the input BSI.
-//
 func (b *BSI) TransposeWithCounts(parallelism int, foundSet, filterSet *Bitmap) *BSI {
 
 	return parallelExecutorBSIResults(parallelism, b, transposeWithCounts, foundSet, filterSet, true)
