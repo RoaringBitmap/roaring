@@ -839,6 +839,7 @@ func transposeWithCounts(input *BSI, batch []uint32, resultsChan chan *BSI, wg *
 // Increment - In-place increment of values in a BSI.  Found set select columns for incrementing.
 func (b *BSI) Increment(foundSet *roaring.Bitmap) {
 	b.addDigit(foundSet, 0)
+	b.eBM.Or(foundSet)
 }
 
 // IncrementAll - In-place increment of all values in a BSI.
