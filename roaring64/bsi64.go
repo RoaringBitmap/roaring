@@ -95,9 +95,6 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 		ba := make([]*Bitmap, bits.Len64(uint64(value)))
 		for i := len(ba) - b.BitCount(); i > 0; i-- {
 			b.bA = append(b.bA, NewBitmap())
-			if b.runOptimized {
-				b.bA[i].RunOptimize()
-			}
 		}
 	}
 
