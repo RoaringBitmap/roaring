@@ -89,7 +89,6 @@ func (b *BSI) BitCount() int {
 
 // SetValue sets a value for a given columnID.
 func (b *BSI) SetValue(columnID uint64, value int64) {
-
 	// If max/min values are set to zero then automatically determine bit array size
 	if b.MaxValue == 0 && b.MinValue == 0 {
 		ba := make([]*Bitmap, bits.Len64(uint64(value)))
@@ -98,21 +97,14 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 		}
 	}
 
-	var wg sync.WaitGroup
-
 	for i := 0; i < b.BitCount(); i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			if uint64(value)&(1<<uint64(j)) > 0 {
-				b.bA[j].Add(uint64(columnID))
-			} else {
-				b.bA[j].Remove(uint64(columnID))
-			}
-		}(i)
+		if uint64(value)&(1<<uint64(i)) > 0 {
+			b.bA[i].Add(columnID)
+		} else {
+			b.bA[i].Remove(columnID)
+		}
 	}
-	wg.Wait()
-	b.eBM.Add(uint64(columnID))
+	b.eBM.Add(columnID)
 }
 
 // GetValue gets the value at the column ID.  Second param will be false for non-existant values.
