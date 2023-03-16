@@ -1,7 +1,6 @@
 package roaring64
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 	"math/bits"
@@ -677,64 +676,35 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 
 // ReadFrom reads a serialized version of this BSI from stream.
 func (b *BSI) ReadFrom(stream io.Reader) (p int64, err error) {
-	// check BSI flag
-	bsiSFBuf := make([]byte, len(BSISerialFlag))
-	var n int
-	n, err = stream.Read(bsiSFBuf)
-	if n == 0 || err != nil {
-		return int64(n), fmt.Errorf("error in bsi.ReadFrom: could not read serial number: %v", err)
+	bm, n, err := readBSIContainerFromStream(stream)
+	p += n
+	if err != nil {
+		err = fmt.Errorf("reading existence bitmap: %w", err)
+		return
 	}
-	p += int64(n)
-	if string(bsiSFBuf) != BSISerialFlag {
-		return p, fmt.Errorf("error in bsi.ReadFrom: invalid BSI flag: %s", bsiSFBuf)
-	}
-	// read bsi number of containers
-	bsiSizeBuf := make([]byte, 4)
-	n, err = stream.Read(bsiSizeBuf)
-	if n == 0 || err != nil {
-		return int64(n), fmt.Errorf("error in bsi.ReadFrom: could not read number of containers: %v", err)
-	}
-	p += int64(n)
-	bsiSize := binary.LittleEndian.Uint32(bsiSizeBuf)
-	if bsiSize == 0 {
-		return int64(n), fmt.Errorf("error in bsi.ReadFrom: invalid number of containers: %d", bsiSize)
-	}
-	// read eBM,bA...
-	for i, l := 0, int(bsiSize); i < l; i++ {
-		bm, n, err := readBSIContainerFromStream(stream)
-		if err != nil {
-			return n, fmt.Errorf("error in bsi.ReadFrom on container[%d]: %v", i, err)
-		}
+	b.eBM = &bm
+	b.bA = b.bA[:0]
+	for {
+		// This forces a new memory location to be allocated and if we're lucky it only escapes if
+		// there's no error.
+		var bm Bitmap
+		bm, n, err = readBSIContainerFromStream(stream)
 		p += n
-		if i == 0 {
-			b.eBM = bm
-		} else {
-			b.bA = append(b.bA, bm)
+		if err == io.EOF {
+			err = nil
+			return
 		}
+		if err != nil {
+			err = fmt.Errorf("reading bit slice index %v: %w", len(b.bA), err)
+			return
+		}
+		b.bA = append(b.bA, &bm)
 	}
-	return p, nil
 }
 
-func readBSIContainerFromStream(stream io.Reader) (*Bitmap, int64, error) {
-	var p int64
-	bmSizeBuf := make([]byte, 8)
-	n, err := stream.Read(bmSizeBuf)
-	if n == 0 || err != nil {
-		return nil, int64(n), fmt.Errorf("could not read size of bitmap: %v", err)
-	}
-	p += int64(n)
-	bmSize := binary.LittleEndian.Uint64(bmSizeBuf)
-	bmBuf := make([]byte, bmSize)
-	n, err = stream.Read(bmBuf)
-	if n == 0 || err != nil {
-		return nil, int64(n), fmt.Errorf("could not read data of bitmap: %v", err)
-	}
-	p += int64(n)
-	bm := NewBitmap()
-	if err := bm.UnmarshalBinary(bmBuf); err != nil {
-		return nil, p, err
-	}
-	return bm, p, nil
+func readBSIContainerFromStream(r io.Reader) (bm Bitmap, p int64, err error) {
+	p, err = bm.ReadFrom(r)
+	return
 }
 
 // MarshalBinary serializes a BSI
@@ -758,55 +728,20 @@ func (b *BSI) MarshalBinary() ([][]byte, error) {
 }
 
 // WriteTo writes a serialized version of this BSI to stream.
-// data format: [3]byte("BSI")+[4]bytes(b.BitCount()+1)+eBM([8]bytes(bm.GetSerializedSizeInBytes())+bm.Bytes())...
-func (b *BSI) WriteTo(stream io.Writer) (int64, error) {
-	var n int64
-	written, err := stream.Write([]byte(BSISerialFlag))
+func (b *BSI) WriteTo(w io.Writer) (n int64, err error) {
+	n1, err := b.eBM.WriteTo(w)
+	n += n1
 	if err != nil {
-		return n, err
+		return
 	}
-	n += int64(written)
-	// write bsi container size
-	bitSizeBuf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(bitSizeBuf, uint32(b.BitCount()+1))
-	written, err = stream.Write(bitSizeBuf)
-	if err != nil {
-		return n, err
-	}
-	n += int64(written)
-	// write ebm
-	if written, err := writeBSIContainerToStream(b.eBM, stream); err != nil {
-		return n, err
-	} else {
-		n += written
-	}
-	// write ba
-	for i := 0; i < b.BitCount(); i++ {
-		if written, err := writeBSIContainerToStream(b.bA[i], stream); err != nil {
-			return n, err
-		} else {
-			n += written
+	for _, bm := range b.bA {
+		n1, err = bm.WriteTo(w)
+		n += n1
+		if err != nil {
+			return
 		}
 	}
-	return n, nil
-}
-
-func writeBSIContainerToStream(bm *Bitmap, stream io.Writer) (int64, error) {
-	var n int64
-	bmSize := bm.GetSerializedSizeInBytes()
-	bmSizeBuf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bmSizeBuf, bmSize)
-	written, err := stream.Write(bmSizeBuf)
-	if err != nil {
-		return n, err
-	}
-	n += int64(written)
-	if written, err := bm.WriteTo(stream); err != nil {
-		return n, err
-	} else {
-		n += written
-	}
-	return n, nil
+	return
 }
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
