@@ -1,15 +1,20 @@
 package roaring64
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	_ "fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"sort"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetAndGet(t *testing.T) {
@@ -456,7 +461,7 @@ func TestMinMaxWithRandom(t *testing.T) {
 	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
 }
 
-func TestBSI_WriteTo_ReadFrom(t *testing.T) {
+func TestBSIWriteToReadFrom(t *testing.T) {
 	file, err := os.CreateTemp("./testdata", "bsi-test")
 	if err != nil {
 		t.Fatal(err)
@@ -483,4 +488,98 @@ func TestBSI_WriteTo_ReadFrom(t *testing.T) {
 	assert.Equal(t, n, n2)
 	assert.Equal(t, bsi.MinValue, bsi2.MinMax(0, MIN, bsi2.GetExistenceBitmap()))
 	assert.Equal(t, bsi.MaxValue, bsi2.MinMax(0, MAX, bsi2.GetExistenceBitmap()))
+}
+
+type bsiColValPair struct {
+	col uint64
+	val int64
+}
+
+func bytesToBsiColValPairs(b []byte) (slice []bsiColValPair, err error) {
+	r := bytes.NewReader(b)
+	for {
+		var pair bsiColValPair
+		pair.col, err = binary.ReadUvarint(r)
+		if err == io.EOF {
+			err = nil
+			return
+		}
+		if err != nil {
+			return
+		}
+		pair.val, err = binary.ReadVarint(r)
+		if err != nil {
+			return
+		}
+		slice = append(slice, pair)
+	}
+}
+
+// Checks that the given column values write out and read back in to a BSI without changing. Slice
+// should not have duplicate column indexes, as iterator will not render duplicates to match,
+// and the BSI will contain the last value set.
+func testBsiRoundTrip(t *testing.T, pairs []bsiColValPair) {
+	bsi := NewDefaultBSI()
+	for _, pair := range pairs {
+		bsi.SetValue(pair.col, pair.val)
+	}
+	var buf bytes.Buffer
+	_, err := bsi.WriteTo(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = bsi.ReadFrom(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	it := bsi.GetExistenceBitmap().Iterator()
+	// The column ordering needs to match the one given by the iterator. This reorders the caller's
+	// slice.
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].col < pairs[j].col
+	})
+	for _, pair := range pairs {
+		if !it.HasNext() {
+			t.Fatalf("expected more columns: %v", pair.col)
+		}
+		bsiCol := it.Next()
+		if pair.col != bsiCol {
+			t.Fatalf("expected col %d, got %d", pair.col, bsiCol)
+		}
+		bsiVal, ok := bsi.GetValue(bsiCol)
+		if !ok {
+			t.Fatalf("expected col %d to exist", bsiCol)
+		}
+		if pair.val != bsiVal {
+			t.Fatalf("expected col %d to have value %d, got %d", bsiCol, pair.val, bsiVal)
+		}
+	}
+	if it.HasNext() {
+		t.Fatal("expected no more columns")
+	}
+
+}
+
+func TestBsiStreaming(t *testing.T) {
+	testBsiRoundTrip(t, []bsiColValPair{})
+	testBsiRoundTrip(t, []bsiColValPair{{0, 0}})
+	testBsiRoundTrip(t, []bsiColValPair{{48, 0}})
+}
+
+func FuzzBsiStreaming(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b []byte) {
+		slice, err := bytesToBsiColValPairs(b)
+		if err != nil {
+			t.SkipNow()
+		}
+		cols := make(map[uint64]struct{}, len(slice))
+		for _, pair := range slice {
+			_, ok := cols[pair.col]
+			if ok {
+				t.Skip("duplicate column")
+			}
+			cols[pair.col] = struct{}{}
+		}
+		testBsiRoundTrip(t, slice)
+	})
 }
