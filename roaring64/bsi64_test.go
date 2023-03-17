@@ -462,26 +462,22 @@ func TestMinMaxWithRandom(t *testing.T) {
 }
 
 func TestBSIWriteToReadFrom(t *testing.T) {
-	file, err := os.CreateTemp("./testdata", "bsi-test")
+	file, err := ioutil.TempFile("./testdata", "bsi-test")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer t.Cleanup(func() { os.Remove(file.Name()) })
 	defer file.Close()
-	defer os.Remove(file.Name())
 	bsi := setupRandom()
 	_, err = bsi.WriteTo(file)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	file2, err2 := os.Open(file.Name())
-	if err2 != nil {
-		t.Fatal(err2)
-	}
-	defer file2.Close()
+	file.Seek(io.SeekStart, 0)
 
 	bsi2 := NewDefaultBSI()
-	_, err3 := bsi2.ReadFrom(file2)
+	_, err3 := bsi2.ReadFrom(file)
 	if err3 != nil {
 		t.Fatal(err3)
 	}
