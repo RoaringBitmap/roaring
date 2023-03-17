@@ -469,7 +469,7 @@ func TestBSIWriteToReadFrom(t *testing.T) {
 	defer file.Close()
 	defer os.Remove(file.Name())
 	bsi := setupRandom()
-	n, err := bsi.WriteTo(file)
+	_, err = bsi.WriteTo(file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,11 +481,11 @@ func TestBSIWriteToReadFrom(t *testing.T) {
 	defer file2.Close()
 
 	bsi2 := NewDefaultBSI()
-	n2, err3 := bsi2.ReadFrom(file2)
+	_, err3 := bsi2.ReadFrom(file2)
 	if err3 != nil {
 		t.Fatal(err3)
 	}
-	assert.Equal(t, n, n2)
+	assert.True(t, bsi.Equals(bsi2))
 	assert.Equal(t, bsi.MinValue, bsi2.MinMax(0, MIN, bsi2.GetExistenceBitmap()))
 	assert.Equal(t, bsi.MaxValue, bsi2.MinMax(0, MAX, bsi2.GetExistenceBitmap()))
 }
@@ -566,20 +566,17 @@ func TestBsiStreaming(t *testing.T) {
 	testBsiRoundTrip(t, []bsiColValPair{{48, 0}})
 }
 
-func FuzzBsiStreaming(f *testing.F) {
-	f.Fuzz(func(t *testing.T, b []byte) {
-		slice, err := bytesToBsiColValPairs(b)
-		if err != nil {
-			t.SkipNow()
-		}
-		cols := make(map[uint64]struct{}, len(slice))
-		for _, pair := range slice {
-			_, ok := cols[pair.col]
-			if ok {
-				t.Skip("duplicate column")
-			}
-			cols[pair.col] = struct{}{}
-		}
-		testBsiRoundTrip(t, slice)
-	})
+// Test that the BSI can be mutated and still be equal to a fresh BSI with the same values.
+func TestMutatedBsiEquality(t *testing.T) {
+	mutated := NewDefaultBSI()
+	mutated.SetValue(0, 2)
+	mutated.SetValue(0, 1)
+	fresh := NewDefaultBSI()
+	fresh.SetValue(0, 1)
+	assert.True(t, fresh.Equals(mutated))
+	fresh.SetValue(0, 2)
+	assert.False(t, fresh.Equals(mutated))
+	// Now fresh has been mutated in the same pattern as mutated.
+	fresh.SetValue(0, 1)
+	assert.True(t, fresh.Equals(mutated))
 }

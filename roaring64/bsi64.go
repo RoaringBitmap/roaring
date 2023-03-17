@@ -900,3 +900,25 @@ func (b *BSI) Increment(foundSet *Bitmap) {
 func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
 }
+
+func (b *BSI) Equals(other *BSI) bool {
+	if !b.eBM.Equals(other.eBM) {
+		return false
+	}
+	for i := 0; i < len(b.bA) || i < len(other.bA); i++ {
+		if i >= len(b.bA) {
+			if !other.bA[i].IsEmpty() {
+				return false
+			}
+		} else if i >= len(other.bA) {
+			if !b.bA[i].IsEmpty() {
+				return false
+			}
+		} else {
+			if !b.bA[i].Equals(other.bA[i]) {
+				return false
+			}
+		}
+	}
+	return true
+}
