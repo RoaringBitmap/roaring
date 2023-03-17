@@ -920,3 +920,11 @@ func (b *BSI) Equals(other *BSI) bool {
 	}
 	return true
 }
+
+func (b *BSI) GetSizeInBytes() int {
+	size := b.eBM.GetSizeInBytes()
+	for _, bm := range b.bA {
+		size += bm.GetSizeInBytes()
+	}
+	return int(size)
+}
