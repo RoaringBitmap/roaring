@@ -298,12 +298,8 @@ func (rb *Bitmap) ContainsInt(x int) bool {
 }
 
 // Equals returns true if the two bitmaps contain the same integers
-func (rb *Bitmap) Equals(o interface{}) bool {
-	srb, ok := o.(*Bitmap)
-	if ok {
-		return srb.highlowcontainer.equals(rb.highlowcontainer)
-	}
-	return false
+func (rb *Bitmap) Equals(srb *Bitmap) bool {
+	return srb.highlowcontainer.equals(rb.highlowcontainer)
 }
 
 // Add the integer x to the bitmap
