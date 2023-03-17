@@ -14,8 +14,6 @@ const (
 	Min64BitSigned = -9223372036854775808
 	// Max64BitSigned - Maximum 64 bit value
 	Max64BitSigned = 9223372036854775807
-	// BSISerialFlag - BSI data detection header
-	BSISerialFlag = "BSI"
 )
 
 // BSI is at its simplest is an array of bitmaps that represent an encoded
