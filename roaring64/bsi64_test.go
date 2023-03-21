@@ -1,15 +1,20 @@
 package roaring64
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
 	_ "fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"io"
 	"io/ioutil"
 	"math/rand"
+	"os"
+	"sort"
 	"testing"
 	"time"
-	"fmt"
-	"os"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetAndGet(t *testing.T) {
@@ -265,47 +270,47 @@ func TestNewBSIRetainSet(t *testing.T) {
 func TestLargeFile(t *testing.T) {
 
 	datEBM, err := ioutil.ReadFile("./testdata/age/EBM")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat1, err := ioutil.ReadFile("./testdata/age/1")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat2, err := ioutil.ReadFile("./testdata/age/2")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat3, err := ioutil.ReadFile("./testdata/age/3")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat4, err := ioutil.ReadFile("./testdata/age/4")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat5, err := ioutil.ReadFile("./testdata/age/5")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat6, err := ioutil.ReadFile("./testdata/age/6")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat7, err := ioutil.ReadFile("./testdata/age/7")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat8, err := ioutil.ReadFile("./testdata/age/8")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
@@ -454,4 +459,120 @@ func TestMinMaxWithRandom(t *testing.T) {
 	bsi := setupRandom()
 	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
 	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
+}
+
+func TestBSIWriteToReadFrom(t *testing.T) {
+	file, err := ioutil.TempFile("./testdata", "bsi-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer t.Cleanup(func() { os.Remove(file.Name()) })
+	defer file.Close()
+	bsi := setupRandom()
+	_, err = bsi.WriteTo(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	file.Seek(io.SeekStart, 0)
+
+	bsi2 := NewDefaultBSI()
+	_, err3 := bsi2.ReadFrom(file)
+	if err3 != nil {
+		t.Fatal(err3)
+	}
+	assert.True(t, bsi.Equals(bsi2))
+	assert.Equal(t, bsi.MinValue, bsi2.MinMax(0, MIN, bsi2.GetExistenceBitmap()))
+	assert.Equal(t, bsi.MaxValue, bsi2.MinMax(0, MAX, bsi2.GetExistenceBitmap()))
+}
+
+type bsiColValPair struct {
+	col uint64
+	val int64
+}
+
+func bytesToBsiColValPairs(b []byte) (slice []bsiColValPair, err error) {
+	r := bytes.NewReader(b)
+	for {
+		var pair bsiColValPair
+		pair.col, err = binary.ReadUvarint(r)
+		if err == io.EOF {
+			err = nil
+			return
+		}
+		if err != nil {
+			return
+		}
+		pair.val, err = binary.ReadVarint(r)
+		if err != nil {
+			return
+		}
+		slice = append(slice, pair)
+	}
+}
+
+// Checks that the given column values write out and read back in to a BSI without changing. Slice
+// should not have duplicate column indexes, as iterator will not render duplicates to match,
+// and the BSI will contain the last value set.
+func testBsiRoundTrip(t *testing.T, pairs []bsiColValPair) {
+	bsi := NewDefaultBSI()
+	for _, pair := range pairs {
+		bsi.SetValue(pair.col, pair.val)
+	}
+	var buf bytes.Buffer
+	_, err := bsi.WriteTo(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = bsi.ReadFrom(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	it := bsi.GetExistenceBitmap().Iterator()
+	// The column ordering needs to match the one given by the iterator. This reorders the caller's
+	// slice.
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].col < pairs[j].col
+	})
+	for _, pair := range pairs {
+		if !it.HasNext() {
+			t.Fatalf("expected more columns: %v", pair.col)
+		}
+		bsiCol := it.Next()
+		if pair.col != bsiCol {
+			t.Fatalf("expected col %d, got %d", pair.col, bsiCol)
+		}
+		bsiVal, ok := bsi.GetValue(bsiCol)
+		if !ok {
+			t.Fatalf("expected col %d to exist", bsiCol)
+		}
+		if pair.val != bsiVal {
+			t.Fatalf("expected col %d to have value %d, got %d", bsiCol, pair.val, bsiVal)
+		}
+	}
+	if it.HasNext() {
+		t.Fatal("expected no more columns")
+	}
+
+}
+
+func TestBsiStreaming(t *testing.T) {
+	testBsiRoundTrip(t, []bsiColValPair{})
+	testBsiRoundTrip(t, []bsiColValPair{{0, 0}})
+	testBsiRoundTrip(t, []bsiColValPair{{48, 0}})
+}
+
+// Test that the BSI can be mutated and still be equal to a fresh BSI with the same values.
+func TestMutatedBsiEquality(t *testing.T) {
+	mutated := NewDefaultBSI()
+	mutated.SetValue(0, 2)
+	mutated.SetValue(0, 1)
+	fresh := NewDefaultBSI()
+	fresh.SetValue(0, 1)
+	assert.True(t, fresh.Equals(mutated))
+	fresh.SetValue(0, 2)
+	assert.False(t, fresh.Equals(mutated))
+	// Now fresh has been mutated in the same pattern as mutated.
+	fresh.SetValue(0, 1)
+	assert.True(t, fresh.Equals(mutated))
 }

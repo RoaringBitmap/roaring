@@ -2,6 +2,7 @@ package roaring64
 
 import (
 	"fmt"
+	"io"
 	"math/bits"
 	"runtime"
 	"sync"
@@ -261,7 +262,6 @@ type task struct {
 // For the RANGE parameter the comparison criteria is >= valueOrStart and <= end.
 // The parallelism parameter indicates the number of CPU threads to be applied for processing.  A value
 // of zero indicates that all available CPU resources will be potentially utilized.
-//
 func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int64,
 	foundSet *Bitmap) *Bitmap {
 
@@ -522,7 +522,6 @@ func (b *BSI) minOrMax(op Operation, batch []uint64, resultsChan chan int64, wg 
 
 // Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet
 // is also returned (for calculating the average).
-//
 func (b *BSI) Sum(foundSet *Bitmap) (sum int64, count uint64) {
 
 	count = foundSet.GetCardinality()
@@ -549,7 +548,6 @@ func (b *BSI) Transpose() *Bitmap {
 // vectoring one set of integers to another.
 //
 // TODO: This implementation is functional but not performant, needs to be re-written perhaps using SIMD SSE2 instructions.
-//
 func (b *BSI) IntersectAndTranspose(parallelism int, foundSet *Bitmap) *Bitmap {
 
 	trans := &task{bsi: b}
@@ -674,6 +672,39 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 	return nil
 }
 
+// ReadFrom reads a serialized version of this BSI from stream.
+func (b *BSI) ReadFrom(stream io.Reader) (p int64, err error) {
+	bm, n, err := readBSIContainerFromStream(stream)
+	p += n
+	if err != nil {
+		err = fmt.Errorf("reading existence bitmap: %w", err)
+		return
+	}
+	b.eBM = &bm
+	b.bA = b.bA[:0]
+	for {
+		// This forces a new memory location to be allocated and if we're lucky it only escapes if
+		// there's no error.
+		var bm Bitmap
+		bm, n, err = readBSIContainerFromStream(stream)
+		p += n
+		if err == io.EOF {
+			err = nil
+			return
+		}
+		if err != nil {
+			err = fmt.Errorf("reading bit slice index %v: %w", len(b.bA), err)
+			return
+		}
+		b.bA = append(b.bA, &bm)
+	}
+}
+
+func readBSIContainerFromStream(r io.Reader) (bm Bitmap, p int64, err error) {
+	p, err = bm.ReadFrom(r)
+	return
+}
+
 // MarshalBinary serializes a BSI
 func (b *BSI) MarshalBinary() ([][]byte, error) {
 
@@ -692,6 +723,23 @@ func (b *BSI) MarshalBinary() ([][]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+// WriteTo writes a serialized version of this BSI to stream.
+func (b *BSI) WriteTo(w io.Writer) (n int64, err error) {
+	n1, err := b.eBM.WriteTo(w)
+	n += n1
+	if err != nil {
+		return
+	}
+	for _, bm := range b.bA {
+		n1, err = bm.WriteTo(w)
+		n += n1
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
@@ -811,7 +859,6 @@ func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 // contained within the input BSI.   Given that for BSIs, different columnIDs can have the same value.  TransposeWithCounts
 // is useful for situations where there is a one-to-many relationship between the vectored integer sets.  The resulting BSI
 // contains the number of times a particular value appeared in the input BSI.
-//
 func (b *BSI) TransposeWithCounts(parallelism int, foundSet, filterSet *Bitmap) *BSI {
 
 	return parallelExecutorBSIResults(parallelism, b, transposeWithCounts, foundSet, filterSet, true)
@@ -850,4 +897,26 @@ func (b *BSI) Increment(foundSet *Bitmap) {
 // IncrementAll - In-place increment of all values in a BSI.
 func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
+}
+
+func (b *BSI) Equals(other *BSI) bool {
+	if !b.eBM.Equals(other.eBM) {
+		return false
+	}
+	for i := 0; i < len(b.bA) || i < len(other.bA); i++ {
+		if i >= len(b.bA) {
+			if !other.bA[i].IsEmpty() {
+				return false
+			}
+		} else if i >= len(other.bA) {
+			if !b.bA[i].IsEmpty() {
+				return false
+			}
+		} else {
+			if !b.bA[i].Equals(other.bA[i]) {
+				return false
+			}
+		}
+	}
+	return true
 }
