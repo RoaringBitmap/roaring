@@ -11,6 +11,35 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestIssue386(t *testing.T) {
+	a := NewBitmap()
+	for i := uint64(0); i < 1000; i++ {
+		a.Add(i)
+	}
+	a.SetCopyOnWrite(true)
+	aClone := a.Clone()
+	assert.False(t, a.Contains(1001))
+	assert.EqualValues(t, 1000, a.GetCardinality())
+	assert.EqualValues(t, 1000, aClone.GetCardinality())
+	b := NewBitmap()
+	b.Add(1001)
+	assert.False(t, a.Contains(1001))
+	assert.True(t, b.Contains(1001))
+	assert.EqualValues(t, 1000, a.GetCardinality())
+	assert.EqualValues(t, 1000, aClone.GetCardinality())
+	c := NewBitmap()
+	c.Or(aClone)
+	assert.EqualValues(t, 1000, c.GetCardinality())
+	assert.EqualValues(t, 1000, a.GetCardinality())
+	assert.EqualValues(t, 1000, aClone.GetCardinality())
+	c.Or(b)
+	assert.EqualValues(t, 1001, c.GetCardinality())
+	assert.True(t, c.Contains(1001))
+	assert.False(t, a.Contains(1001))
+	assert.EqualValues(t, 1000, a.GetCardinality())
+	assert.EqualValues(t, 1000, aClone.GetCardinality())
+}
+
 func TestCloneOfCOW(t *testing.T) {
 	rb1 := NewBitmap()
 	rb1.SetCopyOnWrite(true)
