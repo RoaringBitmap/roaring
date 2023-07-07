@@ -2,11 +2,12 @@ package roaring
 
 import (
 	"fmt"
-	"github.com/RoaringBitmap/roaring"
 	"math/bits"
 	"runtime"
 	"sync"
 	"sync/atomic"
+
+	"github.com/RoaringBitmap/roaring"
 )
 
 const (
@@ -119,7 +120,7 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 	b.eBM.Add(uint32(columnID))
 }
 
-// GetValue gets the value at the column ID.  Second param will be false for non-existant values.
+// GetValue gets the value at the column ID.  Second param will be false for non-existent values.
 func (b *BSI) GetValue(columnID uint64) (int64, bool) {
 	value := int64(0)
 	exists := b.eBM.Contains(uint32(columnID))
