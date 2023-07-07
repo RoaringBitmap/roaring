@@ -119,7 +119,7 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 	b.eBM.Add(uint64(columnID))
 }
 
-// GetValue gets the value at the column ID.  Second param will be false for non-existant values.
+// GetValue gets the value at the column ID.  Second param will be false for non-existent values.
 func (b *BSI) GetValue(columnID uint64) (int64, bool) {
 	value := int64(0)
 	exists := b.eBM.Contains(uint64(columnID))
