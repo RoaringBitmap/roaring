@@ -1,7 +1,6 @@
 package roaring
 
 import (
-	_ "fmt"
 	"github.com/RoaringBitmap/roaring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
