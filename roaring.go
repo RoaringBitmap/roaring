@@ -18,6 +18,8 @@ import (
 // Bitmap represents a compressed bitmap where you can add integers.
 type Bitmap struct {
 	highlowcontainer roaringArray
+
+	allocator Allocator
 }
 
 // ToBase64 serializes a bitmap as Base64
@@ -44,13 +46,13 @@ func (rb *Bitmap) FromBase64(str string) (int64, error) {
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
-	return rb.highlowcontainer.writeTo(stream)
+	return rb.highlowcontainer.writeTo(stream, rb.allocator)
 }
 
 // ToBytes returns an array of bytes corresponding to what is written
 // when calling WriteTo
 func (rb *Bitmap) ToBytes() ([]byte, error) {
-	return rb.highlowcontainer.toBytes()
+	return rb.highlowcontainer.toBytes(rb.allocator)
 }
 
 // Checksum computes a hash (currently FNV-1a) for a bitmap that is suitable for
@@ -63,7 +65,7 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 func (rb *Bitmap) Checksum() uint64 {
 	const (
 		offset = 14695981039346656037
-		prime = 1099511628211
+		prime  = 1099511628211
 	)
 
 	var bytes []byte
@@ -180,12 +182,20 @@ func (rb *Bitmap) UnmarshalBinary(data []byte) error {
 
 // NewBitmap creates a new empty Bitmap (see also New)
 func NewBitmap() *Bitmap {
-	return &Bitmap{}
+	return New()
 }
 
 // New creates a new empty Bitmap (same as NewBitmap)
 func New() *Bitmap {
 	return &Bitmap{}
+}
+
+// NewWithAllocator creates a new empty Bitmap with the provided
+// allocator which may be used for various allocations.
+func NewWithAllocator(allocator Allocator) *Bitmap {
+	return &Bitmap{
+		allocator: allocator,
+	}
 }
 
 // Clear resets the Bitmap to be logically empty, but may retain
@@ -276,9 +286,9 @@ type intIterator struct {
 	// This way, instead of making up-to 64k allocations per full iteration
 	// we get a single allocation and simply reinitialize the appropriate
 	// iterator and point to it in the generic `iter` member on each key bound.
-	shortIter        shortIterator
-	runIter          runIterator16
-	bitmapIter       bitmapContainerShortIterator
+	shortIter  shortIterator
+	runIter    runIterator16
+	bitmapIter bitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -341,7 +351,6 @@ func (ii *intIterator) AdvanceIfNeeded(minval uint32) {
 // IntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
 type IntIterator = intIterator
 
-
 // Initialize configures the existing iterator so that it can iterate through the values of
 // the provided bitmap.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
@@ -357,9 +366,9 @@ type intReverseIterator struct {
 	iter             shortIterable
 	highlowcontainer *roaringArray
 
-	shortIter        reverseIterator
-	runIter          runReverseIterator16
-	bitmapIter       reverseBitmapContainerShortIterator
+	shortIter  reverseIterator
+	runIter    runReverseIterator16
+	bitmapIter reverseBitmapContainerShortIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -434,9 +443,9 @@ type manyIntIterator struct {
 	iter             manyIterable
 	highlowcontainer *roaringArray
 
-	shortIter        shortIterator
-	runIter          runIterator16
-	bitmapIter       bitmapContainerManyIterator
+	shortIter  shortIterator
+	runIter    runIterator16
+	bitmapIter bitmapContainerManyIterator
 }
 
 func (ii *manyIntIterator) init() {
@@ -494,7 +503,6 @@ func (ii *manyIntIterator) NextMany64(hs64 uint64, buf []uint64) int {
 
 	return n
 }
-
 
 // ManyIntIterator is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
 type ManyIntIterator = manyIntIterator
@@ -569,7 +577,7 @@ func (rb *Bitmap) Iterate(cb func(x uint32) bool) {
 // Iterator creates a new IntPeekable to iterate over the integers contained in the bitmap, in sorted order;
 // the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func (rb *Bitmap) Iterator() IntPeekable {
-    p := new(intIterator)
+	p := new(intIterator)
 	p.Initialize(rb)
 	return p
 }
@@ -592,7 +600,7 @@ func (rb *Bitmap) ManyIterator() ManyIntIterable {
 
 // Clone creates a copy of the Bitmap
 func (rb *Bitmap) Clone() *Bitmap {
-	ptr := new(Bitmap)
+	ptr := New()
 	ptr.highlowcontainer = *rb.highlowcontainer.clone()
 	return ptr
 }
@@ -720,7 +728,7 @@ func (rb *Bitmap) Add(x uint32) {
 		c = ra.getWritableContainerAtIndex(i).iaddReturnMinimized(lowbits(x))
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 	} else {
-		newac := newArrayContainer()
+		newac := rb.getNewArrayContainer()
 		rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.iaddReturnMinimized(lowbits(x)))
 	}
 }
@@ -736,7 +744,7 @@ func (rb *Bitmap) addwithptr(x uint32) (int, container) {
 		rb.highlowcontainer.setContainerAtIndex(i, c)
 		return i, c
 	}
-	newac := newArrayContainer()
+	newac := rb.getNewArrayContainer()
 	c = newac.iaddReturnMinimized(lowbits(x))
 	rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, c)
 	return -i - 1, c
@@ -754,7 +762,7 @@ func (rb *Bitmap) CheckedAdd(x uint32) bool {
 		rb.highlowcontainer.setContainerAtIndex(i, C)
 		return C.getCardinality() > oldcard
 	}
-	newac := newArrayContainer()
+	newac := rb.getNewArrayContainer()
 	rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.iaddReturnMinimized(lowbits(x)))
 	return true
 
@@ -1712,4 +1720,8 @@ func (rb *Bitmap) Stats() Statistics {
 		}
 	}
 	return stats
+}
+
+func (rb *Bitmap) getNewArrayContainer() container {
+	return newArrayContainerFromAllocator(rb.allocator)
 }

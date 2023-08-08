@@ -167,6 +167,7 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 			make([]bool, 0, expectedKeys),
 			false,
 		},
+		nil,
 	}
 	for i := range keys {
 		if containers[i] != nil { // in case a resulting container was empty, see ParAnd function
@@ -440,6 +441,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 			keys:            make([]uint16, containerCount),
 			needCopyOnWrite: make([]bool, containerCount),
 		},
+		nil,
 	}
 
 	resultOffset := 0
