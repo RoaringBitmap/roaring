@@ -84,7 +84,6 @@ func (b *BSI) GetCardinality() uint64 {
 
 // BitCount returns the number of bits needed to represent values.
 func (b *BSI) BitCount() int {
-
 	return len(b.bA)
 }
 
@@ -119,19 +118,18 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 	b.eBM.Add(uint64(columnID))
 }
 
-// GetValue gets the value at the column ID.  Second param will be false for non-existent values.
-func (b *BSI) GetValue(columnID uint64) (int64, bool) {
-	value := int64(0)
-	exists := b.eBM.Contains(uint64(columnID))
+// GetValue gets the value at the column ID. Second param will be false for non-existent values.
+func (b *BSI) GetValue(columnID uint64) (value int64, exists bool) {
+	exists = b.eBM.Contains(columnID)
 	if !exists {
-		return value, exists
+		return
 	}
 	for i := 0; i < b.BitCount(); i++ {
-		if b.bA[i].Contains(uint64(columnID)) {
-			value |= (1 << uint64(i))
+		if b.bA[i].Contains(columnID) {
+			value |= 1 << i
 		}
 	}
-	return int64(value), exists
+	return
 }
 
 type action func(t *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.WaitGroup)
