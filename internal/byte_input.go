@@ -42,6 +42,25 @@ type ByteBuffer struct {
 	off int
 }
 
+// NewByteBuffer creates a new ByteBuffer.
+func NewByteBuffer(buf []byte) *ByteBuffer {
+	return &ByteBuffer{
+		buf: buf,
+	}
+}
+
+var _ io.Reader = (*ByteBuffer)(nil)
+
+// Read implements io.Reader.
+func (b *ByteBuffer) Read(p []byte) (int, error) {
+	data, err := b.Next(len(p))
+	if err != nil {
+		return 0, err
+	}
+	copy(p, data)
+	return len(data), nil
+}
+
 // Next returns a slice containing the next n bytes from the reader
 // If there are fewer bytes than the given n, io.ErrUnexpectedEOF will be returned
 func (b *ByteBuffer) Next(n int) ([]byte, error) {

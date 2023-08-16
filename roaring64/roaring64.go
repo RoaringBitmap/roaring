@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/internal"
 )
 
 const serialCookieNoRunContainer = 12346 // only arrays and bitmaps
@@ -78,6 +79,73 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 		}
 	}
 	return n, nil
+}
+
+// FromUnsafeBytes reads a serialized version of this bitmap from the byte buffer without copy.
+// It is the caller's responsibility to ensure that the input data is not modified and remains valid for the entire lifetime of this bitmap.
+// This method avoids small allocations but holds references to the input data buffer. It is GC-friendly, but it may consume more memory eventually.
+func (rb *Bitmap) FromUnsafeBytes(data []byte) (p int64, err error) {
+	stream := internal.NewByteBuffer(data)
+
+	cookie, r32, p, err := tryReadFromRoaring32ByteBuffer(rb, stream)
+	if err != nil {
+		return p, err
+	} else if r32 {
+		return p, nil
+	}
+	// TODO: Add buffer interning as in base roaring package.
+
+	sizeBuf, err := stream.Next(4)
+	if err != nil {
+		return 0, fmt.Errorf("error in bitmap.UnsafeFromBytes: could not read number of containers: %w", err)
+	}
+	p += 4
+	sizeBuf = append(cookie, sizeBuf...)
+
+	size := binary.LittleEndian.Uint64(sizeBuf)
+	rb.highlowcontainer = roaringArray64{}
+	rb.highlowcontainer.keys = make([]uint32, size)
+	rb.highlowcontainer.containers = make([]*roaring.Bitmap, size)
+	rb.highlowcontainer.needCopyOnWrite = make([]bool, size)
+	for i := uint64(0); i < size; i++ {
+		keyBuf, err := stream.Next(4)
+		if err != nil {
+			return 0, fmt.Errorf("error in bitmap.UnsafeFromBytes: could not read key #%d: %w", i, err)
+		}
+		p += 4
+		rb.highlowcontainer.keys[i] = binary.LittleEndian.Uint32(keyBuf)
+		rb.highlowcontainer.containers[i] = roaring.NewBitmap()
+		n, err := rb.highlowcontainer.containers[i].ReadFrom(stream)
+		if n == 0 || err != nil {
+			return int64(n), fmt.Errorf("Could not deserialize bitmap for key #%d: %s", i, err)
+		}
+		p += int64(n)
+	}
+
+	return p, nil
+}
+
+func tryReadFromRoaring32ByteBuffer(rb *Bitmap, stream *internal.ByteBuffer) (cookie []byte, r32 bool, p int64, err error) {
+	// Verify the first two bytes are a valid MagicNumber.
+	cookie, err = stream.Next(4)
+	if err != nil {
+		return cookie, false, 0, err
+	}
+	fileMagic := int(binary.LittleEndian.Uint16(cookie[0:2]))
+	if fileMagic == serialCookieNoRunContainer || fileMagic == serialCookie {
+		bm32 := roaring.NewBitmap()
+		p, err = bm32.ReadFrom(stream, cookie...)
+		if err != nil {
+			return
+		}
+		rb.highlowcontainer = roaringArray64{
+			keys:            []uint32{0},
+			containers:      []*roaring.Bitmap{bm32},
+			needCopyOnWrite: []bool{false},
+		}
+		return cookie, true, p, nil
+	}
+	return
 }
 
 // ReadFrom reads a serialized version of this bitmap from stream.
