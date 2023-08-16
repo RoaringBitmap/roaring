@@ -62,7 +62,7 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 	}
 	n += int64(written)
 	pos := 0
-	keyBuf := make([]byte, 4)
+	keyBuf := buf[:4]
 	for pos < rb.highlowcontainer.size() {
 		c := rb.highlowcontainer.getContainerAtIndex(pos)
 		binary.LittleEndian.PutUint32(keyBuf, rb.highlowcontainer.getKeyAtIndex(pos))
@@ -93,20 +93,33 @@ func (rb *Bitmap) FromUnsafeBytes(data []byte) (p int64, err error) {
 	} else if r32 {
 		return p, nil
 	}
-	// TODO: Add buffer interning as in base roaring package.
 
-	sizeBuf, err := stream.Next(4)
+	var sizeBuf [8]byte // Avoid changing the original byte slice.
+	sizeBuf2, err := stream.Next(4)
 	if err != nil {
 		return 0, fmt.Errorf("error in bitmap.UnsafeFromBytes: could not read number of containers: %w", err)
 	}
 	p += 4
-	sizeBuf = append(cookie, sizeBuf...)
+	copy(sizeBuf[:], cookie)
+	copy(sizeBuf[4:], sizeBuf2)
+	size := binary.LittleEndian.Uint64(sizeBuf[:])
 
-	size := binary.LittleEndian.Uint64(sizeBuf)
-	rb.highlowcontainer = roaringArray64{}
-	rb.highlowcontainer.keys = make([]uint32, size)
-	rb.highlowcontainer.containers = make([]*roaring.Bitmap, size)
-	rb.highlowcontainer.needCopyOnWrite = make([]bool, size)
+	rb.highlowcontainer.resize(0)
+	if cap(rb.highlowcontainer.keys) >= int(size) {
+		rb.highlowcontainer.keys = rb.highlowcontainer.keys[:size]
+	} else {
+		rb.highlowcontainer.keys = make([]uint32, size)
+	}
+	if cap(rb.highlowcontainer.containers) >= int(size) {
+		rb.highlowcontainer.containers = rb.highlowcontainer.containers[:size]
+	} else {
+		rb.highlowcontainer.containers = make([]*roaring.Bitmap, size)
+	}
+	if cap(rb.highlowcontainer.needCopyOnWrite) >= int(size) {
+		rb.highlowcontainer.needCopyOnWrite = rb.highlowcontainer.needCopyOnWrite[:size]
+	} else {
+		rb.highlowcontainer.needCopyOnWrite = make([]bool, size)
+	}
 	for i := uint64(0); i < size; i++ {
 		keyBuf, err := stream.Next(4)
 		if err != nil {
@@ -138,11 +151,11 @@ func tryReadFromRoaring32ByteBuffer(rb *Bitmap, stream *internal.ByteBuffer) (co
 		if err != nil {
 			return
 		}
-		rb.highlowcontainer = roaringArray64{
-			keys:            []uint32{0},
-			containers:      []*roaring.Bitmap{bm32},
-			needCopyOnWrite: []bool{false},
-		}
+		// Try reuse the underlying slices.
+		rb.highlowcontainer.resize(0)
+		rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, 0)
+		rb.highlowcontainer.containers = append(rb.highlowcontainer.containers, bm32)
+		rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, false)
 		return cookie, true, p, nil
 	}
 	return
@@ -171,11 +184,23 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	sizeBuf = append(cookie, sizeBuf...)
 
 	size := binary.LittleEndian.Uint64(sizeBuf)
-	rb.highlowcontainer = roaringArray64{}
-	rb.highlowcontainer.keys = make([]uint32, size)
-	rb.highlowcontainer.containers = make([]*roaring.Bitmap, size)
-	rb.highlowcontainer.needCopyOnWrite = make([]bool, size)
-	keyBuf := make([]byte, 4)
+	rb.highlowcontainer.resize(0)
+	if cap(rb.highlowcontainer.keys) >= int(size) {
+		rb.highlowcontainer.keys = rb.highlowcontainer.keys[:size]
+	} else {
+		rb.highlowcontainer.keys = make([]uint32, size)
+	}
+	if cap(rb.highlowcontainer.containers) >= int(size) {
+		rb.highlowcontainer.containers = rb.highlowcontainer.containers[:size]
+	} else {
+		rb.highlowcontainer.containers = make([]*roaring.Bitmap, size)
+	}
+	if cap(rb.highlowcontainer.needCopyOnWrite) >= int(size) {
+		rb.highlowcontainer.needCopyOnWrite = rb.highlowcontainer.needCopyOnWrite[:size]
+	} else {
+		rb.highlowcontainer.needCopyOnWrite = make([]bool, size)
+	}
+	keyBuf := sizeBuf[:4]
 	for i := uint64(0); i < size; i++ {
 		n, err = stream.Read(keyBuf)
 		if n == 0 || err != nil {
@@ -208,11 +233,11 @@ func tryReadFromRoaring32(rb *Bitmap, stream io.Reader) (cookie []byte, r32 bool
 		if err != nil {
 			return
 		}
-		rb.highlowcontainer = roaringArray64{
-			keys:            []uint32{0},
-			containers:      []*roaring.Bitmap{bm32},
-			needCopyOnWrite: []bool{false},
-		}
+		// Try reuse the underlying slices.
+		rb.highlowcontainer.resize(0)
+		rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, 0)
+		rb.highlowcontainer.containers = append(rb.highlowcontainer.containers, bm32)
+		rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, false)
 		return cookie, true, p, nil
 	}
 	return
