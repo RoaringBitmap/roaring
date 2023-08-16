@@ -128,26 +128,39 @@ func (b *ByteBuffer) Reset(buf []byte) {
 type ByteInputAdapter struct {
 	r         io.Reader
 	readBytes int
+	buf       [4]byte
+}
+
+var _ io.Reader = (*ByteInputAdapter)(nil)
+
+// Read implements io.Reader.
+func (b *ByteInputAdapter) Read(buf []byte) (int, error) {
+	m, err := io.ReadAtLeast(b.r, buf, len(buf))
+	b.readBytes += m
+
+	if err != nil {
+		return 0, err
+	}
+
+	return m, nil
 }
 
 // Next returns a slice containing the next n bytes from the buffer,
 // advancing the buffer as if the bytes had been returned by Read.
 func (b *ByteInputAdapter) Next(n int) ([]byte, error) {
 	buf := make([]byte, n)
-	m, err := io.ReadAtLeast(b.r, buf, n)
-	b.readBytes += m
+	_, err := b.Read(buf)
 
 	if err != nil {
 		return nil, err
 	}
-
 	return buf, nil
 }
 
 // ReadUInt32 reads uint32 with LittleEndian order
 func (b *ByteInputAdapter) ReadUInt32() (uint32, error) {
-	buf, err := b.Next(4)
-
+	buf := b.buf[:4]
+	_, err := b.Read(buf)
 	if err != nil {
 		return 0, err
 	}
@@ -157,8 +170,8 @@ func (b *ByteInputAdapter) ReadUInt32() (uint32, error) {
 
 // ReadUInt16 reads uint16 with LittleEndian order
 func (b *ByteInputAdapter) ReadUInt16() (uint16, error) {
-	buf, err := b.Next(2)
-
+	buf := b.buf[:2]
+	_, err := b.Read(buf)
 	if err != nil {
 		return 0, err
 	}
