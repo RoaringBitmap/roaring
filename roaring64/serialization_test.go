@@ -5,6 +5,7 @@ package roaring64
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"testing"
@@ -21,12 +22,18 @@ func TestSerializationOfEmptyBitmap(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
+	data := buf.Bytes()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
 	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
+
+	newrb2 := NewBitmap()
+	_, err = newrb2.FromUnsafeBytes(data)
+	require.NoError(t, err)
+	assert.True(t, rb.Equals(newrb2))
 }
 
 func TestBase64_036(t *testing.T) {
@@ -51,26 +58,32 @@ func TestSerializationBasic037(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
+	data := buf.Bytes()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
 	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
+
+	newrb2 := NewBitmap()
+	_, err = newrb2.FromUnsafeBytes(data)
+	require.NoError(t, err)
+	assert.True(t, rb.Equals(newrb2))
 }
 
 func TestSerializationToFile038(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
 	fname := "myfile.bin"
 	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 
 	var l int64
 	l, err = rb.WriteTo(fout)
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
@@ -81,18 +94,25 @@ func TestSerializationToFile038(t *testing.T) {
 
 	newrb := NewBitmap()
 	fin, err := os.Open(fname)
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
+	buf := bytes.NewBuffer(nil)
+	teer := io.TeeReader(fin, buf)
 
 	defer func() {
 		fin.Close()
 		_ = os.Remove(fname)
 	}()
 
-	_, _ = newrb.ReadFrom(fin)
+	_, _ = newrb.ReadFrom(teer)
 	assert.True(t, rb.Equals(newrb))
+
+	newrb2 := NewBitmap()
+	_, err = newrb2.FromUnsafeBytes(buf.Bytes())
+	require.NoError(t, err)
+	assert.True(t, rb.Equals(newrb2))
 }
 
 func TestSerializationBasic2_041(t *testing.T) {
@@ -104,12 +124,18 @@ func TestSerializationBasic2_041(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, l, buf.Len())
+	data := buf.Bytes()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
 
 	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
+
+	newrb2 := NewBitmap()
+	_, err = newrb2.FromUnsafeBytes(data)
+	require.NoError(t, err)
+	assert.True(t, rb.Equals(newrb2))
 }
 
 // roaringarray.writeTo and .readFrom should serialize and unserialize when containing all 3 container types
@@ -124,12 +150,18 @@ func TestSerializationBasic3_042(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), int(rb.GetSerializedSizeInBytes()))
+	data := buf.Bytes()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(&buf)
 
 	require.NoError(t, err)
 	assert.True(t, newrb.Equals(rb))
+
+	newrb2 := NewBitmap()
+	_, err = newrb2.FromUnsafeBytes(data)
+	require.NoError(t, err)
+	assert.True(t, rb.Equals(newrb2))
 }
 
 func TestHoldReference(t *testing.T) {
@@ -172,7 +204,23 @@ func TestHoldReference(t *testing.T) {
 	})
 }
 
+func BenchmarkUnserializeFromUnsafeBytes(b *testing.B) {
+	benchmarkUnserializeFunc(b, "FromUnsafeBytes", func(bitmap *Bitmap, data []byte) (int64, error) {
+		copied := make([]byte, len(data))
+		copy(copied, data)
+		return bitmap.FromUnsafeBytes(copied)
+	})
+}
+
 func BenchmarkUnserializeReadFrom(b *testing.B) {
+	benchmarkUnserializeFunc(b, "ReadFrom", func(bitmap *Bitmap, data []byte) (int64, error) {
+		return bitmap.ReadFrom(bytes.NewReader(data))
+	})
+}
+
+func benchmarkUnserializeFunc(b *testing.B, name string, f func(*Bitmap, []byte) (int64, error)) {
+	b.Helper()
+
 	for _, size := range []uint64{650, 6500, 65000, 650000, 6500000} {
 		rb := New()
 		buf := &bytes.Buffer{}
@@ -187,15 +235,14 @@ func BenchmarkUnserializeReadFrom(b *testing.B) {
 			b.Fatalf("Unexpected error occurs: %v", err)
 		}
 
-		b.Run(fmt.Sprintf("ReadFrom-%d", size), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%s-%d", name, size), func(b *testing.B) {
 			b.ReportAllocs()
 			b.StartTimer()
 
 			for n := 0; n < b.N; n++ {
-				reader := bytes.NewReader(buf.Bytes())
 				nb := New()
 
-				if _, err := nb.ReadFrom(reader); err != nil {
+				if _, err := f(nb, buf.Bytes()); err != nil {
 					b.Fatalf("Unexpected error occurs: %v", err)
 				}
 			}
