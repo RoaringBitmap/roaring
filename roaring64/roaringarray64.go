@@ -124,6 +124,8 @@ func (ra *roaringArray64) removeIndexRange(begin, end int) {
 
 func (ra *roaringArray64) resize(newsize int) {
 	for k := newsize; k < len(ra.containers); k++ {
+		ra.keys[k] = 0
+		ra.needCopyOnWrite[k] = false
 		ra.containers[k] = nil
 	}
 

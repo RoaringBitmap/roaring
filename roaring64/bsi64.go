@@ -81,13 +81,11 @@ func (b *BSI) GetCardinality() uint64 {
 
 // BitCount returns the number of bits needed to represent values.
 func (b *BSI) BitCount() int {
-
 	return len(b.bA)
 }
 
 // SetValue sets a value for a given columnID.
 func (b *BSI) SetValue(columnID uint64, value int64) {
-
 	// If max/min values are set to zero then automatically determine bit array size
 	if b.MaxValue == 0 && b.MinValue == 0 {
 		minBits := bits.Len64(uint64(value))
@@ -96,36 +94,28 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 		}
 	}
 
-	var wg sync.WaitGroup
-
 	for i := 0; i < b.BitCount(); i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			if uint64(value)&(1<<uint64(j)) > 0 {
-				b.bA[j].Add(uint64(columnID))
-			} else {
-				b.bA[j].Remove(uint64(columnID))
-			}
-		}(i)
-	}
-	wg.Wait()
-	b.eBM.Add(uint64(columnID))
-}
-
-// GetValue gets the value at the column ID.  Second param will be false for non-existent values.
-func (b *BSI) GetValue(columnID uint64) (int64, bool) {
-	value := int64(0)
-	exists := b.eBM.Contains(uint64(columnID))
-	if !exists {
-		return value, exists
-	}
-	for i := 0; i < b.BitCount(); i++ {
-		if b.bA[i].Contains(uint64(columnID)) {
-			value |= (1 << uint64(i))
+		if uint64(value)&(1<<uint64(i)) > 0 {
+			b.bA[i].Add(columnID)
+		} else {
+			b.bA[i].Remove(columnID)
 		}
 	}
-	return int64(value), exists
+	b.eBM.Add(columnID)
+}
+
+// GetValue gets the value at the column ID. Second param will be false for non-existent values.
+func (b *BSI) GetValue(columnID uint64) (value int64, exists bool) {
+	exists = b.eBM.Contains(columnID)
+	if !exists {
+		return
+	}
+	for i := 0; i < b.BitCount(); i++ {
+		if b.bA[i].Contains(columnID) {
+			value |= 1 << i
+		}
+	}
+	return
 }
 
 type action func(t *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.WaitGroup)
@@ -910,4 +900,12 @@ func (b *BSI) Equals(other *BSI) bool {
 		}
 	}
 	return true
+}
+
+func (b *BSI) GetSizeInBytes() int {
+	size := b.eBM.GetSizeInBytes()
+	for _, bm := range b.bA {
+		size += bm.GetSizeInBytes()
+	}
+	return int(size)
 }

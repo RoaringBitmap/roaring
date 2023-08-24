@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	_ "fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
