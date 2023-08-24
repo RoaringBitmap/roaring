@@ -1,0 +1,29 @@
+
+name: Go-PPC64-CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [1.11.x, 1.12.x, 1.13.x, 1.14.x]
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Test
+      run: |
+        sudo apt install -y qemu-system-ppc64 qemu-user
+        GOARCH=ppc64 go test -c -o roaring_test
+        GOARCH=ppc64 go test ./roaring64 -c -o ./roaring64/roaring64_test
+        GOARCH=ppc64 go test ./BitSliceIndexing -c -o ./BitSliceIndexing/BitSliceIndexing_test
+        #qemu-ppc64 ./roaring_test -v -race -run TestConcurrent*
+        qemu-ppc64 ./roaring_test
+        qemu-ppc64 ./roaring64/roaring64_test
+        cd BitSliceIndexing && qemu-ppc64 ./BitSliceIndexing_test
