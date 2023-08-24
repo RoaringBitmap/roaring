@@ -551,10 +551,7 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-// Reads a serialized roaringArray from a byte slice. If we are pointing at a raw buffer that must be immutable, then
-// the parameter willNeedCopyOnWrite should be set to true (e.g., if the buffer is mmapped). Otherwise, if reading from
-// a file or from the network into a temporary buffer, then set willNeedCopyOnWrite should be set to false because the
-// resulting buffers are owned by the newly created roaringArray.
+// Reads a serialized roaringArray from a byte slice.
 func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte) (int64, error) {
 	var cookie uint32
 	var err error

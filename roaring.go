@@ -135,8 +135,6 @@ func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err
 		stream = byteInputAdapter
 	}
 
-	// We pass false to readFrom to indicate that we don't want to resulting containers to be copy-on-write.
-	// They are regular, mutable containers.
 	p, err = rb.highlowcontainer.readFrom(stream, cookieHeader...)
 
 	if !ok {
