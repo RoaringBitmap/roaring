@@ -10,6 +10,11 @@ type ByteInput interface {
 	// Next returns a slice containing the next n bytes from the buffer,
 	// advancing the buffer as if the bytes had been returned by Read.
 	Next(n int) ([]byte, error)
+	// NextReturnsSafeSlice returns true if Next() returns a safe slice as opposed
+	// to a slice that points to an underlying buffer possibly owned by another system.
+	// When NextReturnsSafeSlice returns false, the result from Next() should be copied
+	// before it is modified (i.e., it is immutable).
+	NextReturnsSafeSlice() bool
 	// ReadUInt32 reads uint32 with LittleEndian order
 	ReadUInt32() (uint32, error)
 	// ReadUInt16 reads uint16 with LittleEndian order
@@ -74,6 +79,12 @@ func (b *ByteBuffer) Next(n int) ([]byte, error) {
 	b.off += n
 
 	return data, nil
+}
+
+// NextReturnsSafeSlice returns false since ByteBuffer might hold
+// an array owned by some other systems.
+func (b *ByteBuffer) NextReturnsSafeSlice() bool {
+	return false
 }
 
 // ReadUInt32 reads uint32 with LittleEndian order
@@ -155,6 +166,12 @@ func (b *ByteInputAdapter) Next(n int) ([]byte, error) {
 		return nil, err
 	}
 	return buf, nil
+}
+
+// NextReturnsSafeSlice returns true since ByteInputAdapter always returns a slice
+// allocated with make([]byte, ...)
+func (b *ByteInputAdapter) NextReturnsSafeSlice() bool {
+	return true
 }
 
 // ReadUInt32 reads uint32 with LittleEndian order

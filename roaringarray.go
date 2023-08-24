@@ -555,7 +555,7 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 // the parameter willNeedCopyOnWrite should be set to true (e.g., if the buffer is mmapped). Otherwise, if reading from
 // a file or from the network into a temporary buffer, then set willNeedCopyOnWrite should be set to false because the
 // resulting buffers are owned by the newly created roaringArray.
-func (ra *roaringArray) readFrom(stream internal.ByteInput, willNeedCopyOnWrite bool, cookieHeader ...byte) (int64, error) {
+func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte) (int64, error) {
 	var cookie uint32
 	var err error
 	if len(cookieHeader) > 0 && len(cookieHeader) != 4 {
@@ -569,6 +569,8 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, willNeedCopyOnWrite 
 			return stream.GetReadBytes(), fmt.Errorf("error in roaringArray.readFrom: could not read initial cookie: %s", err)
 		}
 	}
+	// If NextReturnsSafeSlice is false, then willNeedCopyOnWrite should be true
+	willNeedCopyOnWrite := !stream.NextReturnsSafeSlice()
 
 	var size uint32
 	var isRunBitmap []byte

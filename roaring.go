@@ -117,10 +117,7 @@ func (rb *Bitmap) Checksum() uint64 {
 // See https://github.com/RoaringBitmap/roaring/pull/395 for more details.
 func (rb *Bitmap) FromUnsafeBytes(data []byte, cookieHeader ...byte) (p int64, err error) {
 	stream := internal.NewByteBuffer(data)
-
-	// We pass true to readFrom to indicate that we want to resulting containers to be copy-on-write.
-	// They are immutable containers tied to the provided byte array.
-	return rb.highlowcontainer.readFrom(stream, true, cookieHeader...)
+	return rb.ReadFrom(stream)
 }
 
 // ReadFrom reads a serialized version of this bitmap from stream.
@@ -140,7 +137,7 @@ func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err
 
 	// We pass false to readFrom to indicate that we don't want to resulting containers to be copy-on-write.
 	// They are regular, mutable containers.
-	p, err = rb.highlowcontainer.readFrom(stream, false, cookieHeader...)
+	p, err = rb.highlowcontainer.readFrom(stream, cookieHeader...)
 
 	if !ok {
 		internal.ByteInputAdapterPool.Put(stream.(*internal.ByteInputAdapter))
@@ -179,9 +176,7 @@ func (rb *Bitmap) FromBuffer(buf []byte) (p int64, err error) {
 	stream := internal.ByteBufferPool.Get().(*internal.ByteBuffer)
 	stream.Reset(buf)
 
-	// We pass true to readFrom to indicate that we want to resulting containers to be copy-on-write.
-	// They are immutable containers tried to the provided byte array.
-	p, err = rb.highlowcontainer.readFrom(stream, true)
+	p, err = rb.highlowcontainer.readFrom(stream)
 	internal.ByteBufferPool.Put(stream)
 
 	return
