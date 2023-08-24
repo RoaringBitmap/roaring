@@ -109,9 +109,18 @@ func (rb *Bitmap) Checksum() uint64 {
 // FromUnsafeBytes reads a serialized version of this bitmap from the byte buffer without copy.
 // It is the caller's responsibility to ensure that the input data is not modified and remains valid for the entire lifetime of this bitmap.
 // This method avoids small allocations but holds references to the input data buffer. It is GC-friendly, but it may consume more memory eventually.
+// The containers in the resulting bitmap are immutable containers tied to the provided byte array and they rely on
+// copy-on-write which means that modifying them creates copies. Thus FromUnsafeBytes is more likely to be appropriate for read-only use cases,
+// when the resulting bitmap can be considered immutable.
+//
+// See also the FromBuffer function.
+// See https://github.com/RoaringBitmap/roaring/pull/395 for more details.
 func (rb *Bitmap) FromUnsafeBytes(data []byte, cookieHeader ...byte) (p int64, err error) {
 	stream := internal.NewByteBuffer(data)
-	return rb.ReadFrom(stream)
+
+	// We pass true to readFrom to indicate that we want to resulting containers to be copy-on-write.
+	// They are immutable containers tied to the provided byte array.
+	return rb.highlowcontainer.readFrom(stream, true, cookieHeader...)
 }
 
 // ReadFrom reads a serialized version of this bitmap from stream.
@@ -129,7 +138,9 @@ func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err
 		stream = byteInputAdapter
 	}
 
-	p, err = rb.highlowcontainer.readFrom(stream, cookieHeader...)
+	// We pass false to readFrom to indicate that we don't want to resulting containers to be copy-on-write.
+	// They are regular, mutable containers.
+	p, err = rb.highlowcontainer.readFrom(stream, false, cookieHeader...)
 
 	if !ok {
 		internal.ByteInputAdapterPool.Put(stream.(*internal.ByteInputAdapter))
@@ -153,16 +164,24 @@ func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err
 // You should *not* change the copy-on-write status of the resulting
 // bitmaps (SetCopyOnWrite).
 //
+// Thus FromBuffer is more likely to be appropriate for read-only use cases,
+// when the resulting bitmap can be considered immutable.
+//
 // If buf becomes unavailable, then a bitmap created with
 // FromBuffer would be effectively broken. Furthermore, any
 // bitmap derived from this bitmap (e.g., via Or, And) might
 // also be broken. Thus, before making buf unavailable, you should
 // call CloneCopyOnWriteContainers on all such bitmaps.
+//
+// See also the FromUnsafeBytes function which can have better performance
+// in some cases.
 func (rb *Bitmap) FromBuffer(buf []byte) (p int64, err error) {
 	stream := internal.ByteBufferPool.Get().(*internal.ByteBuffer)
 	stream.Reset(buf)
 
-	p, err = rb.highlowcontainer.readFrom(stream)
+	// We pass true to readFrom to indicate that we want to resulting containers to be copy-on-write.
+	// They are immutable containers tried to the provided byte array.
+	p, err = rb.highlowcontainer.readFrom(stream, true)
 	internal.ByteBufferPool.Put(stream)
 
 	return

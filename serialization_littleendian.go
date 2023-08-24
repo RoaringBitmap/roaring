@@ -79,12 +79,12 @@ func (bc *bitmapContainer) asLittleEndianByteSlice() []byte {
 
 // Deserialization code follows
 
-////
+// //
 // These methods (byteSliceAsUint16Slice,...) do not make copies,
 // they are pointer-based (unsafe). The caller is responsible to
 // ensure that the input slice does not get garbage collected, deleted
 // or modified while you hold the returned slince.
-////
+// //
 func byteSliceAsUint16Slice(slice []byte) (result []uint16) { // here we create a new slice holder
 	if len(slice)%2 != 0 {
 		panic("Slice size should be divisible by 2")
@@ -295,7 +295,6 @@ func byteSliceAsBoolSlice(slice []byte) (result []bool) {
 // bitmap derived from this bitmap (e.g., via Or, And) might
 // also be broken. Thus, before making buf unavailable, you should
 // call CloneCopyOnWriteContainers on all such bitmaps.
-//
 func (rb *Bitmap) FrozenView(buf []byte) error {
 	return rb.highlowcontainer.frozenView(buf)
 }
@@ -412,11 +411,11 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 	}
 
 	var c container
-	containersSz := int(unsafe.Sizeof(c))*nCont
-	bitsetsSz := int(unsafe.Sizeof(bitmapContainer{}))*nBitmap
-	arraysSz := int(unsafe.Sizeof(arrayContainer{}))*nArray
-	runsSz := int(unsafe.Sizeof(runContainer16{}))*nRun
-	needCOWSz := int(unsafe.Sizeof(true))*nCont
+	containersSz := int(unsafe.Sizeof(c)) * nCont
+	bitsetsSz := int(unsafe.Sizeof(bitmapContainer{})) * nBitmap
+	arraysSz := int(unsafe.Sizeof(arrayContainer{})) * nArray
+	runsSz := int(unsafe.Sizeof(runContainer16{})) * nRun
+	needCOWSz := int(unsafe.Sizeof(true)) * nCont
 
 	bitmapArenaSz := containersSz + bitsetsSz + arraysSz + runsSz + needCOWSz
 	bitmapArena := make([]byte, bitmapArenaSz)

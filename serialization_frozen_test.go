@@ -5,11 +5,11 @@ package roaring
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
-	"os"
-	"fmt"
 )
 
 func TestFrozenFormat(t *testing.T) {

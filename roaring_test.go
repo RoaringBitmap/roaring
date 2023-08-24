@@ -54,11 +54,11 @@ func hashTest(t *testing.T, N uint64) {
 		rb1, rb2 = NewBitmap(), NewBitmap()
 		for x := uint64(0); x <= N*gap; x += gap {
 			// x+3 guarantees runs, gap/2 guarantees some variety
-			if x + 3 + gap/2 > MaxUint32 {
+			if x+3+gap/2 > MaxUint32 {
 				break
 			}
-			rb1.AddRange(uint64(x), uint64(x + 3 + gap/2))
-			rb2.AddRange(uint64(x), uint64(x + 3 + gap/2))
+			rb1.AddRange(uint64(x), uint64(x+3+gap/2))
+			rb2.AddRange(uint64(x), uint64(x+3+gap/2))
 		}
 
 		rb1.RunOptimize()
