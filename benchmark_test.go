@@ -12,7 +12,6 @@ import (
 
 // BENCHMARKS, to run them type "go test -bench Benchmark -run -"
 
-
 // go test -bench BenchmarkIteratorAlloc -benchmem -run -
 func BenchmarkIteratorAlloc(b *testing.B) {
 	bm := NewBitmap()
@@ -84,7 +83,6 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
 	}
 
-
 	b.Run("many iteration with alloc", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
 			counter = 0
@@ -116,7 +114,6 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
 	}
 }
-
 
 // go test -bench BenchmarkOrs -benchmem -run -
 func BenchmarkOrs(b *testing.B) {
