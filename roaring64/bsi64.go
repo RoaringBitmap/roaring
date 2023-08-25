@@ -25,8 +25,8 @@ const (
 // It depends upon the bitmap libraries.  It is not thread safe, so
 // upstream concurrency guards must be provided.
 type BSI struct {
-	bA           []*Bitmap
-	eBM          *Bitmap // Existence BitMap
+	bA           []Bitmap
+	eBM          Bitmap // Existence BitMap
 	MaxValue     int64
 	MinValue     int64
 	runOptimized bool
@@ -40,11 +40,8 @@ func NewBSI(maxValue int64, minValue int64) *BSI {
 	if bits.Len64(uint64(maxValue)) > bitsz {
 		bitsz = bits.Len64(uint64(maxValue))
 	}
-	ba := make([]*Bitmap, bitsz)
-	for i := 0; i < len(ba); i++ {
-		ba[i] = NewBitmap()
-	}
-	return &BSI{bA: ba, eBM: NewBitmap(), MaxValue: maxValue, MinValue: minValue}
+	ba := make([]Bitmap, bitsz)
+	return &BSI{bA: ba, MaxValue: maxValue, MinValue: minValue}
 }
 
 // NewDefaultBSI constructs an auto-sized BSI
@@ -68,7 +65,7 @@ func (b *BSI) HasRunCompression() bool {
 
 // GetExistenceBitmap returns a pointer to the underlying existence bitmap of the BSI
 func (b *BSI) GetExistenceBitmap() *Bitmap {
-	return b.eBM
+	return &b.eBM
 }
 
 // ValueExists tests whether the value exists.
@@ -91,9 +88,9 @@ func (b *BSI) BitCount() int {
 func (b *BSI) SetValue(columnID uint64, value int64) {
 	// If max/min values are set to zero then automatically determine bit array size
 	if b.MaxValue == 0 && b.MinValue == 0 {
-		ba := make([]*Bitmap, bits.Len64(uint64(value)))
-		for i := len(ba) - b.BitCount(); i > 0; i-- {
-			b.bA = append(b.bA, NewBitmap())
+		minBits := bits.Len64(uint64(value))
+		for len(b.bA) < minBits {
+			b.bA = append(b.bA, Bitmap{})
 		}
 	}
 
@@ -254,7 +251,7 @@ func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int6
 
 	comp := &task{bsi: b, op: op, valueOrStart: valueOrStart, end: end}
 	if foundSet == nil {
-		return parallelExecutor(parallelism, comp, compareValue, b.eBM)
+		return parallelExecutor(parallelism, comp, compareValue, &b.eBM)
 	}
 	return parallelExecutor(parallelism, comp, compareValue, foundSet)
 }
@@ -517,7 +514,7 @@ func (b *BSI) Sum(foundSet *Bitmap) (sum int64, count uint64) {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
-			atomic.AddInt64(&sum, int64(foundSet.AndCardinality(b.bA[j])<<uint(j)))
+			atomic.AddInt64(&sum, int64(foundSet.AndCardinality(&b.bA[j])<<uint(j)))
 		}(i)
 	}
 	wg.Wait()
@@ -526,7 +523,7 @@ func (b *BSI) Sum(foundSet *Bitmap) (sum int64, count uint64) {
 
 // Transpose calls b.IntersectAndTranspose(0, b.eBM)
 func (b *BSI) Transpose() *Bitmap {
-	return b.IntersectAndTranspose(0, b.eBM)
+	return b.IntersectAndTranspose(0, &b.eBM)
 }
 
 // IntersectAndTranspose is a matrix transpose function.  Return a bitmap such that the values are represented as column IDs
@@ -572,11 +569,9 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 
 	// Make sure we have enough bit slices
 	for bits > b.BitCount() {
-		newBm := NewBitmap()
-		if b.runOptimized {
-			newBm.RunOptimize()
-		}
-		b.bA = append(b.bA, newBm)
+		bm := Bitmap{}
+		bm.RunOptimize()
+		b.bA = append(b.bA, bm)
 	}
 
 	a := make([][]*Bitmap, bits)
@@ -584,9 +579,8 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 		a[i] = make([]*Bitmap, 0)
 		for _, x := range bsis {
 			if len(x.bA) > i {
-				a[i] = append(a[i], x.bA[i])
+				a[i] = append(a[i], &x.bA[i])
 			} else {
-				a[i] = []*Bitmap{NewBitmap()}
 				if b.runOptimized {
 					a[i][0].RunOptimize()
 				}
@@ -597,7 +591,7 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 	// Consolidate existence bit maps
 	ebms := make([]*Bitmap, len(bsis))
 	for i := range ebms {
-		ebms[i] = bsis[i].eBM
+		ebms[i] = &bsis[i].eBM
 	}
 
 	// First merge all the bit slices from all bsi maps that exist in target
@@ -606,17 +600,17 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
-			x := []*Bitmap{b.bA[j]}
+			x := []*Bitmap{&b.bA[j]}
 			x = append(x, a[j]...)
-			b.bA[j] = ParOr(parallelism, x...)
+			b.bA[j] = *ParOr(parallelism, x...)
 		}(i)
 	}
 	wg.Wait()
 
 	// merge all the EBM maps
-	x := []*Bitmap{b.eBM}
+	x := []*Bitmap{&b.eBM}
 	x = append(x, ebms...)
-	b.eBM = ParOr(parallelism, x...)
+	b.eBM = *ParOr(parallelism, x...)
 }
 
 // UnmarshalBinary de-serialize a BSI.  The value at bitData[0] is the EBM.  Other indices are in least to most
@@ -628,7 +622,7 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 			continue
 		}
 		if b.BitCount() < i {
-			newBm := NewBitmap()
+			newBm := Bitmap{}
 			if b.runOptimized {
 				newBm.RunOptimize()
 			}
@@ -644,7 +638,7 @@ func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
 	}
 	// First element of bitData is the EBM
 	if bitData[0] == nil {
-		b.eBM = NewBitmap()
+		b.eBM = Bitmap{}
 		if b.runOptimized {
 			b.eBM.RunOptimize()
 		}
@@ -667,7 +661,7 @@ func (b *BSI) ReadFrom(stream io.Reader) (p int64, err error) {
 		err = fmt.Errorf("reading existence bitmap: %w", err)
 		return
 	}
-	b.eBM = &bm
+	b.eBM = bm
 	b.bA = b.bA[:0]
 	for {
 		// This forces a new memory location to be allocated and if we're lucky it only escapes if
@@ -683,7 +677,7 @@ func (b *BSI) ReadFrom(stream io.Reader) (p int64, err error) {
 			err = fmt.Errorf("reading bit slice index %v: %w", len(b.bA), err)
 			return
 		}
-		b.bA = append(b.bA, &bm)
+		b.bA = append(b.bA, bm)
 	}
 }
 
@@ -737,7 +731,7 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *Bitmap {
 		valMap[values[i]] = struct{}{}
 	}
 	comp := &task{bsi: b, values: valMap}
-	return parallelExecutor(parallelism, comp, batchEqual, b.eBM)
+	return parallelExecutor(parallelism, comp, batchEqual, &b.eBM)
 }
 
 func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,
@@ -777,13 +771,13 @@ func (b *BSI) ClearValues(foundSet *Bitmap) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		ClearBits(foundSet, b.eBM)
+		ClearBits(foundSet, &b.eBM)
 	}()
 	for i := 0; i < b.BitCount(); i++ {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
-			ClearBits(foundSet, b.bA[j])
+			ClearBits(foundSet, &b.bA[j])
 		}(i)
 	}
 	wg.Wait()
@@ -793,19 +787,19 @@ func (b *BSI) ClearValues(foundSet *Bitmap) {
 func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 
 	newBSI := NewBSI(b.MaxValue, b.MinValue)
-	newBSI.bA = make([]*Bitmap, b.BitCount())
+	newBSI.bA = make([]Bitmap, b.BitCount())
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		newBSI.eBM = b.eBM.Clone()
+		newBSI.eBM = *b.eBM.Clone()
 		newBSI.eBM.And(foundSet)
 	}()
 	for i := 0; i < b.BitCount(); i++ {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
-			newBSI.bA[j] = b.bA[j].Clone()
+			newBSI.bA[j] = *b.bA[j].Clone()
 			newBSI.bA[j].And(foundSet)
 		}(i)
 	}
@@ -815,28 +809,28 @@ func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 
 // Clone performs a deep copy of BSI contents.
 func (b *BSI) Clone() *BSI {
-	return b.NewBSIRetainSet(b.eBM)
+	return b.NewBSIRetainSet(&b.eBM)
 }
 
 // Add - In-place sum the contents of another BSI with this BSI, column wise.
 func (b *BSI) Add(other *BSI) {
 
-	b.eBM.Or(other.eBM)
+	b.eBM.Or(&other.eBM)
 	for i := 0; i < len(other.bA); i++ {
-		b.addDigit(other.bA[i], i)
+		b.addDigit(&other.bA[i], i)
 	}
 }
 
 func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 
 	if i >= len(b.bA) {
-		b.bA = append(b.bA, NewBitmap())
+		b.bA = append(b.bA, Bitmap{})
 	}
-	carry := And(b.bA[i], foundSet)
+	carry := And(&b.bA[i], foundSet)
 	b.bA[i].Xor(foundSet)
 	if !carry.IsEmpty() {
 		if i+1 >= len(b.bA) {
-			b.bA = append(b.bA, NewBitmap())
+			b.bA = append(b.bA, Bitmap{})
 		}
 		b.addDigit(carry, i+1)
 	}
@@ -887,7 +881,7 @@ func (b *BSI) IncrementAll() {
 }
 
 func (b *BSI) Equals(other *BSI) bool {
-	if !b.eBM.Equals(other.eBM) {
+	if !b.eBM.Equals(&other.eBM) {
 		return false
 	}
 	for i := 0; i < len(b.bA) || i < len(other.bA); i++ {
@@ -900,7 +894,7 @@ func (b *BSI) Equals(other *BSI) bool {
 				return false
 			}
 		} else {
-			if !b.bA[i].Equals(other.bA[i]) {
+			if !b.bA[i].Equals(&other.bA[i]) {
 				return false
 			}
 		}
