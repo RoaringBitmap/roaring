@@ -33,7 +33,6 @@ Roaring bitmaps are found to work well in many important applications:
 
 The ``roaring`` Go library is used by
 * [anacrolix/torrent]
-* [runv](https://github.com/hyperhq/runv)
 * [InfluxDB](https://www.influxdata.com)
 * [Pilosa](https://www.pilosa.com/)
 * [Bleve](http://www.blevesearch.com)
