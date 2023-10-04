@@ -102,20 +102,14 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 		}
 	}
 
-	var wg sync.WaitGroup
-
+	exists := b.eBM.Contains(uint32(columnID))
 	for i := 0; i < b.BitCount(); i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			if uint64(value)&(1<<uint64(j)) > 0 {
-				b.bA[j].Add(uint32(columnID))
-			} else {
-				b.bA[j].Remove(uint32(columnID))
-			}
-		}(i)
+		if uint64(value)&(1<<uint64(i)) > 0 {
+			b.bA[i].Add(uint32(columnID))
+		} else if exists {
+			b.bA[i].Remove(uint32(columnID))
+		}
 	}
-	wg.Wait()
 	b.eBM.Add(uint32(columnID))
 }
 
