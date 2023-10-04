@@ -1,15 +1,15 @@
 package roaring
 
 import (
+	"fmt"
 	"github.com/RoaringBitmap/roaring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
-	"fmt"
-	"os"
 )
 
 func TestSetAndGet(t *testing.T) {
@@ -264,47 +264,47 @@ func TestNewBSIRetainSet(t *testing.T) {
 func TestLargeFile(t *testing.T) {
 
 	datEBM, err := ioutil.ReadFile("./testdata/age/EBM")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat1, err := ioutil.ReadFile("./testdata/age/1")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat2, err := ioutil.ReadFile("./testdata/age/2")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat3, err := ioutil.ReadFile("./testdata/age/3")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat4, err := ioutil.ReadFile("./testdata/age/4")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat5, err := ioutil.ReadFile("./testdata/age/5")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat6, err := ioutil.ReadFile("./testdata/age/6")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat7, err := ioutil.ReadFile("./testdata/age/7")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
 	dat8, err := ioutil.ReadFile("./testdata/age/8")
-	if(err != nil) {
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
@@ -452,4 +452,17 @@ func TestMinMaxWithRandom(t *testing.T) {
 	bsi := setupRandom()
 	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
 	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
+}
+
+func BenchmarkSetRoaring(b *testing.B) {
+	b.StopTimer()
+	r := rand.New(rand.NewSource(0))
+	sz := 100_000_000
+	s := NewDefaultBSI()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 100; j++ {
+			s.SetValue(uint64(r.Int31n(int32(sz))), int64(r.Int31n(int32(sz))))
+		}
+	}
 }
