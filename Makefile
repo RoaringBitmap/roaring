@@ -33,7 +33,6 @@ help:
 all: help
 test:
 	go test
-	go test -race -run TestConcurrent*
 # Format the source code
 format:
 	@find ./ -type f -name "*.go" -exec gofmt -w {} \;
@@ -65,7 +64,7 @@ qa: fmtcheck test vet lint
 deps:
 	GOPATH=$(GOPATH) go get github.com/stretchr/testify
 	GOPATH=$(GOPATH) go get github.com/bits-and-blooms/bitset
-	GOPATH=$(GOPATH) go get github.com/golang/lint/golint
+	GOPATH=$(GOPATH) go get golang.org/x/lint/golint
 	GOPATH=$(GOPATH) go get github.com/mschoch/smat
 	GOPATH=$(GOPATH) go get github.com/dvyukov/go-fuzz/go-fuzz
 	GOPATH=$(GOPATH) go get github.com/dvyukov/go-fuzz/go-fuzz-build

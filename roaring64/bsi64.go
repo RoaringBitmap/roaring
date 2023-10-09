@@ -880,6 +880,7 @@ func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
 }
 
+// Equals - Check for semantic equality of two BSIs.
 func (b *BSI) Equals(other *BSI) bool {
 	if !b.eBM.Equals(&other.eBM) {
 		return false
@@ -902,6 +903,7 @@ func (b *BSI) Equals(other *BSI) bool {
 	return true
 }
 
+// GetSizeInBytes - the size in bytes of the data structure
 func (b *BSI) GetSizeInBytes() int {
 	size := b.eBM.GetSizeInBytes()
 	for _, bm := range b.bA {

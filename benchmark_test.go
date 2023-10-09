@@ -3,9 +3,10 @@ package roaring
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/bits-and-blooms/bitset"
 )
@@ -22,7 +23,7 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		bm.Add(v)
 	}
 	i := IntIterator{}
-	expected_cardinality := bm.GetCardinality()
+	expectedCardinality := bm.GetCardinality()
 	counter := uint64(0)
 	b.Run("simple iteration with alloc", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
@@ -35,8 +36,8 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		}
 		b.StopTimer()
 	})
-	if counter != expected_cardinality {
-		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	if counter != expectedCardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
 	}
 	b.Run("simple iteration", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
@@ -49,8 +50,8 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		}
 		b.StopTimer()
 	})
-	if counter != expected_cardinality {
-		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	if counter != expectedCardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
 	}
 	b.Run("reverse iteration with alloc", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
@@ -63,8 +64,8 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		}
 		b.StopTimer()
 	})
-	if counter != expected_cardinality {
-		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	if counter != expectedCardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
 	}
 	ir := IntReverseIterator{}
 
@@ -79,8 +80,8 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		}
 		b.StopTimer()
 	})
-	if counter != expected_cardinality {
-		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	if counter != expectedCardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
 	}
 
 	b.Run("many iteration with alloc", func(b *testing.B) {
@@ -94,8 +95,8 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		}
 		b.StopTimer()
 	})
-	if counter != expected_cardinality {
-		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	if counter != expectedCardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
 	}
 	im := ManyIntIterator{}
 	buf := make([]uint32, 1024)
@@ -110,8 +111,8 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 		}
 		b.StopTimer()
 	})
-	if counter != expected_cardinality {
-		b.Fatalf("Cardinalities don't match: %d, %d", counter, expected_cardinality)
+	if counter != expectedCardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
 	}
 }
 

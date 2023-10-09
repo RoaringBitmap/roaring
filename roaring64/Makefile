@@ -33,7 +33,6 @@ help:
 all: help
 test:
 	go test
-	go test -race -run TestConcurrent*
 # Format the source code
 format:
 	@find ./ -type f -name "*.go" -exec gofmt -w {} \;

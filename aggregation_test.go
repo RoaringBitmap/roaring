@@ -4,9 +4,10 @@ package roaring
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func testAggregations(t *testing.T,
@@ -288,9 +289,9 @@ func TestIssue330(t *testing.T) {
 		bitmap := BitmapOf(v...)
 		bitmap.RunOptimize()
 		bitmaps = append(bitmaps, bitmap)
-		array_result := bitmap.ToArray()
+		arrayResult := bitmap.ToArray()
 		sort.Sort(uints(v))
-		assert.Equal(t, array_result, v)
+		assert.Equal(t, arrayResult, v)
 	}
 	assert.Equal(t, FastAnd(bitmaps[0], bitmaps[1]).GetCardinality(), uint64(0))
 	assert.Equal(t, FastAnd(bitmaps[0], bitmaps[2]).GetCardinality(), uint64(0))

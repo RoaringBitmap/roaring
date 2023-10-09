@@ -369,10 +369,10 @@ type IntIterator = intIterator
 // Initialize configures the existing iterator so that it can iterate through the values of
 // the provided bitmap.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
-func (p *intIterator) Initialize(a *Bitmap) {
-	p.pos = 0
-	p.highlowcontainer = &a.highlowcontainer
-	p.init()
+func (ii *intIterator) Initialize(a *Bitmap) {
+	ii.pos = 0
+	ii.highlowcontainer = &a.highlowcontainer
+	ii.init()
 }
 
 type intReverseIterator struct {
@@ -438,10 +438,10 @@ type IntReverseIterator = intReverseIterator
 // Initialize configures the existing iterator so that it can iterate through the values of
 // the provided bitmap.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
-func (p *intReverseIterator) Initialize(a *Bitmap) {
-	p.highlowcontainer = &a.highlowcontainer
-	p.pos = a.highlowcontainer.size() - 1
-	p.init()
+func (ii *intReverseIterator) Initialize(a *Bitmap) {
+	ii.highlowcontainer = &a.highlowcontainer
+	ii.pos = a.highlowcontainer.size() - 1
+	ii.init()
 }
 
 // ManyIntIterable allows you to iterate over the values in a Bitmap
@@ -525,10 +525,10 @@ type ManyIntIterator = manyIntIterator
 // Initialize configures the existing iterator so that it can iterate through the values of
 // the provided bitmap.
 // The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
-func (p *manyIntIterator) Initialize(a *Bitmap) {
-	p.pos = 0
-	p.highlowcontainer = &a.highlowcontainer
-	p.init()
+func (ii *manyIntIterator) Initialize(a *Bitmap) {
+	ii.pos = 0
+	ii.highlowcontainer = &a.highlowcontainer
+	ii.init()
 }
 
 // String creates a string representation of the Bitmap
