@@ -2543,6 +2543,65 @@ func TestIterateHalt(t *testing.T) {
 	assert.Equal(t, expected, values)
 }
 
+func testDense(fn func(string, *Bitmap)) {
+	bc := New()
+	for i := 1; i <= arrayDefaultMaxSize+1; i++ {
+		bc.Add(uint32(MaxUint16 + i*2))
+	}
+
+	rc := New()
+	rc.AddRange(bc.GetCardinality(), bc.GetCardinality()*2)
+
+	ac := New()
+	for i := 1; i <= arrayDefaultMaxSize; i++ {
+		ac.Add(uint32(MaxUint16 + i*2))
+	}
+
+	brc := New()
+	for i := 150000; i < 450000; i++ {
+		brc.Add(uint32(i))
+	}
+
+	for _, tc := range []struct {
+		name string
+		rb   *Bitmap
+	}{
+		{"bitmap", bc},
+		{"run", rc},
+		{"array", ac},
+		{"bitmaps-and-runs", brc},
+	} {
+		fn(tc.name, tc.rb)
+	}
+}
+func TestToDense(t *testing.T) {
+	testDense(func(name string, rb *Bitmap) {
+		t.Run(name, func(t *testing.T) {
+			bm := bitset.From(rb.ToDense())
+			assert.EqualValues(t, rb.GetCardinality(), uint64(bm.Count()))
+			rb.Iterate(func(x uint32) bool {
+				return assert.True(t, bm.Test(uint(x)), "value %d should be set", x)
+			})
+		})
+	})
+}
+
+func BenchmarkWriteDenseTo(b *testing.B) {
+	testDense(func(name string, rb *Bitmap) {
+		b.Run(name, func(b *testing.B) {
+			zeros := make([]uint64, rb.DenseSize())
+			dense := make([]uint64, rb.DenseSize())
+			b.ReportAllocs()
+			b.SetBytes(int64(len(dense) * 8))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				rb.WriteDenseTo(dense)
+				copy(dense, zeros)
+			}
+		})
+	})
+}
+
 func BenchmarkEvenIntervalArrayUnions(b *testing.B) {
 	inputBitmaps := make([]*Bitmap, 40)
 	for i := 0; i < 40; i++ {

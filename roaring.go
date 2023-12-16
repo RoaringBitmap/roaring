@@ -53,6 +53,69 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
+const wordSize = uint64(64)
+const log2WordSize = uint64(6)
+const capacity = ^uint64(0)
+
+// DenseSize returns the size of the bitmap when stored as a dense bitmap.
+func (rb *Bitmap) DenseSize() int {
+	maximum := 1 + uint64(rb.Maximum())
+	if maximum > (capacity - wordSize + 1) {
+		return int(capacity >> log2WordSize)
+	}
+	return int((maximum + (wordSize - 1)) >> log2WordSize)
+}
+
+// ToDense returns a slice of uint64s representing the bitmap as a dense bitmap.
+// Useful to convert a roaring bitmap to a format that can be used by other libraries
+// like https://github.com/bits-and-blooms/bitset or https://github.com/kelindar/bitmap
+func (rb *Bitmap) ToDense() []uint64 {
+	bitmap := make([]uint64, rb.DenseSize())
+	rb.WriteDenseTo(bitmap)
+	return bitmap
+}
+
+// WriteDenseTo writes to a slice of uint64s representing the bitmap as a dense bitmap.
+// Callers are responsible for allocating enough space in the bitmap using DenseSize.
+// Useful to convert a roaring bitmap to a format that can be used by other libraries
+// like https://github.com/bits-and-blooms/bitset or https://github.com/kelindar/bitmap
+func (rb *Bitmap) WriteDenseTo(bitmap []uint64) {
+	for i, ct := range rb.highlowcontainer.containers {
+		hb := uint32(rb.highlowcontainer.keys[i]) << 16
+
+		switch c := ct.(type) {
+		case *arrayContainer:
+			for _, x := range c.content {
+				n := int(hb | uint32(x))
+				bitmap[n>>log2WordSize] |= uint64(1) << uint(x%64)
+			}
+
+		case *bitmapContainer:
+			copy(bitmap[int(hb)>>log2WordSize:], c.bitmap)
+
+		case *runContainer16:
+			for j := range c.iv {
+				start := uint32(c.iv[j].start)
+				end := start + uint32(c.iv[j].length) + 1
+				lo := int(hb|start) >> log2WordSize
+				hi := int(hb|(end-1)) >> log2WordSize
+
+				if lo == hi {
+					bitmap[lo] |= ^uint64(0) << uint(start%64) &
+						^uint64(0) >> (uint(-end) % 64)
+					continue
+				}
+
+				bitmap[lo] |= ^uint64(0) << uint(start%64)
+				for n := lo + 1; n < hi; n++ {
+					bitmap[n] = ^uint64(0)
+				}
+				bitmap[hi] |= ^uint64(0) >> (uint(-end) % 64)
+			}
+		}
+	}
+}
+
 // Checksum computes a hash (currently FNV-1a) for a bitmap that is suitable for
 // using bitmaps as elements in hash sets or as keys in hash maps, as well as
 // generally quicker comparisons.
