@@ -122,6 +122,8 @@ func (rb *Bitmap) WriteDenseTo(bitmap []uint64) {
 				}
 				bitmap[hi] |= ^uint64(0) >> (uint(-end) % 64)
 			}
+		default:
+			panic("unsupported container type")
 		}
 	}
 }
