@@ -75,6 +75,10 @@ func (rb *Bitmap) DenseSize() int {
 // Useful to convert a roaring bitmap to a format that can be used by other libraries
 // like https://github.com/bits-and-blooms/bitset or https://github.com/kelindar/bitmap
 func (rb *Bitmap) ToDense() []uint64 {
+	if rb.DenseSize() == 0 {
+		return nil
+	}
+
 	bitmap := make([]uint64, rb.DenseSize())
 	rb.WriteDenseTo(bitmap)
 	return bitmap
