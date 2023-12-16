@@ -59,10 +59,15 @@ const capacity = ^uint64(0)
 
 // DenseSize returns the size of the bitmap when stored as a dense bitmap.
 func (rb *Bitmap) DenseSize() int {
+	if rb.highlowcontainer.size() == 0 {
+		return 0
+	}
+
 	maximum := 1 + uint64(rb.Maximum())
 	if maximum > (capacity - wordSize + 1) {
 		return int(capacity >> log2WordSize)
 	}
+
 	return int((maximum + (wordSize - 1)) >> log2WordSize)
 }
 

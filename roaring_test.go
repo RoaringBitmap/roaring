@@ -2545,8 +2545,8 @@ func TestIterateHalt(t *testing.T) {
 
 func testDense(fn func(string, *Bitmap)) {
 	bc := New()
-	for i := 1; i <= arrayDefaultMaxSize+1; i++ {
-		bc.Add(uint32(MaxUint16 + i*2))
+	for i := 0; i <= arrayDefaultMaxSize; i++ {
+		bc.Add(uint32(1 + MaxUint16 + i*2))
 	}
 
 	rc := New()
@@ -2571,7 +2571,7 @@ func testDense(fn func(string, *Bitmap)) {
 		{"array", ac},
 		{"bitmaps-and-runs", brc},
 	} {
-		fn(tc.name, tc.rb)
+		fn(tc.name+"-"+strconv.FormatUint(tc.rb.GetCardinality(), 10), tc.rb)
 	}
 }
 func TestToDense(t *testing.T) {
