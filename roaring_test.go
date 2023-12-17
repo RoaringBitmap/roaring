@@ -2589,14 +2589,12 @@ func TestToDense(t *testing.T) {
 func BenchmarkWriteDenseTo(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		b.Run(name, func(b *testing.B) {
-			zeros := make([]uint64, rb.DenseSize())
 			dense := make([]uint64, rb.DenseSize())
 			b.ReportAllocs()
 			b.SetBytes(int64(len(dense) * 8))
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				rb.WriteDenseTo(dense)
-				copy(dense, zeros)
 			}
 		})
 	})
