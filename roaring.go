@@ -147,7 +147,7 @@ func (rb *Bitmap) FromDense(bitmap []uint64) {
 				}
 				base += 64
 			}
-			rb.highlowcontainer.appendContainer(k, c, cow)
+			rb.highlowcontainer.appendContainer(k, c, false)
 		}
 
 		bitmap = bitmap[size:]
