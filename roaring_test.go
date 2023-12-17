@@ -2,6 +2,7 @@ package roaring
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -2590,10 +2591,20 @@ func TestToDense(t *testing.T) {
 
 func TestFromDense(t *testing.T) {
 	testDense(func(name string, rb *Bitmap) {
-		t.Run(name, func(t *testing.T) {
-			cp := FromDense(rb.ToDense())
-			assert.True(t, rb.Equals(cp))
-		})
+		for _, doCopy := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s,doCopy=%t", name, doCopy), func(t *testing.T) {
+				dense := rb.ToDense()
+				cp := FromDense(dense, doCopy)
+				if doCopy {
+					// Clear the original dense slice to ensure we don't have any
+					// references to it
+					for i := range dense {
+						dense[i] = 0
+					}
+				}
+				assert.True(t, rb.Equals(cp))
+			})
+		}
 	})
 }
 
@@ -2601,17 +2612,19 @@ func BenchmarkFromDense(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		dense := make([]uint64, rb.DenseSize())
 		rb.WriteDenseTo(dense)
-		cp := FromDense(dense)
+		cp := FromDense(dense, false)
 
-		b.Run(name, func(b *testing.B) {
-			b.ReportAllocs()
-			b.SetBytes(int64(len(dense) * 8))
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				cp.FromDense(dense)
-				cp.Clear()
-			}
-		})
+		for _, doCopy := range []bool{false, true} {
+			b.Run(fmt.Sprintf("%s,doCopy=%t", name, doCopy), func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(len(dense) * 8))
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					cp.FromDense(dense, doCopy)
+					cp.Clear()
+				}
+			})
+		}
 	})
 }
 
