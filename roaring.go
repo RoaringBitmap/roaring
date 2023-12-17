@@ -89,6 +89,8 @@ func (rb *Bitmap) ToDense() []uint64 {
 // FromDense creates a bitmap from a slice of uint64s representing the bitmap as a dense bitmap.
 // Useful to convert bitmaps from libraries like https://github.com/bits-and-blooms/bitset or
 // https://github.com/kelindar/bitmap into roaring bitmaps fast and with convenience.
+// This function won't create any run containers, only array and bitmap containers. It's up to
+// the caller to call RunOptimize if they want to further compress the runs of consecutive values.
 func FromDense(bitmap []uint64) *Bitmap {
 	sz := (len(bitmap) + bitmapContainerSize - 1) / bitmapContainerSize // round up
 	rb := &Bitmap{
@@ -106,6 +108,8 @@ func FromDense(bitmap []uint64) *Bitmap {
 // Useful to convert bitmaps from libraries like https://github.com/bits-and-blooms/bitset or
 // https://github.com/kelindar/bitmap into roaring bitmaps fast and with convenience.
 // Callers are responsible for ensuring that the bitmap is empty before calling this function.
+// This function won't create any run containers, only array and bitmap containers. It's up to
+// the caller to call RunOptimize if they want to further compress the runs of consecutive values.
 func (rb *Bitmap) FromDense(bitmap []uint64) {
 	if len(bitmap) == 0 {
 		return
@@ -124,10 +128,24 @@ func (rb *Bitmap) FromDense(bitmap []uint64) {
 		}
 
 		words := bitmap[:size]
-		if count := int(popcntSlice(words)); count > 0 {
-			c := &bitmapContainer{
-				bitmap:      words,
-				cardinality: count,
+		count := int(popcntSlice(words))
+
+		switch {
+		case count > arrayDefaultMaxSize:
+			c := &bitmapContainer{bitmap: words, cardinality: count}
+			rb.highlowcontainer.appendContainer(k, c, cow)
+
+		case count > 0:
+			c := &arrayContainer{content: make([]uint16, count)}
+			var pos, base int
+			for _, w := range words {
+				for w != 0 {
+					t := w & -w
+					c.content[pos] = uint16(base + int(popcount(t-1)))
+					pos++
+					w ^= t
+				}
+				base += 64
 			}
 			rb.highlowcontainer.appendContainer(k, c, cow)
 		}
