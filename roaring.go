@@ -56,6 +56,7 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 const wordSize = uint64(64)
 const log2WordSize = uint64(6)
 const capacity = ^uint64(0)
+const bitmapContainerSize = (1 << 16) / 64 // bitmap size in words
 
 // DenseSize returns the size of the bitmap when stored as a dense bitmap.
 func (rb *Bitmap) DenseSize() int {
@@ -83,6 +84,57 @@ func (rb *Bitmap) ToDense() []uint64 {
 	bitmap := make([]uint64, sz)
 	rb.WriteDenseTo(bitmap)
 	return bitmap
+}
+
+// FromDense creates a bitmap from a slice of uint64s representing the bitmap as a dense bitmap.
+// Useful to convert bitmaps from libraries like https://github.com/bits-and-blooms/bitset or
+// https://github.com/kelindar/bitmap into roaring bitmaps fast and with convenience.
+func FromDense(bitmap []uint64) *Bitmap {
+	sz := (len(bitmap) + bitmapContainerSize - 1) / bitmapContainerSize // round up
+	rb := &Bitmap{
+		highlowcontainer: roaringArray{
+			containers:      make([]container, 0, sz),
+			keys:            make([]uint16, 0, sz),
+			needCopyOnWrite: make([]bool, 0, sz),
+		},
+	}
+	rb.FromDense(bitmap)
+	return rb
+}
+
+// FromDense unmarshalls from a slice of uint64s representing the bitmap as a dense bitmap.
+// Useful to convert bitmaps from libraries like https://github.com/bits-and-blooms/bitset or
+// https://github.com/kelindar/bitmap into roaring bitmaps fast and with convenience.
+// Callers are responsible for ensuring that the bitmap is empty before calling this function.
+func (rb *Bitmap) FromDense(bitmap []uint64) {
+	if len(bitmap) == 0 {
+		return
+	}
+
+	var k uint16
+	const size = bitmapContainerSize
+	cow := true
+
+	for len(bitmap) > 0 {
+		if len(bitmap) < size {
+			bm := make([]uint64, size)
+			copy(bm, bitmap)
+			bitmap = bm
+			cow = false
+		}
+
+		words := bitmap[:size]
+		if count := int(popcntSlice(words)); count > 0 {
+			c := &bitmapContainer{
+				bitmap:      words,
+				cardinality: count,
+			}
+			rb.highlowcontainer.appendContainer(k, c, cow)
+		}
+
+		bitmap = bitmap[size:]
+		k++
+	}
 }
 
 // WriteDenseTo writes to a slice of uint64s representing the bitmap as a dense bitmap.

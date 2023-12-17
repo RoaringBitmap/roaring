@@ -2575,6 +2575,7 @@ func testDense(fn func(string, *Bitmap)) {
 		fn(tc.name+"-"+strconv.FormatUint(tc.rb.GetCardinality(), 10), tc.rb)
 	}
 }
+
 func TestToDense(t *testing.T) {
 	testDense(func(name string, rb *Bitmap) {
 		t.Run(name, func(t *testing.T) {
@@ -2583,6 +2584,33 @@ func TestToDense(t *testing.T) {
 			rb.Iterate(func(x uint32) bool {
 				return assert.True(t, bm.Test(uint(x)), "value %d should be set", x)
 			})
+		})
+	})
+}
+
+func TestFromDense(t *testing.T) {
+	testDense(func(name string, rb *Bitmap) {
+		t.Run(name, func(t *testing.T) {
+			cp := FromDense(rb.ToDense())
+			assert.True(t, rb.Equals(cp))
+		})
+	})
+}
+
+func BenchmarkFromDense(b *testing.B) {
+	testDense(func(name string, rb *Bitmap) {
+		dense := make([]uint64, rb.DenseSize())
+		rb.WriteDenseTo(dense)
+		cp := FromDense(dense)
+
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.SetBytes(int64(len(dense) * 8))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				cp.FromDense(dense)
+				cp.Clear()
+			}
 		})
 	})
 }
