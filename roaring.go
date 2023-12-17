@@ -111,8 +111,8 @@ func (rb *Bitmap) WriteDenseTo(bitmap []uint64) {
 				hi := int(hb|(end-1)) >> log2WordSize
 
 				if lo == hi {
-					bitmap[lo] |= ^uint64(0) << uint(start%64) &
-						^uint64(0) >> (uint(-end) % 64)
+					bitmap[lo] |= (^uint64(0) << uint(start%64)) &
+						(^uint64(0) >> (uint(-end) % 64))
 					continue
 				}
 

@@ -2550,6 +2550,7 @@ func testDense(fn func(string, *Bitmap)) {
 	}
 
 	rc := New()
+	rc.AddRange(1, 2)
 	rc.AddRange(bc.GetCardinality(), bc.GetCardinality()*2)
 
 	ac := New()
