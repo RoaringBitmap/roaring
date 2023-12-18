@@ -60,17 +60,17 @@ const capacity = ^uint64(0)
 const bitmapContainerSize = (1 << 16) / 64 // bitmap size in words
 
 // DenseSize returns the size of the bitmap when stored as a dense bitmap.
-func (rb *Bitmap) DenseSize() int {
+func (rb *Bitmap) DenseSize() uint64 {
 	if rb.highlowcontainer.size() == 0 {
 		return 0
 	}
 
 	maximum := 1 + uint64(rb.Maximum())
 	if maximum > (capacity - wordSize + 1) {
-		return int(capacity >> log2WordSize)
+		return uint64(capacity >> log2WordSize)
 	}
 
-	return int((maximum + (wordSize - 1)) >> log2WordSize)
+	return uint64((maximum + (wordSize - 1)) >> log2WordSize)
 }
 
 // ToDense returns a slice of uint64s representing the bitmap as a dense bitmap.
