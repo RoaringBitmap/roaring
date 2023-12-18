@@ -17,8 +17,17 @@ func (ac *arrayContainer) String() string {
 }
 
 func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) int {
+	if i < 0 {
+		panic("negative index")
+	}
+	if len(ac.content) == 0 {
+		return i
+	}
+	_ = x[len(ac.content)-1+i]
+	_ = ac.content[len(ac.content)-1]
 	for k := 0; k < len(ac.content); k++ {
-		x[k+i] = uint32(ac.content[k]) | mask
+		x[k+i] =
+			uint32(ac.content[k]) | mask
 	}
 	return i + len(ac.content)
 }

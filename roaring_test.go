@@ -2608,6 +2608,16 @@ func TestFromDense(t *testing.T) {
 	})
 }
 
+func TestFromBitSet(t *testing.T) {
+	testDense(func(name string, rb *Bitmap) {
+		t.Run(fmt.Sprintf("%s", name), func(t *testing.T) {
+			dense := rb.ToBitSet()
+			cp := FromBitSet(dense)
+			assert.True(t, rb.Equals(cp))
+		})
+	})
+}
+
 func BenchmarkFromDense(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		dense := make([]uint64, rb.DenseSize())

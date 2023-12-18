@@ -13,6 +13,7 @@ import (
 	"strconv"
 
 	"github.com/RoaringBitmap/roaring/internal"
+	"github.com/bits-and-blooms/bitset"
 )
 
 // Bitmap represents a compressed bitmap where you can add integers.
@@ -90,13 +91,16 @@ func (rb *Bitmap) ToDense() []uint64 {
 // Useful to convert bitmaps from libraries like https://github.com/bits-and-blooms/bitset or
 // https://github.com/kelindar/bitmap into roaring bitmaps fast and with convenience.
 //
-// This function won't create any run containers, only array and bitmap containers. It's up to
+// This function will not create any run containers, only array and bitmap containers. It's up to
 // the caller to call RunOptimize if they want to further compress the runs of consecutive values.
 //
 // When doCopy is true, the bitmap is copied into a new slice for each bitmap container.
 // This is useful when the bitmap is going to be modified after this function returns or if it's
-// undesirable to hold references to large bitmaps which the GC wouldn't be able to collect.
-// One copy can still happen even when doCopy is false if the bitmap length isn't divisible by bitmapContainerSize.
+// undesirable to hold references to large bitmaps which the GC would not be able to collect.
+// One copy can still happen even when doCopy is false if the bitmap length is not divisible
+// by bitmapContainerSize.
+//
+// See also FromBitSet.
 func FromDense(bitmap []uint64, doCopy bool) *Bitmap {
 	sz := (len(bitmap) + bitmapContainerSize - 1) / bitmapContainerSize // round up
 	rb := &Bitmap{
@@ -115,13 +119,16 @@ func FromDense(bitmap []uint64, doCopy bool) *Bitmap {
 // https://github.com/kelindar/bitmap into roaring bitmaps fast and with convenience.
 // Callers are responsible for ensuring that the bitmap is empty before calling this function.
 //
-// This function won't create any run containers, only array and bitmap containers. It's up to
+// This function will not create any run containers, only array and bitmap containers. It is up to
 // the caller to call RunOptimize if they want to further compress the runs of consecutive values.
 //
 // When doCopy is true, the bitmap is copied into a new slice for each bitmap container.
 // This is useful when the bitmap is going to be modified after this function returns or if it's
-// undesirable to hold references to large bitmaps which the GC wouldn't be able to collect.
-// One copy can still happen even when doCopy is false if the bitmap length isn't divisible by bitmapContainerSize.
+// undesirable to hold references to large bitmaps which the GC would not be able to collect.
+// One copy can still happen even when doCopy is false if the bitmap length is not divisible
+// by bitmapContainerSize.
+//
+// See FromBitSet.
 func (rb *Bitmap) FromDense(bitmap []uint64, doCopy bool) {
 	if len(bitmap) == 0 {
 		return
@@ -220,8 +227,9 @@ func (rb *Bitmap) WriteDenseTo(bitmap []uint64) {
 // generally quicker comparisons.
 // The implementation is biased towards efficiency in little endian machines, so
 // expect some extra CPU cycles and memory to be used if your machine is big endian.
-// Likewise, don't use this to verify integrity unless you're certain you'll load
-// the bitmap on a machine with the same endianess used to create it.
+// Likewise, do not use this to verify integrity unless you are certain you will load
+// the bitmap on a machine with the same endianess used to create it. (Thankfully
+// very few people use big endian machines these days.)
 func (rb *Bitmap) Checksum() uint64 {
 	const (
 		offset = 14695981039346656037
@@ -381,6 +389,16 @@ func (rb *Bitmap) Clear() {
 	rb.highlowcontainer.clear()
 }
 
+// ToBitSet copies the content of the RoaringBitmap into a bitset.BitSet instance
+func (rb *Bitmap) ToBitSet() *bitset.BitSet {
+	return bitset.From(rb.ToDense())
+}
+
+// FromBitSet creates a new RoaringBitmap from a bitset.BitSet instance
+func FromBitSet(bitset *bitset.BitSet) *Bitmap {
+	return FromDense(bitset.Bytes(), false)
+}
+
 // ToArray creates a new slice containing all of the integers stored in the Bitmap in sorted order
 func (rb *Bitmap) ToArray() []uint32 {
 	array := make([]uint32, rb.GetCardinality())
@@ -420,7 +438,7 @@ func BoundSerializedSizeInBytes(cardinality uint64, universeSize uint64) uint64 
 	contnbr := (universeSize + uint64(65535)) / uint64(65536)
 	if contnbr > cardinality {
 		contnbr = cardinality
-		// we can't have more containers than we have values
+		// we cannot have more containers than we have values
 	}
 	headermax := 8*contnbr + 4
 	if 4 > (contnbr+7)/8 {
@@ -1032,7 +1050,7 @@ func (rb *Bitmap) Select(x uint32) (uint32, error) {
 			return uint32(key)<<16 + uint32(c.selectInt(uint16(remaining))), nil
 		}
 	}
-	return 0, fmt.Errorf("can't find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
+	return 0, fmt.Errorf("cannot find %dth integer in a bitmap with only %d items", x, rb.GetCardinality())
 }
 
 // And computes the intersection between two bitmaps and stores the result in the current bitmap
