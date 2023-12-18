@@ -53,6 +53,168 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
+const wordSize = uint64(64)
+const log2WordSize = uint64(6)
+const capacity = ^uint64(0)
+const bitmapContainerSize = (1 << 16) / 64 // bitmap size in words
+
+// DenseSize returns the size of the bitmap when stored as a dense bitmap.
+func (rb *Bitmap) DenseSize() int {
+	if rb.highlowcontainer.size() == 0 {
+		return 0
+	}
+
+	maximum := 1 + uint64(rb.Maximum())
+	if maximum > (capacity - wordSize + 1) {
+		return int(capacity >> log2WordSize)
+	}
+
+	return int((maximum + (wordSize - 1)) >> log2WordSize)
+}
+
+// ToDense returns a slice of uint64s representing the bitmap as a dense bitmap.
+// Useful to convert a roaring bitmap to a format that can be used by other libraries
+// like https://github.com/bits-and-blooms/bitset or https://github.com/kelindar/bitmap
+func (rb *Bitmap) ToDense() []uint64 {
+	sz := rb.DenseSize()
+	if sz == 0 {
+		return nil
+	}
+
+	bitmap := make([]uint64, sz)
+	rb.WriteDenseTo(bitmap)
+	return bitmap
+}
+
+// FromDense creates a bitmap from a slice of uint64s representing the bitmap as a dense bitmap.
+// Useful to convert bitmaps from libraries like https://github.com/bits-and-blooms/bitset or
+// https://github.com/kelindar/bitmap into roaring bitmaps fast and with convenience.
+//
+// This function won't create any run containers, only array and bitmap containers. It's up to
+// the caller to call RunOptimize if they want to further compress the runs of consecutive values.
+//
+// When doCopy is true, the bitmap is copied into a new slice for each bitmap container.
+// This is useful when the bitmap is going to be modified after this function returns or if it's
+// undesirable to hold references to large bitmaps which the GC wouldn't be able to collect.
+// One copy can still happen even when doCopy is false if the bitmap length isn't divisible by bitmapContainerSize.
+func FromDense(bitmap []uint64, doCopy bool) *Bitmap {
+	sz := (len(bitmap) + bitmapContainerSize - 1) / bitmapContainerSize // round up
+	rb := &Bitmap{
+		highlowcontainer: roaringArray{
+			containers:      make([]container, 0, sz),
+			keys:            make([]uint16, 0, sz),
+			needCopyOnWrite: make([]bool, 0, sz),
+		},
+	}
+	rb.FromDense(bitmap, doCopy)
+	return rb
+}
+
+// FromDense unmarshalls from a slice of uint64s representing the bitmap as a dense bitmap.
+// Useful to convert bitmaps from libraries like https://github.com/bits-and-blooms/bitset or
+// https://github.com/kelindar/bitmap into roaring bitmaps fast and with convenience.
+// Callers are responsible for ensuring that the bitmap is empty before calling this function.
+//
+// This function won't create any run containers, only array and bitmap containers. It's up to
+// the caller to call RunOptimize if they want to further compress the runs of consecutive values.
+//
+// When doCopy is true, the bitmap is copied into a new slice for each bitmap container.
+// This is useful when the bitmap is going to be modified after this function returns or if it's
+// undesirable to hold references to large bitmaps which the GC wouldn't be able to collect.
+// One copy can still happen even when doCopy is false if the bitmap length isn't divisible by bitmapContainerSize.
+func (rb *Bitmap) FromDense(bitmap []uint64, doCopy bool) {
+	if len(bitmap) == 0 {
+		return
+	}
+
+	var k uint16
+	const size = bitmapContainerSize
+
+	for len(bitmap) > 0 {
+		hi := size
+		if len(bitmap) < size {
+			hi = len(bitmap)
+		}
+
+		words := bitmap[:hi]
+		count := int(popcntSlice(words))
+
+		switch {
+		case count > arrayDefaultMaxSize:
+			c := &bitmapContainer{cardinality: count, bitmap: words}
+			cow := true
+
+			if doCopy || len(words) < size {
+				c.bitmap = make([]uint64, size)
+				copy(c.bitmap, words)
+				cow = false
+			}
+
+			rb.highlowcontainer.appendContainer(k, c, cow)
+
+		case count > 0:
+			c := &arrayContainer{content: make([]uint16, count)}
+			var pos, base int
+			for _, w := range words {
+				for w != 0 {
+					t := w & -w
+					c.content[pos] = uint16(base + int(popcount(t-1)))
+					pos++
+					w ^= t
+				}
+				base += 64
+			}
+			rb.highlowcontainer.appendContainer(k, c, false)
+		}
+
+		bitmap = bitmap[hi:]
+		k++
+	}
+}
+
+// WriteDenseTo writes to a slice of uint64s representing the bitmap as a dense bitmap.
+// Callers are responsible for allocating enough space in the bitmap using DenseSize.
+// Useful to convert a roaring bitmap to a format that can be used by other libraries
+// like https://github.com/bits-and-blooms/bitset or https://github.com/kelindar/bitmap
+func (rb *Bitmap) WriteDenseTo(bitmap []uint64) {
+	for i, ct := range rb.highlowcontainer.containers {
+		hb := uint32(rb.highlowcontainer.keys[i]) << 16
+
+		switch c := ct.(type) {
+		case *arrayContainer:
+			for _, x := range c.content {
+				n := int(hb | uint32(x))
+				bitmap[n>>log2WordSize] |= uint64(1) << uint(x%64)
+			}
+
+		case *bitmapContainer:
+			copy(bitmap[int(hb)>>log2WordSize:], c.bitmap)
+
+		case *runContainer16:
+			for j := range c.iv {
+				start := uint32(c.iv[j].start)
+				end := start + uint32(c.iv[j].length) + 1
+				lo := int(hb|start) >> log2WordSize
+				hi := int(hb|(end-1)) >> log2WordSize
+
+				if lo == hi {
+					bitmap[lo] |= (^uint64(0) << uint(start%64)) &
+						(^uint64(0) >> (uint(-end) % 64))
+					continue
+				}
+
+				bitmap[lo] |= ^uint64(0) << uint(start%64)
+				for n := lo + 1; n < hi; n++ {
+					bitmap[n] = ^uint64(0)
+				}
+				bitmap[hi] |= ^uint64(0) >> (uint(-end) % 64)
+			}
+		default:
+			panic("unsupported container type")
+		}
+	}
+}
+
 // Checksum computes a hash (currently FNV-1a) for a bitmap that is suitable for
 // using bitmaps as elements in hash sets or as keys in hash maps, as well as
 // generally quicker comparisons.

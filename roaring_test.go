@@ -2,6 +2,7 @@ package roaring
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -2541,6 +2542,104 @@ func TestIterateHalt(t *testing.T) {
 	expected := rb.ToArray()
 	expected = expected[0 : len(expected)-1]
 	assert.Equal(t, expected, values)
+}
+
+func testDense(fn func(string, *Bitmap)) {
+	bc := New()
+	for i := 0; i <= arrayDefaultMaxSize; i++ {
+		bc.Add(uint32(1 + MaxUint16 + i*2))
+	}
+
+	rc := New()
+	rc.AddRange(1, 2)
+	rc.AddRange(bc.GetCardinality(), bc.GetCardinality()*2)
+
+	ac := New()
+	for i := 1; i <= arrayDefaultMaxSize; i++ {
+		ac.Add(uint32(MaxUint16 + i*2))
+	}
+
+	brc := New()
+	for i := 150000; i < 450000; i++ {
+		brc.Add(uint32(i))
+	}
+
+	for _, tc := range []struct {
+		name string
+		rb   *Bitmap
+	}{
+		{"bitmap", bc},
+		{"run", rc},
+		{"array", ac},
+		{"bitmaps-and-runs", brc},
+	} {
+		fn(tc.name+"-"+strconv.FormatUint(tc.rb.GetCardinality(), 10), tc.rb)
+	}
+}
+
+func TestToDense(t *testing.T) {
+	testDense(func(name string, rb *Bitmap) {
+		t.Run(name, func(t *testing.T) {
+			bm := bitset.From(rb.ToDense())
+			assert.EqualValues(t, rb.GetCardinality(), uint64(bm.Count()))
+			rb.Iterate(func(x uint32) bool {
+				return assert.True(t, bm.Test(uint(x)), "value %d should be set", x)
+			})
+		})
+	})
+}
+
+func TestFromDense(t *testing.T) {
+	testDense(func(name string, rb *Bitmap) {
+		for _, doCopy := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s,doCopy=%t", name, doCopy), func(t *testing.T) {
+				dense := rb.ToDense()
+				cp := FromDense(dense, doCopy)
+				if doCopy {
+					// Clear the original dense slice to ensure we don't have any
+					// references to it
+					for i := range dense {
+						dense[i] = 0
+					}
+				}
+				assert.True(t, rb.Equals(cp))
+			})
+		}
+	})
+}
+
+func BenchmarkFromDense(b *testing.B) {
+	testDense(func(name string, rb *Bitmap) {
+		dense := make([]uint64, rb.DenseSize())
+		rb.WriteDenseTo(dense)
+		cp := FromDense(dense, false)
+
+		for _, doCopy := range []bool{false, true} {
+			b.Run(fmt.Sprintf("%s,doCopy=%t", name, doCopy), func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(len(dense) * 8))
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					cp.FromDense(dense, doCopy)
+					cp.Clear()
+				}
+			})
+		}
+	})
+}
+
+func BenchmarkWriteDenseTo(b *testing.B) {
+	testDense(func(name string, rb *Bitmap) {
+		b.Run(name, func(b *testing.B) {
+			dense := make([]uint64, rb.DenseSize())
+			b.ReportAllocs()
+			b.SetBytes(int64(len(dense) * 8))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				rb.WriteDenseTo(dense)
+			}
+		})
+	})
 }
 
 func BenchmarkEvenIntervalArrayUnions(b *testing.B) {
