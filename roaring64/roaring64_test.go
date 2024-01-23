@@ -1980,3 +1980,11 @@ func IntsEquals(a, b []uint64) bool {
 	}
 	return true
 }
+
+func Test32As64(t *testing.T) {
+	r32 := roaring.BitmapOf(1, 2, 65535, math.MaxUint32-1)
+	r64 := BitmapOf(1, 2, 65535, math.MaxUint32-1)
+	r32asr64 := Roaring32AsRoaring64(r32)
+	assert.True(t, r32asr64.Equals(r64))
+	assert.True(t, r64.Equals(r32asr64))
+}

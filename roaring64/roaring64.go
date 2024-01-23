@@ -135,10 +135,7 @@ func (rb *Bitmap) FromUnsafeBytes(data []byte) (p int64, err error) {
 func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	sizeBuf := make([]byte, 8)
 	var n int
-	fmt.Println("trying to read 8 bytes")
 	n, err = stream.Read(sizeBuf)
-	fmt.Println("read: ", n, " bytes")
-
 	if n == 0 || err != nil {
 		return int64(n), err
 	}
@@ -1252,4 +1249,15 @@ func (rb *Bitmap) Stats() roaring.Statistics {
 // that this function is much cheaper computationally than WriteTo.
 func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
+}
+
+// Roaring32AsRoaring64 inserts a 32-bit roaring bitmap into
+// a 64-bit roaring bitmap. No copy is made.
+func Roaring32AsRoaring64(bm32 *roaring.Bitmap) *Bitmap {
+	rb := NewBitmap()
+	rb.highlowcontainer.resize(0)
+	rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, 0)
+	rb.highlowcontainer.containers = append(rb.highlowcontainer.containers, bm32)
+	rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, false)
+	return rb
 }
