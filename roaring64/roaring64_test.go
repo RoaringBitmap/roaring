@@ -1,12 +1,8 @@
 package roaring64
 
 import (
-	"fmt"
-	"io/ioutil"
 	"math"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -1985,96 +1981,10 @@ func IntsEquals(a, b []uint64) bool {
 	return true
 }
 
-func Test_tryReadFromRoaring32(t *testing.T) {
+func Test32As64(t *testing.T) {
 	r32 := roaring.BitmapOf(1, 2, 65535, math.MaxUint32-1)
-	bs, err := r32.ToBytes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	r64 := NewBitmap()
-	assert.True(t, r64.UnmarshalBinary(bs) == nil)
-	assert.True(t, r64.Contains(1))
-	assert.True(t, r64.Contains(2))
-	assert.True(t, r64.Contains(65535))
-	assert.True(t, r64.Contains(math.MaxUint32-1))
-
-}
-
-func Test_tryReadFromRoaring32_File(t *testing.T) {
-	tempDir, err := ioutil.TempDir("./", "testdata")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	defer os.RemoveAll(tempDir)
-
-	r32 := roaring.BitmapOf(1, 2, 65535, math.MaxUint32-1)
-	bs, err := r32.ToBytes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	name := filepath.Join(tempDir, "r32")
-	if err := ioutil.WriteFile(name, bs, 0600); err != nil {
-		t.Fatal(err)
-	}
-	file, err := os.Open(name)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	defer file.Close()
-
-	r64 := NewBitmap()
-	r64.ReadFrom(file)
-	assert.True(t, r64.Contains(1))
-	assert.True(t, r64.Contains(2))
-	assert.True(t, r64.Contains(65535))
-	assert.True(t, r64.Contains(math.MaxUint32-1))
-}
-
-func Test_tryReadFromRoaring32WithRoaring64(t *testing.T) {
-	r64 := BitmapOf(1, 65535, math.MaxUint32, math.MaxUint64)
-	bs, err := r64.ToBytes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	nr64 := NewBitmap()
-	assert.True(t, nr64.UnmarshalBinary(bs) == nil)
-	assert.True(t, nr64.Contains(1))
-	assert.True(t, nr64.Contains(65535))
-	assert.True(t, nr64.Contains(math.MaxUint32))
-	assert.True(t, nr64.Contains(math.MaxUint64))
-}
-
-func Test_tryReadFromRoaring32WithRoaring64_File(t *testing.T) {
-	tempDir, err := ioutil.TempDir("./", "testdata")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	defer os.RemoveAll(tempDir)
-
-	r64 := BitmapOf(1, 65535, math.MaxUint32, math.MaxUint64)
-	bs, err := r64.ToBytes()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	name := filepath.Join(tempDir, "r32")
-	if err := ioutil.WriteFile(name, bs, 0600); err != nil {
-		t.Fatal(err)
-	}
-	file, err := os.Open(name)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	defer file.Close()
-
-	nr64 := NewBitmap()
-	nr64.ReadFrom(file)
-	assert.True(t, nr64.Contains(1))
-	assert.True(t, nr64.Contains(65535))
-	assert.True(t, nr64.Contains(math.MaxUint32))
-	assert.True(t, nr64.Contains(math.MaxUint64))
+	r64 := BitmapOf(1, 2, 65535, math.MaxUint32-1)
+	r32asr64 := Roaring32AsRoaring64(r32)
+	assert.True(t, r32asr64.Equals(r64))
+	assert.True(t, r64.Equals(r32asr64))
 }

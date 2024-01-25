@@ -86,23 +86,13 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 // This method avoids small allocations but holds references to the input data buffer. It is GC-friendly, but it may consume more memory eventually.
 func (rb *Bitmap) FromUnsafeBytes(data []byte) (p int64, err error) {
 	stream := internal.NewByteBuffer(data)
-
-	cookie, r32, p, err := tryReadFromRoaring32ByteBuffer(rb, stream)
+	sizeBuf := make([]byte, 8)
+	n, err := stream.Read(sizeBuf)
 	if err != nil {
-		return p, err
-	} else if r32 {
-		return p, nil
+		return 0, err
 	}
-
-	var sizeBuf [8]byte // Avoid changing the original byte slice.
-	sizeBuf2, err := stream.Next(4)
-	if err != nil {
-		return 0, fmt.Errorf("error in bitmap.UnsafeFromBytes: could not read number of containers: %w", err)
-	}
-	p += 4
-	copy(sizeBuf[:], cookie)
-	copy(sizeBuf[4:], sizeBuf2)
-	size := binary.LittleEndian.Uint64(sizeBuf[:])
+	p += int64(n)
+	size := binary.LittleEndian.Uint64(sizeBuf)
 
 	rb.highlowcontainer.resize(0)
 	if cap(rb.highlowcontainer.keys) >= int(size) {
@@ -138,51 +128,18 @@ func (rb *Bitmap) FromUnsafeBytes(data []byte) (p int64, err error) {
 	return p, nil
 }
 
-func tryReadFromRoaring32ByteBuffer(rb *Bitmap, stream *internal.ByteBuffer) (cookie []byte, r32 bool, p int64, err error) {
-	// Verify the first two bytes are a valid MagicNumber.
-	cookie, err = stream.Next(4)
-	if err != nil {
-		return cookie, false, 0, err
-	}
-	fileMagic := int(binary.LittleEndian.Uint16(cookie[0:2]))
-	if fileMagic == serialCookieNoRunContainer || fileMagic == serialCookie {
-		bm32 := roaring.NewBitmap()
-		p, err = bm32.ReadFrom(stream, cookie...)
-		if err != nil {
-			return
-		}
-		// Try reuse the underlying slices.
-		rb.highlowcontainer.resize(0)
-		rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, 0)
-		rb.highlowcontainer.containers = append(rb.highlowcontainer.containers, bm32)
-		rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, false)
-		return cookie, true, p, nil
-	}
-	return
-}
-
 // ReadFrom reads a serialized version of this bitmap from stream.
 // The format is compatible with other 64-bit RoaringBitmap
 // implementations (Java, Go, C++) and it has a specification :
 // https://github.com/RoaringBitmap/RoaringFormatSpec#extention-for-64-bit-implementations
 func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
-	cookie, r32, p, err := tryReadFromRoaring32(rb, stream)
-	if err != nil {
-		return p, err
-	} else if r32 {
-		return p, nil
-	}
-	// TODO: Add buffer interning as in base roaring package.
-
-	sizeBuf := make([]byte, 4)
+	sizeBuf := make([]byte, 8)
 	var n int
 	n, err = stream.Read(sizeBuf)
 	if n == 0 || err != nil {
-		return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read number of containers: %s", err)
+		return int64(n), err
 	}
 	p += int64(n)
-	sizeBuf = append(cookie, sizeBuf...)
-
 	size := binary.LittleEndian.Uint64(sizeBuf)
 	rb.highlowcontainer.resize(0)
 	if cap(rb.highlowcontainer.keys) >= int(size) {
@@ -217,30 +174,6 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	}
 
 	return p, nil
-}
-
-func tryReadFromRoaring32(rb *Bitmap, stream io.Reader) (cookie []byte, r32 bool, p int64, err error) {
-	// Verify the first two bytes are a valid MagicNumber.
-	cookie = make([]byte, 4)
-	size, err := stream.Read(cookie)
-	if err != nil {
-		return cookie, false, int64(size), err
-	}
-	fileMagic := int(binary.LittleEndian.Uint16(cookie[0:2]))
-	if fileMagic == serialCookieNoRunContainer || fileMagic == serialCookie {
-		bm32 := roaring.NewBitmap()
-		p, err = bm32.ReadFrom(stream, cookie...)
-		if err != nil {
-			return
-		}
-		// Try reuse the underlying slices.
-		rb.highlowcontainer.resize(0)
-		rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, 0)
-		rb.highlowcontainer.containers = append(rb.highlowcontainer.containers, bm32)
-		rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, false)
-		return cookie, true, p, nil
-	}
-	return
 }
 
 // FromBuffer creates a bitmap from its serialized version stored in buffer
@@ -1316,4 +1249,15 @@ func (rb *Bitmap) Stats() roaring.Statistics {
 // that this function is much cheaper computationally than WriteTo.
 func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
+}
+
+// Roaring32AsRoaring64 inserts a 32-bit roaring bitmap into
+// a 64-bit roaring bitmap. No copy is made.
+func Roaring32AsRoaring64(bm32 *roaring.Bitmap) *Bitmap {
+	rb := NewBitmap()
+	rb.highlowcontainer.resize(0)
+	rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, 0)
+	rb.highlowcontainer.containers = append(rb.highlowcontainer.containers, bm32)
+	rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, false)
+	return rb
 }
