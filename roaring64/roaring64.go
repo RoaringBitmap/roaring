@@ -135,8 +135,8 @@ func (rb *Bitmap) FromUnsafeBytes(data []byte) (p int64, err error) {
 func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	sizeBuf := make([]byte, 8)
 	var n int
-	n, err = stream.Read(sizeBuf)
-	if n == 0 || err != nil {
+	n, err = io.ReadFull(stream, sizeBuf)
+	if err != nil {
 		return int64(n), err
 	}
 	p += int64(n)
@@ -159,8 +159,8 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	}
 	keyBuf := sizeBuf[:4]
 	for i := uint64(0); i < size; i++ {
-		n, err = stream.Read(keyBuf)
-		if n == 0 || err != nil {
+		n, err = io.ReadFull(stream, keyBuf)
+		if err != nil {
 			return int64(n), fmt.Errorf("error in bitmap.readFrom: could not read key #%d: %s", i, err)
 		}
 		p += int64(n)
