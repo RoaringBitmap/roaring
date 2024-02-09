@@ -819,6 +819,9 @@ func (rb *Bitmap) Maximum() uint32 {
 
 // Contains returns true if the integer is contained in the bitmap
 func (rb *Bitmap) Contains(x uint32) bool {
+	if rb.IsEmpty() {
+		return false
+	}
 	hb := highbits(x)
 	c := rb.highlowcontainer.getContainer(hb)
 	return c != nil && c.contains(lowbits(x))
