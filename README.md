@@ -43,7 +43,7 @@ The ``roaring`` Go library is used by
 * [M3](https://github.com/m3db/m3)
 * [trident](https://github.com/NetApp/trident)
 * [Husky](https://www.datadoghq.com/blog/engineering/introducing-husky/)
-
+* [FrostDB](https://github.com/polarsignals/frostdb)
 
 This library is used in production in several systems, it is part of the [Awesome Go collection](https://awesome-go.com).
 
