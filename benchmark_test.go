@@ -1132,3 +1132,21 @@ func BenchmarkAndAny(b *testing.B) {
 	runSet("small-filters", genOne(r, largeSize, domain), genMulti(r, filtersNum, smallSize, domain))
 	runSet("equal", genOne(r, defaultSize, domain), genMulti(r, filtersNum, defaultSize, domain))
 }
+
+func BenchmarkRepeatedSparseSerialization(b *testing.B) {
+	var (
+		l   = NewBitmap()
+		buf = bytes.NewBuffer(nil)
+	)
+	for i := 0; i < b.N; i++ {
+		l.ClearRetainStructures()
+		for j := 0; j < 16; j++ {
+			l.Add(uint32(j))
+		}
+		buf.Reset()
+		_, err := l.WriteTo(buf)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
