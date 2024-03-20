@@ -664,10 +664,25 @@ func (ac *arrayContainer) iandNot(a container) container {
 }
 
 func (ac *arrayContainer) iandNotRun16(rc *runContainer16) container {
-	rcb := rc.toBitmapContainer()
-	acb := ac.toBitmapContainer()
-	acb.iandNotBitmapSurely(rcb)
-	*ac = *(acb.toArrayContainer())
+	if len(ac.content) == 0 {
+		// Empty
+		return ac
+	}
+
+	for _, run := range rc.iv {
+		if run.start > ac.maximum() {
+			// Since the runs are sorted, we can stop here. (No subsequent runs will
+			// overlap with the array container.)
+			break
+		}
+		if run.last() < ac.minimum() {
+			// This run is entirely before the array container. We can skip it.
+			continue
+		}
+
+		out := ac.iremoveRange(int(run.start), int(run.start)+int(run.length)+1).(*arrayContainer)
+		*ac = *out
+	}
 	return ac
 }
 

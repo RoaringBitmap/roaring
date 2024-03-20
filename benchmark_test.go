@@ -3,6 +3,7 @@ package roaring
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"testing"
 
@@ -1131,4 +1132,99 @@ func BenchmarkAndAny(b *testing.B) {
 	runSet("small-base", genOne(r, smallSize, domain), genMulti(r, filtersNum, largeSize, domain))
 	runSet("small-filters", genOne(r, largeSize, domain), genMulti(r, filtersNum, smallSize, domain))
 	runSet("equal", genOne(r, defaultSize, domain), genMulti(r, filtersNum, defaultSize, domain))
+}
+
+func BenchmarkAndNot(b *testing.B) {
+	type generator struct {
+		name string
+		f    func() *Bitmap
+	}
+	makeRunContainer := generator{
+		name: "run",
+		f: func() *Bitmap {
+			rb := NewBitmap()
+			for i := 0; i < 100; i++ {
+				start := rand.Intn(math.MaxUint16)
+				limit := start + rand.Intn(math.MaxUint16-start)
+				rb.AddRange(uint64(start), uint64(limit))
+			}
+			rb.RunOptimize()
+			return rb
+		},
+	}
+
+	makeArrayContainer := generator{
+		name: "array",
+		f: func() *Bitmap {
+			rb := NewBitmap()
+			for i := 0; i < arrayDefaultMaxSize/2; i++ {
+				rb.Add(uint32(rand.Intn(math.MaxUint16)))
+			}
+			return rb
+		},
+	}
+	makeBitmapContainer := generator{
+		name: "bitmap",
+		f: func() *Bitmap {
+			buf := make([]uint64, 1024)
+			for i := range buf {
+				buf[i] = rand.Uint64()
+			}
+
+			return FromDense(buf, false)
+		},
+	}
+
+	for _, inPlace := range []bool{true, false} {
+		for _, leftGen := range []generator{makeRunContainer, makeArrayContainer, makeBitmapContainer} {
+			for _, rightGen := range []generator{makeRunContainer, makeArrayContainer, makeBitmapContainer} {
+				b.Run(fmt.Sprintf("inPlace=%v/left=%s/right=%s", inPlace, leftGen.name, rightGen.name), func(b *testing.B) {
+					b.StopTimer()
+					serializedLefts := make([][]byte, 1000)
+					for i := range serializedLefts {
+						var err error
+						serializedLefts[i], err = leftGen.f().ToBytes()
+						if err != nil {
+							b.Fatal(err)
+						}
+					}
+					serializedRights := make([][]byte, 1000)
+					for i := range serializedRights {
+						var err error
+						serializedRights[i], err = rightGen.f().ToBytes()
+						if err != nil {
+							b.Fatal(err)
+						}
+					}
+
+					lefts := make([]*Bitmap, b.N)
+					for i := range lefts {
+						buf := serializedLefts[i%len(serializedLefts)]
+						lefts[i] = NewBitmap()
+						if _, err := lefts[i].FromBuffer(buf); err != nil {
+							b.Fatal(err)
+						}
+						lefts[i] = lefts[i].Clone()
+					}
+					rights := make([]*Bitmap, b.N)
+					for i := range rights {
+						buf := serializedRights[i%len(serializedRights)]
+						rights[i] = NewBitmap()
+						if _, err := rights[i].FromBuffer(buf); err != nil {
+							b.Fatal(err)
+						}
+						rights[i] = rights[i].Clone()
+					}
+					b.StartTimer()
+					for i := 0; i < b.N; i++ {
+						if inPlace {
+							lefts[i].AndNot(rights[i])
+						} else {
+							_ = AndNot(lefts[i], rights[i])
+						}
+					}
+				})
+			}
+		}
+	}
 }
