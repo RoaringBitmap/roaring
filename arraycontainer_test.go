@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArrayContainerTransition(t *testing.T) {
@@ -330,6 +331,27 @@ func TestArrayContainerEtc070(t *testing.T) {
 	ac10.iadd(1)
 
 	assert.Equal(t, 1, ac10.numberOfRuns())
+}
+
+func TestArrayContainerIAndNot(t *testing.T) {
+	var ac container
+	ac = newArrayContainer()
+	ac.iadd(12)
+	ac.iadd(27)
+	ac.iadd(32)
+	ac.iadd(88)
+	ac.iadd(188)
+	ac.iadd(289)
+
+	var rc container
+	rc = newRunContainer16Range(0, 15)
+	rc = rc.iaddRange(1500, 2000)
+	rc = rc.iaddRange(55, 100)
+	rc = rc.iaddRange(25, 50)
+	ac = ac.iandNot(rc)
+
+	require.ElementsMatch(t, []uint16{188, 289}, ac.(*arrayContainer).content)
+	require.Equal(t, 2, ac.getCardinality())
 }
 
 func TestArrayContainerIand(t *testing.T) {
