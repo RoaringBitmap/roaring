@@ -1176,55 +1176,59 @@ func BenchmarkAndNot(b *testing.B) {
 	}
 
 	for _, inPlace := range []bool{true, false} {
-		for _, leftGen := range []generator{makeRunContainer, makeArrayContainer, makeBitmapContainer} {
-			for _, rightGen := range []generator{makeRunContainer, makeArrayContainer, makeBitmapContainer} {
-				b.Run(fmt.Sprintf("inPlace=%v/left=%s/right=%s", inPlace, leftGen.name, rightGen.name), func(b *testing.B) {
-					b.StopTimer()
-					serializedLefts := make([][]byte, 1000)
-					for i := range serializedLefts {
-						var err error
-						serializedLefts[i], err = leftGen.f().ToBytes()
-						if err != nil {
-							b.Fatal(err)
-						}
-					}
-					serializedRights := make([][]byte, 1000)
-					for i := range serializedRights {
-						var err error
-						serializedRights[i], err = rightGen.f().ToBytes()
-						if err != nil {
-							b.Fatal(err)
-						}
-					}
+		b.Run(fmt.Sprintf("inPlace=%v", inPlace), func(b *testing.B) {
+			for _, leftGen := range []generator{makeRunContainer, makeArrayContainer, makeBitmapContainer} {
+				b.Run(fmt.Sprintf("left=%s", leftGen.name), func(b *testing.B) {
+					for _, rightGen := range []generator{makeRunContainer, makeArrayContainer, makeBitmapContainer} {
+						b.Run(fmt.Sprintf("right=%s", rightGen.name), func(b *testing.B) {
+							b.StopTimer()
+							serializedLefts := make([][]byte, 1000)
+							for i := range serializedLefts {
+								var err error
+								serializedLefts[i], err = leftGen.f().ToBytes()
+								if err != nil {
+									b.Fatal(err)
+								}
+							}
+							serializedRights := make([][]byte, 1000)
+							for i := range serializedRights {
+								var err error
+								serializedRights[i], err = rightGen.f().ToBytes()
+								if err != nil {
+									b.Fatal(err)
+								}
+							}
 
-					lefts := make([]*Bitmap, b.N)
-					for i := range lefts {
-						buf := serializedLefts[i%len(serializedLefts)]
-						lefts[i] = NewBitmap()
-						if _, err := lefts[i].FromBuffer(buf); err != nil {
-							b.Fatal(err)
-						}
-						lefts[i] = lefts[i].Clone()
-					}
-					rights := make([]*Bitmap, b.N)
-					for i := range rights {
-						buf := serializedRights[i%len(serializedRights)]
-						rights[i] = NewBitmap()
-						if _, err := rights[i].FromBuffer(buf); err != nil {
-							b.Fatal(err)
-						}
-						rights[i] = rights[i].Clone()
-					}
-					b.StartTimer()
-					for i := 0; i < b.N; i++ {
-						if inPlace {
-							lefts[i].AndNot(rights[i])
-						} else {
-							_ = AndNot(lefts[i], rights[i])
-						}
+							lefts := make([]*Bitmap, b.N)
+							for i := range lefts {
+								buf := serializedLefts[i%len(serializedLefts)]
+								lefts[i] = NewBitmap()
+								if _, err := lefts[i].FromBuffer(buf); err != nil {
+									b.Fatal(err)
+								}
+								lefts[i] = lefts[i].Clone()
+							}
+							rights := make([]*Bitmap, b.N)
+							for i := range rights {
+								buf := serializedRights[i%len(serializedRights)]
+								rights[i] = NewBitmap()
+								if _, err := rights[i].FromBuffer(buf); err != nil {
+									b.Fatal(err)
+								}
+								rights[i] = rights[i].Clone()
+							}
+							b.StartTimer()
+							for i := 0; i < b.N; i++ {
+								if inPlace {
+									lefts[i].AndNot(rights[i])
+								} else {
+									_ = AndNot(lefts[i], rights[i])
+								}
+							}
+						})
 					}
 				})
 			}
-		}
+		})
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // bitmapContainer's numberOfRuns() function should be correct against the runContainer equivalent
@@ -304,4 +305,23 @@ func TestBitmapContainerResetTo(t *testing.T) {
 		assert.EqualValues(t, dirty.cardinality, run.getCardinality())
 		assert.True(t, dirty.toEfficientContainer().equals(run))
 	})
+}
+
+func TestBitmapContainerIAndNot(t *testing.T) {
+	var bc container
+	bc = newBitmapContainer()
+	for i := 0; i < arrayDefaultMaxSize; i++ {
+		bc.iadd(uint16(i * 3))
+	}
+
+	var rc container
+	rc = newRunContainer16Range(0, 1)
+	for i := 0; i < arrayDefaultMaxSize-3; i++ {
+		rc = rc.iaddRange(i*3, i*3+1)
+	}
+
+	bc = bc.iandNot(rc)
+
+	require.ElementsMatch(t, []uint16{12279, 12282, 12285}, bc.(*arrayContainer).content)
+	require.Equal(t, 3, bc.getCardinality())
 }
