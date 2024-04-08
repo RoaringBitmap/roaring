@@ -893,8 +893,28 @@ func (bc *bitmapContainer) iandNotArray(ac *arrayContainer) container {
 }
 
 func (bc *bitmapContainer) iandNotRun16(rc *runContainer16) container {
-	rcb := rc.toBitmapContainer()
-	return bc.iandNotBitmapSurely(rcb)
+	if rc.isEmpty() || bc.isEmpty() {
+		// Nothing to do.
+		return bc
+	}
+
+	wordRangeStart := rc.iv[0].start / 64
+	wordRangeEnd := (rc.iv[len(rc.iv)-1].last()) / 64 // inclusive
+
+	cardinalityChange := popcntSlice(bc.bitmap[wordRangeStart : wordRangeEnd+1]) // before cardinality - after cardinality (for word range)
+
+	for _, iv := range rc.iv {
+		resetBitmapRange(bc.bitmap, int(iv.start), int(iv.last())+1)
+	}
+
+	cardinalityChange -= popcntSlice(bc.bitmap[wordRangeStart : wordRangeEnd+1])
+
+	bc.cardinality -= int(cardinalityChange)
+
+	if bc.getCardinality() <= arrayDefaultMaxSize {
+		return bc.toArrayContainer()
+	}
+	return bc
 }
 
 func (bc *bitmapContainer) andNotArray(value2 *arrayContainer) container {
