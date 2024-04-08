@@ -1,6 +1,7 @@
 package roaring
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 
@@ -313,12 +314,14 @@ func TestBitmapContainerIAndNot(t *testing.T) {
 	for i := 0; i < arrayDefaultMaxSize; i++ {
 		bc.iadd(uint16(i * 3))
 	}
+	bc.iadd(math.MaxUint16)
 
 	var rc container
 	rc = newRunContainer16Range(0, 1)
 	for i := 0; i < arrayDefaultMaxSize-3; i++ {
 		rc = rc.iaddRange(i*3, i*3+1)
 	}
+	rc.iaddRange(math.MaxUint16-3, math.MaxUint16+1)
 
 	bc = bc.iandNot(rc)
 

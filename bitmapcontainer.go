@@ -904,7 +904,7 @@ func (bc *bitmapContainer) iandNotRun16(rc *runContainer16) container {
 	cardinalityChange := popcntSlice(bc.bitmap[wordRangeStart : wordRangeEnd+1]) // before cardinality - after cardinality (for word range)
 
 	for _, iv := range rc.iv {
-		resetBitmapRange(bc.bitmap, int(iv.start), int(iv.last()+1))
+		resetBitmapRange(bc.bitmap, int(iv.start), int(iv.last())+1)
 	}
 
 	cardinalityChange -= popcntSlice(bc.bitmap[wordRangeStart : wordRangeEnd+1])
