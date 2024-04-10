@@ -888,8 +888,42 @@ func (bc *bitmapContainer) iandNot(a container) container {
 }
 
 func (bc *bitmapContainer) iandNotArray(ac *arrayContainer) container {
-	acb := ac.toBitmapContainer()
-	return bc.iandNotBitmapSurely(acb)
+	if ac.isEmpty() || bc.isEmpty() {
+		// Nothing to do.
+		return bc
+	}
+
+	// Word by word, we remove the elements in ac from bc. The approach is to build
+	// a mask of the elements to remove, and then apply it to the bitmap.
+	wordIdx := uint16(0)
+	mask := uint64(0)
+	for i, v := range ac.content {
+		if v/64 != wordIdx {
+			// Flush the current word.
+			if i != 0 {
+				// We're removing bits that are set in the mask and in the current word.
+				// To figure out the cardinality change, we count the number of bits that
+				// are set in the mask and in the current word.
+				mask &= bc.bitmap[wordIdx]
+				bc.bitmap[wordIdx] &= ^mask
+				bc.cardinality -= int(popcount(mask))
+			}
+
+			wordIdx = v / 64
+			mask = 0
+		}
+		mask |= 1 << (v % 64)
+	}
+
+	// Flush the last word.
+	mask &= bc.bitmap[wordIdx]
+	bc.bitmap[wordIdx] &= ^mask
+	bc.cardinality -= int(popcount(mask))
+
+	if bc.getCardinality() <= arrayDefaultMaxSize {
+		return bc.toArrayContainer()
+	}
+	return bc
 }
 
 func (bc *bitmapContainer) iandNotRun16(rc *runContainer16) container {
