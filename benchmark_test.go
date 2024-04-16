@@ -322,7 +322,7 @@ func BenchmarkUnionRoaring(b *testing.B) {
 // The nested for-loops test a number of different scenarios
 // with respect to the ranges and densities of bitmaps.
 func BenchmarkUnionInPlaceCopyOnWrite(b *testing.B) {
-	//uint32s to maintain 1.12 compatibility, which requires unsigned shifts.
+	// uint32s to maintain 1.12 compatibility, which requires unsigned shifts.
 	startingContainerPower := uint32(4)
 	finalContainerPower := uint32(10)
 	containerIncrement := uint32(3)
@@ -1181,6 +1181,7 @@ func BenchmarkAndNot(b *testing.B) {
 				b.Run(fmt.Sprintf("left=%s", leftGen.name), func(b *testing.B) {
 					for _, rightGen := range []generator{makeRunContainer, makeArrayContainer, makeBitmapContainer} {
 						b.Run(fmt.Sprintf("right=%s", rightGen.name), func(b *testing.B) {
+							b.ReportAllocs()
 							b.StopTimer()
 							serializedLefts := make([][]byte, 1000)
 							for i := range serializedLefts {
