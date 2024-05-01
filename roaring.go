@@ -26,7 +26,6 @@ func (rb *Bitmap) ToBase64() (string, error) {
 	buf := new(bytes.Buffer)
 	_, err := rb.WriteTo(buf)
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), err
-
 }
 
 // FromBase64 deserializes a bitmap from Base64
@@ -54,10 +53,12 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 	return rb.highlowcontainer.toBytes()
 }
 
-const wordSize = uint64(64)
-const log2WordSize = uint64(6)
-const capacity = ^uint64(0)
-const bitmapContainerSize = (1 << 16) / 64 // bitmap size in words
+const (
+	wordSize            = uint64(64)
+	log2WordSize        = uint64(6)
+	capacity            = ^uint64(0)
+	bitmapContainerSize = (1 << 16) / 64 // bitmap size in words
+)
 
 // DenseSize returns the size of the bitmap when stored as a dense bitmap.
 func (rb *Bitmap) DenseSize() uint64 {
@@ -960,7 +961,6 @@ func (rb *Bitmap) CheckedAdd(x uint32) bool {
 	newac := newArrayContainer()
 	rb.highlowcontainer.insertNewKeyValueAt(-i-1, hb, newac.iaddReturnMinimized(lowbits(x)))
 	return true
-
 }
 
 // AddInt adds the integer x to the bitmap (convenience method: the parameter is casted to uint32 and we call Add)
@@ -998,7 +998,6 @@ func (rb *Bitmap) CheckedRemove(x uint32) bool {
 		return C.getCardinality() < oldcard
 	}
 	return false
-
 }
 
 // IsEmpty returns true if the Bitmap is empty (it is faster than doing (GetCardinality() == 0))
@@ -1088,7 +1087,7 @@ main:
 						break main
 					}
 					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
-				} else { //s1 > s2
+				} else { // s1 > s2
 					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
 					if pos2 == length2 {
 						break main
@@ -1187,7 +1186,7 @@ main:
 						break main
 					}
 					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
-				} else { //s1 > s2
+				} else { // s1 > s2
 					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
 					if pos2 == length2 {
 						break main
@@ -1256,7 +1255,7 @@ main:
 						break main
 					}
 					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
-				} else { //s1 > s2
+				} else { // s1 > s2
 					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
 					if pos2 == length2 {
 						break main
@@ -1396,7 +1395,7 @@ main:
 						break main
 					}
 					s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
-				} else { //s1 > s2
+				} else { // s1 > s2
 					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
 					if pos2 == length2 {
 						break main
@@ -1584,7 +1583,7 @@ main:
 					}
 					s1 = x1.highlowcontainer.getKeyAtIndex(pos1)
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
-				} else { //s1 > s2
+				} else { // s1 > s2
 					pos2 = x2.highlowcontainer.advanceUntil(s1, pos2)
 					if pos2 == length2 {
 						break main
@@ -1632,7 +1631,6 @@ func BitmapOf(dat ...uint32) *Bitmap {
 // The function uses 64-bit parameters even though a Bitmap stores 32-bit values because it is allowed and meaningful to use [0,uint64(0x100000000)) as a range
 // while uint64(0x100000000) cannot be represented as a 32-bit value.
 func (rb *Bitmap) Flip(rangeStart, rangeEnd uint64) {
-
 	if rangeEnd > MaxUint32+1 {
 		panic("rangeEnd > MaxUint32+1")
 	}
@@ -1915,4 +1913,8 @@ func (rb *Bitmap) Stats() Statistics {
 		}
 	}
 	return stats
+}
+
+func (rb *Bitmap) Validate() error {
+	return rb.highlowcontainer.validate()
 }

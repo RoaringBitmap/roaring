@@ -17,7 +17,6 @@ func checkValidity(t *testing.T, rb *Bitmap) {
 	t.Helper()
 
 	for _, c := range rb.highlowcontainer.containers {
-
 		switch c.(type) {
 		case *arrayContainer:
 			if c.getCardinality() > arrayDefaultMaxSize {
@@ -72,6 +71,25 @@ func hashTest(t *testing.T, N uint64) {
 
 	// Make sure that at least for this reduced set we have no collisions.
 	assert.Equal(t, count, len(hashes))
+}
+
+func buildRuns(includeBroken bool) *runContainer16 {
+	rc := &runContainer16{}
+	if includeBroken {
+		for i := 0; i < 100; i++ {
+			start := i * 100
+			end := start + 100
+			rc.iv = append(rc.iv, newInterval16Range(uint16(start), uint16(end)))
+		}
+	}
+
+	for i := 0; i < 100; i++ {
+		start := i*100 + i*2
+		end := start + 100
+		rc.iv = append(rc.iv, newInterval16Range(uint16(start), uint16(end)))
+	}
+
+	return rc
 }
 
 func TestReverseIteratorCount(t *testing.T) {
@@ -477,7 +495,7 @@ func TestRangeRemovalFromContent(t *testing.T) {
 	bm.RemoveRange(0, 30000)
 	c := bm.GetCardinality()
 
-	assert.EqualValues(t, 00, c)
+	assert.EqualValues(t, 0o0, c)
 }
 
 func TestFlipOnEmpty(t *testing.T) {
@@ -596,7 +614,7 @@ func TestBitmapExtra(t *testing.T) {
 					clonebs1.InPlaceSymmetricDifference(bs2)
 					assert.True(t, equalsBitSet(clonebs1, Xor(rb1, rb2)))
 
-					//testing NOTAND
+					// testing NOTAND
 					clonebs1 = bs1.Clone()
 					clonebs1.InPlaceDifference(bs2)
 					assert.True(t, equalsBitSet(clonebs1, AndNot(rb1, rb2)))
@@ -779,7 +797,7 @@ func TestBitmap(t *testing.T) {
 
 	t.Run("Test AND 3", func(t *testing.T) {
 		var arrayand [11256]uint32
-		//393,216
+		// 393,216
 		pos := 0
 		rr := NewBitmap()
 		for k := 4000; k < 4256; k++ {
@@ -856,7 +874,6 @@ func TestBitmap(t *testing.T) {
 
 		assert.Equal(t, len(arrayres), len(arrayand))
 		assert.True(t, ok)
-
 	})
 
 	t.Run("Test AND 4", func(t *testing.T) {
@@ -869,7 +886,7 @@ func TestBitmap(t *testing.T) {
 		for i := 200000; i < 400000; i += 14 {
 			rb2.AddInt(i)
 		}
-		//TODO: Bitmap.And(bm,bm2)
+		// TODO: Bitmap.And(bm,bm2)
 		andresult := And(rb, rb2)
 		off := And(rb2, rb)
 
@@ -1247,7 +1264,7 @@ func TestBitmap(t *testing.T) {
 		rb := NewBitmap()
 		rb1 := Flip(rb, 100000, 132000)
 		rb2 := Flip(rb1, 65536, 120000)
-		//rbcard := rb2.GetCardinality()
+		// rbcard := rb2.GetCardinality()
 
 		bs := bitset.New(0)
 		for i := uint(65536); i < 100000; i++ {
@@ -1303,7 +1320,7 @@ func TestBitmap(t *testing.T) {
 		numCases := 1000
 		rb := NewBitmap()
 		bs := bitset.New(0)
-		//Random r = new Random(3333);
+		// Random r = new Random(3333);
 		checkTime := 2.0
 
 		for i := 0; i < numCases; i++ {
@@ -1717,6 +1734,7 @@ func TestBitmap(t *testing.T) {
 		assert.True(t, valide)
 	})
 }
+
 func TestXORtest4(t *testing.T) {
 	t.Run("XORtest 4", func(t *testing.T) {
 		rb := NewBitmap()
@@ -1764,7 +1782,7 @@ func TestXORtest4(t *testing.T) {
 		rb.Xor(rb2)
 		assert.True(t, xorresult2.Equals(rb))
 	})
-	//need to add the massives
+	// need to add the massives
 }
 
 func TestNextMany(t *testing.T) {
@@ -1874,7 +1892,7 @@ func rTest(t *testing.T, N int) {
 
 			assert.True(t, equalsBitSet(clonebs1, Xor(rb1, rb2)))
 
-			//testing NOTAND
+			// testing NOTAND
 			clonebs1 = bs1.Clone()
 			clonebs1.InPlaceDifference(bs2)
 
@@ -2618,6 +2636,30 @@ func TestFromBitSet(t *testing.T) {
 	})
 }
 
+func TestValidation(t *testing.T) {
+	bm := NewBitmap()
+	bm.AddRange(306, 406)
+	bm.AddRange(0, 100)
+	bm.AddRange(102, 202)
+	bm.AddRange(204, 304)
+	assert.NoError(t, bm.Validate())
+
+	randomEntries := make([]uint32, 0, 1000)
+	for i := 0; i < 1000; i++ {
+		randomEntries = append(randomEntries, rand.Uint32())
+	}
+
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+
+	randomEntries = make([]uint32, 0, 1000)
+	for i := 0; i < 1000; i++ {
+		randomEntries = append(randomEntries, uint32(i))
+	}
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+}
+
 func BenchmarkFromDense(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		dense := make([]uint64, rb.DenseSize())
@@ -2679,7 +2721,7 @@ func BenchmarkInPlaceArrayUnions(b *testing.B) {
 	for i := 0; i < 100; i++ {
 		bitmap := NewBitmap()
 		for j := 0; j < 100; j++ {
-			//keep all entries in [0,4096), so they stay arrays.
+			// keep all entries in [0,4096), so they stay arrays.
 			bitmap.Add(uint32(rand.Intn(arrayDefaultMaxSize)))
 		}
 		componentBitmaps[i] = bitmap
