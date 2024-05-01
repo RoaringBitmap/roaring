@@ -62,6 +62,7 @@ type interval16 struct {
 
 var (
 	ErrRunIntervalsEmpty  = errors.New("run contained no interval")
+	ErrRunNonSorted       = errors.New("runs were not sorted")
 	ErrRunIntervalLength  = errors.New("interval had zero length")
 	ErrRunIntervalEqual   = errors.New("intervals were equal")
 	ErrRunIntervalOverlap = errors.New("intervals overlapped or were continguous")
@@ -2652,12 +2653,17 @@ func (rc *runContainer16) validate() error {
 			return ErrRunIntervalLength
 		}
 
+		outer := rc.iv[outeridx]
 		for inneridx := outeridx + 1; inneridx < len(rc.iv); inneridx++ {
-			outer := rc.iv[outeridx]
+
 			inner := rc.iv[inneridx]
 
 			if outer.equal(inner) {
 				return ErrRunIntervalEqual
+			}
+
+			if outer.start >= inner.start {
+				return ErrRunNonSorted
 			}
 
 			err := isNonContiguousDisjoint(outer, inner)

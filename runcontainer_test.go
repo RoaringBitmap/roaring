@@ -2407,7 +2407,21 @@ func TestIntervalValidation(t *testing.T) {
 	rc.iv = append(rc.iv, b)
 	rc.iv = append(rc.iv, c)
 	rc.iv = append(rc.iv, d)
-	assert.Error(t, rc.validate())
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOverlap)
+
+	a = newInterval16Range(0, 10)
+	b = newInterval16Range(100, 200)
+
+	// missort
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, b)
+	rc.iv = append(rc.iv, a)
+	assert.ErrorIs(t, rc.validate(), ErrRunNonSorted)
+
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a)
+	rc.iv = append(rc.iv, b)
+	assert.NoError(t, rc.validate())
 }
 
 // go test -bench BenchmarkShortIteratorAdvance -run -
