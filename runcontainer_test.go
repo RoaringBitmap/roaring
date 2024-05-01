@@ -2315,20 +2315,60 @@ func TestRuntimeIteratorAdvance(t *testing.T) {
 }
 
 func TestIntervalOverlaps(t *testing.T) {
+	// contiguous runs
 	a := newInterval16Range(0, 9)
-	b := newInterval16Range(0, 9)
+	b := newInterval16Range(10, 20)
 
-	assert.Error(t, intervalOverlaps(a, b))
+	// Ensure the function is reflexive
+	assert.False(t, a.isNonContiguousDisjoint(a))
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	// Ensure the function is symmetric
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
 
+	// identical runs
 	a = newInterval16Range(0, 9)
-	b = newInterval16Range(10, 20)
+	b = newInterval16Range(0, 9)
 
-	assert.NoError(t, intervalOverlaps(a, b))
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
 
+	// identical start runs
+	a = newInterval16Range(0, 9)
+	b = newInterval16Range(0, 20)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// overlapping runs
 	a = newInterval16Range(0, 12)
 	b = newInterval16Range(10, 20)
 
-	assert.Error(t, intervalOverlaps(a, b))
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// subset runs
+	a = newInterval16Range(0, 12)
+	b = newInterval16Range(5, 9)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// degenerate runs
+	a = newInterval16Range(0, 0)
+	b = newInterval16Range(5, 5)
+
+	assert.True(t, a.isNonContiguousDisjoint(b))
+	assert.NoError(t, isNonContiguousDisjoint(a, b))
+
+	// disjoint non-contiguous runs
+	a = newInterval16Range(0, 100)
+	b = newInterval16Range(1000, 2000)
+
+	assert.True(t, a.isNonContiguousDisjoint(b))
+	assert.NoError(t, isNonContiguousDisjoint(a, b))
 }
 
 func TestIntervalValidation(t *testing.T) {
@@ -2341,7 +2381,7 @@ func TestIntervalValidation(t *testing.T) {
 	rc = &runContainer16{}
 	rc.iv = append(rc.iv, a)
 	rc.iv = append(rc.iv, b)
-	assert.Error(t, rc.validate(), "expected range overlap")
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalEqual)
 
 	a = newInterval16Range(0, 9)
 	b = newInterval16Range(10, 20)
@@ -2349,7 +2389,7 @@ func TestIntervalValidation(t *testing.T) {
 	rc = &runContainer16{}
 	rc.iv = append(rc.iv, a)
 	rc.iv = append(rc.iv, b)
-	assert.NoError(t, rc.validate(), "expected valid")
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOverlap)
 
 	a = newInterval16Range(0, 12)
 	b = newInterval16Range(10, 20)
@@ -2357,7 +2397,7 @@ func TestIntervalValidation(t *testing.T) {
 	rc = &runContainer16{}
 	rc.iv = append(rc.iv, a)
 	rc.iv = append(rc.iv, b)
-	assert.Error(t, rc.validate(), "expected range overlap")
+	assert.Error(t, rc.validate(), ErrRunIntervalOverlap)
 
 	c := newInterval16Range(100, 150)
 	d := newInterval16Range(1000, 10000)

@@ -472,7 +472,7 @@ func TestArrayContainerValidation(t *testing.T) {
 		array.iadd(uint16(i))
 	}
 	err = array.validate()
-	assert.NoError(t, err)
+	assert.Error(t, err)
 }
 
 // go test -bench BenchmarkShortIteratorAdvance -run -

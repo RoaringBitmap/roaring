@@ -2636,7 +2636,25 @@ func TestFromBitSet(t *testing.T) {
 	})
 }
 
-func TestValidation(t *testing.T) {
+func TestRoaringArrayValidation(t *testing.T) {
+	a := newRoaringArray()
+
+	assert.ErrorIs(t, a.validate(), ErrEmptyKeys)
+
+	a.keys = append(a.keys, uint16(3), uint16(1))
+	assert.ErrorIs(t, a.validate(), ErrKeySortOrder)
+	a.clear()
+
+	// build up cardinality coherent arrays
+	a.keys = append(a.keys, uint16(1), uint16(3), uint16(10))
+	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
+	a.containers = append(a.containers, &runContainer16{}, &runContainer16{}, &runContainer16{})
+	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
+	a.needCopyOnWrite = append(a.needCopyOnWrite, true, false, true)
+	assert.Errorf(t, a.validate(), "zero intervals")
+}
+
+func TestBitMapValidation(t *testing.T) {
 	bm := NewBitmap()
 	bm.AddRange(306, 406)
 	bm.AddRange(0, 100)

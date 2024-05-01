@@ -85,6 +85,12 @@ const (
 	run32Contype
 )
 
+var (
+	ErrEmptyKeys             = errors.New("keys were empty")
+	ErrKeySortOrder          = errors.New("keys were out of order")
+	ErrCardinalityConstraint = errors.New("size of arrays was not coherent")
+)
+
 // careful: range is [firstOfRange,lastOfRange]
 func rangeOfOnes(start, last int) container {
 	if start > MaxUint16 {
@@ -752,19 +758,39 @@ func (ra *roaringArray) setNeedsCopyOnWrite(i int) {
 	ra.needCopyOnWrite[i] = true
 }
 
+func (ra *roaringArray) checkKeysSorted() bool {
+	if len(ra.keys) == 0 || len(ra.keys) == 1 {
+		return true
+	}
+	previous := ra.keys[0]
+	for nextIdx := 1; nextIdx < len(ra.keys); nextIdx++ {
+		next := ra.keys[nextIdx]
+		if previous >= next {
+			return false
+		}
+		previous = next
+
+	}
+	return true
+}
+
 // validate checks the referential integrity
 // ensures len(keys) == len(containers), recurses and checks each container type
 func (ra *roaringArray) validate() error {
 	if len(ra.keys) == 0 {
-		return errors.New("keys were empty")
+		return ErrEmptyKeys
+	}
+
+	if !ra.checkKeysSorted() {
+		return ErrKeySortOrder
 	}
 
 	if len(ra.keys) != len(ra.containers) {
-		return errors.New("keys and containers length did not match")
+		return ErrCardinalityConstraint
 	}
 
 	if len(ra.keys) != len(ra.needCopyOnWrite) {
-		return errors.New("keys and copy-on-write length did not match")
+		return ErrCardinalityConstraint
 	}
 
 	// TODO: We could parallelize this, not sure if that's warranted

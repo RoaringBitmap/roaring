@@ -328,3 +328,21 @@ func TestBitmapContainerIAndNot(t *testing.T) {
 	require.ElementsMatch(t, []uint16{12279, 12282, 12285}, bc.(*arrayContainer).content)
 	require.Equal(t, 3, bc.getCardinality())
 }
+
+func TestBitMapContainerValidate(t *testing.T) {
+	bc := newBitmapContainer()
+
+	for i := 0; i < arrayDefaultMaxSize-1; i++ {
+		bc.iadd(uint16(i * 3))
+	}
+	// bitmap containers should have size arrayDefaultMaxSize or larger
+	assert.Error(t, bc.validate())
+	bc.iadd(math.MaxUint16)
+
+	assert.NoError(t, bc.validate())
+
+	// Break the max cardinality invariant
+	bc.cardinality = maxCapacity + 1
+
+	assert.Error(t, bc.validate())
+}

@@ -1,7 +1,6 @@
 package roaring
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -1235,8 +1234,11 @@ func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 
 // validate checks that the container size is non-negative
 func (bc *bitmapContainer) validate() error {
-	if bc.getCardinality() < 0 {
-		return errors.New("negative size")
+	if bc.cardinality < arrayDefaultMaxSize {
+		return fmt.Errorf("bitmap container size was less than: %d", arrayDefaultMaxSize)
+	}
+	if bc.cardinality > maxCapacity {
+		return fmt.Errorf("bitmap container size was greater than: %d", maxCapacity)
 	}
 
 	return nil

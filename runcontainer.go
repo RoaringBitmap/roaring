@@ -60,6 +60,13 @@ type interval16 struct {
 	length uint16 // length minus 1
 }
 
+var (
+	ErrRunIntervalsEmpty  = errors.New("run contained no interval")
+	ErrRunIntervalLength  = errors.New("interval had zero length")
+	ErrRunIntervalEqual   = errors.New("intervals were equal")
+	ErrRunIntervalOverlap = errors.New("intervals overlapped or were continguous")
+)
+
 func newInterval16Range(start, last uint16) interval16 {
 	if last < start {
 		panic(fmt.Sprintf("last (%d) cannot be smaller than start (%d)", last, start))
@@ -1490,7 +1497,18 @@ func (iv interval16) isSuperSetOf(b interval16) bool {
 	return iv.start <= b.start && b.last() <= iv.last()
 }
 
-func (iv interval16) hasEmptyIntersection(b interval16) bool {
+func (iv interval16) isNonContiguousDisjoint(b interval16) bool {
+	// cover the zero start case
+	if iv.start == b.start {
+		return false
+	}
+
+	nonContiguous1 := iv.start == b.last()+1 || iv.last() == b.start+1
+	nonContiguous2 := b.start == iv.last()+1 || b.last() == iv.start+1
+	if nonContiguous1 || nonContiguous2 {
+		return false
+	}
+
 	c1 := iv.start <= b.start && b.start <= iv.last()
 	c2 := b.start <= iv.start && iv.start <= b.last()
 
@@ -2612,10 +2630,10 @@ func (rc *runContainer16) addOffset(x uint16) (container, container) {
 	return low, high
 }
 
-// intervalOverlaps returns an error if the intervals overlap e.g have non-empty intersection
-func intervalOverlaps(outer interval16, inner interval16) error {
-	if !outer.hasEmptyIntersection(inner) {
-		return errors.New("intervals overlap")
+// isNonContiguousDisjoint returns an error if the intervals overlap e.g have non-empty intersection
+func isNonContiguousDisjoint(outer interval16, inner interval16) error {
+	if !outer.isNonContiguousDisjoint(inner) {
+		return ErrRunIntervalOverlap
 	}
 
 	return nil
@@ -2625,13 +2643,13 @@ func intervalOverlaps(outer interval16, inner interval16) error {
 // Ensures runs are not degenerate, non-contiguous and non-overlapping
 func (rc *runContainer16) validate() error {
 	if rc.getCardinality() == 0 {
-		return errors.New("zero intervals")
+		return ErrRunIntervalsEmpty
 	}
 
 	for outeridx := range rc.iv {
 
 		if rc.iv[outeridx].length == 0 {
-			return errors.New("zero run length")
+			return ErrRunIntervalLength
 		}
 
 		for inneridx := outeridx + 1; inneridx < len(rc.iv); inneridx++ {
@@ -2639,10 +2657,10 @@ func (rc *runContainer16) validate() error {
 			inner := rc.iv[inneridx]
 
 			if outer.equal(inner) {
-				return errors.New("intervals were equal")
+				return ErrRunIntervalEqual
 			}
 
-			err := intervalOverlaps(outer, inner)
+			err := isNonContiguousDisjoint(outer, inner)
 			if err != nil {
 				return err
 			}
