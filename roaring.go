@@ -314,6 +314,14 @@ func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err
 	return
 }
 
+func (rb *Bitmap) MustReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err error) {
+	rb.ReadFrom(reader, cookieHeader...)
+	if err := rb.Validate(); err != nil {
+		panic(err)
+	}
+	return
+}
+
 // FromBuffer creates a bitmap from its serialized version stored in buffer
 //
 // The format specification is available here:
