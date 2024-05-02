@@ -1509,9 +1509,11 @@ func (iv interval16) isNonContiguousDisjoint(b interval16) bool {
 	if nonContiguous1 || nonContiguous2 {
 		return false
 	}
+	ivl := iv.last()
+	bl := b.last()
 
-	c1 := iv.start <= b.start && b.start <= iv.last()
-	c2 := b.start <= iv.start && iv.start <= b.last()
+	c1 := iv.start <= b.start && b.start <= ivl
+	c2 := b.start <= iv.start && iv.start <= bl
 
 	return !c1 && !c2
 }
@@ -2662,6 +2664,8 @@ func (rc *runContainer16) validate() error {
 				return ErrRunIntervalEqual
 			}
 
+			// only check the start of runs
+			// if the run length overlap the next check will catch that.
 			if outer.start >= inner.start {
 				return ErrRunNonSorted
 			}

@@ -2678,6 +2678,76 @@ func TestBitMapValidation(t *testing.T) {
 	assert.NoError(t, bm.Validate())
 }
 
+func TestBitMapValidationFromDeserialization(t *testing.T) {
+	// To understand what is going on here, read https://github.com/RoaringBitmap/RoaringFormatSpec
+
+	defer func() {
+		if err := recover(); err != nil {
+			// TODO assert on the error type.
+			fmt.Println("panicked")
+		}
+	}()
+
+	bm := NewBitmap()
+
+	// Maintainers: If you change this construction you must change the statements below.
+	// The tests expect a certain size, with values at certain location.
+	// TODO: A good extension would be to inspect the map and dynamically figure out what you can corrupt
+	randomEntries := make([]uint32, 0, 10)
+	for i := 0; i < 10; i++ {
+		randomEntries = append(randomEntries, uint32(i))
+	}
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+	serialized, err := bm.ToBytes()
+	assert.NoError(t, err)
+
+	deserializedBitMap := NewBitmap()
+	deserializedBitMap.MustReadFrom(bytes.NewReader(serialized))
+	deserializedBitMap.Validate()
+
+	// corrupt the byte stream
+	// break sort order, serialized[34] equals 9 in a correct sort
+	serialized[34] = 0
+	corruptedDeserializedBitMap := NewBitmap()
+	corruptedDeserializedBitMap.MustReadFrom(bytes.NewReader(serialized))
+	// We will never hit this because of the recover
+	t.Errorf("did not panic")
+}
+
+func TestBitMapValidationFromDeserializationRuns(t *testing.T) {
+	// See above tests for more information
+
+	bm := NewBitmap()
+	bm.AddRange(100, 110)
+	assert.NoError(t, bm.Validate())
+	serialized, err := bm.ToBytes()
+	serialized[13] = 0
+	assert.NoError(t, err)
+	corruptedDeserializedBitMap := NewBitmap()
+	corruptedDeserializedBitMap.ReadFrom(bytes.NewReader(serialized))
+	assert.ErrorIs(t, corruptedDeserializedBitMap.Validate(), ErrRunIntervalLength)
+}
+
+func TestBitMapValidationFromDeserializationNumRuns(t *testing.T) {
+	// See above tests for more information
+
+	bm := NewBitmap()
+	bm.AddRange(100, 110)
+	bm.AddRange(115, 125)
+	// assert.NoError(t, bm.Validate())
+	serialized, err := bm.ToBytes()
+	assert.NoError(t, err)
+	// Force run overlap
+	serialized[15] = 108
+
+	corruptedDeserializedBitMap := NewBitmap()
+	corruptedDeserializedBitMap.ReadFrom(bytes.NewReader(serialized))
+	v := corruptedDeserializedBitMap.Validate()
+	fmt.Println(v)
+	assert.ErrorIs(t, corruptedDeserializedBitMap.Validate(), ErrRunIntervalOverlap)
+}
+
 func BenchmarkFromDense(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		dense := make([]uint64, rb.DenseSize())

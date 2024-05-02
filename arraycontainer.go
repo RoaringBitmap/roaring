@@ -9,6 +9,8 @@ type arrayContainer struct {
 	content []uint16
 }
 
+var ErrArrayIncorrectSort = errors.New("incorrectly sorted array")
+
 func (ac *arrayContainer) String() string {
 	s := "{"
 	for it := ac.getShortIterator(); it.hasNext(); {
@@ -1097,6 +1099,7 @@ func (ac *arrayContainer) addOffset(x uint16) (container, container) {
 func (ac *arrayContainer) validate() error {
 	cardinality := ac.getCardinality()
 
+	// TODO use ERR consts
 	if cardinality <= 0 {
 		return errors.New("zero or negative size")
 	}
@@ -1109,7 +1112,7 @@ func (ac *arrayContainer) validate() error {
 	for i := 1; i < len(ac.content); i++ {
 		next := ac.content[i]
 		if previous > next {
-			return errors.New("incorrectly sorted array")
+			return ErrArrayIncorrectSort
 		}
 		previous = next
 
