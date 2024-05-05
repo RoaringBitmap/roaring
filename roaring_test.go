@@ -2656,8 +2656,8 @@ func TestRoaringArrayValidation(t *testing.T) {
 
 func TestBitMapValidation(t *testing.T) {
 	bm := NewBitmap()
-	bm.AddRange(306, 406)
 	bm.AddRange(0, 100)
+	bm.AddRange(306, 406)
 	bm.AddRange(102, 202)
 	bm.AddRange(204, 304)
 	assert.NoError(t, bm.Validate())
@@ -2679,6 +2679,12 @@ func TestBitMapValidation(t *testing.T) {
 }
 
 func TestBitMapValidationFromDeserializationC(t *testing.T) {
+	// To understand what is going on here, read https://github.com/RoaringBitmap/RoaringFormatSpec
+	// Maintainers: The loader and corruptor are dependent on one another
+	// The tests expect a certain size, with values at certain location.
+
+	// There is no way to test Bitmap container corruption once the bitmap is deserialzied
+
 	deserializationTests := []struct {
 		name      string
 		loader    func(bm *Bitmap)
@@ -2711,11 +2717,11 @@ func TestBitMapValidationFromDeserializationC(t *testing.T) {
 		{
 			name: "Break Array Sort Order",
 			loader: func(bm *Bitmap) {
-				randomEntries := make([]uint32, 0, 10)
+				arrayEntries := make([]uint32, 0, 10)
 				for i := 0; i < 10; i++ {
-					randomEntries = append(randomEntries, uint32(i))
+					arrayEntries = append(arrayEntries, uint32(i))
 				}
-				bm.AddMany(randomEntries)
+				bm.AddMany(arrayEntries)
 			},
 			corruptor: func(s []byte) {
 				s[34] = 0
