@@ -66,7 +66,6 @@ func difference(set1 []uint16, set2 []uint16, buffer []uint16) int {
 		}
 	}
 	return pos
-
 }
 
 func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
@@ -186,8 +185,8 @@ func union2by2Cardinality(set1 []uint16, set2 []uint16) int {
 func intersection2by2(
 	set1 []uint16,
 	set2 []uint16,
-	buffer []uint16) int {
-
+	buffer []uint16,
+) int {
 	if len(set1)*64 < len(set2) {
 		return onesidedgallopingintersect2by2(set1, set2, buffer)
 	} else if len(set2)*64 < len(set1) {
@@ -199,8 +198,8 @@ func intersection2by2(
 
 func intersection2by2Cardinality(
 	set1 []uint16,
-	set2 []uint16) int {
-
+	set2 []uint16,
+) int {
 	if len(set1)*64 < len(set2) {
 		return onesidedgallopingintersect2by2Cardinality(set1, set2)
 	} else if len(set2)*64 < len(set1) {
@@ -212,7 +211,8 @@ func intersection2by2Cardinality(
 
 func intersects2by2(
 	set1 []uint16,
-	set2 []uint16) bool {
+	set2 []uint16,
+) bool {
 	// could be optimized if one set is much larger than the other one
 	if (0 == len(set1)) || (0 == len(set2)) {
 		return false
@@ -247,7 +247,6 @@ mainwhile:
 					break
 				}
 			}
-
 		} else {
 			// (set2[k2] == set1[k1])
 			return true
@@ -259,8 +258,8 @@ mainwhile:
 func localintersect2by2(
 	set1 []uint16,
 	set2 []uint16,
-	buffer []uint16) int {
-
+	buffer []uint16,
+) int {
 	if (0 == len(set1)) || (0 == len(set2)) {
 		return 0
 	}
@@ -295,7 +294,6 @@ mainwhile:
 					break
 				}
 			}
-
 		} else {
 			// (set2[k2] == set1[k1])
 			buffer[pos] = s1
@@ -317,8 +315,8 @@ mainwhile:
 
 func localintersect2by2Cardinality(
 	set1 []uint16,
-	set2 []uint16) int {
-
+	set2 []uint16,
+) int {
 	if (0 == len(set1)) || (0 == len(set2)) {
 		return 0
 	}
@@ -352,7 +350,6 @@ mainwhile:
 					break
 				}
 			}
-
 		} else {
 			// (set2[k2] == set1[k1])
 			pos++
@@ -375,7 +372,8 @@ func advanceUntil(
 	array []uint16,
 	pos int,
 	length int,
-	min uint16) int {
+	min uint16,
+) int {
 	lower := pos + 1
 
 	if lower >= length || array[lower] >= min {
@@ -423,14 +421,13 @@ func advanceUntil(
 		}
 	}
 	return upper
-
 }
 
 func onesidedgallopingintersect2by2(
 	smallset []uint16,
 	largeset []uint16,
-	buffer []uint16) int {
-
+	buffer []uint16,
+) int {
 	if 0 == len(smallset) {
 		return 0
 	}
@@ -478,8 +475,8 @@ mainwhile:
 
 func onesidedgallopingintersect2by2Cardinality(
 	smallset []uint16,
-	largeset []uint16) int {
-
+	largeset []uint16,
+) int {
 	if 0 == len(smallset) {
 		return 0
 	}
@@ -547,4 +544,58 @@ func binarySearch(array []uint16, ikey uint16) int {
 		}
 	}
 	return -(low + 1)
+}
+
+func closestByIndex(array []uint16, smallerIdx int, largerIdx int, target uint16) int {
+	smallerVal := array[smallerIdx]
+	largerVal := array[largerIdx]
+
+	if (int(largerVal) - int(target)) >= (int(target) - int(smallerVal)) {
+		return smallerIdx
+	}
+	return largerIdx
+}
+
+// returns the index of the target value and true if exact
+// return the index of the min-max value and false if not exact
+func binarySearchUntil(array []uint16, target uint16) (int, bool) {
+	lowIndex := 0
+	maxIndex := len(array) - 1
+	highIndex := len(array) - 1
+
+	closestIndex := -1
+
+	if target < array[0] {
+		return closestIndex, false
+	}
+
+	if target > array[maxIndex] {
+		return closestIndex, false
+	}
+
+	for lowIndex <= highIndex {
+		middleIndex := (lowIndex + highIndex) / 2
+		middleValue := array[middleIndex]
+
+		if middleValue == target {
+			return middleIndex, true
+		}
+
+		if target < middleValue {
+
+			if middleIndex > 0 && target > array[middleIndex-1] {
+				return middleIndex - 1, false
+			}
+
+			highIndex = middleIndex
+		} else {
+			if middleIndex < maxIndex && target < array[middleIndex+1] {
+				return middleIndex, false
+			}
+			lowIndex = middleIndex + 1
+		}
+
+	}
+
+	return closestIndex, false
 }

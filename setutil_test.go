@@ -3,8 +3,9 @@ package roaring
 // to run just these tests: go test -run TestSetUtil*
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSetUtilDifference(t *testing.T) {
@@ -134,5 +135,50 @@ func TestSetUtilBinarySearch(t *testing.T) {
 		} else {
 			assert.Equal(t, -int(key)/2-2, loc)
 		}
+	}
+}
+
+func TestSetUtilBinarySearchPredicate(t *testing.T) {
+	type searchTest struct {
+		name         string
+		constructor  func() []uint16
+		target       uint16
+		isExactMatch bool
+		index        int
+	}
+
+	tests := []searchTest{
+		{"matches", func() []uint16 {
+			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17}
+		}, 9, true, 9},
+		{"missing 12 with gap", func() []uint16 {
+			return []uint16{0, 1, 2, 3, 4, 5, 6, 13, 14, 15, 16, 17}
+		}, 12, false, 6},
+		{"missing 10 but close neighbors", func() []uint16 {
+			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12}
+		}, 10, false, 9},
+		{"missing close to beginning", func() []uint16 {
+			return []uint16{0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12}
+		}, 1, false, 0},
+		{"missing gap", func() []uint16 {
+			return []uint16{0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
+		}, 6, false, 4},
+		{"out of bounds at beginning", func() []uint16 {
+			return []uint16{1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
+		}, 0, false, -1},
+		{"out of bounds at the end", func() []uint16 {
+			return []uint16{0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
+		}, 100, false, -1},
+		{"missing alternating", func() []uint16 {
+			return []uint16{0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 22, 24, 26}
+		}, 20, false, 9},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			actualIndex, isExactMatch := binarySearchUntil(testCase.constructor(), testCase.target)
+			assert.Equal(t, testCase.index, actualIndex)
+			assert.Equal(t, testCase.isExactMatch, isExactMatch)
+		})
 	}
 }
