@@ -556,21 +556,37 @@ func closestByIndex(array []uint16, smallerIdx int, largerIdx int, target uint16
 	return largerIdx
 }
 
-// returns the index of the target value and true if exact
-// return the index of the min-max value and false if not exact
-func binarySearchUntil(array []uint16, target uint16) (int, bool) {
-	lowIndex := 0
-	maxIndex := len(array) - 1
-	highIndex := len(array) - 1
+type searchResult struct {
+	value      uint16
+	index      int
+	exactMatch bool
+}
+
+func (sr *searchResult) notFound() bool {
+	return sr.index <= -1
+}
+
+// returns the searchResult
+// if an exact match if found the result.value will be the target, the result.index will be the target index
+// result.exactMatch will be true and result.notFound() will be false
+// if a match is not found, but the target was in-bounds then the result.index will be the closest, smaller value
+// [ 8,9, 11,12] if the target was 10, then value 9 and index 1 will be returned.
+// if the target was out of bound (-1,-,1 False,True) will be returned
+func binarySearchUntil(array []uint16, target uint16) searchResult {
+	return binarySearchUntilWithBounds(array, target, 0, len(array)-1)
+}
+
+func binarySearchUntilWithBounds(array []uint16, target uint16, lowIndex int, maxIndex int) searchResult {
+	highIndex := maxIndex
 
 	closestIndex := -1
 
-	if target < array[0] {
-		return closestIndex, false
+	if target < array[lowIndex] {
+		return searchResult{uint16(closestIndex), closestIndex, false}
 	}
 
 	if target > array[maxIndex] {
-		return closestIndex, false
+		return searchResult{uint16(closestIndex), closestIndex, false}
 	}
 
 	for lowIndex <= highIndex {
@@ -578,24 +594,24 @@ func binarySearchUntil(array []uint16, target uint16) (int, bool) {
 		middleValue := array[middleIndex]
 
 		if middleValue == target {
-			return middleIndex, true
+			return searchResult{middleValue, middleIndex, true}
 		}
 
 		if target < middleValue {
 
 			if middleIndex > 0 && target > array[middleIndex-1] {
-				return middleIndex - 1, false
+				return searchResult{array[middleIndex-1], middleIndex - 1, false}
 			}
 
 			highIndex = middleIndex
 		} else {
 			if middleIndex < maxIndex && target < array[middleIndex+1] {
-				return middleIndex, false
+				return searchResult{middleValue, middleIndex, false}
 			}
 			lowIndex = middleIndex + 1
 		}
 
 	}
 
-	return closestIndex, false
+	return searchResult{uint16(closestIndex), closestIndex, false}
 }
