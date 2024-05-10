@@ -26,8 +26,7 @@ func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uin
 	_ = x[len(ac.content)-1+i]
 	_ = ac.content[len(ac.content)-1]
 	for k := 0; k < len(ac.content); k++ {
-		x[k+i] =
-			uint32(ac.content[k]) | mask
+		x[k+i] = uint32(ac.content[k]) | mask
 	}
 	return i + len(ac.content)
 }
@@ -168,7 +167,7 @@ func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 		return ac.toBitmapContainer().not(firstOfRange, lastOfRange+1)
 	}
 	answer := newArrayContainer()
-	answer.content = make([]uint16, newCardinality, newCardinality) //a hack for sure
+	answer.content = make([]uint16, newCardinality, newCardinality) // a hack for sure
 
 	copy(answer.content, ac.content[:startIndex])
 	outPos := startIndex
@@ -194,11 +193,9 @@ func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 	}
 	answer.content = answer.content[:newCardinality]
 	return answer
-
 }
 
 func (ac *arrayContainer) equals(o container) bool {
-
 	srb, ok := o.(*arrayContainer)
 	if ok {
 		// Check if the containers are the same object.
@@ -239,8 +236,8 @@ func (ac *arrayContainer) toBitmapContainer() *bitmapContainer {
 	bc := newBitmapContainer()
 	bc.loadData(ac)
 	return bc
-
 }
+
 func (ac *arrayContainer) iadd(x uint16) (wasNew bool) {
 	// Special case adding to the end of the container.
 	l := len(ac.content)
@@ -352,7 +349,7 @@ func (ac *arrayContainer) ior(a container) container {
 		return ac.iorArray(x)
 	case *bitmapContainer:
 		return a.(*bitmapContainer).orArray(ac)
-		//return ac.iorBitmap(x) // note: this does not make sense
+		// return ac.iorBitmap(x) // note: this does not make sense
 	case *runContainer16:
 		if x.isFull() {
 			return x.clone()
@@ -589,7 +586,6 @@ func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) container {
 	}
 	ac.content = ac.content[:pos]
 	return ac
-
 }
 
 func (ac *arrayContainer) xor(a container) container {
@@ -630,7 +626,6 @@ func (ac *arrayContainer) xorArray(value2 *arrayContainer) container {
 	length := exclusiveUnion2by2(value1.content, value2.content, answer.content)
 	answer.content = answer.content[:length]
 	return answer
-
 }
 
 func (ac *arrayContainer) andNot(a container) container {
@@ -822,7 +817,6 @@ func (ac *arrayContainer) inotClose(firstOfRange, lastOfRange int) container {
 	} else { // no expansion needed
 		ac.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange+1)
 		if cardinalityChange < 0 {
-
 			for i := startIndex + newValuesInRange; i < newCardinality; i++ {
 				ac.content[i] = ac.content[i-cardinalityChange]
 			}
@@ -915,7 +909,6 @@ func (ac *arrayContainer) rank(x uint16) int {
 		return answer + 1
 	}
 	return -answer - 1
-
 }
 
 func (ac *arrayContainer) selectInt(x uint16) int {
@@ -969,6 +962,50 @@ func (ac *arrayContainer) realloc(size int) {
 	} else {
 		ac.content = ac.content[:size]
 	}
+}
+
+// PreviousValue returns either the target if found or the previous smaller value
+// if the target is out of bounds a -1 is returned
+func (ac *arrayContainer) previousValue(target uint16) int {
+	result := binarySearchUntil(ac.content, target)
+
+	if !result.notFound() {
+		return int(result.value)
+	}
+
+	return -1
+}
+
+func (ac *arrayContainer) nextAbsentValue(target uint16) int {
+	result := binarySearchUntil(ac.content, target)
+
+	// A value v was found but it was not exact
+	// e.g v < target
+	if !result.notFound() && !result.exactMatch {
+		return int(result.value)
+	}
+	previous := target
+	for i := result.index + 1; i < len(ac.content); i++ {
+		if ac.content[i] != previous+1 {
+			return int(previous) + 1
+		}
+	}
+
+	return -1
+}
+
+// nextValue returns either the target if found or the next larger value
+// if the target is out of bounds a -1 is returned
+func (ac *arrayContainer) nextValue(target uint16) int {
+	result := binarySearchUntil(ac.content, target)
+	if result.exactMatch {
+		return int(result.value)
+	}
+
+	if !result.notFound() && result.index < len(ac.content)-1 {
+		return int(ac.content[result.index+1])
+	}
+	return -1
 }
 
 func newArrayContainer() *arrayContainer {
@@ -1039,7 +1076,6 @@ func (ac *arrayContainer) numberOfRuns() (nr int) {
 
 // convert to run or array *if needed*
 func (ac *arrayContainer) toEfficientContainer() container {
-
 	numRuns := ac.numberOfRuns()
 
 	sizeAsRunContainer := runContainer16SerializedSizeInBytes(numRuns)

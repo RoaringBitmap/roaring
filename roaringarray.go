@@ -30,7 +30,7 @@ type container interface {
 	iadd(x uint16) bool                   // inplace, returns true if x was new.
 	iaddReturnMinimized(uint16) container // may change return type to minimize storage.
 
-	//addRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
+	// addRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
 	iaddRange(start, endx int) container // i stands for inplace, range is [firstOfRange,endx)
 
 	iremove(x uint16) bool                   // inplace, returns true if x was present.
@@ -61,7 +61,7 @@ type container interface {
 	lazyOR(r container) container
 	lazyIOR(r container) container
 	getSizeInBytes() int
-	//removeRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
+	// removeRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
 	iremoveRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	selectInt(x uint16) int                  // selectInt returns the xth integer in the container
 	serializedSizeInBytes() int
@@ -71,6 +71,10 @@ type container interface {
 	toEfficientContainer() container
 	String() string
 	containerType() contype
+
+	nextValue(x uint16) int
+	previousValue(x uint16) int
+	nextAbsentValue(x uint16) int
 }
 
 type contype uint8
@@ -178,7 +182,6 @@ func (ra *roaringArray) appendCopiesUntil(sa roaringArray, stoppingKey uint16) {
 		} else {
 			// since there is no copy-on-write, we need to clone the container (this is important)
 			ra.appendContainer(sa.keys[i], sa.containers[i].clone(), thiscopyonewrite)
-
 		}
 	}
 }
@@ -204,7 +207,6 @@ func (ra *roaringArray) appendCopiesAfter(sa roaringArray, beforeStart uint16) {
 		} else {
 			// since there is no copy-on-write, we need to clone the container (this is important)
 			ra.appendContainer(sa.keys[i], sa.containers[i].clone(), thiscopyonewrite)
-
 		}
 	}
 }
@@ -239,7 +241,6 @@ func (ra *roaringArray) clear() {
 }
 
 func (ra *roaringArray) clone() *roaringArray {
-
 	sa := roaringArray{}
 	sa.copyOnWrite = ra.copyOnWrite
 
@@ -325,7 +326,6 @@ func (ra *roaringArray) getUnionedWritableContainer(pos int, other container) co
 		return ra.getContainerAtIndex(pos).or(other)
 	}
 	return ra.getContainerAtIndex(pos).ior(other)
-
 }
 
 func (ra *roaringArray) getWritableContainerAtIndex(i int) container {
@@ -455,7 +455,6 @@ func (ra *roaringArray) headerSize() uint64 {
 		return 4 + (size+7)/8 + 8*size // - 4 because we pack the size with the cookie
 	}
 	return 4 + 4 + 8*size
-
 }
 
 // should be dirt cheap
@@ -489,7 +488,7 @@ func (ra *roaringArray) writeTo(w io.Writer) (n int64, err error) {
 		binary.LittleEndian.PutUint16(buf[2:], uint16(len(ra.keys)-1))
 		nw += 2
 		// compute isRun bitmap without temporary allocation
-		var runbitmapslice = buf[nw : nw+isRunSizeInBytes]
+		runbitmapslice := buf[nw : nw+isRunSizeInBytes]
 		for i, c := range ra.containers {
 			switch c.(type) {
 			case *runContainer16:
@@ -577,7 +576,6 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 		// create is-run-container bitmap
 		isRunBitmapSize := (int(size) + 7) / 8
 		isRunBitmap, err = stream.Next(isRunBitmapSize)
-
 		if err != nil {
 			return stream.GetReadBytes(), fmt.Errorf("malformed bitmap, failed to read is-run bitmap, got: %s", err)
 		}
@@ -596,7 +594,6 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 
 	// descriptive header
 	buf, err := stream.Next(2 * 2 * int(size))
-
 	if err != nil {
 		return stream.GetReadBytes(), fmt.Errorf("failed to read descriptive header: %s", err)
 	}
@@ -637,13 +634,11 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 		if isRunBitmap != nil && isRunBitmap[i/8]&(1<<(i%8)) != 0 {
 			// run container
 			nr, err := stream.ReadUInt16()
-
 			if err != nil {
 				return 0, fmt.Errorf("failed to read runtime container size: %s", err)
 			}
 
 			buf, err := stream.Next(int(nr) * 4)
-
 			if err != nil {
 				return stream.GetReadBytes(), fmt.Errorf("failed to read runtime container content: %s", err)
 			}
@@ -656,7 +651,6 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 		} else if card > arrayDefaultMaxSize {
 			// bitmap container
 			buf, err := stream.Next(arrayDefaultMaxSize * 2)
-
 			if err != nil {
 				return stream.GetReadBytes(), fmt.Errorf("failed to read bitmap container: %s", err)
 			}
@@ -670,7 +664,6 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 		} else {
 			// array container
 			buf, err := stream.Next(card * 2)
-
 			if err != nil {
 				return stream.GetReadBytes(), fmt.Errorf("failed to read array container: %s", err)
 			}

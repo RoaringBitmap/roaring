@@ -328,3 +328,38 @@ func TestBitmapContainerIAndNot(t *testing.T) {
 	require.ElementsMatch(t, []uint16{12279, 12282, 12285}, bc.(*arrayContainer).content)
 	require.Equal(t, 3, bc.getCardinality())
 }
+
+func TestPreviousNext(t *testing.T) {
+	clean := newBitmapContainer()
+	clean.iadd(1)
+	clean.contains(1)
+	clean.iadd(3)
+	clean.contains(3)
+}
+
+func TestPreviousNexts(t *testing.T) {
+	clean := newBitmapContainer()
+	clean.iadd(10)
+	clean.iadd(11)
+	clean.iadd(100)
+
+	assert.Equal(t, 10, clean.NextSetBit(10))
+	assert.Equal(t, 11, clean.NextSetBit(11))
+	assert.Equal(t, 100, clean.NextSetBit(100))
+
+	assert.Equal(t, 10, clean.nextValue(uint16(0)))
+	assert.Equal(t, 10, clean.nextValue(uint16(5)))
+	assert.Equal(t, 10, clean.nextValue(uint16(10)))
+	assert.Equal(t, 11, clean.nextValue(uint16(11)))
+	assert.Equal(t, 100, clean.nextValue(uint16(14)))
+	assert.Equal(t, -1, clean.nextValue(uint16(101)))
+
+	// assert.Equal(t, 0, clean.nextAbsentValue(uint16(0)))
+	// assert.Equal(t, 5, clean.nextAbsentValue(uint16(5)))
+	assert.Equal(t, 10, clean.nextAbsentValue(uint16(10)))
+	assert.Equal(t, 11, clean.nextAbsentValue(uint16(11)))
+	assert.Equal(t, 100, clean.nextAbsentValue(uint16(14)))
+	assert.Equal(t, 100, clean.nextAbsentValue(uint16(60)))
+	assert.Equal(t, 100, clean.nextAbsentValue(uint16(100)))
+	assert.Equal(t, -1, clean.nextAbsentValue(uint16(101)))
+}

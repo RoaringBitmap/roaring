@@ -241,9 +241,11 @@ func TestArrayContainerNumberOfRuns025(t *testing.T) {
 }
 
 func TestArrayContainerIaddRangeNearMax068(t *testing.T) {
-	iv := []interval16{newInterval16Range(65525, 65527),
+	iv := []interval16{
+		newInterval16Range(65525, 65527),
 		newInterval16Range(65530, 65530),
-		newInterval16Range(65534, 65535)}
+		newInterval16Range(65534, 65535),
+	}
 	rc := newRunContainer16TakeOwnership(iv)
 
 	ac2 := rc.toArrayContainer()
@@ -262,9 +264,11 @@ func TestArrayContainerIaddRangeNearMax068(t *testing.T) {
 }
 
 func TestArrayContainerEtc070(t *testing.T) {
-	iv := []interval16{newInterval16Range(65525, 65527),
+	iv := []interval16{
+		newInterval16Range(65525, 65527),
 		newInterval16Range(65530, 65530),
-		newInterval16Range(65534, 65535)}
+		newInterval16Range(65534, 65535),
+	}
 	rc := newRunContainer16TakeOwnership(iv)
 	ac := rc.toArrayContainer()
 
@@ -429,6 +433,20 @@ func TestArrayContainerResetTo(t *testing.T) {
 		dirty.resetTo(run)
 		assert.True(t, dirty.toEfficientContainer().equals(run))
 	})
+}
+
+func TestNextPrevious(t *testing.T) {
+	ac := newArrayContainer()
+	ac.iaddRange(0, 10)
+	assert.Equal(t, 6, ac.nextValue(6))
+	assert.Equal(t, 9, ac.nextValue(9))
+	assert.Equal(t, -1, ac.nextValue(10))
+	assert.Equal(t, -1, ac.nextValue(20))
+	ac.iaddRange(12, 20)
+	// 10 and 11 are missing
+	assert.Equal(t, 9, ac.previousValue(11))
+	assert.Equal(t, 0, ac.previousValue(0))
+	assert.Equal(t, -1, ac.previousValue(22))
 }
 
 // go test -bench BenchmarkShortIteratorAdvance -run -

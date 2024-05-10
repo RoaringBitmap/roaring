@@ -10,6 +10,8 @@ type bitmapContainer struct {
 	bitmap      []uint64
 }
 
+type searchPredicate func(uint64) bool
+
 func (bc bitmapContainer) String() string {
 	var s string
 	for it := bc.getShortIterator(); it.hasNext(); {
@@ -116,6 +118,7 @@ func (bcsi *bitmapContainerShortIterator) next() uint16 {
 	bcsi.i = bcsi.ptr.NextSetBit(uint(bcsi.i) + 1)
 	return uint16(j)
 }
+
 func (bcsi *bitmapContainerShortIterator) hasNext() bool {
 	return bcsi.i >= 0
 }
@@ -241,7 +244,7 @@ func (bc *bitmapContainer) getSizeInBytes() int {
 }
 
 func (bc *bitmapContainer) serializedSizeInBytes() int {
-	//return bc.Msgsize()// NOO! This breaks GetSerializedSizeInBytes
+	// return bc.Msgsize()// NOO! This breaks GetSerializedSizeInBytes
 	return len(bc.bitmap) * 8
 }
 
@@ -313,6 +316,7 @@ func (bc *bitmapContainer) iaddReturnMinimized(i uint16) container {
 	return bc
 }
 
+// iadd adds the arg i, returning true if not already present
 func (bc *bitmapContainer) iadd(i uint16) bool {
 	x := int(i)
 	previous := bc.bitmap[x/64]
@@ -441,7 +445,7 @@ func (bc *bitmapContainer) ior(a container) container {
 		if bc.isFull() {
 			return newRunContainer16Range(0, MaxUint16)
 		}
-		//bc.computeCardinality()
+		// bc.computeCardinality()
 		return bc
 	}
 	panic(fmt.Errorf("unsupported container type %T", a))
@@ -819,9 +823,8 @@ func (bc *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
 	}
 	ac := newArrayContainerSize(newcardinality)
 	fillArrayAND(ac.content, bc.bitmap, value2.bitmap)
-	ac.content = ac.content[:newcardinality] //not sure why i need this
+	ac.content = ac.content[:newcardinality] // not sure why i need this
 	return ac
-
 }
 
 func (bc *bitmapContainer) intersectsArray(value2 *arrayContainer) bool {
@@ -842,7 +845,6 @@ func (bc *bitmapContainer) intersectsBitmap(value2 *bitmapContainer) bool {
 		}
 	}
 	return false
-
 }
 
 func (bc *bitmapContainer) iandBitmap(value2 *bitmapContainer) container {
@@ -995,7 +997,7 @@ func (bc *bitmapContainer) iandNotBitmapSurely(value2 *bitmapContainer) containe
 	return bc
 }
 
-func (bc *bitmapContainer) contains(i uint16) bool { //testbit
+func (bc *bitmapContainer) contains(i uint16) bool { // testbit
 	x := uint(i)
 	w := bc.bitmap[x>>6]
 	mask := uint64(1) << (x & 63)
@@ -1051,7 +1053,7 @@ func (bc *bitmapContainer) toArrayContainer() *arrayContainer {
 }
 
 func (bc *bitmapContainer) fillArray(container []uint16) {
-	//TODO: rewrite in assembly
+	// TODO: rewrite in assembly
 	pos := 0
 	base := 0
 	for k := 0; k < len(bc.bitmap); k++ {
@@ -1141,7 +1143,6 @@ func (bc *bitmapContainer) numberOfRuns() int {
 
 // convert to run or array *if needed*
 func (bc *bitmapContainer) toEfficientContainer() container {
-
 	numRuns := bc.numberOfRuns()
 
 	sizeAsRunContainer := runContainer16SerializedSizeInBytes(numRuns)
@@ -1159,7 +1160,6 @@ func (bc *bitmapContainer) toEfficientContainer() container {
 }
 
 func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
-
 	if len(rc.iv) == 1 {
 		return newBitmapContainerwithRange(int(rc.iv[0].start), int(rc.iv[0].last()))
 	}
@@ -1169,7 +1169,7 @@ func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
 		setBitmapRange(bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
 		bc.cardinality += int(rc.iv[i].last()) + 1 - int(rc.iv[i].start)
 	}
-	//bc.computeCardinality()
+	// bc.computeCardinality()
 	return bc
 }
 
@@ -1233,4 +1233,49 @@ func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 	}
 
 	return low, high
+}
+
+func (bc *bitmapContainer) nextValue(target uint16) int {
+	if bc.cardinality == 0 {
+		return -1
+	}
+
+	return bc.NextSetBit(uint(target))
+}
+
+func (bc *bitmapContainer) searchNextWithPredicate(target uint16, predicate searchPredicate) int {
+	if bc.cardinality == 0 {
+		return -1
+	}
+
+	var (
+		x      = uint(target / 64)
+		length = uint(len(bc.bitmap))
+	)
+	if x >= length {
+		return -1
+	}
+	w := bc.bitmap[x]
+	w = w >> uint(target%64)
+	if predicate(w) {
+		return int(target) + countTrailingZeros(w)
+	}
+	x++
+	for ; x < length; x++ {
+		if predicate(bc.bitmap[x]) {
+			return int(x*64) + countTrailingZeros(bc.bitmap[x])
+		}
+	}
+	return -1
+}
+
+func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
+	pred := func(x uint64) bool {
+		return x == 0
+	}
+	return bc.searchNextWithPredicate(target)
+}
+
+func (bc *bitmapContainer) previousValue(target uint16) int {
+	return -1
 }

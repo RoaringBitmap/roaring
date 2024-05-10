@@ -2308,24 +2308,38 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 
 func TestNextPreviousValue(t *testing.T) {
 	runContainer := newRunContainer16()
-	runContainer.iaddRange(0, 10)
+	runContainer.iaddRange(2, 10)
 	runContainer.iaddRange(20, 30)
-	runContainer.iaddRange(30, 40)
+	runContainer.iaddRange(31, 40)
 	runContainer.iaddRange(60, 70)
 
-	assert.Equal(t, 21, runContainer.nextValue(21))
-	assert.Equal(t, 0, runContainer.nextValue(0))
+	assert.Equal(t, 2, runContainer.nextValue(2))
 	assert.Equal(t, 5, runContainer.nextValue(5))
 	assert.Equal(t, 20, runContainer.nextValue(10))
 	assert.Equal(t, 20, runContainer.nextValue(15))
 	assert.Equal(t, 20, runContainer.nextValue(20))
 	assert.Equal(t, 21, runContainer.nextValue(21))
 	assert.Equal(t, 29, runContainer.nextValue(29))
-	assert.Equal(t, 30, runContainer.nextValue(30))
-	assert.Equal(t, 30, runContainer.nextValue(30))
+	assert.Equal(t, 31, runContainer.nextValue(30))
 	assert.Equal(t, 60, runContainer.nextValue(40))
 	assert.Equal(t, 60, runContainer.nextValue(45))
 	assert.Equal(t, -1, runContainer.nextValue(80))
+
+	assert.Equal(t, 30, runContainer.nextAbsentValue(30))
+
+	assert.Equal(t, 45, runContainer.nextAbsentValue(45))
+	assert.Equal(t, -1, runContainer.nextAbsentValue(0))
+	assert.Equal(t, -1, runContainer.nextAbsentValue(1))
+	assert.Equal(t, 10, runContainer.nextAbsentValue(5))
+	assert.Equal(t, 10, runContainer.nextAbsentValue(10))
+	assert.Equal(t, 15, runContainer.nextAbsentValue(15))
+	assert.Equal(t, 30, runContainer.nextAbsentValue(20))
+	assert.Equal(t, 30, runContainer.nextAbsentValue(21))
+	assert.Equal(t, 30, runContainer.nextAbsentValue(29))
+	assert.Equal(t, 40, runContainer.nextAbsentValue(31))
+	assert.Equal(t, 40, runContainer.nextAbsentValue(40))
+	assert.Equal(t, 45, runContainer.nextAbsentValue(45))
+	assert.Equal(t, -1, runContainer.nextAbsentValue(80))
 }
 
 func TestRuntimeIteratorPeekNext(t *testing.T) {

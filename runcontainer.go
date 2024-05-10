@@ -2622,3 +2622,39 @@ func (rc *runContainer16) nextValue(target uint16) int {
 
 	return -1
 }
+
+func (rc *runContainer16) nextAbsentValue(target uint16) int {
+	whichIndex, alreadyPresent, _ := rc.search(int(target))
+	lastIndex := len(rc.iv) - 1
+
+	if !alreadyPresent {
+		if whichIndex == -1 || whichIndex == lastIndex {
+			// TODO ask about the case whichIndex == len(rc.iv)-1
+			// should we return rc.iv[whichIndex].last() + 1
+			return -1
+		}
+
+		return int(target)
+	}
+
+	if whichIndex != lastIndex {
+		// if whichIndex is not the last index, then there is another run with larger start
+		// rc.iv[whichIndex].last() + 1 cannot equal rc.iv[whichIndex +1].start
+		// by invariant
+		return int(rc.iv[whichIndex].last()) + 1
+	}
+	return -1
+}
+
+func (rc *runContainer16) previousValue(target uint16) int {
+	whichIndex, alreadyPresent, _ := rc.search(int(target))
+
+	if alreadyPresent {
+		return int(target)
+	}
+	if whichIndex == -1 || whichIndex == len(rc.iv)-1 {
+		return -1
+	}
+
+	return int(rc.iv[whichIndex].last())
+}
