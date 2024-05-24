@@ -1003,7 +1003,7 @@ func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 	// the if statement compares the difference in indices vs
 	// the difference in values. Suppose mid = 10 and result.index = 5
 	// with ac.content[mid] = 100 and target = 10
-	// then we have 5 slots for values but the need to fit in 90 values
+	// then we have 5 slots for values but we need to fit in 90 values
 	// so some of the values must be missing
 	for low+1 < high {
 		mid := (high + low) >> 1
