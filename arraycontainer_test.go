@@ -438,6 +438,7 @@ func TestArrayContainerResetTo(t *testing.T) {
 func TestNextPrevious(t *testing.T) {
 	ac := newArrayContainer()
 	ac.iaddRange(0, 10)
+	assert.Equal(t, 0, ac.nextValue(0))
 	assert.Equal(t, 6, ac.nextValue(6))
 	assert.Equal(t, 9, ac.nextValue(9))
 	assert.Equal(t, -1, ac.nextValue(10))
@@ -447,6 +448,13 @@ func TestNextPrevious(t *testing.T) {
 	assert.Equal(t, 9, ac.previousValue(11))
 	assert.Equal(t, 0, ac.previousValue(0))
 	assert.Equal(t, -1, ac.previousValue(22))
+
+	assert.Equal(t, 10, ac.nextAbsentValue(0))
+	assert.Equal(t, 10, ac.nextAbsentValue(9))
+	assert.Equal(t, 10, ac.nextAbsentValue(10))
+	assert.Equal(t, 11, ac.nextAbsentValue(11))
+	assert.Equal(t, 20, ac.nextAbsentValue(12))
+	assert.Equal(t, -1, ac.nextAbsentValue(21))
 }
 
 // go test -bench BenchmarkShortIteratorAdvance -run -

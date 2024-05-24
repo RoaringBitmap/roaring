@@ -563,6 +563,10 @@ type searchResult struct {
 }
 
 func (sr *searchResult) notFound() bool {
+	return !sr.exactMatch
+}
+
+func (sr *searchResult) outOfBounds() bool {
 	return sr.index <= -1
 }
 
@@ -570,8 +574,8 @@ func (sr *searchResult) notFound() bool {
 // if an exact match if found the result.value will be the target, the result.index will be the target index
 // result.exactMatch will be true and result.notFound() will be false
 // if a match is not found, but the target was in-bounds then the result.index will be the closest, smaller value
-// [ 8,9, 11,12] if the target was 10, then value 9 and index 1 will be returned.
-// if the target was out of bound (-1,-,1 False,True) will be returned
+// Example: [ 8,9, 11,12] if the target was 10, then value 9 and index 1 will be returned.
+// If the target was out of bound (0,-,1 False,True) will be returned
 func binarySearchUntil(array []uint16, target uint16) searchResult {
 	return binarySearchUntilWithBounds(array, target, 0, len(array)-1)
 }
@@ -582,11 +586,11 @@ func binarySearchUntilWithBounds(array []uint16, target uint16, lowIndex int, ma
 	closestIndex := -1
 
 	if target < array[lowIndex] {
-		return searchResult{uint16(closestIndex), closestIndex, false}
+		return searchResult{0, closestIndex, false}
 	}
 
 	if target > array[maxIndex] {
-		return searchResult{uint16(closestIndex), closestIndex, false}
+		return searchResult{0, closestIndex, false}
 	}
 
 	for lowIndex <= highIndex {
@@ -607,6 +611,50 @@ func binarySearchUntilWithBounds(array []uint16, target uint16, lowIndex int, ma
 		} else {
 			if middleIndex < maxIndex && target < array[middleIndex+1] {
 				return searchResult{middleValue, middleIndex, false}
+			}
+			lowIndex = middleIndex + 1
+		}
+
+	}
+
+	return searchResult{uint16(closestIndex), closestIndex, false}
+}
+
+func binarySearchPast(array []uint16, target uint16) searchResult {
+	return binarySearchPastWithBounds(array, target, 0, len(array)-1)
+}
+
+func binarySearchPastWithBounds(array []uint16, target uint16, lowIndex int, maxIndex int) searchResult {
+	highIndex := maxIndex
+
+	closestIndex := -1
+
+	if target < array[lowIndex] {
+		return searchResult{0, closestIndex, false}
+	}
+
+	if target > array[maxIndex] {
+		return searchResult{0, closestIndex, false}
+	}
+
+	for lowIndex <= highIndex {
+		middleIndex := (lowIndex + highIndex) / 2
+		middleValue := array[middleIndex]
+
+		if middleValue == target {
+			return searchResult{middleValue, middleIndex, true}
+		}
+
+		if target < middleValue {
+
+			if middleIndex > 0 && target > array[middleIndex-1] {
+				return searchResult{array[middleIndex], middleIndex, false}
+			}
+
+			highIndex = middleIndex
+		} else {
+			if middleIndex < maxIndex && target < array[middleIndex+1] {
+				return searchResult{array[middleIndex+1], middleIndex + 1, false}
 			}
 			lowIndex = middleIndex + 1
 		}

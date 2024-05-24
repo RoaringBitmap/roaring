@@ -138,7 +138,7 @@ func TestSetUtilBinarySearch(t *testing.T) {
 	}
 }
 
-func TestSetUtilBinarySearchPredicate(t *testing.T) {
+func TestBinarySearchUntil(t *testing.T) {
 	type searchTest struct {
 		name         string
 		constructor  func() []uint16
@@ -183,11 +183,12 @@ func TestSetUtilBinarySearchPredicate(t *testing.T) {
 	}
 }
 
-func TestSetUtilBinarySearchPredicateBounds(t *testing.T) {
+func TestBinarySearchPastWithBounds(t *testing.T) {
 	type searchTest struct {
 		name         string
 		constructor  func() []uint16
 		target       uint16
+		value        uint16
 		isExactMatch bool
 		index        int
 		low          int
@@ -195,27 +196,34 @@ func TestSetUtilBinarySearchPredicateBounds(t *testing.T) {
 	}
 
 	tests := []searchTest{
-		{"matches", func() []uint16 {
-			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17}
-		}, 9, true, 9, 0, 10},
 		{"has match but not in range", func() []uint16 {
 			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17}
-		}, 9, false, -1, 0, 4},
+		}, 9, 0, false, -1, 0, 4},
+		{"matches", func() []uint16 {
+			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17}
+		}, 9, 9, true, 9, 0, 10},
+		{"missing 10-12 full range", func() []uint16 {
+			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17}
+		}, 12, uint16(13), false, 10, 0, 14},
+		{"has match but not in range", func() []uint16 {
+			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17}
+		}, 9, 0, false, -1, 0, 4},
 		{"missing 12 with gap", func() []uint16 {
 			return []uint16{0, 1, 2, 3, 4, 5, 6, 13, 14, 15, 16, 17}
-		}, 12, false, 6, 4, 11},
+		}, 12, 13, false, 7, 4, 11},
 		{"missing 10 but close neighbors", func() []uint16 {
 			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12}
-		}, 10, false, 9, 6, 11},
+		}, 10, 11, false, 10, 6, 11},
 		{"missing 10 out of range", func() []uint16 {
 			return []uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12}
-		}, 10, false, -1, 0, 5},
+		}, 10, 0, false, -1, 0, 5},
 	}
 
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
-			result := binarySearchUntilWithBounds(testCase.constructor(), testCase.target, testCase.low, testCase.high)
+			result := binarySearchPastWithBounds(testCase.constructor(), testCase.target, testCase.low, testCase.high)
 			assert.Equal(t, testCase.index, result.index)
+			assert.Equal(t, testCase.value, result.value)
 			assert.Equal(t, testCase.isExactMatch, result.exactMatch)
 		})
 	}

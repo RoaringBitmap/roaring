@@ -1243,37 +1243,49 @@ func (bc *bitmapContainer) nextValue(target uint16) int {
 	return bc.NextSetBit(uint(target))
 }
 
-func (bc *bitmapContainer) searchNextWithPredicate(target uint16, predicate searchPredicate) int {
+func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 	if bc.cardinality == 0 {
 		return -1
 	}
 
 	var (
-		x      = uint(target / 64)
+		x      = target >> 6
 		length = uint(len(bc.bitmap))
 	)
-	if x >= length {
+	if uint(x) >= length {
 		return -1
 	}
 	w := bc.bitmap[x]
 	w = w >> uint(target%64)
-	if predicate(w) {
-		return int(target) + countTrailingZeros(w)
+	if w == 0 {
+		return int(target)
 	}
-	x++
-	for ; x < length; x++ {
-		if predicate(bc.bitmap[x]) {
-			return int(x*64) + countTrailingZeros(bc.bitmap[x])
+
+	if w != 0 {
+		// we have something like [X,Y,Z,0,0,0] at least X or Y or Z !=0
+		if countTrailingZeros(w) > 0 {
+			return int(target)
+		}
+		// Check if all 1's
+		// if we skip the if we have something like [1,1,1,1...1]
+		// other wise something like [X,Y,0,1,1,1..1], where x and y can be either 1 or 0
+		if ^w != 0 {
+			trailing := countTrailingOnes(w)
+			return int(target) + trailing
 		}
 	}
-	return -1
-}
+	x++
+	for ; uint(x) < length; x++ {
+		if bc.bitmap[x] == 0 {
+			return int(x * 64)
+		}
+		if ^bc.bitmap[x] != 0 {
+			trailing := countTrailingOnes(bc.bitmap[x])
+			return int(x*64) + trailing
+		}
 
-func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
-	pred := func(x uint64) bool {
-		return x == 0
 	}
-	return bc.searchNextWithPredicate(target)
+	return -1
 }
 
 func (bc *bitmapContainer) previousValue(target uint16) int {

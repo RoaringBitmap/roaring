@@ -964,34 +964,63 @@ func (ac *arrayContainer) realloc(size int) {
 	}
 }
 
-// PreviousValue returns either the target if found or the previous smaller value
+// previousValue returns either the target if found or the previous smaller present value
 // if the target is out of bounds a -1 is returned
 func (ac *arrayContainer) previousValue(target uint16) int {
 	result := binarySearchUntil(ac.content, target)
 
-	if !result.notFound() {
-		return int(result.value)
+	if result.outOfBounds() {
+		return -1
 	}
-
-	return -1
+	return int(result.value)
 }
 
+// nexAbsentValue returns either the target if found or the next larger missing value
+// if the target is out of bounds a -1 is returned
 func (ac *arrayContainer) nextAbsentValue(target uint16) int {
-	result := binarySearchUntil(ac.content, target)
-
-	// A value v was found but it was not exact
-	// e.g v < target
-	if !result.notFound() && !result.exactMatch {
-		return int(result.value)
+	cardinality := len(ac.content)
+	if target < ac.minimum() {
+		return -1
 	}
-	previous := target
-	for i := result.index + 1; i < len(ac.content); i++ {
-		if ac.content[i] != previous+1 {
-			return int(previous) + 1
+	if target > ac.maximum() {
+		return -1
+	}
+	result := binarySearchPast(ac.content, target)
+
+	if result.notFound() {
+		return int(target)
+	}
+
+	if result.index == cardinality-2 {
+		if ac.maximum() != result.value+1 {
+			return int(result.value + 1)
 		}
 	}
 
-	return -1
+	low := result.index
+	high := len(ac.content)
+
+	// the if statement compares the difference in indices vs
+	// the difference in values. Suppose mid = 10 and result.index = 5
+	// with ac.content[mid] = 100 and target = 10
+	// then we have 5 slots for values but the need to fit in 90 values
+	// so some of the values must be missing
+	for low+1 < high {
+		mid := (high + low) >> 1
+		indexDifference := mid - result.index
+		valueDifference := ac.content[mid] - target
+		if indexDifference < int(valueDifference) {
+			high = mid
+		} else {
+			low = mid
+		}
+	}
+
+	if low == cardinality-1 {
+		return int(ac.content[cardinality-1] + 1)
+	}
+
+	return int(ac.content[low] + 1)
 }
 
 // nextValue returns either the target if found or the next larger value
