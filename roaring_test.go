@@ -2682,6 +2682,7 @@ func TestBitMapValidationFromDeserializationC(t *testing.T) {
 	// To understand what is going on here, read https://github.com/RoaringBitmap/RoaringFormatSpec
 	// Maintainers: The loader and corruptor are dependent on one another
 	// The tests expect a certain size, with values at certain location.
+	// The tests are geared toward single byte corruption.
 
 	// There is no way to test Bitmap container corruption once the bitmap is deserialzied
 
@@ -2692,12 +2693,27 @@ func TestBitMapValidationFromDeserializationC(t *testing.T) {
 		err       error
 	}{
 		{
+			name: "Corrupts Run Length vs Num Runs",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(0, 2)
+				bm.AddRange(4, 6)
+				bm.AddRange(8, 100)
+			},
+			corruptor: func(s []byte) {
+				// 21 is the length of the run of the last run/range
+				// Shortening causes interval sum to be to short
+				s[21] = 1
+			},
+			err: ErrRunIntervalSize,
+		},
+		{
 			name: "Corrupts Run Length",
 			loader: func(bm *Bitmap) {
 				bm.AddRange(100, 110)
 			},
 			corruptor: func(s []byte) {
 				// 13 is the length of the run
+				// Setting to zero causes an invalid run
 				s[13] = 0
 			},
 			err: ErrRunIntervalLength,
@@ -2710,6 +2726,7 @@ func TestBitMapValidationFromDeserializationC(t *testing.T) {
 			},
 			corruptor: func(s []byte) {
 				// sets the start of the second run
+				// Creates overlapping intervals
 				s[15] = 108
 			},
 			err: ErrRunIntervalOverlap,
@@ -2724,6 +2741,7 @@ func TestBitMapValidationFromDeserializationC(t *testing.T) {
 				bm.AddMany(arrayEntries)
 			},
 			corruptor: func(s []byte) {
+				// breaks the sort order
 				s[34] = 0
 			},
 			err: ErrArrayIncorrectSort,

@@ -2371,42 +2371,35 @@ func TestIntervalOverlaps(t *testing.T) {
 	assert.NoError(t, isNonContiguousDisjoint(a, b))
 }
 
-func TestIntervalValidation(t *testing.T) {
-	// TODO table driven
+func TestIntervalValidationFailing(t *testing.T) {
 	rc := &runContainer16{}
 	assert.Error(t, rc.validate())
 
 	a := newInterval16Range(0, 9)
 	b := newInterval16Range(0, 9)
 	rc = &runContainer16{}
-	rc.iv = append(rc.iv, a)
-	rc.iv = append(rc.iv, b)
+	rc.iv = append(rc.iv, a, b)
 	assert.ErrorIs(t, rc.validate(), ErrRunIntervalEqual)
 
 	a = newInterval16Range(0, 9)
 	b = newInterval16Range(10, 20)
 
 	rc = &runContainer16{}
-	rc.iv = append(rc.iv, a)
-	rc.iv = append(rc.iv, b)
+	rc.iv = append(rc.iv, a, b)
 	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOverlap)
 
 	a = newInterval16Range(0, 12)
 	b = newInterval16Range(10, 20)
 
 	rc = &runContainer16{}
-	rc.iv = append(rc.iv, a)
-	rc.iv = append(rc.iv, b)
+	rc.iv = append(rc.iv, a, b)
 	assert.Error(t, rc.validate(), ErrRunIntervalOverlap)
 
 	c := newInterval16Range(100, 150)
 	d := newInterval16Range(1000, 10000)
 
 	rc = &runContainer16{}
-	rc.iv = append(rc.iv, a)
-	rc.iv = append(rc.iv, b)
-	rc.iv = append(rc.iv, c)
-	rc.iv = append(rc.iv, d)
+	rc.iv = append(rc.iv, a, b, c, d)
 	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOverlap)
 
 	a = newInterval16Range(0, 10)
@@ -2414,13 +2407,50 @@ func TestIntervalValidation(t *testing.T) {
 
 	// missort
 	rc = &runContainer16{}
-	rc.iv = append(rc.iv, b)
-	rc.iv = append(rc.iv, a)
+	rc.iv = append(rc.iv, b, a)
 	assert.ErrorIs(t, rc.validate(), ErrRunNonSorted)
 
 	rc = &runContainer16{}
+	start := -4
+	for i := 0; i < MaxNumIntervals; i++ {
+		start += 4
+		end := start + 2
+		a := newInterval16Range(uint16(start), uint16(end))
+		rc.iv = append(rc.iv, a)
+
+	}
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
+
+	// too many small runs, use array
+	rc = &runContainer16{}
+	start = -3
+	for i := 0; i < 10; i++ {
+		start += 3
+		end := start + 1
+		a := newInterval16Range(uint16(start), uint16(end))
+		rc.iv = append(rc.iv, a)
+
+	}
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
+}
+
+func TestIntervalValidationsPassing(t *testing.T) {
+	rc := &runContainer16{}
+	a := newInterval16Range(0, 10)
+	b := newInterval16Range(100, 200)
+	rc.iv = append(rc.iv, a, b)
+	assert.NoError(t, rc.validate())
+
+	// Large total sum, but enough intervals
+	rc = &runContainer16{}
+	a = newInterval16Range(0, uint16(MaxIntervalsSum+1))
 	rc.iv = append(rc.iv, a)
-	rc.iv = append(rc.iv, b)
+	assert.NoError(t, rc.validate())
+
+	rc = &runContainer16{}
+	a = newInterval16Range(0, uint16(MaxIntervalsSum+1))
+	b = newInterval16Range(uint16(MaxIntervalsSum+3), uint16(MaxIntervalsSum*2))
+	rc.iv = append(rc.iv, a, b)
 	assert.NoError(t, rc.validate())
 }
 

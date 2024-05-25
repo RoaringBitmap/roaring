@@ -9,7 +9,10 @@ type arrayContainer struct {
 	content []uint16
 }
 
-var ErrArrayIncorrectSort = errors.New("incorrectly sorted array")
+var (
+	ErrArrayIncorrectSort = errors.New("incorrectly sorted array")
+	ErrArrayInvalidSize   = errors.New("invalid array size")
+)
 
 func (ac *arrayContainer) String() string {
 	s := "{"
@@ -1099,13 +1102,12 @@ func (ac *arrayContainer) addOffset(x uint16) (container, container) {
 func (ac *arrayContainer) validate() error {
 	cardinality := ac.getCardinality()
 
-	// TODO use ERR consts
 	if cardinality <= 0 {
-		return errors.New("zero or negative size")
+		return ErrArrayInvalidSize
 	}
 
 	if cardinality > arrayDefaultMaxSize {
-		return errors.New("exceeds default max size")
+		return ErrArrayInvalidSize
 	}
 
 	previous := ac.content[0]

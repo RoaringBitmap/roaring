@@ -66,6 +66,9 @@ var (
 	ErrRunIntervalLength  = errors.New("interval had zero length")
 	ErrRunIntervalEqual   = errors.New("intervals were equal")
 	ErrRunIntervalOverlap = errors.New("intervals overlapped or were continguous")
+	ErrRunIntervalSize    = errors.New("too many intervals relative to data")
+	MaxNumIntervals       = 2048
+	MaxIntervalsSum       = 2048
 )
 
 func newInterval16Range(start, last uint16) interval16 {
@@ -2162,7 +2165,7 @@ func (rc *runContainer16) orArray(ac *arrayContainer) container {
 	}
 	intervals, cardMinusOne := runArrayUnionToRuns(rc, ac)
 	result := newRunContainer16TakeOwnership(intervals)
-	if len(intervals) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
+	if len(intervals) >= MaxNumIntervals && cardMinusOne >= arrayDefaultMaxSize {
 		return newBitmapContainerFromRun(result)
 	}
 	if len(intervals)*2 > 1+int(cardMinusOne) {
@@ -2221,7 +2224,7 @@ func (rc *runContainer16) iorArray(ac *arrayContainer) container {
 	// this can be done with methods like the in-place array container union
 	// but maybe lazily moving the remaining elements back.
 	rc.iv, cardMinusOne = runArrayUnionToRuns(rc, ac)
-	if len(rc.iv) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
+	if len(rc.iv) >= MaxNumIntervals && cardMinusOne >= arrayDefaultMaxSize {
 		return newBitmapContainerFromRun(rc)
 	}
 	if len(rc.iv)*2 > 1+int(cardMinusOne) {
@@ -2649,33 +2652,53 @@ func (rc *runContainer16) validate() error {
 		return ErrRunIntervalsEmpty
 	}
 
+	intervalsSum := 0
 	for outeridx := range rc.iv {
 
 		if rc.iv[outeridx].length == 0 {
 			return ErrRunIntervalLength
 		}
 
-		outer := rc.iv[outeridx]
+		outerInterval := rc.iv[outeridx]
+
+		intervalsSum += outerInterval.runlen()
 		for inneridx := outeridx + 1; inneridx < len(rc.iv); inneridx++ {
 
-			inner := rc.iv[inneridx]
+			innerInterval := rc.iv[inneridx]
 
-			if outer.equal(inner) {
+			if outerInterval.equal(innerInterval) {
 				return ErrRunIntervalEqual
 			}
 
 			// only check the start of runs
 			// if the run length overlap the next check will catch that.
-			if outer.start >= inner.start {
+			if outerInterval.start >= innerInterval.start {
 				return ErrRunNonSorted
 			}
 
-			err := isNonContiguousDisjoint(outer, inner)
+			err := isNonContiguousDisjoint(outerInterval, innerInterval)
 			if err != nil {
 				return err
 			}
 		}
 
+	}
+	/*
+			if number of distinct values in the container >= 2048 then
+		    check that the number of runs is no more than 2047
+		    (otherwise you could use a bitset container)
+			else
+		    check that the number of runs < (number of distinct values) / 2
+		    (otherwise you could use an array container)
+	*/
+	if MaxIntervalsSum <= intervalsSum {
+		if !(len(rc.iv) < MaxNumIntervals) {
+			return ErrRunIntervalSize
+		}
+	} else {
+		if !(len(rc.iv) < (intervalsSum / 2)) {
+			return ErrRunIntervalSize
+		}
 	}
 
 	return nil

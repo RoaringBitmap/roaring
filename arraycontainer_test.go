@@ -436,8 +436,6 @@ func TestArrayContainerResetTo(t *testing.T) {
 }
 
 func TestArrayContainerValidation(t *testing.T) {
-	// TODO Use table based testing
-
 	array := newArrayContainer()
 	upperBound := arrayDefaultMaxSize
 

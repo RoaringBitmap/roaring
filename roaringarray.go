@@ -793,7 +793,6 @@ func (ra *roaringArray) validate() error {
 		return ErrCardinalityConstraint
 	}
 
-	// TODO: We could parallelize this, not sure if that's warranted
 	for _, container := range ra.containers {
 		err := container.validate()
 		if err != nil {
