@@ -2678,7 +2678,7 @@ func TestBitMapValidation(t *testing.T) {
 	assert.NoError(t, bm.Validate())
 }
 
-func TestBitMapValidationFromDeserializationC(t *testing.T) {
+func TestBitMapValidationFromDeserialization(t *testing.T) {
 	// To understand what is going on here, read https://github.com/RoaringBitmap/RoaringFormatSpec
 	// Maintainers: The loader and corruptor are dependent on one another
 	// The tests expect a certain size, with values at certain location.

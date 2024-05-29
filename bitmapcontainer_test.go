@@ -345,4 +345,29 @@ func TestBitMapContainerValidate(t *testing.T) {
 	bc.cardinality = maxCapacity + 1
 
 	assert.Error(t, bc.validate())
+
+	// violate cardinality underlying container size invariant
+	bc = newBitmapContainer()
+	for i := 0; i < arrayDefaultMaxSize+1; i++ {
+		bc.iadd(uint16(i * 3))
+	}
+	assert.NoError(t, bc.validate())
+	bc.cardinality += 1
+	assert.Error(t, bc.validate())
+
+	// check that underlying packed slice doesn't exceed maxCapacity
+	bc = newBitmapContainer()
+	orginalSize := (1 << 16) / 64
+	for i := 0; i < orginalSize; i++ {
+		bc.cardinality += 1
+		bc.bitmap[i] = uint64(1)
+	}
+
+	appendSize := ((1 << 16) - orginalSize) + 1
+	for i := 0; i < appendSize; i++ {
+		bc.cardinality += 1
+		bc.bitmap = append(bc.bitmap, uint64(1))
+	}
+
+	assert.Error(t, bc.validate())
 }
