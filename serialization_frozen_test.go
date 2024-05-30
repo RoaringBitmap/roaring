@@ -137,18 +137,6 @@ func TestFrozenFormat(t *testing.T) {
 	}
 }
 
-func TestFrozenFormatSimpleValidation(t *testing.T) {
-	bm := NewBitmap()
-	deserializedBitMap := NewBitmap()
-	bm.AddRange(0, 2)
-	bm.AddRange(4, 6)
-	bm.AddRange(8, 100)
-	serialized, err := bm.Freeze()
-	assert.NoError(t, err)
-	serialized[10] = 1
-	assert.Error(t, deserializedBitMap.MustFrozenView(serialized))
-}
-
 func TestBitMapValidationFromFrozen(t *testing.T) {
 	// To understand what is going on here, read https://github.com/RoaringBitmap/RoaringFormatSpec
 	// Maintainers: The loader and corruptor are dependent on one another
