@@ -975,7 +975,7 @@ func (ac *arrayContainer) previousValue(target uint16) int {
 	return int(result.value)
 }
 
-// nexAbsentValue returns either the target if found or the next larger missing value
+// nextAbsentValue returns either the target if found or the next larger missing value
 // if the target is out of bounds a -1 is returned
 func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 	cardinality := len(ac.content)
