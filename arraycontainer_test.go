@@ -444,7 +444,7 @@ func TestNextPrevious(t *testing.T) {
 	assert.Equal(t, -1, ac.nextValue(10))
 	assert.Equal(t, -1, ac.nextValue(20))
 	ac.iaddRange(12, 20)
-	// 10 and 11 are missing
+	// 10 and 11 are now missing
 	assert.Equal(t, 9, ac.previousValue(11))
 	assert.Equal(t, 0, ac.previousValue(0))
 	assert.Equal(t, -1, ac.previousValue(22))

@@ -964,8 +964,11 @@ func (ac *arrayContainer) realloc(size int) {
 	}
 }
 
-// previousValue returns either the target if found or the previous smaller present value
-// if the target is out of bounds a -1 is returned
+// previousValue returns either the target if found or the previous smaller present value.
+// If the target is out of bounds a -1 is returned.
+// Ex: target=4 ac=[1,2,3,4,6,7] returns 4
+// Ex: target=5 ac=[1,2,3,4,6,7] returns 4
+// Ex: target=6 ac=[1,2,3,4,6,7] returns 6
 func (ac *arrayContainer) previousValue(target uint16) int {
 	result := binarySearchUntil(ac.content, target)
 
@@ -975,8 +978,10 @@ func (ac *arrayContainer) previousValue(target uint16) int {
 	return int(result.value)
 }
 
-// nextAbsentValue returns either the target if found or the next larger missing value
-// if the target is out of bounds a -1 is returned
+// nextAbsentValue returns either the target if not found or the next larger missing value.
+// If the target is out of bounds a -1 is returned
+// Ex: target=4 ac=[1,2,3,4,6,7] returns 5
+// Ex: target=5 ac=[1,2,3,4,6,7] returns 5
 func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 	cardinality := len(ac.content)
 	if target < ac.minimum() {
@@ -1000,19 +1005,20 @@ func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 	low := result.index
 	high := len(ac.content)
 
+	// This uses the pigeon-hole principle.
 	// the if statement compares the difference in indices vs
 	// the difference in values. Suppose mid = 10 and result.index = 5
 	// with ac.content[mid] = 100 and target = 10
 	// then we have 5 slots for values but we need to fit in 90 values
 	// so some of the values must be missing
 	for low+1 < high {
-		mid := (high + low) >> 1
-		indexDifference := mid - result.index
-		valueDifference := ac.content[mid] - target
+		midIndex := (high + low) >> 1
+		indexDifference := midIndex - result.index
+		valueDifference := ac.content[midIndex] - target
 		if indexDifference < int(valueDifference) {
-			high = mid
+			high = midIndex
 		} else {
-			low = mid
+			low = midIndex
 		}
 	}
 
@@ -1023,8 +1029,11 @@ func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 	return int(ac.content[low] + 1)
 }
 
-// nextValue returns either the target if found or the next larger value
+// nextValue returns either the target if found or the next larger value.
 // if the target is out of bounds a -1 is returned
+// Ex: target=4 ac=[1,2,3,4,6,7] returns 4
+// Ex: target=5 ac=[1,2,3,4,6,7] returns 6
+// Ex: target=6 ac=[1,2,3,4,6,7] returns 6
 func (ac *arrayContainer) nextValue(target uint16) int {
 	result := binarySearchUntil(ac.content, target)
 	if result.exactMatch {

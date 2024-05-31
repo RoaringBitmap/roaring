@@ -2604,6 +2604,11 @@ func (rc *runContainer16) addOffset(x uint16) (container, container) {
 	return low, high
 }
 
+// nextValue returns either the `target` if found or the next larger value.
+// If the target is in the interior or a run then `target +1` will be returned
+// Ex: If our run structure resmembles [[a,c], [d,f]] with a <= target < c then `target+1` will be returned.
+// It target == c, then d is returned
+// if the target is out of bounds a -1 is returned
 func (rc *runContainer16) nextValue(target uint16) int {
 	whichIndex, alreadyPresent, _ := rc.search(int(target))
 
@@ -2615,6 +2620,10 @@ func (rc *runContainer16) nextValue(target uint16) int {
 		return -1
 	}
 
+	// The if relies on the non-contiguous nature of runs.
+	// If we have two runs [a,b] and another run [c,d]
+	// We can rely on the invariant that b+1 < c
+	// We will return c
 	possibleNext := whichIndex + 1
 	if possibleNext < len(rc.iv) {
 		return int(rc.iv[possibleNext].start)
@@ -2623,6 +2632,10 @@ func (rc *runContainer16) nextValue(target uint16) int {
 	return -1
 }
 
+// nextAbsentValue returns the next absent value.
+// By construction the next absent value will be located between gaps in runs
+// Ex: if our runs resemble [[a,b],[c,d]] then b+1 will not be equal to c, b+1 will be returned
+// if the target is out of bounds a -1 is returned
 func (rc *runContainer16) nextAbsentValue(target uint16) int {
 	whichIndex, alreadyPresent, _ := rc.search(int(target))
 	lastIndex := len(rc.iv) - 1
@@ -2646,6 +2659,11 @@ func (rc *runContainer16) nextAbsentValue(target uint16) int {
 	return -1
 }
 
+// previousValue will return the next present value
+// If the target is in the interior or a run then `target -1` will be returned
+// Ex: If our run structure resmembles [[a,c], [d,f]] with a < target  < c then target-1 will be returned.
+// It target == d, then c is returned
+// if the target is out of bounds a -1 is returned
 func (rc *runContainer16) previousValue(target uint16) int {
 	whichIndex, alreadyPresent, _ := rc.search(int(target))
 
