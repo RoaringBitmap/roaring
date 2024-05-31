@@ -570,12 +570,12 @@ func (sr *searchResult) outOfBounds() bool {
 	return sr.index <= -1
 }
 
-// returns the searchResult
-// if an exact match if found the result.value will be the target, the result.index will be the target index
-// result.exactMatch will be true and result.notFound() will be false
-// if a match is not found, but the target was in-bounds then the result.index will be the closest, smaller value
-// Example: [ 8,9, 11,12] if the target was 10, then value 9 and index 1 will be returned.
-// If the target was out of bound (0,-,1 False,True) will be returned
+// Returns a `searchResult`.
+// If an exact match is found the `searchResult{target, <index>, true}` will be returned, where `<index>` is
+// `target`s index in `array`, and `result.notFound()` evaluates to `false`.
+// If a match is not found, but `target` was in-bounds then the result.index will be the closest smaller value
+// Example: [ 8,9, 11,12] if the target was 10, then `searchResult{9, 1, false}` will be returned.
+// If `target` was out of bounds `searchResult{0, -1, false}` will be returned.
 func binarySearchUntil(array []uint16, target uint16) searchResult {
 	return binarySearchUntilWithBounds(array, target, 0, len(array)-1)
 }
