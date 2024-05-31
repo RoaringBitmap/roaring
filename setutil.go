@@ -661,5 +661,5 @@ func binarySearchPastWithBounds(array []uint16, target uint16, lowIndex int, max
 
 	}
 
-	return searchResult{uint16(closestIndex), closestIndex, false}
+	return searchResult{array[closestIndex], closestIndex, false}
 }
