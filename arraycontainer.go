@@ -982,6 +982,8 @@ func (ac *arrayContainer) previousValue(target uint16) int {
 // If the target is out of bounds a -1 is returned
 // Ex: target=4 ac=[1,2,3,4,6,7] returns 5
 // Ex: target=5 ac=[1,2,3,4,6,7] returns 5
+// Ex: target=0 ac=[1,2,3,4,6,7] returns -1
+// Ex: target=8 ac=[1,2,3,4,6,7] returns -1
 func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 	cardinality := len(ac.content)
 	if target < ac.minimum() {

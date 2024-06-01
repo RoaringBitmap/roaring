@@ -639,8 +639,11 @@ func binarySearchPast(array []uint16, target uint16) searchResult {
 
 // binarySearchPastWithBounds looks for the smallest value larger than or equal to `target`
 // If `target` is out of bounds a `searchResult` indicating out of bounds is returned
-// `target` does not have to exist in the slice. Suppose the slice is [...10,13] with `target` equal to 11
-// The searchResult will searchResult.value = 13
+// `target` does not have to exist in the slice.
+//
+// Example:
+// Suppose the slice is [...10,13...] with `target` equal to 11
+// The searchResult will have searchResult.value = 13
 func binarySearchPastWithBounds(array []uint16, target uint16, lowIndex int, maxIndex int) searchResult {
 	highIndex := maxIndex
 
