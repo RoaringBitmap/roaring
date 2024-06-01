@@ -10,8 +10,6 @@ type bitmapContainer struct {
 	bitmap      []uint64
 }
 
-type searchPredicate func(uint64) bool
-
 func (bc bitmapContainer) String() string {
 	var s string
 	for it := bc.getShortIterator(); it.hasNext(); {
@@ -1068,6 +1066,7 @@ func (bc *bitmapContainer) fillArray(container []uint16) {
 	}
 }
 
+// NextSetBit returns the next set bit e.g the next int packed into the bitmaparray
 func (bc *bitmapContainer) NextSetBit(i uint) int {
 	var (
 		x      = i / 64
@@ -1090,12 +1089,22 @@ func (bc *bitmapContainer) NextSetBit(i uint) int {
 	return -1
 }
 
+// PrevSetBit returns the previous set bit e.g the previous int packed into the bitmaparray
 func (bc *bitmapContainer) PrevSetBit(i int) int {
 	if i < 0 {
 		return -1
 	}
-	x := i / 64
-	if x >= len(bc.bitmap) {
+
+	return bc.uPrevSetBit(uint(i))
+}
+
+func (bc *bitmapContainer) uPrevSetBit(i uint) int {
+	var (
+		x      = i / 64
+		length = uint(len(bc.bitmap))
+	)
+
+	if x >= length {
 		return -1
 	}
 
@@ -1105,12 +1114,16 @@ func (bc *bitmapContainer) PrevSetBit(i int) int {
 
 	w = w << uint(63-b)
 	if w != 0 {
-		return i - countLeadingZeros(w)
+		return int(i) - countLeadingZeros(w)
 	}
+	orig := x
 	x--
-	for ; x >= 0; x-- {
+	if x > orig {
+		return -1
+	}
+	for ; x < orig; x-- {
 		if bc.bitmap[x] != 0 {
-			return (x * 64) + 63 - countLeadingZeros(bc.bitmap[x])
+			return int((x*64)+63) - countLeadingZeros(bc.bitmap[x])
 		}
 	}
 	return -1
@@ -1289,5 +1302,9 @@ func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 }
 
 func (bc *bitmapContainer) previousValue(target uint16) int {
-	return -1
+	if bc.cardinality == 0 {
+		return -1
+	}
+
+	return bc.uPrevSetBit(uint(target))
 }
