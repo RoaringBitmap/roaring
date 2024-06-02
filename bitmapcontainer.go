@@ -1335,8 +1335,7 @@ func (bc *bitmapContainer) previousValue(target uint16) int {
 	return bc.uPrevSetBit(uint(target))
 }
 
-// nextAbsentValue returns the next absent value.
-// if the target is out of bounds a -1 is returned
+// previousAbsentValue returns the next absent value.
 func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
 	if bc.cardinality == 0 {
 		return -1
