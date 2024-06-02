@@ -1356,17 +1356,22 @@ func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
 	}
 
 	// Check if all 1's
-	// if statement - we skip the if we have all ones [1,1,1,1...1] as no value is absent
+	// if statement - we skip if we have all ones [1,1,1,1...1] as no value is absent
 	if ^shifted != 0 {
 
 		if countTrailingZeros(shifted) > 0 {
-			// we have something like [Y,Z, 0,0,0]. This means the target bit is zero
+			// we have something like shifted=[X,Y,Z,..., 0,0,0]. This means the target bit is zero
 			return int(target)
 		}
 
-		// s := shifted << 1
-		// This will rotate the target bit into the leading position.
-		// We then shift it out of the way.
+		// The rotate will rotate the target bit into the leading position.
+		// We know the target bit is not zero because of the countTrailingZero check above
+		// We then shift the target bit out of the way.
+		// Assume a structure like an original structure like [X,Y,Z,..., Target, A, B,C...]
+		// shifted will be [X,Y,Z...Target]
+		// shiftedRotated will be [A,B,C....]
+		// If countLeadingZeros > 0 then A is zero, if not at least A is 1 return
+		// Else count the number of ones's until a 0
 		shiftedRotated := bits.RotateLeft64(w, int(64-uint(target%64))-1) << 1
 		leadingZeros := countLeadingZeros(shiftedRotated)
 		if leadingZeros > 0 {
