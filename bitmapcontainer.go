@@ -2,6 +2,7 @@ package roaring
 
 import (
 	"fmt"
+	"math/bits"
 	"unsafe"
 )
 
@@ -1100,7 +1101,7 @@ func (bc *bitmapContainer) PrevSetBit(i int) int {
 
 func (bc *bitmapContainer) uPrevSetBit(i uint) int {
 	var (
-		x      = i / 64
+		x      = i >> 6
 		length = uint(len(bc.bitmap))
 	)
 
@@ -1248,6 +1249,16 @@ func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 	return low, high
 }
 
+// nextValue returns either the `target` if found or the next largest value.
+// if the target is out of bounds a -1 is returned
+//
+// Example :
+// Suppose the bitmap container represents the following slice
+// [1,2,10,11,100]
+// target=0 returns 1
+// target=1 returns 1
+// target=10 returns 10
+// target=90 returns 100
 func (bc *bitmapContainer) nextValue(target uint16) int {
 	if bc.cardinality == 0 {
 		return -1
@@ -1256,6 +1267,8 @@ func (bc *bitmapContainer) nextValue(target uint16) int {
 	return bc.NextSetBit(uint(target))
 }
 
+// nextAbsentValue returns the next absent value.
+// if the target is out of bounds a -1 is returned
 func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 	if bc.cardinality == 0 {
 		return -1
@@ -1274,18 +1287,20 @@ func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 		return int(target)
 	}
 
-	if w != 0 {
-		// we have something like [X,Y,Z,0,0,0] at least X or Y or Z !=0
+	// Check if all 1's
+	// if statement - we skip the if we have all ones [1,1,1,1...1]
+	if ^w != 0 {
+
 		if countTrailingZeros(w) > 0 {
+			// we have something like [X,Y,Z, 0,0,0]. This means the target bit is zero
 			return int(target)
 		}
-		// Check if all 1's
-		// if we skip the if we have something like [1,1,1,1...1]
-		// other wise something like [X,Y,0,1,1,1..1], where x and y can be either 1 or 0
-		if ^w != 0 {
-			trailing := countTrailingOnes(w)
-			return int(target) + trailing
-		}
+
+		// other wise something like [X,Y,0,1,1,1..1], where x and y can be either 1 or 0.
+
+		trailing := countTrailingOnes(w)
+		return int(target) + trailing
+
 	}
 	x++
 	for ; uint(x) < length; x++ {
@@ -1301,10 +1316,78 @@ func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 	return -1
 }
 
+// previousValue returns either the `target` if found or the previous largest value.
+// if the target is out of bounds a -1 is returned
+
+// Example :
+// Suppose the bitmap container represents the following slice
+// [1,2,10,11,100]
+// target=0 returns -1
+// target=1 returns -1
+// target=2 returns -1
+// target=10 returns 9
+// target=50 returns 10
+// target=100 returns 99
 func (bc *bitmapContainer) previousValue(target uint16) int {
 	if bc.cardinality == 0 {
 		return -1
 	}
-
 	return bc.uPrevSetBit(uint(target))
+}
+
+// nextAbsentValue returns the next absent value.
+// if the target is out of bounds a -1 is returned
+func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
+	if bc.cardinality == 0 {
+		return -1
+	}
+
+	var (
+		x      = target >> 6
+		length = uint(len(bc.bitmap))
+	)
+	if uint(x) >= length {
+		return -1
+	}
+	w := bc.bitmap[x]
+	shifted := w >> uint(target%64)
+	if shifted == 0 {
+		return int(target)
+	}
+
+	// Check if all 1's
+	// if statement - we skip the if we have all ones [1,1,1,1...1] as no value is absent
+	if ^shifted != 0 {
+
+		if countTrailingZeros(shifted) > 0 {
+			// we have something like [Y,Z, 0,0,0]. This means the target bit is zero
+			return int(target)
+		}
+
+		// s := shifted << 1
+		// This will rotate the target bit into the leading position.
+		// We then shift it out of the way.
+		shiftedRotated := bits.RotateLeft64(w, int(64-uint(target%64))-1) << 1
+		leadingZeros := countLeadingZeros(shiftedRotated)
+		if leadingZeros > 0 {
+			return int(target) - 1
+		}
+		leadingOnes := countLeadingOnes(shiftedRotated)
+		if leadingOnes > 0 {
+			return int(target) - leadingOnes - 1
+		}
+
+	}
+	x++
+	for ; uint(x) < length; x++ {
+		if bc.bitmap[x] == 0 {
+			return int(x * 64)
+		}
+		if ^bc.bitmap[x] != 0 {
+			trailing := countTrailingOnes(bc.bitmap[x])
+			return int(x*64) + trailing
+		}
+
+	}
+	return -1
 }
