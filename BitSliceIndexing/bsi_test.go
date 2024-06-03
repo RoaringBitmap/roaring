@@ -2,14 +2,15 @@ package roaring
 
 import (
 	"fmt"
-	"github.com/RoaringBitmap/roaring"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/RoaringBitmap/roaring"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetAndGet(t *testing.T) {
@@ -465,4 +466,12 @@ func BenchmarkSetRoaring(b *testing.B) {
 			s.SetValue(uint64(r.Int31n(int32(sz))), int64(r.Int31n(int32(sz))))
 		}
 	}
+}
+
+func TestIssue426(t *testing.T) {
+	bsi := NewBSI(101, 0)
+	bsi.SetValue(3, 5)
+	bitmap := bsi.CompareValue(0, EQ, 101, 0, nil)
+	fmt.Println(bitmap.ToArray())
+	assert.Equal(t, uint64(0), bitmap.GetCardinality())
 }
