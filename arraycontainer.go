@@ -1100,9 +1100,24 @@ func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 // Ex: target=5 ac=[1,2,3,4,6,7] returns 6
 // Ex: target=6 ac=[1,2,3,4,6,7] returns 6
 func (ac *arrayContainer) nextValue(target uint16) int {
+	cardinality := len(ac.content)
+	if cardinality == 0 {
+		return -1
+	}
+
+	if target < ac.minimum() {
+		return -1
+	}
+	if target > ac.maximum() {
+		return -1
+	}
+
 	result := binarySearchUntil(ac.content, target)
 	if result.exactMatch {
 		return int(result.value)
+	}
+	if result.outOfBounds() {
+		return -1
 	}
 
 	if result.index < len(ac.content)-1 {

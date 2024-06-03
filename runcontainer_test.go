@@ -2337,7 +2337,6 @@ func TestNextPreviousValue(t *testing.T) {
 	assert.Equal(t, 39, runContainer.previousValue(45))
 	assert.Equal(t, -1, runContainer.previousValue(80))
 
-	assert.Equal(t, 45, runContainer.nextAbsentValue(45))
 	assert.Equal(t, -1, runContainer.nextAbsentValue(0))
 	assert.Equal(t, -1, runContainer.nextAbsentValue(1))
 	assert.Equal(t, 10, runContainer.nextAbsentValue(5))

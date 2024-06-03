@@ -75,6 +75,7 @@ type container interface {
 	nextValue(x uint16) int
 	previousValue(x uint16) int
 	nextAbsentValue(x uint16) int
+	previousAbsentValue(x uint16) int
 }
 
 type contype uint8
