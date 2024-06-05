@@ -523,6 +523,119 @@ mainwhile:
 	return pos
 }
 
+// returns -1 if x < y, zero otherwise
+func branchlessComparator(x, y uint16) int {
+	return (int(x) - int(y)) >> 63
+}
+
+// shotgun4Intersect performs intersection between small and large arrays described in
+// https://lemire.me/blog/2019/01/16/faster-intersections-between-sorted-arrays-with-shotgun/
+func shotgun4Intersect(small, large, buf []uint16) int {
+	if len(small) == 0 {
+		return 0
+	}
+
+	nS, nL := len(small), len(large)
+	buf = buf[:cap(buf)]
+	idxS, idxL := 0, 0
+	pos := 0
+
+	for (idxS+4 <= nS) && idxL < nL {
+		t1, t2, t3, t4 := small[idxS], small[idxS+1], small[idxS+2], small[idxS+3]
+		idx1, idx2, idx3, idx4 := idxL, idxL, idxL, idxL
+		n := nL - idxL
+
+		for n > 1 {
+			m := n >> 1
+			l1, l2, l3, l4 := large[idx1+m], large[idx2+m], large[idx3+m], large[idx4+m]
+			idx1 += branchlessComparator(l1, t1) & m
+			idx2 += branchlessComparator(l2, t2) & m
+			idx3 += branchlessComparator(l3, t3) & m
+			idx4 += branchlessComparator(l4, t4) & m
+			n -= m
+		}
+
+		l1, l2, l3, l4 := large[idx1], large[idx2], large[idx3], large[idx4]
+		if idx4+1 < nL { // common case
+			idx1 -= branchlessComparator(l1, t1)
+			idx2 -= branchlessComparator(l2, t2)
+			idx3 -= branchlessComparator(l3, t3)
+			idx4 -= branchlessComparator(l4, t4)
+			l1, l2, l3, l4 = large[idx1], large[idx2], large[idx3], large[idx4]
+		} else { // slow path
+			if l1 < t1 {
+				idx1++
+				if idx1 < nL {
+					l1 = large[idx1]
+				}
+			}
+			if l2 < t2 {
+				idx2++
+				if idx2 < nL {
+					l2 = large[idx2]
+				}
+			}
+			if l3 < t3 {
+				idx3++
+				if idx3 < nL {
+					l3 = large[idx3]
+				}
+			}
+			if l4 < t4 {
+				idx4++
+				if idx4 < nL {
+					l4 = large[idx4]
+				}
+			}
+
+		}
+
+		if l1 == t1 {
+			buf[pos] = t1
+			pos++
+		}
+
+		if l2 == t2 {
+			buf[pos] = t2
+			pos++
+		}
+
+		if l3 == t3 {
+			buf[pos] = t3
+			pos++
+		}
+
+		if l4 == t4 {
+			buf[pos] = t4
+			pos++
+		}
+
+		idxS += 4
+		idxL = idx4
+	}
+
+	for idxS < nS && idxL < nL {
+		s := small[idxS]
+
+		if s > large[idxL] {
+			idxL = advanceUntil(large, idxL, nL, s)
+		}
+
+		if idxL == nL {
+			break
+		}
+
+		if large[idxL] == s {
+			buf[pos] = s
+			pos++
+		}
+
+		idxS++
+	}
+
+	return pos
+}
+
 func binarySearch(array []uint16, ikey uint16) int {
 	low := 0
 	high := len(array) - 1
