@@ -116,6 +116,7 @@ func (bcsi *bitmapContainerShortIterator) next() uint16 {
 	bcsi.i = bcsi.ptr.NextSetBit(uint(bcsi.i) + 1)
 	return uint16(j)
 }
+
 func (bcsi *bitmapContainerShortIterator) hasNext() bool {
 	return bcsi.i >= 0
 }
@@ -241,7 +242,7 @@ func (bc *bitmapContainer) getSizeInBytes() int {
 }
 
 func (bc *bitmapContainer) serializedSizeInBytes() int {
-	//return bc.Msgsize()// NOO! This breaks GetSerializedSizeInBytes
+	// return bc.Msgsize()// NOO! This breaks GetSerializedSizeInBytes
 	return len(bc.bitmap) * 8
 }
 
@@ -441,7 +442,7 @@ func (bc *bitmapContainer) ior(a container) container {
 		if bc.isFull() {
 			return newRunContainer16Range(0, MaxUint16)
 		}
-		//bc.computeCardinality()
+		// bc.computeCardinality()
 		return bc
 	}
 	panic(fmt.Errorf("unsupported container type %T", a))
@@ -819,9 +820,8 @@ func (bc *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
 	}
 	ac := newArrayContainerSize(newcardinality)
 	fillArrayAND(ac.content, bc.bitmap, value2.bitmap)
-	ac.content = ac.content[:newcardinality] //not sure why i need this
+	ac.content = ac.content[:newcardinality] // not sure why i need this
 	return ac
-
 }
 
 func (bc *bitmapContainer) intersectsArray(value2 *arrayContainer) bool {
@@ -842,7 +842,6 @@ func (bc *bitmapContainer) intersectsBitmap(value2 *bitmapContainer) bool {
 		}
 	}
 	return false
-
 }
 
 func (bc *bitmapContainer) iandBitmap(value2 *bitmapContainer) container {
@@ -995,7 +994,7 @@ func (bc *bitmapContainer) iandNotBitmapSurely(value2 *bitmapContainer) containe
 	return bc
 }
 
-func (bc *bitmapContainer) contains(i uint16) bool { //testbit
+func (bc *bitmapContainer) contains(i uint16) bool { // testbit
 	x := uint(i)
 	w := bc.bitmap[x>>6]
 	mask := uint64(1) << (x & 63)
@@ -1051,7 +1050,7 @@ func (bc *bitmapContainer) toArrayContainer() *arrayContainer {
 }
 
 func (bc *bitmapContainer) fillArray(container []uint16) {
-	//TODO: rewrite in assembly
+	// TODO: rewrite in assembly
 	pos := 0
 	base := 0
 	for k := 0; k < len(bc.bitmap); k++ {
@@ -1141,7 +1140,6 @@ func (bc *bitmapContainer) numberOfRuns() int {
 
 // convert to run or array *if needed*
 func (bc *bitmapContainer) toEfficientContainer() container {
-
 	numRuns := bc.numberOfRuns()
 
 	sizeAsRunContainer := runContainer16SerializedSizeInBytes(numRuns)
@@ -1159,7 +1157,6 @@ func (bc *bitmapContainer) toEfficientContainer() container {
 }
 
 func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
-
 	if len(rc.iv) == 1 {
 		return newBitmapContainerwithRange(int(rc.iv[0].start), int(rc.iv[0].last()))
 	}
@@ -1169,7 +1166,7 @@ func newBitmapContainerFromRun(rc *runContainer16) *bitmapContainer {
 		setBitmapRange(bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
 		bc.cardinality += int(rc.iv[i].last()) + 1 - int(rc.iv[i].start)
 	}
-	//bc.computeCardinality()
+	// bc.computeCardinality()
 	return bc
 }
 
@@ -1233,4 +1230,25 @@ func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 	}
 
 	return low, high
+}
+
+// validate checks that the container size is non-negative
+func (bc *bitmapContainer) validate() error {
+	if bc.cardinality < arrayDefaultMaxSize {
+		return fmt.Errorf("bitmap container size was less than: %d", arrayDefaultMaxSize)
+	}
+
+	if maxCapacity < len(bc.bitmap)*64 {
+		return fmt.Errorf("bitmap slize size %d exceeded max capacity %d", maxCapacity, len(bc.bitmap)*64)
+	}
+
+	if bc.cardinality > maxCapacity {
+		return fmt.Errorf("bitmap container size was greater than: %d", maxCapacity)
+	}
+
+	if bc.cardinality != int(popcntSlice(bc.bitmap)) {
+		return fmt.Errorf("bitmap container size %d did not match underlying slice length: %d", bc.cardinality, int(popcntSlice(bc.bitmap)))
+	}
+
+	return nil
 }

@@ -190,7 +190,8 @@ func TestRleRunIterator16(t *testing.T) {
 			rc := newRunContainer16CopyIv([]interval16{
 				newInterval16Range(4, 7),
 				newInterval16Range(11, 13),
-				newInterval16Range(18, 21)})
+				newInterval16Range(18, 21),
+			})
 
 			assert.EqualValues(t, 11, rc.getCardinality())
 
@@ -210,7 +211,8 @@ func TestRleRunIterator16(t *testing.T) {
 			rc := newRunContainer16CopyIv([]interval16{
 				newInterval16Range(4, 7),
 				newInterval16Range(11, 13),
-				newInterval16Range(18, 21)})
+				newInterval16Range(18, 21),
+			})
 			expectedCard := 11
 			expectedVals := []uint32{4, 5, 6, 7, 11, 12, 13, 18, 19, 20, 21}
 			hs := uint32(1 << 16)
@@ -307,7 +309,6 @@ func TestRleRunIterator16(t *testing.T) {
 }
 
 func TestRleRunReverseIterator16(t *testing.T) {
-
 	t.Run("RunReverseIterator16 unit tests for next, hasNext, and peekNext should pass", func(t *testing.T) {
 		{
 			rc := newRunContainer16()
@@ -411,12 +412,14 @@ func TestRleIntersection16(t *testing.T) {
 					newInterval16Range(2, 4),
 					newInterval16Range(8, 9),
 					newInterval16Range(14, 16),
-					newInterval16Range(20, 22)},
+					newInterval16Range(20, 22),
+				},
 			)
 			f := newRunContainer16TakeOwnership(
 				[]interval16{
 					newInterval16Range(3, 18),
-					newInterval16Range(22, 23)},
+					newInterval16Range(22, 23),
+				},
 			)
 
 			{
@@ -453,7 +456,6 @@ func TestRleIntersection16(t *testing.T) {
 
 func TestRleRandomIntersection16(t *testing.T) {
 	t.Run("RunContainer.intersect of two RunContainers should return their intersection, and this should hold over randomized container content when compared to intersection done with hash maps", func(t *testing.T) {
-
 		seed := int64(42)
 		rand.Seed(seed)
 
@@ -510,7 +512,7 @@ func TestRleRandomIntersection16(t *testing.T) {
 				// RunContainer's Intersect
 				brle := newRunContainer16FromVals(false, b...)
 
-				//arle := newRunContainer16FromVals(false, a...)
+				// arle := newRunContainer16FromVals(false, a...)
 				// instead of the above line, create from array
 				// get better test coverage:
 				arr := newArrayContainerRange(int(first), int(second))
@@ -519,7 +521,7 @@ func TestRleRandomIntersection16(t *testing.T) {
 
 				isect := arle.intersect(brle)
 
-				//showHash("hashi", hashi)
+				// showHash("hashi", hashi)
 
 				for k := range hashi {
 					assert.True(t, isect.contains(uint16(k)))
@@ -532,14 +534,11 @@ func TestRleRandomIntersection16(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
 func TestRleRandomUnion16(t *testing.T) {
-
 	t.Run("RunContainer.union of two RunContainers should return their union, and this should hold over randomized container content when compared to union done with hash maps", func(t *testing.T) {
-
 		seed := int64(42)
 		rand.Seed(seed)
 
@@ -580,7 +579,7 @@ func TestRleRandomUnion16(t *testing.T) {
 					hashu[k] = true
 				}
 
-				//showHash("hashu", hashu)
+				// showHash("hashu", hashu)
 
 				// RunContainer's Union
 				arle := newRunContainer16()
@@ -898,8 +897,8 @@ func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 					mb[r1] = true
 				}
 
-				//showArray16(a, "a")
-				//showArray16(b, "b")
+				// showArray16(a, "a")
+				// showArray16(b, "b")
 
 				// hash version of intersect:
 				hashi := make(map[int]bool)
@@ -948,12 +947,10 @@ func TestRle16RandomIntersectAgainstOtherContainers010(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
 func TestRle16RandomUnionAgainstOtherContainers011(t *testing.T) {
-
 	t.Run("runContainer16 `or` operation against other container types should correctly do the intersection", func(t *testing.T) {
 		seed := int64(42)
 		rand.Seed(seed)
@@ -982,8 +979,8 @@ func TestRle16RandomUnionAgainstOtherContainers011(t *testing.T) {
 					mb[r1] = true
 				}
 
-				//showArray16(a, "a")
-				//showArray16(b, "b")
+				// showArray16(a, "a")
+				// showArray16(b, "b")
 
 				// hash version of union
 				hashi := make(map[int]bool)
@@ -1030,12 +1027,10 @@ func TestRle16RandomUnionAgainstOtherContainers011(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
 func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
-
 	t.Run("runContainer16 `ior` inplace union operation against other container types should correctly do the intersection", func(t *testing.T) {
 		seed := int64(42)
 		rand.Seed(seed)
@@ -1064,8 +1059,8 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 					mb[r1] = true
 				}
 
-				//showArray16(a, "a")
-				//showArray16(b, "b")
+				// showArray16(a, "a")
+				// showArray16(b, "b")
 
 				// hash version of union
 				hashi := make(map[int]bool)
@@ -1118,12 +1113,10 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
 func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
-
 	t.Run("runContainer16 `iand` inplace-and operation against other container types should correctly do the intersection", func(t *testing.T) {
 		seed := int64(42)
 		rand.Seed(seed)
@@ -1152,8 +1145,8 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 					mb[r1] = true
 				}
 
-				//showArray16(a, "a")
-				//showArray16(b, "b")
+				// showArray16(a, "a")
+				// showArray16(b, "b")
 
 				// hash version of intersect:
 				hashi := make(map[int]bool)
@@ -1206,12 +1199,10 @@ func TestRle16RandomInplaceIntersectAgainstOtherContainers014(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
 func TestRle16RemoveApi015(t *testing.T) {
-
 	t.Run("runContainer16 `remove` (a minus b) should work", func(t *testing.T) {
 		seed := int64(42)
 		rand.Seed(seed)
@@ -1240,8 +1231,8 @@ func TestRle16RemoveApi015(t *testing.T) {
 					mb[r1] = true
 				}
 
-				//showArray16(a, "a")
-				//showArray16(b, "b")
+				// showArray16(a, "a")
+				// showArray16(b, "b")
 
 				// hash version of remove:
 				hashrm := make(map[int]bool)
@@ -1270,7 +1261,6 @@ func TestRle16RemoveApi015(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
@@ -1283,7 +1273,6 @@ func showArray16(a []uint16, name string) {
 }
 
 func TestRle16RandomAndNot016(t *testing.T) {
-
 	t.Run("runContainer16 `andNot` operation against other container types should correctly do the and-not operation", func(t *testing.T) {
 		seed := int64(42)
 		rand.Seed(seed)
@@ -1312,8 +1301,8 @@ func TestRle16RandomAndNot016(t *testing.T) {
 					mb[r1] = true
 				}
 
-				//showArray16(a, "a")
-				//showArray16(b, "b")
+				// showArray16(a, "a")
+				// showArray16(b, "b")
 
 				// hash version of and-not
 				hashi := make(map[int]bool)
@@ -1361,12 +1350,10 @@ func TestRle16RandomAndNot016(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
 func TestRle16RandomInplaceAndNot017(t *testing.T) {
-
 	t.Run("runContainer16 `iandNot` operation against other container types should correctly do the inplace-and-not operation", func(t *testing.T) {
 		seed := int64(42)
 		rand.Seed(seed)
@@ -1395,8 +1382,8 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 					mb[r1] = true
 				}
 
-				//showArray16(a, "a")
-				//showArray16(b, "b")
+				// showArray16(a, "a")
+				// showArray16(b, "b")
 
 				// hash version of and-not
 				hashi := make(map[int]bool)
@@ -1447,12 +1434,10 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
 func TestRle16InversionOfIntervals018(t *testing.T) {
-
 	t.Run("runContainer `invert` operation should do a NOT on the set of intervals, in-place", func(t *testing.T) {
 		seed := int64(42)
 		rand.Seed(seed)
@@ -1470,7 +1455,7 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 				a := []uint16{}
 
 				// hashNotA will be NOT ma
-				//for i := 0; i < n; i++ {
+				// for i := 0; i < n; i++ {
 				for i := 0; i < MaxUint16+1; i++ {
 					hashNotA[i] = true
 				}
@@ -1504,12 +1489,10 @@ func TestRle16InversionOfIntervals018(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
 func TestRle16SubtractionOfIntervals019(t *testing.T) {
-
 	t.Run("runContainer `subtract` operation removes an interval in-place", func(t *testing.T) {
 		// basics
 
@@ -1639,7 +1622,6 @@ func TestRle16Rank020(t *testing.T) {
 }
 
 func TestRle16NotAlsoKnownAsFlipRange021(t *testing.T) {
-
 	t.Run("runContainer `Not` operation should flip the bits of a range on the new returned container", func(t *testing.T) {
 		seed := int64(42)
 		rand.Seed(seed)
@@ -1866,7 +1848,6 @@ func TestRleIntersects023(t *testing.T) {
 		for i := range trials {
 			tester(trials[i])
 		}
-
 	})
 }
 
@@ -1950,7 +1931,7 @@ func TestRle16RandomFillLeastSignificant16bits029(t *testing.T) {
 					ma[r0] = true
 				}
 
-				//showArray16(a, "a")
+				// showArray16(a, "a")
 
 				// RunContainer
 				rc := newRunContainer16FromVals(false, a...)
@@ -2013,7 +1994,7 @@ func TestRle16RandomGetShortIterator030(t *testing.T) {
 					ma[r0] = true
 				}
 
-				//showArray16(a, "a")
+				// showArray16(a, "a")
 
 				// RunContainer
 				rc := newRunContainer16FromVals(false, a...)
@@ -2074,7 +2055,7 @@ func TestRle16RandomIaddRangeIremoveRange031(t *testing.T) {
 					ma[r0] = true
 				}
 
-				//showArray16(a, "a")
+				// showArray16(a, "a")
 
 				// RunContainer
 				rc := newRunContainer16FromVals(false, a...)
@@ -2198,14 +2179,14 @@ type twofer struct {
 
 func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 	t.Run("each of the container methods that takes two containers should handle all 3x3==9 possible ways of being called -- and return results that agree with each other", func(t *testing.T) {
-
 		seed := int64(42)
 		rand.Seed(seed)
 
 		srang := newInterval16Range(MaxUint16-100, MaxUint16)
 		trials := []trial{
 			{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100},
-			{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100, srang: &srang}}
+			{n: 100, percentFill: .7, ntrial: 1, numRandomOpsPass: 100, srang: &srang},
+		}
 
 		tester := func(tr trial) {
 			for j := 0; j < tr.ntrial; j++ {
@@ -2333,6 +2314,146 @@ func TestRuntimeIteratorAdvance(t *testing.T) {
 	testContainerIteratorAdvance(t, newRunContainer16())
 }
 
+func TestIntervalOverlaps(t *testing.T) {
+	// contiguous runs
+	a := newInterval16Range(0, 9)
+	b := newInterval16Range(10, 20)
+
+	// Ensure the function is reflexive
+	assert.False(t, a.isNonContiguousDisjoint(a))
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	// Ensure the function is symmetric
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// identical runs
+	a = newInterval16Range(0, 9)
+	b = newInterval16Range(0, 9)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// identical start runs
+	a = newInterval16Range(0, 9)
+	b = newInterval16Range(0, 20)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// overlapping runs
+	a = newInterval16Range(0, 12)
+	b = newInterval16Range(10, 20)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// subset runs
+	a = newInterval16Range(0, 12)
+	b = newInterval16Range(5, 9)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// degenerate runs
+	a = newInterval16Range(0, 0)
+	b = newInterval16Range(5, 5)
+
+	assert.True(t, a.isNonContiguousDisjoint(b))
+	assert.NoError(t, isNonContiguousDisjoint(a, b))
+
+	// disjoint non-contiguous runs
+	a = newInterval16Range(0, 100)
+	b = newInterval16Range(1000, 2000)
+
+	assert.True(t, a.isNonContiguousDisjoint(b))
+	assert.NoError(t, isNonContiguousDisjoint(a, b))
+}
+
+func TestIntervalValidationFailing(t *testing.T) {
+	rc := &runContainer16{}
+	assert.Error(t, rc.validate())
+
+	a := newInterval16Range(0, 9)
+	b := newInterval16Range(0, 9)
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a, b)
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalEqual)
+
+	a = newInterval16Range(0, 9)
+	b = newInterval16Range(10, 20)
+
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a, b)
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOverlap)
+
+	a = newInterval16Range(0, 12)
+	b = newInterval16Range(10, 20)
+
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a, b)
+	assert.Error(t, rc.validate(), ErrRunIntervalOverlap)
+
+	c := newInterval16Range(100, 150)
+	d := newInterval16Range(1000, 10000)
+
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a, b, c, d)
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOverlap)
+
+	a = newInterval16Range(0, 10)
+	b = newInterval16Range(100, 200)
+
+	// missort
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, b, a)
+	assert.ErrorIs(t, rc.validate(), ErrRunNonSorted)
+
+	rc = &runContainer16{}
+	start := -4
+	for i := 0; i < MaxNumIntervals; i++ {
+		start += 4
+		end := start + 2
+		a := newInterval16Range(uint16(start), uint16(end))
+		rc.iv = append(rc.iv, a)
+
+	}
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
+
+	// too many small runs, use array
+	rc = &runContainer16{}
+	start = -3
+	for i := 0; i < 10; i++ {
+		start += 3
+		end := start + 1
+		a := newInterval16Range(uint16(start), uint16(end))
+		rc.iv = append(rc.iv, a)
+
+	}
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
+}
+
+func TestIntervalValidationsPassing(t *testing.T) {
+	rc := &runContainer16{}
+	a := newInterval16Range(0, 10)
+	b := newInterval16Range(100, 200)
+	rc.iv = append(rc.iv, a, b)
+	assert.NoError(t, rc.validate())
+
+	// Large total sum, but enough intervals
+	rc = &runContainer16{}
+	a = newInterval16Range(0, uint16(MaxIntervalsSum+1))
+	rc.iv = append(rc.iv, a)
+	assert.NoError(t, rc.validate())
+
+	rc = &runContainer16{}
+	a = newInterval16Range(0, uint16(MaxIntervalsSum+1))
+	b = newInterval16Range(uint16(MaxIntervalsSum+3), uint16(MaxIntervalsSum*2))
+	rc.iv = append(rc.iv, a, b)
+	assert.NoError(t, rc.validate())
+}
+
 // go test -bench BenchmarkShortIteratorAdvance -run -
 func BenchmarkShortIteratorAdvanceRuntime(b *testing.B) {
 	benchmarkContainerIteratorAdvance(b, newRunContainer16())
@@ -2346,7 +2467,6 @@ func BenchmarkShortIteratorNextRuntime(b *testing.B) {
 // generate random contents, then return that same
 // logical content in three different container types
 func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *bitmapContainer) {
-
 	ma := make(map[int]bool)
 
 	n := tr.n

@@ -328,3 +328,46 @@ func TestBitmapContainerIAndNot(t *testing.T) {
 	require.ElementsMatch(t, []uint16{12279, 12282, 12285}, bc.(*arrayContainer).content)
 	require.Equal(t, 3, bc.getCardinality())
 }
+
+func TestBitMapContainerValidate(t *testing.T) {
+	bc := newBitmapContainer()
+
+	for i := 0; i < arrayDefaultMaxSize-1; i++ {
+		bc.iadd(uint16(i * 3))
+	}
+	// bitmap containers should have size arrayDefaultMaxSize or larger
+	assert.Error(t, bc.validate())
+	bc.iadd(math.MaxUint16)
+
+	assert.NoError(t, bc.validate())
+
+	// Break the max cardinality invariant
+	bc.cardinality = maxCapacity + 1
+
+	assert.Error(t, bc.validate())
+
+	// violate cardinality underlying container size invariant
+	bc = newBitmapContainer()
+	for i := 0; i < arrayDefaultMaxSize+1; i++ {
+		bc.iadd(uint16(i * 3))
+	}
+	assert.NoError(t, bc.validate())
+	bc.cardinality += 1
+	assert.Error(t, bc.validate())
+
+	// check that underlying packed slice doesn't exceed maxCapacity
+	bc = newBitmapContainer()
+	orginalSize := (1 << 16) / 64
+	for i := 0; i < orginalSize; i++ {
+		bc.cardinality += 1
+		bc.bitmap[i] = uint64(1)
+	}
+
+	appendSize := ((1 << 16) - orginalSize) + 1
+	for i := 0; i < appendSize; i++ {
+		bc.cardinality += 1
+		bc.bitmap = append(bc.bitmap, uint64(1))
+	}
+
+	assert.Error(t, bc.validate())
+}

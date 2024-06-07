@@ -17,7 +17,6 @@ func checkValidity(t *testing.T, rb *Bitmap) {
 	t.Helper()
 
 	for _, c := range rb.highlowcontainer.containers {
-
 		switch c.(type) {
 		case *arrayContainer:
 			if c.getCardinality() > arrayDefaultMaxSize {
@@ -72,6 +71,25 @@ func hashTest(t *testing.T, N uint64) {
 
 	// Make sure that at least for this reduced set we have no collisions.
 	assert.Equal(t, count, len(hashes))
+}
+
+func buildRuns(includeBroken bool) *runContainer16 {
+	rc := &runContainer16{}
+	if includeBroken {
+		for i := 0; i < 100; i++ {
+			start := i * 100
+			end := start + 100
+			rc.iv = append(rc.iv, newInterval16Range(uint16(start), uint16(end)))
+		}
+	}
+
+	for i := 0; i < 100; i++ {
+		start := i*100 + i*2
+		end := start + 100
+		rc.iv = append(rc.iv, newInterval16Range(uint16(start), uint16(end)))
+	}
+
+	return rc
 }
 
 func TestReverseIteratorCount(t *testing.T) {
@@ -477,7 +495,7 @@ func TestRangeRemovalFromContent(t *testing.T) {
 	bm.RemoveRange(0, 30000)
 	c := bm.GetCardinality()
 
-	assert.EqualValues(t, 00, c)
+	assert.EqualValues(t, 0o0, c)
 }
 
 func TestFlipOnEmpty(t *testing.T) {
@@ -596,7 +614,7 @@ func TestBitmapExtra(t *testing.T) {
 					clonebs1.InPlaceSymmetricDifference(bs2)
 					assert.True(t, equalsBitSet(clonebs1, Xor(rb1, rb2)))
 
-					//testing NOTAND
+					// testing NOTAND
 					clonebs1 = bs1.Clone()
 					clonebs1.InPlaceDifference(bs2)
 					assert.True(t, equalsBitSet(clonebs1, AndNot(rb1, rb2)))
@@ -779,7 +797,7 @@ func TestBitmap(t *testing.T) {
 
 	t.Run("Test AND 3", func(t *testing.T) {
 		var arrayand [11256]uint32
-		//393,216
+		// 393,216
 		pos := 0
 		rr := NewBitmap()
 		for k := 4000; k < 4256; k++ {
@@ -856,7 +874,6 @@ func TestBitmap(t *testing.T) {
 
 		assert.Equal(t, len(arrayres), len(arrayand))
 		assert.True(t, ok)
-
 	})
 
 	t.Run("Test AND 4", func(t *testing.T) {
@@ -869,7 +886,7 @@ func TestBitmap(t *testing.T) {
 		for i := 200000; i < 400000; i += 14 {
 			rb2.AddInt(i)
 		}
-		//TODO: Bitmap.And(bm,bm2)
+		// TODO: Bitmap.And(bm,bm2)
 		andresult := And(rb, rb2)
 		off := And(rb2, rb)
 
@@ -1247,7 +1264,7 @@ func TestBitmap(t *testing.T) {
 		rb := NewBitmap()
 		rb1 := Flip(rb, 100000, 132000)
 		rb2 := Flip(rb1, 65536, 120000)
-		//rbcard := rb2.GetCardinality()
+		// rbcard := rb2.GetCardinality()
 
 		bs := bitset.New(0)
 		for i := uint(65536); i < 100000; i++ {
@@ -1303,7 +1320,7 @@ func TestBitmap(t *testing.T) {
 		numCases := 1000
 		rb := NewBitmap()
 		bs := bitset.New(0)
-		//Random r = new Random(3333);
+		// Random r = new Random(3333);
 		checkTime := 2.0
 
 		for i := 0; i < numCases; i++ {
@@ -1717,6 +1734,7 @@ func TestBitmap(t *testing.T) {
 		assert.True(t, valide)
 	})
 }
+
 func TestXORtest4(t *testing.T) {
 	t.Run("XORtest 4", func(t *testing.T) {
 		rb := NewBitmap()
@@ -1764,7 +1782,7 @@ func TestXORtest4(t *testing.T) {
 		rb.Xor(rb2)
 		assert.True(t, xorresult2.Equals(rb))
 	})
-	//need to add the massives
+	// need to add the massives
 }
 
 func TestNextMany(t *testing.T) {
@@ -1874,7 +1892,7 @@ func rTest(t *testing.T, N int) {
 
 			assert.True(t, equalsBitSet(clonebs1, Xor(rb1, rb2)))
 
-			//testing NOTAND
+			// testing NOTAND
 			clonebs1 = bs1.Clone()
 			clonebs1.InPlaceDifference(bs2)
 
@@ -2618,6 +2636,143 @@ func TestFromBitSet(t *testing.T) {
 	})
 }
 
+func TestRoaringArrayValidation(t *testing.T) {
+	a := newRoaringArray()
+
+	assert.ErrorIs(t, a.validate(), ErrEmptyKeys)
+
+	a.keys = append(a.keys, uint16(3), uint16(1))
+	assert.ErrorIs(t, a.validate(), ErrKeySortOrder)
+	a.clear()
+
+	// build up cardinality coherent arrays
+	a.keys = append(a.keys, uint16(1), uint16(3), uint16(10))
+	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
+	a.containers = append(a.containers, &runContainer16{}, &runContainer16{}, &runContainer16{})
+	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
+	a.needCopyOnWrite = append(a.needCopyOnWrite, true, false, true)
+	assert.Errorf(t, a.validate(), "zero intervals")
+}
+
+func TestBitMapValidation(t *testing.T) {
+	bm := NewBitmap()
+	bm.AddRange(0, 100)
+	bm.AddRange(306, 406)
+	bm.AddRange(102, 202)
+	bm.AddRange(204, 304)
+	assert.NoError(t, bm.Validate())
+
+	randomEntries := make([]uint32, 0, 1000)
+	for i := 0; i < 1000; i++ {
+		randomEntries = append(randomEntries, rand.Uint32())
+	}
+
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+
+	randomEntries = make([]uint32, 0, 1000)
+	for i := 0; i < 1000; i++ {
+		randomEntries = append(randomEntries, uint32(i))
+	}
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+}
+
+func TestBitMapValidationFromDeserialization(t *testing.T) {
+	// To understand what is going on here, read https://github.com/RoaringBitmap/RoaringFormatSpec
+	// Maintainers: The loader and corruptor are dependent on one another
+	// The tests expect a certain size, with values at certain location.
+	// The tests are geared toward single byte corruption.
+
+	// There is no way to test Bitmap container corruption once the bitmap is deserialzied
+
+	deserializationTests := []struct {
+		name      string
+		loader    func(bm *Bitmap)
+		corruptor func(s []byte)
+		err       error
+	}{
+		{
+			name: "Corrupts Run Length vs Num Runs",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(0, 2)
+				bm.AddRange(4, 6)
+				bm.AddRange(8, 100)
+			},
+			corruptor: func(s []byte) {
+				// 21 is the length of the run of the last run/range
+				// Shortening causes interval sum to be to short
+				s[21] = 1
+			},
+			err: ErrRunIntervalSize,
+		},
+		{
+			name: "Corrupts Run Length",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(100, 110)
+			},
+			corruptor: func(s []byte) {
+				// 13 is the length of the run
+				// Setting to zero causes an invalid run
+				s[13] = 0
+			},
+			err: ErrRunIntervalLength,
+		},
+		{
+			name: "Creates Interval Overlap",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(100, 110)
+				bm.AddRange(115, 125)
+			},
+			corruptor: func(s []byte) {
+				// sets the start of the second run
+				// Creates overlapping intervals
+				s[15] = 108
+			},
+			err: ErrRunIntervalOverlap,
+		},
+		{
+			name: "Break Array Sort Order",
+			loader: func(bm *Bitmap) {
+				arrayEntries := make([]uint32, 0, 10)
+				for i := 0; i < 10; i++ {
+					arrayEntries = append(arrayEntries, uint32(i))
+				}
+				bm.AddMany(arrayEntries)
+			},
+			corruptor: func(s []byte) {
+				// breaks the sort order
+				s[34] = 0
+			},
+			err: ErrArrayIncorrectSort,
+		},
+	}
+
+	for _, tt := range deserializationTests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if err := recover(); err != nil {
+				}
+			}()
+
+			bm := NewBitmap()
+			tt.loader(bm)
+			assert.NoError(t, bm.Validate())
+			serialized, err := bm.ToBytes()
+			assert.NoError(t, err)
+			tt.corruptor(serialized)
+			corruptedDeserializedBitMap := NewBitmap()
+			corruptedDeserializedBitMap.ReadFrom(bytes.NewReader(serialized))
+			assert.ErrorIs(t, corruptedDeserializedBitMap.Validate(), tt.err)
+
+			corruptedDeserializedBitMap = NewBitmap()
+			corruptedDeserializedBitMap.MustReadFrom(bytes.NewReader(serialized))
+			// We will never hit this because of the recover
+			t.Errorf("did not panic")
+		})
+	}
+}
+
 func BenchmarkFromDense(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		dense := make([]uint64, rb.DenseSize())
@@ -2679,7 +2834,7 @@ func BenchmarkInPlaceArrayUnions(b *testing.B) {
 	for i := 0; i < 100; i++ {
 		bitmap := NewBitmap()
 		for j := 0; j < 100; j++ {
-			//keep all entries in [0,4096), so they stay arrays.
+			// keep all entries in [0,4096), so they stay arrays.
 			bitmap.Add(uint32(rand.Intn(arrayDefaultMaxSize)))
 		}
 		componentBitmaps[i] = bitmap

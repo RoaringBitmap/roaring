@@ -1,12 +1,18 @@
 package roaring
 
 import (
+	"errors"
 	"fmt"
 )
 
 type arrayContainer struct {
 	content []uint16
 }
+
+var (
+	ErrArrayIncorrectSort = errors.New("incorrectly sorted array")
+	ErrArrayInvalidSize   = errors.New("invalid array size")
+)
 
 func (ac *arrayContainer) String() string {
 	s := "{"
@@ -26,8 +32,7 @@ func (ac *arrayContainer) fillLeastSignificant16bits(x []uint32, i int, mask uin
 	_ = x[len(ac.content)-1+i]
 	_ = ac.content[len(ac.content)-1]
 	for k := 0; k < len(ac.content); k++ {
-		x[k+i] =
-			uint32(ac.content[k]) | mask
+		x[k+i] = uint32(ac.content[k]) | mask
 	}
 	return i + len(ac.content)
 }
@@ -168,7 +173,7 @@ func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 		return ac.toBitmapContainer().not(firstOfRange, lastOfRange+1)
 	}
 	answer := newArrayContainer()
-	answer.content = make([]uint16, newCardinality, newCardinality) //a hack for sure
+	answer.content = make([]uint16, newCardinality, newCardinality) // a hack for sure
 
 	copy(answer.content, ac.content[:startIndex])
 	outPos := startIndex
@@ -194,11 +199,9 @@ func (ac *arrayContainer) notClose(firstOfRange, lastOfRange int) container {
 	}
 	answer.content = answer.content[:newCardinality]
 	return answer
-
 }
 
 func (ac *arrayContainer) equals(o container) bool {
-
 	srb, ok := o.(*arrayContainer)
 	if ok {
 		// Check if the containers are the same object.
@@ -239,8 +242,8 @@ func (ac *arrayContainer) toBitmapContainer() *bitmapContainer {
 	bc := newBitmapContainer()
 	bc.loadData(ac)
 	return bc
-
 }
+
 func (ac *arrayContainer) iadd(x uint16) (wasNew bool) {
 	// Special case adding to the end of the container.
 	l := len(ac.content)
@@ -352,7 +355,7 @@ func (ac *arrayContainer) ior(a container) container {
 		return ac.iorArray(x)
 	case *bitmapContainer:
 		return a.(*bitmapContainer).orArray(ac)
-		//return ac.iorBitmap(x) // note: this does not make sense
+		// return ac.iorBitmap(x) // note: this does not make sense
 	case *runContainer16:
 		if x.isFull() {
 			return x.clone()
@@ -589,7 +592,6 @@ func (ac *arrayContainer) iandBitmap(bc *bitmapContainer) container {
 	}
 	ac.content = ac.content[:pos]
 	return ac
-
 }
 
 func (ac *arrayContainer) xor(a container) container {
@@ -630,7 +632,6 @@ func (ac *arrayContainer) xorArray(value2 *arrayContainer) container {
 	length := exclusiveUnion2by2(value1.content, value2.content, answer.content)
 	answer.content = answer.content[:length]
 	return answer
-
 }
 
 func (ac *arrayContainer) andNot(a container) container {
@@ -822,7 +823,6 @@ func (ac *arrayContainer) inotClose(firstOfRange, lastOfRange int) container {
 	} else { // no expansion needed
 		ac.negateRange(buffer, startIndex, lastIndex, firstOfRange, lastOfRange+1)
 		if cardinalityChange < 0 {
-
 			for i := startIndex + newValuesInRange; i < newCardinality; i++ {
 				ac.content[i] = ac.content[i-cardinalityChange]
 			}
@@ -915,7 +915,6 @@ func (ac *arrayContainer) rank(x uint16) int {
 		return answer + 1
 	}
 	return -answer - 1
-
 }
 
 func (ac *arrayContainer) selectInt(x uint16) int {
@@ -1039,7 +1038,6 @@ func (ac *arrayContainer) numberOfRuns() (nr int) {
 
 // convert to run or array *if needed*
 func (ac *arrayContainer) toEfficientContainer() container {
-
 	numRuns := ac.numberOfRuns()
 
 	sizeAsRunContainer := runContainer16SerializedSizeInBytes(numRuns)
@@ -1098,4 +1096,29 @@ func (ac *arrayContainer) addOffset(x uint16) (container, container) {
 	}
 
 	return low, high
+}
+
+// validate checks cardinality and sort order of the array container
+func (ac *arrayContainer) validate() error {
+	cardinality := ac.getCardinality()
+
+	if cardinality <= 0 {
+		return ErrArrayInvalidSize
+	}
+
+	if cardinality > arrayDefaultMaxSize {
+		return ErrArrayInvalidSize
+	}
+
+	previous := ac.content[0]
+	for i := 1; i < len(ac.content); i++ {
+		next := ac.content[i]
+		if previous > next {
+			return ErrArrayIncorrectSort
+		}
+		previous = next
+
+	}
+
+	return nil
 }

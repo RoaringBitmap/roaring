@@ -10,6 +10,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFrozenFormat(t *testing.T) {
@@ -131,6 +133,91 @@ func TestFrozenFormat(t *testing.T) {
 			if !reflect.DeepEqual(wr.Bytes(), frozenBuf) {
 				t.Fatalf("frozen file for %s and %s differ", fpath, ppath)
 			}
+		})
+	}
+}
+
+func TestBitMapValidationFromFrozen(t *testing.T) {
+	// To understand what is going on here, read https://github.com/RoaringBitmap/RoaringFormatSpec
+	// Maintainers: The loader and corruptor are dependent on one another
+	// The tests expect a certain size, with values at certain location.
+	// The tests are geared toward single byte corruption.
+
+	// There is no way to test Bitmap container corruption once the bitmap is deserialzied
+
+	deserializationTests := []struct {
+		name      string
+		loader    func(bm *Bitmap)
+		corruptor func(s []byte)
+		err       error
+	}{
+		{
+			name: "Corrupts Run Length vs Num Runs",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(0, 2)
+				bm.AddRange(4, 6)
+				bm.AddRange(8, 100)
+			},
+			corruptor: func(s []byte) {
+				// 21 is the length of the run of the last run/range
+				// Shortening causes interval sum to be to short
+				s[10] = 1
+			},
+			err: ErrRunIntervalSize,
+		},
+		{
+			name: "Corrupts Run Length",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(100, 110)
+			},
+			corruptor: func(s []byte) {
+				// 13 is the length of the run
+				// Setting to zero causes an invalid run
+				s[2] = 0
+			},
+			err: ErrRunIntervalLength,
+		},
+		{
+			name: "Creates Interval Overlap",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(100, 110)
+				bm.AddRange(115, 125)
+			},
+			corruptor: func(s []byte) {
+				// sets the start of the second run
+				// Creates overlapping intervals
+				s[4] = 108
+			},
+			err: ErrRunIntervalOverlap,
+		},
+		{
+			name: "Break Array Sort Order",
+			loader: func(bm *Bitmap) {
+				arrayEntries := make([]uint32, 0, 10)
+				for i := 0; i < 10; i++ {
+					arrayEntries = append(arrayEntries, uint32(i))
+				}
+				bm.AddMany(arrayEntries)
+			},
+			corruptor: func(s []byte) {
+				// breaks the sort order
+				s[4] = 0
+			},
+			err: ErrArrayIncorrectSort,
+		},
+	}
+
+	for _, tt := range deserializationTests {
+		t.Run(tt.name, func(t *testing.T) {
+			bm := NewBitmap()
+			tt.loader(bm)
+			assert.NoError(t, bm.Validate())
+			serialized, err := bm.Freeze()
+			assert.NoError(t, err)
+			tt.corruptor(serialized)
+			corruptedDeserializedBitMap := NewBitmap()
+
+			assert.ErrorIs(t, corruptedDeserializedBitMap.MustFrozenView(serialized), tt.err)
 		})
 	}
 }

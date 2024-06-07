@@ -241,9 +241,11 @@ func TestArrayContainerNumberOfRuns025(t *testing.T) {
 }
 
 func TestArrayContainerIaddRangeNearMax068(t *testing.T) {
-	iv := []interval16{newInterval16Range(65525, 65527),
+	iv := []interval16{
+		newInterval16Range(65525, 65527),
 		newInterval16Range(65530, 65530),
-		newInterval16Range(65534, 65535)}
+		newInterval16Range(65534, 65535),
+	}
 	rc := newRunContainer16TakeOwnership(iv)
 
 	ac2 := rc.toArrayContainer()
@@ -262,9 +264,11 @@ func TestArrayContainerIaddRangeNearMax068(t *testing.T) {
 }
 
 func TestArrayContainerEtc070(t *testing.T) {
-	iv := []interval16{newInterval16Range(65525, 65527),
+	iv := []interval16{
+		newInterval16Range(65525, 65527),
 		newInterval16Range(65530, 65530),
-		newInterval16Range(65534, 65535)}
+		newInterval16Range(65534, 65535),
+	}
 	rc := newRunContainer16TakeOwnership(iv)
 	ac := rc.toArrayContainer()
 
@@ -429,6 +433,44 @@ func TestArrayContainerResetTo(t *testing.T) {
 		dirty.resetTo(run)
 		assert.True(t, dirty.toEfficientContainer().equals(run))
 	})
+}
+
+func TestArrayContainerValidation(t *testing.T) {
+	array := newArrayContainer()
+	upperBound := arrayDefaultMaxSize
+
+	err := array.validate()
+	assert.Error(t, err)
+
+	for i := 0; i < upperBound; i++ {
+		array.iadd(uint16(i))
+	}
+	err = array.validate()
+	assert.NoError(t, err)
+
+	// Introduce a sort error
+	// We know that upperbound is unsorted because we populated up to upperbound
+	array.content[500] = uint16(upperBound + upperBound)
+
+	err = array.validate()
+	assert.Error(t, err)
+
+	array = newArrayContainer()
+
+	// Technically a run, but make sure the incorrect sort detection handles equal elements
+	for i := 0; i < upperBound; i++ {
+		array.iadd(uint16(1))
+	}
+	err = array.validate()
+	assert.NoError(t, err)
+
+	array = newArrayContainer()
+
+	for i := 0; i < 2*upperBound; i++ {
+		array.iadd(uint16(i))
+	}
+	err = array.validate()
+	assert.Error(t, err)
 }
 
 // go test -bench BenchmarkShortIteratorAdvance -run -
