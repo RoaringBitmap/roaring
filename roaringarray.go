@@ -3,6 +3,7 @@ package roaring
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 
@@ -76,6 +77,7 @@ type container interface {
 	previousValue(x uint16) int
 	nextAbsentValue(x uint16) int
 	previousAbsentValue(x uint16) int
+	validate() error
 }
 
 type contype uint8
@@ -85,6 +87,12 @@ const (
 	arrayContype
 	run16Contype
 	run32Contype
+)
+
+var (
+	ErrEmptyKeys             = errors.New("keys were empty")
+	ErrKeySortOrder          = errors.New("keys were out of order")
+	ErrCardinalityConstraint = errors.New("size of arrays was not coherent")
 )
 
 // careful: range is [firstOfRange,lastOfRange]
@@ -752,4 +760,49 @@ func (ra *roaringArray) needsCopyOnWrite(i int) bool {
 
 func (ra *roaringArray) setNeedsCopyOnWrite(i int) {
 	ra.needCopyOnWrite[i] = true
+}
+
+func (ra *roaringArray) checkKeysSorted() bool {
+	if len(ra.keys) == 0 || len(ra.keys) == 1 {
+		return true
+	}
+	previous := ra.keys[0]
+	for nextIdx := 1; nextIdx < len(ra.keys); nextIdx++ {
+		next := ra.keys[nextIdx]
+		if previous >= next {
+			return false
+		}
+		previous = next
+
+	}
+	return true
+}
+
+// validate checks the referential integrity
+// ensures len(keys) == len(containers), recurses and checks each container type
+func (ra *roaringArray) validate() error {
+	if len(ra.keys) == 0 {
+		return ErrEmptyKeys
+	}
+
+	if !ra.checkKeysSorted() {
+		return ErrKeySortOrder
+	}
+
+	if len(ra.keys) != len(ra.containers) {
+		return ErrCardinalityConstraint
+	}
+
+	if len(ra.keys) != len(ra.needCopyOnWrite) {
+		return ErrCardinalityConstraint
+	}
+
+	for _, container := range ra.containers {
+		err := container.validate()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

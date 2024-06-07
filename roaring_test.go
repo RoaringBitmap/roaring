@@ -73,6 +73,25 @@ func hashTest(t *testing.T, N uint64) {
 	assert.Equal(t, count, len(hashes))
 }
 
+func buildRuns(includeBroken bool) *runContainer16 {
+	rc := &runContainer16{}
+	if includeBroken {
+		for i := 0; i < 100; i++ {
+			start := i * 100
+			end := start + 100
+			rc.iv = append(rc.iv, newInterval16Range(uint16(start), uint16(end)))
+		}
+	}
+
+	for i := 0; i < 100; i++ {
+		start := i*100 + i*2
+		end := start + 100
+		rc.iv = append(rc.iv, newInterval16Range(uint16(start), uint16(end)))
+	}
+
+	return rc
+}
+
 func TestReverseIteratorCount(t *testing.T) {
 	array := []int{2, 63, 64, 65, 4095, 4096, 4097, 4159, 4160, 4161, 5000, 20000, 66666}
 	for _, testSize := range array {
@@ -2615,6 +2634,143 @@ func TestFromBitSet(t *testing.T) {
 			assert.True(t, rb.Equals(cp))
 		})
 	})
+}
+
+func TestRoaringArrayValidation(t *testing.T) {
+	a := newRoaringArray()
+
+	assert.ErrorIs(t, a.validate(), ErrEmptyKeys)
+
+	a.keys = append(a.keys, uint16(3), uint16(1))
+	assert.ErrorIs(t, a.validate(), ErrKeySortOrder)
+	a.clear()
+
+	// build up cardinality coherent arrays
+	a.keys = append(a.keys, uint16(1), uint16(3), uint16(10))
+	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
+	a.containers = append(a.containers, &runContainer16{}, &runContainer16{}, &runContainer16{})
+	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
+	a.needCopyOnWrite = append(a.needCopyOnWrite, true, false, true)
+	assert.Errorf(t, a.validate(), "zero intervals")
+}
+
+func TestBitMapValidation(t *testing.T) {
+	bm := NewBitmap()
+	bm.AddRange(0, 100)
+	bm.AddRange(306, 406)
+	bm.AddRange(102, 202)
+	bm.AddRange(204, 304)
+	assert.NoError(t, bm.Validate())
+
+	randomEntries := make([]uint32, 0, 1000)
+	for i := 0; i < 1000; i++ {
+		randomEntries = append(randomEntries, rand.Uint32())
+	}
+
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+
+	randomEntries = make([]uint32, 0, 1000)
+	for i := 0; i < 1000; i++ {
+		randomEntries = append(randomEntries, uint32(i))
+	}
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+}
+
+func TestBitMapValidationFromDeserialization(t *testing.T) {
+	// To understand what is going on here, read https://github.com/RoaringBitmap/RoaringFormatSpec
+	// Maintainers: The loader and corruptor are dependent on one another
+	// The tests expect a certain size, with values at certain location.
+	// The tests are geared toward single byte corruption.
+
+	// There is no way to test Bitmap container corruption once the bitmap is deserialzied
+
+	deserializationTests := []struct {
+		name      string
+		loader    func(bm *Bitmap)
+		corruptor func(s []byte)
+		err       error
+	}{
+		{
+			name: "Corrupts Run Length vs Num Runs",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(0, 2)
+				bm.AddRange(4, 6)
+				bm.AddRange(8, 100)
+			},
+			corruptor: func(s []byte) {
+				// 21 is the length of the run of the last run/range
+				// Shortening causes interval sum to be to short
+				s[21] = 1
+			},
+			err: ErrRunIntervalSize,
+		},
+		{
+			name: "Corrupts Run Length",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(100, 110)
+			},
+			corruptor: func(s []byte) {
+				// 13 is the length of the run
+				// Setting to zero causes an invalid run
+				s[13] = 0
+			},
+			err: ErrRunIntervalLength,
+		},
+		{
+			name: "Creates Interval Overlap",
+			loader: func(bm *Bitmap) {
+				bm.AddRange(100, 110)
+				bm.AddRange(115, 125)
+			},
+			corruptor: func(s []byte) {
+				// sets the start of the second run
+				// Creates overlapping intervals
+				s[15] = 108
+			},
+			err: ErrRunIntervalOverlap,
+		},
+		{
+			name: "Break Array Sort Order",
+			loader: func(bm *Bitmap) {
+				arrayEntries := make([]uint32, 0, 10)
+				for i := 0; i < 10; i++ {
+					arrayEntries = append(arrayEntries, uint32(i))
+				}
+				bm.AddMany(arrayEntries)
+			},
+			corruptor: func(s []byte) {
+				// breaks the sort order
+				s[34] = 0
+			},
+			err: ErrArrayIncorrectSort,
+		},
+	}
+
+	for _, tt := range deserializationTests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if err := recover(); err != nil {
+				}
+			}()
+
+			bm := NewBitmap()
+			tt.loader(bm)
+			assert.NoError(t, bm.Validate())
+			serialized, err := bm.ToBytes()
+			assert.NoError(t, err)
+			tt.corruptor(serialized)
+			corruptedDeserializedBitMap := NewBitmap()
+			corruptedDeserializedBitMap.ReadFrom(bytes.NewReader(serialized))
+			assert.ErrorIs(t, corruptedDeserializedBitMap.Validate(), tt.err)
+
+			corruptedDeserializedBitMap = NewBitmap()
+			corruptedDeserializedBitMap.MustReadFrom(bytes.NewReader(serialized))
+			// We will never hit this because of the recover
+			t.Errorf("did not panic")
+		})
+	}
 }
 
 func BenchmarkFromDense(b *testing.B) {

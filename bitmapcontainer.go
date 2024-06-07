@@ -1395,3 +1395,24 @@ func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
 	}
 	return -1
 }
+
+// validate checks that the container size is non-negative
+func (bc *bitmapContainer) validate() error {
+	if bc.cardinality < arrayDefaultMaxSize {
+		return fmt.Errorf("bitmap container size was less than: %d", arrayDefaultMaxSize)
+	}
+
+	if maxCapacity < len(bc.bitmap)*64 {
+		return fmt.Errorf("bitmap slize size %d exceeded max capacity %d", maxCapacity, len(bc.bitmap)*64)
+	}
+
+	if bc.cardinality > maxCapacity {
+		return fmt.Errorf("bitmap container size was greater than: %d", maxCapacity)
+	}
+
+	if bc.cardinality != int(popcntSlice(bc.bitmap)) {
+		return fmt.Errorf("bitmap container size %d did not match underlying slice length: %d", bc.cardinality, int(popcntSlice(bc.bitmap)))
+	}
+
+	return nil
+}

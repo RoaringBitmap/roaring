@@ -1,12 +1,18 @@
 package roaring
 
 import (
+	"errors"
 	"fmt"
 )
 
 type arrayContainer struct {
 	content []uint16
 }
+
+var (
+	ErrArrayIncorrectSort = errors.New("incorrectly sorted array")
+	ErrArrayInvalidSize   = errors.New("invalid array size")
+)
 
 func (ac *arrayContainer) String() string {
 	s := "{"
@@ -1252,4 +1258,29 @@ func (ac *arrayContainer) addOffset(x uint16) (container, container) {
 	}
 
 	return low, high
+}
+
+// validate checks cardinality and sort order of the array container
+func (ac *arrayContainer) validate() error {
+	cardinality := ac.getCardinality()
+
+	if cardinality <= 0 {
+		return ErrArrayInvalidSize
+	}
+
+	if cardinality > arrayDefaultMaxSize {
+		return ErrArrayInvalidSize
+	}
+
+	previous := ac.content[0]
+	for i := 1; i < len(ac.content); i++ {
+		next := ac.content[i]
+		if previous > next {
+			return ErrArrayIncorrectSort
+		}
+		previous = next
+
+	}
+
+	return nil
 }

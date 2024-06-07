@@ -2374,6 +2374,146 @@ func TestRuntimeIteratorAdvance(t *testing.T) {
 	testContainerIteratorAdvance(t, newRunContainer16())
 }
 
+func TestIntervalOverlaps(t *testing.T) {
+	// contiguous runs
+	a := newInterval16Range(0, 9)
+	b := newInterval16Range(10, 20)
+
+	// Ensure the function is reflexive
+	assert.False(t, a.isNonContiguousDisjoint(a))
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	// Ensure the function is symmetric
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// identical runs
+	a = newInterval16Range(0, 9)
+	b = newInterval16Range(0, 9)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// identical start runs
+	a = newInterval16Range(0, 9)
+	b = newInterval16Range(0, 20)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.False(t, b.isNonContiguousDisjoint(a))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// overlapping runs
+	a = newInterval16Range(0, 12)
+	b = newInterval16Range(10, 20)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// subset runs
+	a = newInterval16Range(0, 12)
+	b = newInterval16Range(5, 9)
+
+	assert.False(t, a.isNonContiguousDisjoint(b))
+	assert.Error(t, isNonContiguousDisjoint(a, b))
+
+	// degenerate runs
+	a = newInterval16Range(0, 0)
+	b = newInterval16Range(5, 5)
+
+	assert.True(t, a.isNonContiguousDisjoint(b))
+	assert.NoError(t, isNonContiguousDisjoint(a, b))
+
+	// disjoint non-contiguous runs
+	a = newInterval16Range(0, 100)
+	b = newInterval16Range(1000, 2000)
+
+	assert.True(t, a.isNonContiguousDisjoint(b))
+	assert.NoError(t, isNonContiguousDisjoint(a, b))
+}
+
+func TestIntervalValidationFailing(t *testing.T) {
+	rc := &runContainer16{}
+	assert.Error(t, rc.validate())
+
+	a := newInterval16Range(0, 9)
+	b := newInterval16Range(0, 9)
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a, b)
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalEqual)
+
+	a = newInterval16Range(0, 9)
+	b = newInterval16Range(10, 20)
+
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a, b)
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOverlap)
+
+	a = newInterval16Range(0, 12)
+	b = newInterval16Range(10, 20)
+
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a, b)
+	assert.Error(t, rc.validate(), ErrRunIntervalOverlap)
+
+	c := newInterval16Range(100, 150)
+	d := newInterval16Range(1000, 10000)
+
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, a, b, c, d)
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOverlap)
+
+	a = newInterval16Range(0, 10)
+	b = newInterval16Range(100, 200)
+
+	// missort
+	rc = &runContainer16{}
+	rc.iv = append(rc.iv, b, a)
+	assert.ErrorIs(t, rc.validate(), ErrRunNonSorted)
+
+	rc = &runContainer16{}
+	start := -4
+	for i := 0; i < MaxNumIntervals; i++ {
+		start += 4
+		end := start + 2
+		a := newInterval16Range(uint16(start), uint16(end))
+		rc.iv = append(rc.iv, a)
+
+	}
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
+
+	// too many small runs, use array
+	rc = &runContainer16{}
+	start = -3
+	for i := 0; i < 10; i++ {
+		start += 3
+		end := start + 1
+		a := newInterval16Range(uint16(start), uint16(end))
+		rc.iv = append(rc.iv, a)
+
+	}
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
+}
+
+func TestIntervalValidationsPassing(t *testing.T) {
+	rc := &runContainer16{}
+	a := newInterval16Range(0, 10)
+	b := newInterval16Range(100, 200)
+	rc.iv = append(rc.iv, a, b)
+	assert.NoError(t, rc.validate())
+
+	// Large total sum, but enough intervals
+	rc = &runContainer16{}
+	a = newInterval16Range(0, uint16(MaxIntervalsSum+1))
+	rc.iv = append(rc.iv, a)
+	assert.NoError(t, rc.validate())
+
+	rc = &runContainer16{}
+	a = newInterval16Range(0, uint16(MaxIntervalsSum+1))
+	b = newInterval16Range(uint16(MaxIntervalsSum+3), uint16(MaxIntervalsSum*2))
+	rc.iv = append(rc.iv, a, b)
+	assert.NoError(t, rc.validate())
+}
+
 // go test -bench BenchmarkShortIteratorAdvance -run -
 func BenchmarkShortIteratorAdvanceRuntime(b *testing.B) {
 	benchmarkContainerIteratorAdvance(b, newRunContainer16())

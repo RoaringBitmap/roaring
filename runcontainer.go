@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"unsafe"
@@ -58,6 +59,17 @@ type interval16 struct {
 	start  uint16
 	length uint16 // length minus 1
 }
+
+var (
+	ErrRunIntervalsEmpty  = errors.New("run contained no interval")
+	ErrRunNonSorted       = errors.New("runs were not sorted")
+	ErrRunIntervalLength  = errors.New("interval had zero length")
+	ErrRunIntervalEqual   = errors.New("intervals were equal")
+	ErrRunIntervalOverlap = errors.New("intervals overlapped or were continguous")
+	ErrRunIntervalSize    = errors.New("too many intervals relative to data")
+	MaxNumIntervals       = 2048
+	MaxIntervalsSum       = 2048
+)
 
 func newInterval16Range(start, last uint16) interval16 {
 	if last < start {
@@ -1489,6 +1501,26 @@ func (iv interval16) isSuperSetOf(b interval16) bool {
 	return iv.start <= b.start && b.last() <= iv.last()
 }
 
+func (iv interval16) isNonContiguousDisjoint(b interval16) bool {
+	// cover the zero start case
+	if iv.start == b.start {
+		return false
+	}
+
+	nonContiguous1 := iv.start == b.last()+1 || iv.last() == b.start+1
+	nonContiguous2 := b.start == iv.last()+1 || b.last() == iv.start+1
+	if nonContiguous1 || nonContiguous2 {
+		return false
+	}
+	ivl := iv.last()
+	bl := b.last()
+
+	c1 := iv.start <= b.start && b.start <= ivl
+	c2 := b.start <= iv.start && iv.start <= bl
+
+	return !c1 && !c2
+}
+
 func (iv interval16) subtractInterval(del interval16) (left []interval16, delcount int) {
 	isect, isEmpty := intersectInterval16s(iv, del)
 
@@ -2133,7 +2165,7 @@ func (rc *runContainer16) orArray(ac *arrayContainer) container {
 	}
 	intervals, cardMinusOne := runArrayUnionToRuns(rc, ac)
 	result := newRunContainer16TakeOwnership(intervals)
-	if len(intervals) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
+	if len(intervals) >= MaxNumIntervals && cardMinusOne >= arrayDefaultMaxSize {
 		return newBitmapContainerFromRun(result)
 	}
 	if len(intervals)*2 > 1+int(cardMinusOne) {
@@ -2192,7 +2224,7 @@ func (rc *runContainer16) iorArray(ac *arrayContainer) container {
 	// this can be done with methods like the in-place array container union
 	// but maybe lazily moving the remaining elements back.
 	rc.iv, cardMinusOne = runArrayUnionToRuns(rc, ac)
-	if len(rc.iv) >= 2048 && cardMinusOne >= arrayDefaultMaxSize {
+	if len(rc.iv) >= MaxNumIntervals && cardMinusOne >= arrayDefaultMaxSize {
 		return newBitmapContainerFromRun(rc)
 	}
 	if len(rc.iv)*2 > 1+int(cardMinusOne) {
@@ -2706,4 +2738,72 @@ func (rc *runContainer16) previousAbsentValue(target uint16) int {
 		return int(rc.iv[whichIndex].start) - 1
 	}
 	return -1
+}
+
+// isNonContiguousDisjoint returns an error if the intervals overlap e.g have non-empty intersection
+func isNonContiguousDisjoint(outer interval16, inner interval16) error {
+	if !outer.isNonContiguousDisjoint(inner) {
+		return ErrRunIntervalOverlap
+	}
+
+	return nil
+}
+
+// validate checks the run container referential integrity
+// Ensures runs are not degenerate, non-contiguous and non-overlapping
+func (rc *runContainer16) validate() error {
+	if rc.getCardinality() == 0 {
+		return ErrRunIntervalsEmpty
+	}
+
+	intervalsSum := 0
+	for outeridx := range rc.iv {
+
+		if rc.iv[outeridx].length == 0 {
+			return ErrRunIntervalLength
+		}
+
+		outerInterval := rc.iv[outeridx]
+
+		intervalsSum += outerInterval.runlen()
+		for inneridx := outeridx + 1; inneridx < len(rc.iv); inneridx++ {
+
+			innerInterval := rc.iv[inneridx]
+
+			if outerInterval.equal(innerInterval) {
+				return ErrRunIntervalEqual
+			}
+
+			// only check the start of runs
+			// if the run length overlap the next check will catch that.
+			if outerInterval.start >= innerInterval.start {
+				return ErrRunNonSorted
+			}
+
+			err := isNonContiguousDisjoint(outerInterval, innerInterval)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	/*
+			if number of distinct values in the container >= 2048 then
+		    check that the number of runs is no more than 2047
+		    (otherwise you could use a bitset container)
+			else
+		    check that the number of runs < (number of distinct values) / 2
+		    (otherwise you could use an array container)
+	*/
+	if MaxIntervalsSum <= intervalsSum {
+		if !(len(rc.iv) < MaxNumIntervals) {
+			return ErrRunIntervalSize
+		}
+	} else {
+		if !(len(rc.iv) < (intervalsSum / 2)) {
+			return ErrRunIntervalSize
+		}
+	}
+
+	return nil
 }

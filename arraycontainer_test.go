@@ -524,6 +524,44 @@ func TestNextPrevious(t *testing.T) {
 	})
 }
 
+func TestArrayContainerValidation(t *testing.T) {
+	array := newArrayContainer()
+	upperBound := arrayDefaultMaxSize
+
+	err := array.validate()
+	assert.Error(t, err)
+
+	for i := 0; i < upperBound; i++ {
+		array.iadd(uint16(i))
+	}
+	err = array.validate()
+	assert.NoError(t, err)
+
+	// Introduce a sort error
+	// We know that upperbound is unsorted because we populated up to upperbound
+	array.content[500] = uint16(upperBound + upperBound)
+
+	err = array.validate()
+	assert.Error(t, err)
+
+	array = newArrayContainer()
+
+	// Technically a run, but make sure the incorrect sort detection handles equal elements
+	for i := 0; i < upperBound; i++ {
+		array.iadd(uint16(1))
+	}
+	err = array.validate()
+	assert.NoError(t, err)
+
+	array = newArrayContainer()
+
+	for i := 0; i < 2*upperBound; i++ {
+		array.iadd(uint16(i))
+	}
+	err = array.validate()
+	assert.Error(t, err)
+}
+
 // go test -bench BenchmarkShortIteratorAdvance -run -
 func BenchmarkShortIteratorAdvanceArray(b *testing.B) {
 	benchmarkContainerIteratorAdvance(b, newArrayContainer())
