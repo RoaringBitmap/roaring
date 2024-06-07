@@ -61,7 +61,7 @@ func TestExample_roaring060(t *testing.T) {
 	}
 	// if buf is an untrusted source, you should validate the result
 	// (this adds a bit of complexity but it is necessary for security)
-	if !newrb.Validate() {
+	if newrb.Validate() != nil {
 		fmt.Println("Failed validation")
 	}
 	if !rb1.Equals(newrb) {

@@ -258,7 +258,7 @@ consider the following sample of code:
 	}
 	// if buf is an untrusted source, you should validate the result
 	// (this adds a bit of complexity but it is necessary for security)
-	if(!newrb.Validate()) {
+	if newrb.Validate() != nil {
 		fmt.Println("Failed validation") // return or panic
 	}
 	if ! rb.Equals(newrb) {
