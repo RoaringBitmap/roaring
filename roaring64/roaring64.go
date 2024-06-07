@@ -176,14 +176,6 @@ func (rb *Bitmap) ReadFrom(stream io.Reader) (p int64, err error) {
 	return p, nil
 }
 
-// FromBuffer creates a bitmap from its serialized version stored in buffer
-// func (rb *Bitmap) FromBuffer(data []byte) (p int64, err error) {
-//
-//	// TODO: Add buffer interning as in base roaring package.
-//	buf := bytes.NewBuffer(data)
-//	return rb.ReadFrom(buf)
-// }
-
 // MarshalBinary implements the encoding.BinaryMarshaler interface for the bitmap
 // (same as ToBytes)
 func (rb *Bitmap) MarshalBinary() ([]byte, error) {
