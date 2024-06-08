@@ -1878,6 +1878,131 @@ func (rb *Bitmap) CloneCopyOnWriteContainers() {
 	rb.highlowcontainer.cloneCopyOnWriteContainers()
 }
 
+func (rb *Bitmap) NextValue(target int) int {
+	originalKey := highbits(uint32(target))
+	query := lowbits(uint32(target))
+	nextValue := -1
+	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
+	for containerIndex < rb.highlowcontainer.size() && nextValue == -1 {
+		containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+		container := rb.highlowcontainer.getContainer(containerKey)
+		// if containerKey > orginalKey then we are past the container which mapped to the orignal key
+		// in that case we can just return the minimum from that container
+		var responseBit int
+		if containerKey > originalKey {
+			bit, err := container.safeMinimum()
+			if err == nil {
+				responseBit = -1
+			}
+			responseBit = int(bit)
+		} else {
+			responseBit = container.nextValue(query)
+		}
+
+		if responseBit == -1 {
+			nextValue = -1
+		} else {
+			nextValue = int(combineLoHi32(uint32(responseBit), uint32(containerKey)))
+		}
+		containerIndex++
+	}
+
+	return nextValue
+}
+
+func (rb *Bitmap) PreviousValue(target int) int {
+	if rb.IsEmpty() {
+		return -1
+	}
+
+	originalKey := highbits(uint32(target))
+	query := lowbits(uint32(target))
+	prevValue := -1
+	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
+
+	if containerIndex == rb.highlowcontainer.size() {
+		return int(rb.Maximum())
+	}
+
+	if rb.highlowcontainer.getKeyAtIndex(containerIndex) > originalKey {
+		return -1
+	}
+
+	for containerIndex != -1 && prevValue == -1 {
+		containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+		container := rb.highlowcontainer.getContainer(containerKey)
+		// if containerKey > orginalKey then we are past the container which mapped to the orignal key
+		// in that case we can just return the minimum from that container
+		var responseBit int
+		if containerKey < originalKey {
+			bit, err := container.safeMaximum()
+
+			if err == nil {
+				responseBit = -1
+			}
+			responseBit = int(bit)
+		} else {
+			responseBit = container.previousValue(query)
+		}
+
+		if responseBit == -1 {
+			prevValue = -1
+		} else {
+			prevValue = int(combineLoHi32(uint32(responseBit), uint32(containerKey)))
+		}
+		containerIndex--
+	}
+
+	return prevValue
+}
+
+func (rb *Bitmap) NextAbsentValue(target int) int {
+	originalKey := highbits(uint32(target))
+	query := lowbits(uint32(target))
+	nextValue := -1
+
+	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
+	if containerIndex == rb.highlowcontainer.size() {
+		// if we are here it means no container found, just return the target
+		return target
+	}
+
+	containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+
+	keyspace := uint32(containerKey) << 16
+	if target < int(keyspace) {
+		// target is less than the start of the keyspace start
+		// that means target cannot be in the keyspace
+		return target
+	}
+
+	container := rb.highlowcontainer.getContainer(containerKey)
+	nextValue = container.nextAbsentValue(query)
+	for {
+		if nextValue != (1 << 16) {
+			return int(combineLoHi32(uint32(nextValue), keyspace))
+		}
+
+		if containerIndex == rb.highlowcontainer.size()-1 {
+			val, err := container.safeMaximum()
+			if err == nil {
+				return -1
+			}
+			return int(val) + 1
+		}
+		containerIndex++
+		nextContainerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+		if containerKey < nextContainerKey {
+			// There is a gap between keys
+			// Just increment the current key and shift to get HoB
+			return int(containerKey+1) << 16
+		}
+		containerKey = nextContainerKey
+		container = rb.highlowcontainer.getContainer(containerKey)
+		nextValue = container.nextAbsentValue(0)
+	}
+}
+
 // FlipInt calls Flip after casting the parameters (convenience method)
 func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
 	return Flip(bm, uint64(rangeStart), uint64(rangeEnd))

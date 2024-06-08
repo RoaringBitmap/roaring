@@ -2773,6 +2773,155 @@ func TestBitMapValidationFromDeserialization(t *testing.T) {
 	}
 }
 
+func TestNextAndPreviousValue(t *testing.T) {
+	t.Run("Java Regression1 ", func(t *testing.T) {
+		// [Java1] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3645
+		bmp := New()
+		bmp.AddRange(64, 129)
+		assert.Equal(t, 64, bmp.NextValue(64))
+		assert.Equal(t, 64, bmp.NextValue(0))
+		assert.Equal(t, 64, bmp.NextValue(64))
+		assert.Equal(t, 65, bmp.NextValue(65))
+		assert.Equal(t, 128, bmp.NextValue(128))
+		assert.Equal(t, -1, bmp.NextValue(129))
+
+		assert.Equal(t, -1, bmp.PreviousValue(0))
+		assert.Equal(t, -1, bmp.PreviousValue(63))
+		assert.Equal(t, 64, bmp.PreviousValue(64))
+		assert.Equal(t, 65, bmp.PreviousValue(65))
+		assert.Equal(t, 128, bmp.PreviousValue(128))
+		assert.Equal(t, 128, bmp.PreviousValue(129))
+
+		assert.Equal(t, 0, bmp.NextAbsentValue(0))
+		assert.Equal(t, 63, bmp.NextAbsentValue(63))
+		assert.Equal(t, 129, bmp.NextAbsentValue(64))
+		assert.Equal(t, 129, bmp.NextAbsentValue(65))
+		assert.Equal(t, 129, bmp.NextAbsentValue(128))
+		assert.Equal(t, 129, bmp.NextAbsentValue(129))
+	})
+	t.Run("Java Regression2", func(t *testing.T) {
+		// [Java2] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3655
+
+		bmp := New()
+		bmp.AddRange(64, 129)
+		bmp.AddRange(256, 256+64+1)
+		assert.Equal(t, 64, bmp.NextValue(0))
+		assert.Equal(t, 64, bmp.NextValue(64))
+		assert.Equal(t, 65, bmp.NextValue(65))
+		assert.Equal(t, 128, bmp.NextValue(128))
+		assert.Equal(t, 256, bmp.NextValue(129))
+		assert.Equal(t, -1, bmp.NextValue(512))
+
+		assert.Equal(t, -1, bmp.PreviousValue(0))
+		assert.Equal(t, -1, bmp.PreviousValue(63))
+		assert.Equal(t, 64, bmp.PreviousValue(64))
+		assert.Equal(t, 65, bmp.PreviousValue(65))
+		assert.Equal(t, 128, bmp.PreviousValue(128))
+		assert.Equal(t, 128, bmp.PreviousValue(129))
+		assert.Equal(t, 128, bmp.PreviousValue(199))
+		assert.Equal(t, 128, bmp.PreviousValue(200))
+		assert.Equal(t, 128, bmp.PreviousValue(250))
+		assert.Equal(t, 256, bmp.PreviousValue(256))
+		assert.Equal(t, 320, bmp.PreviousValue(2500))
+
+		assert.Equal(t, 0, bmp.NextAbsentValue(0))
+		assert.Equal(t, 63, bmp.NextAbsentValue(63))
+		assert.Equal(t, 129, bmp.NextAbsentValue(64))
+		assert.Equal(t, 129, bmp.NextAbsentValue(65))
+		assert.Equal(t, 129, bmp.NextAbsentValue(128))
+		assert.Equal(t, 129, bmp.NextAbsentValue(129))
+		assert.Equal(t, 199, bmp.NextAbsentValue(199))
+		assert.Equal(t, 200, bmp.NextAbsentValue(200))
+		assert.Equal(t, 250, bmp.NextAbsentValue(250))
+		assert.Equal(t, 321, bmp.NextAbsentValue(256))
+		assert.Equal(t, 321, bmp.NextAbsentValue(320))
+	})
+
+	t.Run("Java Regression3", func(t *testing.T) {
+		// [Java3] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3666
+
+		bmp := New()
+		bmp.AddRange(64, 129)
+		bmp.AddRange(200, 200+300+1)
+		bmp.AddRange(5000, 5000+200+1)
+		assert.Equal(t, 64, bmp.NextValue(0))
+		assert.Equal(t, 64, bmp.NextValue(63))
+		assert.Equal(t, 64, bmp.NextValue(64))
+		assert.Equal(t, 65, bmp.NextValue(65))
+		assert.Equal(t, 128, bmp.NextValue(128))
+		assert.Equal(t, 200, bmp.NextValue(129))
+		assert.Equal(t, 200, bmp.NextValue(199))
+		assert.Equal(t, 200, bmp.NextValue(200))
+		assert.Equal(t, 250, bmp.NextValue(250))
+		assert.Equal(t, 5000, bmp.NextValue(2500))
+		assert.Equal(t, 5000, bmp.NextValue(5000))
+		assert.Equal(t, 5200, bmp.NextValue(5200))
+		assert.Equal(t, -1, bmp.NextValue(5201))
+
+		assert.Equal(t, -1, bmp.PreviousValue(0))
+		assert.Equal(t, -1, bmp.PreviousValue(63))
+		assert.Equal(t, 64, bmp.PreviousValue(64))
+		assert.Equal(t, 65, bmp.PreviousValue(65))
+		assert.Equal(t, 128, bmp.PreviousValue(128))
+		assert.Equal(t, 128, bmp.PreviousValue(129))
+		assert.Equal(t, 128, bmp.PreviousValue(199))
+		assert.Equal(t, 200, bmp.PreviousValue(200))
+		assert.Equal(t, 250, bmp.PreviousValue(250))
+		assert.Equal(t, 500, bmp.PreviousValue(2500))
+		assert.Equal(t, 5000, bmp.PreviousValue(5000))
+		assert.Equal(t, 5200, bmp.PreviousValue(5200))
+		assert.Equal(t, 5200, bmp.PreviousValue(5201))
+
+		assert.Equal(t, 0, bmp.NextAbsentValue(0))
+		assert.Equal(t, 63, bmp.NextAbsentValue(63))
+		assert.Equal(t, 129, bmp.NextAbsentValue(64))
+		assert.Equal(t, 129, bmp.NextAbsentValue(65))
+		assert.Equal(t, 129, bmp.NextAbsentValue(128))
+		assert.Equal(t, 129, bmp.NextAbsentValue(129))
+		assert.Equal(t, 199, bmp.NextAbsentValue(199))
+		assert.Equal(t, 501, bmp.NextAbsentValue(200))
+		assert.Equal(t, 501, bmp.NextAbsentValue(250))
+		assert.Equal(t, 2500, bmp.NextAbsentValue(2500))
+		assert.Equal(t, 5201, bmp.NextAbsentValue(5000))
+		assert.Equal(t, 5201, bmp.NextAbsentValue(5200))
+		assert.Equal(t, 5201, bmp.NextAbsentValue(5201))
+	})
+
+	t.Run("skip odd ", func(t *testing.T) {
+		bmp := New()
+		for i := 0; i < 2000; i++ {
+			bmp.Add(uint32(i * 2))
+		}
+		for i := 0; i < 2000; i++ {
+			assert.Equal(t, i*2, bmp.NextValue(i*2))
+			assert.Equal(t, i*2, bmp.PreviousValue(i*2))
+			assert.Equal(t, i*2+1, bmp.NextAbsentValue(i*2+1))
+		}
+	})
+
+	t.Run("skipping with ranges", func(t *testing.T) {
+		bmp := New()
+		intervalEnd := 512
+		rangeStart := intervalEnd * 2
+		rangeEnd := 2048
+		for i := 0; i < intervalEnd; i++ {
+			bmp.Add(uint32(i * 2))
+		}
+		bmp.AddRange(uint64(rangeStart), uint64(rangeEnd))
+
+		for i := 0; i < intervalEnd; i++ {
+			assert.Equal(t, i*2, bmp.NextValue(i*2))
+			assert.Equal(t, i*2, bmp.PreviousValue(i*2))
+			assert.Equal(t, i*2+1, bmp.NextAbsentValue(i*2))
+		}
+		for i := rangeStart; i < rangeEnd; i++ {
+			assert.Equal(t, i, bmp.NextValue(i))
+			assert.Equal(t, i, bmp.PreviousValue(i))
+			assert.Equal(t, rangeEnd, bmp.NextAbsentValue(rangeEnd))
+		}
+	})
+}
+
 func BenchmarkFromDense(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		dense := make([]uint64, rb.DenseSize())

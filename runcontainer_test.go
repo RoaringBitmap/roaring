@@ -2306,64 +2306,178 @@ func TestAllContainerMethodsAllContainerTypesWithData067(t *testing.T) {
 	})
 }
 
-func TestNextPreviousValue(t *testing.T) {
-	runContainer := newRunContainer16()
-	runContainer.iaddRange(2, 10)
-	runContainer.iaddRange(20, 30)
-	runContainer.iaddRange(31, 40)
-	runContainer.iaddRange(60, 70)
+func TestNextValueRun(t *testing.T) {
+	t.Run("Java Regression1", func(t *testing.T) {
+		// [Java1] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3645
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+		assert.Equal(t, 64, runContainer.nextValue(0))
+		assert.Equal(t, 64, runContainer.nextValue(64))
+		assert.Equal(t, 65, runContainer.nextValue(65))
+		assert.Equal(t, 128, runContainer.nextValue(128))
+		assert.Equal(t, -1, runContainer.nextValue(129))
+	})
 
-	assert.Equal(t, 2, runContainer.nextValue(2))
-	assert.Equal(t, 5, runContainer.nextValue(5))
-	assert.Equal(t, 20, runContainer.nextValue(10))
-	assert.Equal(t, 20, runContainer.nextValue(15))
-	assert.Equal(t, 20, runContainer.nextValue(20))
-	assert.Equal(t, 21, runContainer.nextValue(21))
-	assert.Equal(t, 29, runContainer.nextValue(29))
-	assert.Equal(t, 31, runContainer.nextValue(30))
-	assert.Equal(t, 60, runContainer.nextValue(40))
-	assert.Equal(t, 60, runContainer.nextValue(45))
-	assert.Equal(t, -1, runContainer.nextValue(80))
+	t.Run("Java Regression2", func(t *testing.T) {
+		// [Java2] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3655
 
-	assert.Equal(t, 2, runContainer.previousValue(2))
-	assert.Equal(t, 5, runContainer.previousValue(5))
-	assert.Equal(t, 9, runContainer.previousValue(10))
-	assert.Equal(t, 9, runContainer.previousValue(15))
-	assert.Equal(t, 20, runContainer.previousValue(20))
-	assert.Equal(t, 21, runContainer.previousValue(21))
-	assert.Equal(t, 29, runContainer.previousValue(29))
-	assert.Equal(t, 29, runContainer.previousValue(30))
-	assert.Equal(t, 39, runContainer.previousValue(40))
-	assert.Equal(t, 39, runContainer.previousValue(45))
-	assert.Equal(t, -1, runContainer.previousValue(80))
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+		runContainer.iaddRange(256, 256+64+1)
+		assert.Equal(t, 64, runContainer.nextValue(0))
+		assert.Equal(t, 64, runContainer.nextValue(64))
+		assert.Equal(t, 65, runContainer.nextValue(65))
+		assert.Equal(t, 128, runContainer.nextValue(128))
+		assert.Equal(t, 256, runContainer.nextValue(129))
+		assert.Equal(t, -1, runContainer.nextValue(512))
+	})
 
-	assert.Equal(t, -1, runContainer.nextAbsentValue(0))
-	assert.Equal(t, -1, runContainer.nextAbsentValue(1))
-	assert.Equal(t, 10, runContainer.nextAbsentValue(5))
-	assert.Equal(t, 10, runContainer.nextAbsentValue(10))
-	assert.Equal(t, 15, runContainer.nextAbsentValue(15))
-	assert.Equal(t, 30, runContainer.nextAbsentValue(20))
-	assert.Equal(t, 30, runContainer.nextAbsentValue(21))
-	assert.Equal(t, 30, runContainer.nextAbsentValue(29))
-	assert.Equal(t, 30, runContainer.nextAbsentValue(30))
-	assert.Equal(t, 40, runContainer.nextAbsentValue(31))
-	assert.Equal(t, 40, runContainer.nextAbsentValue(40))
-	assert.Equal(t, 45, runContainer.nextAbsentValue(45))
-	assert.Equal(t, -1, runContainer.nextAbsentValue(80))
+	t.Run("Java Regression3", func(t *testing.T) {
+		// [Java3] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3666
 
-	assert.Equal(t, -1, runContainer.previousAbsentValue(0))
-	assert.Equal(t, -1, runContainer.previousAbsentValue(1))
-	assert.Equal(t, -1, runContainer.previousAbsentValue(5))
-	assert.Equal(t, 10, runContainer.previousAbsentValue(10))
-	assert.Equal(t, 15, runContainer.previousAbsentValue(15))
-	assert.Equal(t, 19, runContainer.previousAbsentValue(20))
-	assert.Equal(t, 19, runContainer.previousAbsentValue(21))
-	assert.Equal(t, 19, runContainer.previousAbsentValue(29))
-	assert.Equal(t, 30, runContainer.previousAbsentValue(30))
-	assert.Equal(t, 30, runContainer.previousAbsentValue(31))
-	assert.Equal(t, 40, runContainer.previousAbsentValue(40))
-	assert.Equal(t, 45, runContainer.previousAbsentValue(45))
-	assert.Equal(t, -1, runContainer.previousAbsentValue(80))
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+		runContainer.iaddRange(256, 200+300+1)
+		runContainer.iaddRange(200, 200+300+1)
+		runContainer.iaddRange(5000, 5000+200+1)
+		assert.Equal(t, 64, runContainer.nextValue(0))
+		assert.Equal(t, 64, runContainer.nextValue(64))
+		assert.Equal(t, 64, runContainer.nextValue(64))
+		assert.Equal(t, 65, runContainer.nextValue(65))
+		assert.Equal(t, 128, runContainer.nextValue(128))
+		assert.Equal(t, 200, runContainer.nextValue(129))
+		assert.Equal(t, 200, runContainer.nextValue(199))
+		assert.Equal(t, 200, runContainer.nextValue(200))
+		assert.Equal(t, 250, runContainer.nextValue(250))
+		assert.Equal(t, 5000, runContainer.nextValue(2500))
+		assert.Equal(t, 5000, runContainer.nextValue(5000))
+		assert.Equal(t, 5200, runContainer.nextValue(5200))
+		assert.Equal(t, -1, runContainer.nextValue(5201))
+	})
+}
+
+func TestPreviousValueRun(t *testing.T) {
+	t.Run("Java Regression1", func(t *testing.T) {
+		// [Java 1] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3684
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+		assert.Equal(t, -1, runContainer.previousValue(0))
+		assert.Equal(t, -1, runContainer.previousValue(63))
+		assert.Equal(t, 64, runContainer.previousValue(64))
+		assert.Equal(t, 65, runContainer.previousValue(65))
+		assert.Equal(t, 128, runContainer.previousValue(128))
+		assert.Equal(t, 128, runContainer.previousValue(129))
+	})
+
+	t.Run("Java Regression2", func(t *testing.T) {
+		// [Java 2]  https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3695
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+		runContainer.iaddRange(200, 200+300+1)
+		runContainer.iaddRange(5000, 5000+200+1)
+		assert.Equal(t, -1, runContainer.previousValue(0))
+		assert.Equal(t, -1, runContainer.previousValue(63))
+		assert.Equal(t, 64, runContainer.previousValue(64))
+		assert.Equal(t, 65, runContainer.previousValue(65))
+		assert.Equal(t, 128, runContainer.previousValue(128))
+		assert.Equal(t, 128, runContainer.previousValue(129))
+		assert.Equal(t, 128, runContainer.previousValue(199))
+		assert.Equal(t, 200, runContainer.previousValue(200))
+		assert.Equal(t, 250, runContainer.previousValue(250))
+		assert.Equal(t, 500, runContainer.previousValue(2500))
+		assert.Equal(t, 5000, runContainer.previousValue(5000))
+		assert.Equal(t, 5200, runContainer.previousValue(5200))
+		// TODO Question
+		assert.Equal(t, 5200, runContainer.previousValue(5201))
+	})
+}
+
+func TestNextAbsentValueRun(t *testing.T) {
+	t.Run("Java Regression1", func(t *testing.T) {
+		// [Java 1] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3760
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+		assert.Equal(t, 0, runContainer.nextAbsentValue(0))
+		assert.Equal(t, 63, runContainer.nextAbsentValue(63))
+		assert.Equal(t, 129, runContainer.nextAbsentValue(64))
+		assert.Equal(t, 129, runContainer.nextAbsentValue(65))
+		assert.Equal(t, 129, runContainer.nextAbsentValue(128))
+		assert.Equal(t, 129, runContainer.nextAbsentValue(129))
+	})
+
+	t.Run("Java Regression2", func(t *testing.T) {
+		// [Java 2] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3815
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+		runContainer.iaddRange(200, 501)
+		runContainer.iaddRange(5000, 5201)
+
+		assert.Equal(t, 0, runContainer.nextAbsentValue(0))
+		assert.Equal(t, 63, runContainer.nextAbsentValue(63))
+		assert.Equal(t, 129, runContainer.nextAbsentValue(64))
+		assert.Equal(t, 129, runContainer.nextAbsentValue(65))
+		assert.Equal(t, 129, runContainer.nextAbsentValue(128))
+		assert.Equal(t, 129, runContainer.nextAbsentValue(129))
+		assert.Equal(t, 199, runContainer.nextAbsentValue(199))
+		assert.Equal(t, 501, runContainer.nextAbsentValue(200))
+		assert.Equal(t, 501, runContainer.nextAbsentValue(250))
+		assert.Equal(t, 2500, runContainer.nextAbsentValue(2500))
+		assert.Equal(t, 5201, runContainer.nextAbsentValue(5000))
+		assert.Equal(t, 5201, runContainer.nextAbsentValue(5200))
+	})
+
+	t.Run("Java Regression3", func(t *testing.T) {
+		// [Java 3] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3832
+		runContainer := newRunContainer16()
+		for i := 0; i < 1000; i++ {
+			assert.Equal(t, i, runContainer.nextAbsentValue(uint16(i)))
+		}
+	})
+}
+
+func TestPreviousAbsentValueRun(t *testing.T) {
+	t.Run("Java Regression 1", func(t *testing.T) {
+		// [Java 1] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3732
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+
+		assert.Equal(t, 0, runContainer.previousAbsentValue(0))
+		assert.Equal(t, 63, runContainer.previousAbsentValue(63))
+		assert.Equal(t, 63, runContainer.previousAbsentValue(64))
+		assert.Equal(t, 63, runContainer.previousAbsentValue(65))
+		assert.Equal(t, 63, runContainer.previousAbsentValue(128))
+		assert.Equal(t, 129, runContainer.previousAbsentValue(129))
+	})
+
+	t.Run("Java Regression2", func(t *testing.T) {
+		// [Java 2] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3743
+
+		runContainer := newRunContainer16()
+		runContainer.iaddRange(64, 129)
+		runContainer.iaddRange(200, 501)
+		runContainer.iaddRange(5000, 5201)
+
+		assert.Equal(t, 0, runContainer.previousAbsentValue(0))
+		assert.Equal(t, 63, runContainer.previousAbsentValue(63))
+		assert.Equal(t, 63, runContainer.previousAbsentValue(64))
+		assert.Equal(t, 63, runContainer.previousAbsentValue(65))
+		assert.Equal(t, 63, runContainer.previousAbsentValue(128))
+		assert.Equal(t, 129, runContainer.previousAbsentValue(129))
+		assert.Equal(t, 199, runContainer.previousAbsentValue(199))
+		assert.Equal(t, 199, runContainer.previousAbsentValue(200))
+		assert.Equal(t, 199, runContainer.previousAbsentValue(250))
+		assert.Equal(t, 2500, runContainer.previousAbsentValue(2500))
+		assert.Equal(t, 4999, runContainer.previousAbsentValue(5000))
+		assert.Equal(t, 4999, runContainer.previousAbsentValue(5200))
+	})
+
+	t.Run("Java Regression3", func(t *testing.T) {
+		// [Java 3] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3760
+		runContainer := newRunContainer16()
+		for i := 0; i < 1000; i++ {
+			assert.Equal(t, i, runContainer.previousAbsentValue(uint16(i)))
+		}
+	})
 }
 
 func TestRuntimeIteratorPeekNext(t *testing.T) {

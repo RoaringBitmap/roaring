@@ -182,7 +182,7 @@ func TestBinarySearchUntil(t *testing.T) {
 		{
 			"out of bounds at the end",
 			[]uint16{0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},
-			100, 0, false, -1,
+			100, 0, false, 15,
 		},
 		{
 			"missing alternating",
@@ -217,7 +217,7 @@ func TestBinarySearchPastWithBounds(t *testing.T) {
 		{
 			"has match but not in range",
 			[]uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17},
-			9, 0, false, -1, 0, 4,
+			9, 0, false, 15, 0, 4,
 		},
 		{
 			"matches",
@@ -232,7 +232,7 @@ func TestBinarySearchPastWithBounds(t *testing.T) {
 		{
 			"has match but not in range",
 			[]uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15, 16, 17},
-			9, 0, false, -1, 0, 4,
+			9, 0, false, 15, 0, 4,
 		},
 		{
 			"missing 12 with gap",
@@ -247,7 +247,7 @@ func TestBinarySearchPastWithBounds(t *testing.T) {
 		{
 			"missing 10 out of range",
 			[]uint16{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12},
-			10, 0, false, -1, 0, 5,
+			10, 0, false, 12, 0, 5,
 		},
 	}
 

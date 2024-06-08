@@ -435,92 +435,178 @@ func TestArrayContainerResetTo(t *testing.T) {
 	})
 }
 
-func TestNextPrevious(t *testing.T) {
-	t.Run("small range", func(t *testing.T) {
+func TestNextValueArray(t *testing.T) {
+	t.Run("Java Port 1", func(t *testing.T) {
+		// [Example 1]  https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/buffer/TestMappeableArrayContainer.java#L495
 		ac := newArrayContainer()
-		ac.iaddRange(1, 10)
-		assert.Equal(t, 1, ac.nextValue(1))
-		assert.Equal(t, 6, ac.nextValue(6))
-		assert.Equal(t, 9, ac.nextValue(9))
-		assert.Equal(t, -1, ac.nextValue(10))
-		assert.Equal(t, -1, ac.nextValue(20))
-		ac.iaddRange(12, 20)
-		// 10 and 11 are now missing
-
-		assert.Equal(t, -1, ac.previousValue(0))
-		assert.Equal(t, 1, ac.previousValue(1))
-		assert.Equal(t, 9, ac.previousValue(11))
-		assert.Equal(t, -1, ac.previousValue(22))
-
-		assert.Equal(t, -1, ac.nextAbsentValue(0))
-		assert.Equal(t, 10, ac.nextAbsentValue(1))
-		assert.Equal(t, 10, ac.nextAbsentValue(9))
-		assert.Equal(t, 10, ac.nextAbsentValue(10))
-		assert.Equal(t, 11, ac.nextAbsentValue(11))
-		assert.Equal(t, 20, ac.nextAbsentValue(12))
-		assert.Equal(t, -1, ac.nextAbsentValue(21))
-
-		assert.Equal(t, -1, ac.previousAbsentValue(0))
-		assert.Equal(t, -1, ac.previousAbsentValue(1))
-		assert.Equal(t, -1, ac.previousAbsentValue(9))
-		assert.Equal(t, 10, ac.previousAbsentValue(10))
-		assert.Equal(t, 11, ac.previousAbsentValue(11))
-		assert.Equal(t, 11, ac.previousAbsentValue(12))
-		assert.Equal(t, 11, ac.previousAbsentValue(15))
+		ac.iaddRange(64, 129)
+		assert.Equal(t, 64, ac.nextValue(0))
+		assert.Equal(t, 64, ac.nextValue(64))
+		assert.Equal(t, 65, ac.nextValue(65))
+		assert.Equal(t, 128, ac.nextValue(128))
+		assert.Equal(t, -1, ac.nextValue(129))
+		assert.Equal(t, -1, ac.nextValue(5000))
 	})
 
-	t.Run("larger range", func(t *testing.T) {
+	t.Run("Java Port 2", func(t *testing.T) {
+		// [Example 2]  https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/buffer/TestMappeableArrayContainer.java#L507
 		ac := newArrayContainer()
-		ac.iaddRange(1, 10)
-		ac.iaddRange(12, 20)
-		ac.iaddRange(62, 80)
-		ac.iaddRange(125, 170)
+		ac.iaddRange(64, 129)
+		ac.iaddRange(256, 321)
+		assert.Equal(t, 64, ac.nextValue(0))
+		assert.Equal(t, 64, ac.nextValue(63))
+		assert.Equal(t, 64, ac.nextValue(64))
+		assert.Equal(t, 65, ac.nextValue(65))
+		assert.Equal(t, 128, ac.nextValue(128))
+		assert.Equal(t, 256, ac.nextValue(129))
+		assert.Equal(t, -1, ac.nextValue(512))
+	})
 
-		assert.Equal(t, 62, ac.nextValue(20))
-		assert.Equal(t, 1, ac.nextValue(1))
-		assert.Equal(t, 6, ac.nextValue(6))
-		assert.Equal(t, 9, ac.nextValue(9))
-		assert.Equal(t, 12, ac.nextValue(10))
-		assert.Equal(t, 62, ac.nextValue(20))
-		assert.Equal(t, 62, ac.nextValue(43))
-		assert.Equal(t, 62, ac.nextValue(62))
-		assert.Equal(t, 125, ac.nextValue(80))
-		assert.Equal(t, 125, ac.nextValue(125))
+	t.Run("Java Port 3", func(t *testing.T) {
+		// [Example 3]  https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/buffer/TestMappeableArrayContainer.java#L525
+		ac := newArrayContainer()
+		ac.iaddRange(64, 129)
+		ac.iaddRange(200, 501)
+		ac.iaddRange(5000, 5201)
 
+		assert.Equal(t, 64, ac.nextValue(0))
+		assert.Equal(t, 64, ac.nextValue(63))
+		assert.Equal(t, 64, ac.nextValue(64))
+		assert.Equal(t, 65, ac.nextValue(65))
+		assert.Equal(t, 128, ac.nextValue(128))
+		assert.Equal(t, 200, ac.nextValue(129))
+		assert.Equal(t, 200, ac.nextValue(199))
+		assert.Equal(t, 200, ac.nextValue(200))
+		assert.Equal(t, 250, ac.nextValue(250))
+		assert.Equal(t, 5000, ac.nextValue(2500))
+		assert.Equal(t, 5000, ac.nextValue(5000))
+		assert.Equal(t, 5200, ac.nextValue(5200))
+		assert.Equal(t, -1, ac.nextValue(5201))
+	})
+}
+
+func TestNextAbsentValueArray(t *testing.T) {
+	t.Run("Java Port 1", func(t *testing.T) {
+		// [Java 1]  https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L850
+		ac := newArrayContainer()
+		ac.iaddRange(64, 129)
+		assert.Equal(t, 0, ac.nextAbsentValue(0))
+		assert.Equal(t, 63, ac.nextAbsentValue(63))
+		assert.Equal(t, 129, ac.nextAbsentValue(64))
+		assert.Equal(t, 129, ac.nextAbsentValue(65))
+		assert.Equal(t, 129, ac.nextAbsentValue(128))
+		assert.Equal(t, 129, ac.nextAbsentValue(129))
+	})
+
+	t.Run("Java Port 2", func(t *testing.T) {
+		// [Example 2] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L861
+		ac := newArrayContainer()
+		ac.iaddRange(64, 129)
+		ac.iaddRange(200, 501)
+		ac.iaddRange(5000, 5201)
+		assert.Equal(t, 0, ac.nextAbsentValue(0))
+		assert.Equal(t, 63, ac.nextAbsentValue(63))
+		assert.Equal(t, 129, ac.nextAbsentValue(64))
+		assert.Equal(t, 129, ac.nextAbsentValue(65))
+		assert.Equal(t, 129, ac.nextAbsentValue(128))
+		assert.Equal(t, 129, ac.nextAbsentValue(129))
+		assert.Equal(t, 199, ac.nextAbsentValue(199))
+		assert.Equal(t, 501, ac.nextAbsentValue(200))
+		assert.Equal(t, 501, ac.nextAbsentValue(250))
+		assert.Equal(t, 2500, ac.nextAbsentValue(2500))
+		assert.Equal(t, 5201, ac.nextAbsentValue(5000))
+		assert.Equal(t, 5201, ac.nextAbsentValue(5200))
+	})
+
+	t.Run("Java Port 3", func(t *testing.T) {
+		// [Java  3]  https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L878
+		ac := newArrayContainer()
+		for i := 0; i < 1000; i++ {
+			assert.Equal(t, i, ac.nextAbsentValue(uint16(i)))
+		}
+	})
+}
+
+func TestPreviousValueArray(t *testing.T) {
+	t.Run("Java Port 1", func(t *testing.T) {
+		// [Example 1] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L721
+		ac := newArrayContainer()
+		ac.iaddRange(64, 129)
 		assert.Equal(t, -1, ac.previousValue(0))
-		assert.Equal(t, 1, ac.previousValue(1))
-		assert.Equal(t, 9, ac.previousValue(11))
-		assert.Equal(t, 19, ac.previousValue(22))
-		assert.Equal(t, 19, ac.previousValue(61))
-		assert.Equal(t, 62, ac.previousValue(62))
-		assert.Equal(t, 79, ac.previousValue(79))
-		assert.Equal(t, 79, ac.previousValue(80))
-		assert.Equal(t, 79, ac.previousValue(124))
-		assert.Equal(t, 125, ac.previousValue(125))
+		assert.Equal(t, -1, ac.previousValue(63))
+		assert.Equal(t, 64, ac.previousValue(64))
+		assert.Equal(t, 65, ac.previousValue(65))
+		assert.Equal(t, 128, ac.previousValue(128))
+		assert.Equal(t, 128, ac.previousValue(129))
+	})
 
-		assert.Equal(t, -1, ac.nextAbsentValue(0))
-		assert.Equal(t, 10, ac.nextAbsentValue(1))
-		assert.Equal(t, 10, ac.nextAbsentValue(9))
-		assert.Equal(t, 10, ac.nextAbsentValue(10))
-		assert.Equal(t, 11, ac.nextAbsentValue(11))
-		assert.Equal(t, 20, ac.nextAbsentValue(12))
-		assert.Equal(t, 21, ac.nextAbsentValue(21))
-		assert.Equal(t, 61, ac.nextAbsentValue(61))
-		assert.Equal(t, 80, ac.nextAbsentValue(62))
-		assert.Equal(t, 80, ac.nextAbsentValue(80))
-		assert.Equal(t, 90, ac.nextAbsentValue(90))
-		assert.Equal(t, 170, ac.nextAbsentValue(125))
+	t.Run("Java Port 2", func(t *testing.T) {
+		// [Example 2]   https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L733
+		ac := newArrayContainer()
+		ac.iaddRange(64, 129)
+		ac.iaddRange(200, 501)
+		ac.iaddRange(5000, 5201)
+		assert.Equal(t, -1, ac.previousValue(0))
+		assert.Equal(t, -1, ac.previousValue(63))
+		assert.Equal(t, 64, ac.previousValue(64))
+		assert.Equal(t, 65, ac.previousValue(65))
+		assert.Equal(t, 128, ac.previousValue(128))
+		assert.Equal(t, 128, ac.previousValue(129))
+		assert.Equal(t, 128, ac.previousValue(199))
+		assert.Equal(t, 200, ac.previousValue(200))
+		assert.Equal(t, 250, ac.previousValue(250))
+		assert.Equal(t, 500, ac.previousValue(2500))
+		assert.Equal(t, 5000, ac.previousValue(5000))
+		assert.Equal(t, 5200, ac.previousValue(5200))
+	})
 
-		assert.Equal(t, -1, ac.previousAbsentValue(0))
-		assert.Equal(t, -1, ac.previousAbsentValue(1))
-		assert.Equal(t, -1, ac.previousAbsentValue(9))
-		assert.Equal(t, 10, ac.previousAbsentValue(10))
-		assert.Equal(t, 11, ac.previousAbsentValue(11))
-		assert.Equal(t, 11, ac.previousAbsentValue(12))
-		assert.Equal(t, 11, ac.previousAbsentValue(15))
-		assert.Equal(t, 20, ac.previousAbsentValue(20))
-		assert.Equal(t, 61, ac.previousAbsentValue(62))
-		assert.Equal(t, 90, ac.previousAbsentValue(90))
+	t.Run("Java Port 3", func(t *testing.T) {
+		// [Example 3] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L751
+		ac := newArrayContainer()
+		ac.iaddRange(64, 129)
+		assert.Equal(t, -1, ac.previousValue(5))
+	})
+}
+
+func TestPreviousAbsentValueArray(t *testing.T) {
+	t.Run("Java Port 1", func(t *testing.T) {
+		// [Example 1] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L793
+		ac := newArrayContainer()
+		ac.iaddRange(64, 129)
+		assert.Equal(t, 0, ac.previousAbsentValue(0))
+		assert.Equal(t, 63, ac.previousAbsentValue(63))
+		assert.Equal(t, 63, ac.previousAbsentValue(64))
+		assert.Equal(t, 63, ac.previousAbsentValue(65))
+		assert.Equal(t, 63, ac.previousAbsentValue(128))
+		assert.Equal(t, 129, ac.previousAbsentValue(129))
+	})
+
+	t.Run("Java Port 2", func(t *testing.T) {
+		// [Example 2] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L804
+		ac := newArrayContainer()
+		ac.iaddRange(64, 129)
+		ac.iaddRange(200, 500)
+		ac.iaddRange(5000, 5201)
+		assert.Equal(t, 0, ac.previousAbsentValue(0))
+		assert.Equal(t, 63, ac.previousAbsentValue(63))
+		assert.Equal(t, 63, ac.previousAbsentValue(64))
+		assert.Equal(t, 63, ac.previousAbsentValue(65))
+		assert.Equal(t, 63, ac.previousAbsentValue(128))
+		assert.Equal(t, 129, ac.previousAbsentValue(129))
+		assert.Equal(t, 199, ac.previousAbsentValue(199))
+		assert.Equal(t, 199, ac.previousAbsentValue(200))
+		assert.Equal(t, 199, ac.previousAbsentValue(250))
+		assert.Equal(t, 2500, ac.previousAbsentValue(2500))
+		assert.Equal(t, 4999, ac.previousAbsentValue(5000))
+		assert.Equal(t, 4999, ac.previousAbsentValue(5200))
+	})
+
+	t.Run("Java Port 3", func(t *testing.T) {
+		// [Example 3] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L821
+		ac := newArrayContainer()
+		for i := 0; i < 1000; i++ {
+			assert.Equal(t, i, ac.previousAbsentValue(uint16(i)))
+		}
 	})
 }
 

@@ -546,16 +546,6 @@ func binarySearch(array []uint16, ikey uint16) int {
 	return -(low + 1)
 }
 
-func closestByIndex(array []uint16, smallerIdx int, largerIdx int, target uint16) int {
-	smallerVal := array[smallerIdx]
-	largerVal := array[largerIdx]
-
-	if (int(largerVal) - int(target)) >= (int(target) - int(smallerVal)) {
-		return smallerIdx
-	}
-	return largerIdx
-}
-
 // searchResult provides information about a search request.
 // The values will depend on the context of the search
 type searchResult struct {
@@ -600,7 +590,7 @@ func binarySearchUntilWithBounds(array []uint16, target uint16, lowIndex int, ma
 	}
 
 	if target > array[maxIndex] {
-		return searchResult{0, closestIndex, false}
+		return searchResult{0, len(array), false}
 	}
 
 	for lowIndex <= highIndex {
@@ -654,7 +644,7 @@ func binarySearchPastWithBounds(array []uint16, target uint16, lowIndex int, max
 	}
 
 	if target > array[maxIndex] {
-		return searchResult{0, closestIndex, false}
+		return searchResult{0, len(array), false}
 	}
 
 	for lowIndex <= highIndex {

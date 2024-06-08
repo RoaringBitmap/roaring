@@ -1798,8 +1798,23 @@ func (rc *runContainer16) minimum() uint16 {
 	return rc.iv[0].start // assume not empty
 }
 
+func (rc *runContainer16) safeMinimum() (uint16, error) {
+	if len(rc.iv) == 0 {
+		return 0, errors.New("Empty runs")
+	}
+
+	return rc.minimum(), nil
+}
+
 func (rc *runContainer16) maximum() uint16 {
 	return rc.iv[len(rc.iv)-1].last() // assume not empty
+}
+
+func (rc *runContainer16) safeMaximum() (uint16, error) {
+	if len(rc.iv) == 0 {
+		return 0, errors.New("Empty runs")
+	}
+	return rc.maximum(), nil // assume not empty
 }
 
 func (rc *runContainer16) isFull() bool {
@@ -2640,15 +2655,24 @@ func (rc *runContainer16) addOffset(x uint16) (container, container) {
 // If the target is in the interior or a run then `target` will be returned
 // Ex: If our run structure resmembles [[a,c], [d,f]] with a <= target <= c then `target` will be returned.
 // Ex: If c < target < d then d is returned.
-// if the target is out of bounds a -1 is returned
+// Ex: If target < a then a is returned
+// if the target > max, this is out of bounds and -1 is returned
 func (rc *runContainer16) nextValue(target uint16) int {
+	if len(rc.iv) == 0 {
+		return -1
+	}
+
 	whichIndex, alreadyPresent, _ := rc.search(int(target))
 
 	if alreadyPresent {
 		return int(target)
 	}
 
-	if whichIndex == -1 || whichIndex == len(rc.iv)-1 {
+	if whichIndex == -1 {
+		return int(rc.iv[0].start)
+	}
+
+	if whichIndex == len(rc.iv)-1 {
 		return -1
 	}
 
@@ -2666,29 +2690,18 @@ func (rc *runContainer16) nextValue(target uint16) int {
 
 // nextAbsentValue returns the next absent value.
 // By construction the next absent value will be located between gaps in runs
-// Ex: if our runs resemble [[a,b],[c,d]] then b+1 will not be equal to c, b+1 will be returned
-// if the target is out of bounds a -1 is returned
+//
+// Ex: if our runs resemble [[a,b],[c,d]] and a <= target <= b  then b+1 will not be equal to c, b+1 will be returned
+// Ex: if target < a then target is returned
+// Ex: if target > d then target is returned
 func (rc *runContainer16) nextAbsentValue(target uint16) int {
 	whichIndex, alreadyPresent, _ := rc.search(int(target))
-	lastIndex := len(rc.iv) - 1
 
 	if !alreadyPresent {
-		if whichIndex == -1 || whichIndex == lastIndex {
-			// TODO ask about the case whichIndex == len(rc.iv)-1
-			// should we return rc.iv[whichIndex].last() + 1
-			return -1
-		}
-
 		return int(target)
 	}
 
-	if whichIndex != lastIndex {
-		// if whichIndex is not the last index, then there is another run with larger start
-		// rc.iv[whichIndex].last() + 1 cannot equal rc.iv[whichIndex +1].start
-		// by invariant
-		return int(rc.iv[whichIndex].last()) + 1
-	}
-	return -1
+	return int(rc.iv[whichIndex].last()) + 1
 }
 
 // previousValue will return the previous present value
@@ -2697,14 +2710,19 @@ func (rc *runContainer16) nextAbsentValue(target uint16) int {
 // Example:
 // If our run structure resmembles [[a,c], [d,f]] with a <= target  <= c then target will be returned.
 // If c < target < d then c is returned.
-// if the target is out of bounds -1 is returned
+// if target > f then f is returned
+// if the target is less than a, this is out of bounds and -1 is returned
 func (rc *runContainer16) previousValue(target uint16) int {
 	whichIndex, alreadyPresent, _ := rc.search(int(target))
+
+	if len(rc.iv) == 0 {
+		return int(target)
+	}
 
 	if alreadyPresent {
 		return int(target)
 	}
-	if whichIndex == -1 || whichIndex == len(rc.iv)-1 {
+	if whichIndex == -1 {
 		return -1
 	}
 
@@ -2716,28 +2734,16 @@ func (rc *runContainer16) previousValue(target uint16) int {
 //
 // Example:
 // If our run structure resmembles [[x,z], [a,c], [d,f]] with a <= target  <= c then a-1 will be returned.
-// if the target is out of bounds a -1 is returned
+// if the target < x then target is returned
+// if target > f then target is returned
 func (rc *runContainer16) previousAbsentValue(target uint16) int {
 	whichIndex, alreadyPresent, _ := rc.search(int(target))
-	lastIndex := len(rc.iv) - 1
 
 	if !alreadyPresent {
-		if whichIndex == -1 || whichIndex == lastIndex {
-			// TODO ask about the case whichIndex == len(rc.iv)-1
-			// should we return rc.iv[whichIndex].last() + 1
-			return -1
-		}
-
 		return int(target)
 	}
 
-	if whichIndex != 0 {
-		// if whichIndex is not the last index, then there is another run with larger start
-		// rc.iv[whichIndex].last() + 1 cannot equal rc.iv[whichIndex +1].start
-		// by invariant
-		return int(rc.iv[whichIndex].start) - 1
-	}
-	return -1
+	return int(rc.iv[whichIndex].start) - 1
 }
 
 // isNonContiguousDisjoint returns an error if the intervals overlap e.g have non-empty intersection

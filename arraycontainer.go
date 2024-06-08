@@ -65,8 +65,24 @@ func (ac *arrayContainer) minimum() uint16 {
 	return ac.content[0] // assume not empty
 }
 
+func (ac *arrayContainer) safeMinimum() (uint16, error) {
+	if len(ac.content) == 0 {
+		return 0, errors.New("empty array")
+	}
+
+	return ac.minimum(), nil
+}
+
 func (ac *arrayContainer) maximum() uint16 {
 	return ac.content[len(ac.content)-1] // assume not empty
+}
+
+func (ac *arrayContainer) safeMaximum() (uint16, error) {
+	if len(ac.content) == 0 {
+		return 0, errors.New("empty array")
+	}
+
+	return ac.maximum(), nil
 }
 
 func (ac *arrayContainer) getSizeInBytes() int {
@@ -975,35 +991,40 @@ func (ac *arrayContainer) realloc(size int) {
 // Ex: target=4 ac=[2,3,4,6,7] returns 4
 // Ex: target=5 ac=[2,3,4,6,7] returns 4
 // Ex: target=6 ac=[2,3,4,6,7] returns 6
+// Ex: target=8 ac=[2,3,4,6,7] returns 7
 // Ex: target=1 ac=[2,3,4,6,7] returns -1
+// Ex: target=0 ac=[2,3,4,6,7] returns -1
 func (ac *arrayContainer) previousValue(target uint16) int {
 	result := binarySearchUntil(ac.content, target)
+
+	if result.index == len(ac.content) {
+		return int(ac.maximum())
+	}
 
 	if result.outOfBounds() {
 		return -1
 	}
+
 	return int(result.value)
 }
 
 // previousAbsentValue returns either the target if not found or the next larger missing value.
 // If the target is out of bounds a -1 is returned
-// Ex: target=4 ac=[1,2,3,4,6,7] returns -1
+// Ex: target=4 ac=[1,2,3,4,6,7] returns 0
 // Ex: target=5 ac=[1,2,3,4,6,7] returns 5
 // Ex: target=6 ac=[1,2,3,4,6,7] returns 5
-// Ex: target=8 ac=[1,2,3,4,6,7] returns -1
+// Ex: target=8 ac=[1,2,3,4,6,7] returns 8
 func (ac *arrayContainer) previousAbsentValue(target uint16) int {
 	cardinality := len(ac.content)
 
 	if cardinality == 0 {
-		return -1
+		return int(target)
 	}
 
-	if target <= ac.minimum() {
-		return -1
-	}
 	if target > ac.maximum() {
-		return -1
+		return int(target)
 	}
+
 	result := binarySearchPast(ac.content, target)
 
 	if result.notFound() {
@@ -1017,7 +1038,7 @@ func (ac *arrayContainer) previousAbsentValue(target uint16) int {
 		}
 	}
 
-	low := 0
+	low := -1
 	high := result.index
 
 	// This uses the pigeon-hole principle.
@@ -1037,11 +1058,8 @@ func (ac *arrayContainer) previousAbsentValue(target uint16) int {
 		}
 	}
 
-	if low == 0 {
-		if high == 1 {
-			return -1
-		}
-		return int(ac.content[high] - 1)
+	if high == 0 {
+		return int(ac.minimum()) - 1
 	}
 
 	return int(ac.content[high] - 1)
@@ -1051,16 +1069,18 @@ func (ac *arrayContainer) previousAbsentValue(target uint16) int {
 // If the target is out of bounds a -1 is returned
 // Ex: target=4 ac=[1,2,3,4,6,7] returns 5
 // Ex: target=5 ac=[1,2,3,4,6,7] returns 5
-// Ex: target=0 ac=[1,2,3,4,6,7] returns -1
-// Ex: target=8 ac=[1,2,3,4,6,7] returns -1
+// Ex: target=0 ac=[1,2,3,4,6,7] returns 0
+// Ex: target=8 ac=[1,2,3,4,6,7] returns 8
 func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 	cardinality := len(ac.content)
+
+	if cardinality == 0 {
+		return int(target)
+	}
 	if target < ac.minimum() {
-		return -1
+		return int(target)
 	}
-	if target > ac.maximum() {
-		return -1
-	}
+
 	result := binarySearchPast(ac.content, target)
 
 	if result.notFound() {
@@ -1102,25 +1122,32 @@ func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 
 // nextValue returns either the target if found or the next larger value.
 // if the target is out of bounds a -1 is returned
+//
 // Ex: target=4 ac=[1,2,3,4,6,7] returns 4
 // Ex: target=5 ac=[1,2,3,4,6,7] returns 6
 // Ex: target=6 ac=[1,2,3,4,6,7] returns 6
+// Ex: target=0 ac=[1,2,3,4,6,7] returns 1
+// Ex: target=100 ac=[1,2,3,4,6,7] returns -1
 func (ac *arrayContainer) nextValue(target uint16) int {
 	cardinality := len(ac.content)
 	if cardinality == 0 {
 		return -1
 	}
 
-	if target < ac.minimum() {
-		return -1
-	}
-	if target > ac.maximum() {
-		return -1
-	}
+	//if target < ac.minimum() {
+	//	return -1
+	//}
+	//if target > ac.maximum() {
+	//		return -1
+	//	}
 
 	result := binarySearchUntil(ac.content, target)
 	if result.exactMatch {
 		return int(result.value)
+	}
+
+	if !result.exactMatch && result.index == -1 {
+		return int(ac.content[0])
 	}
 	if result.outOfBounds() {
 		return -1

@@ -1,6 +1,7 @@
 package roaring
 
 import (
+	"errors"
 	"fmt"
 	"math/bits"
 	"unsafe"
@@ -57,6 +58,17 @@ func (bc *bitmapContainer) minimum() uint16 {
 	return MaxUint16
 }
 
+func (bc *bitmapContainer) safeMinimum() (uint16, error) {
+	if len(bc.bitmap) == 0 {
+		return 0, errors.New("Empty bitmap")
+	}
+	val := bc.minimum()
+	if val == MaxUint16 {
+		return 0, errors.New("Empty bitmap")
+	}
+	return val, nil
+}
+
 // i should be non-zero
 func clz(i uint64) int {
 	n := 1
@@ -93,6 +105,17 @@ func (bc *bitmapContainer) maximum() uint16 {
 		}
 	}
 	return uint16(0)
+}
+
+func (bc *bitmapContainer) safeMaximum() (uint16, error) {
+	if len(bc.bitmap) == 0 {
+		return 0, errors.New("Empty bitmap")
+	}
+	val := bc.maximum()
+	if val == uint16(0) {
+		return 0, errors.New("Empty bitmap")
+	}
+	return val, nil
 }
 
 func (bc *bitmapContainer) iterate(cb func(x uint16) bool) bool {
