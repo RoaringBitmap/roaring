@@ -2003,6 +2003,60 @@ func (rb *Bitmap) NextAbsentValue(target int) int {
 	}
 }
 
+func (rb *Bitmap) PreviousAbsentValue(target int) int {
+	originalKey := highbits(uint32(target))
+	query := lowbits(uint32(target))
+	prevValue := -1
+
+	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
+
+	if containerIndex == rb.highlowcontainer.size() {
+		// if we are here it means no container found, just return the target
+		return target
+	}
+
+	if containerIndex == -1 {
+		// if we are here it means no container found, just return the target
+		return target
+	}
+
+	containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+	keyspace := uint32(containerKey) << 16
+	if target < int(keyspace) {
+		// target is less than the start of the keyspace start
+		// that means target cannot be in the keyspace
+		return target
+	}
+
+	container := rb.highlowcontainer.getContainer(containerKey)
+	prevValue = container.previousAbsentValue(query)
+	for {
+		if prevValue != -1 {
+			return int(combineLoHi32(uint32(prevValue), keyspace))
+		}
+
+		if containerIndex == 0 {
+			val, err := container.safeMinimum()
+			if err == nil {
+				// OR panic, Java panics
+				return -1
+			}
+			return int(val) - 1
+		}
+		containerIndex--
+		nextContainerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+		if nextContainerKey < containerKey-1 {
+			// There is a gap between keys, eg missing container
+			// Just decrement the current key and shift to get HoB of the missing container
+			return (int(containerKey) << 16) - 1
+		}
+		containerKey = nextContainerKey
+		container = rb.highlowcontainer.getContainer(containerKey)
+		highestPossible16 := (1 << 16) - 1
+		prevValue = container.previousAbsentValue(uint16(highestPossible16))
+	}
+}
+
 // FlipInt calls Flip after casting the parameters (convenience method)
 func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
 	return Flip(bm, uint64(rangeStart), uint64(rangeEnd))

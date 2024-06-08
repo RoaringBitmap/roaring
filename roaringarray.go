@@ -709,10 +709,10 @@ func (ra *roaringArray) hasRunCompression() bool {
 }
 
 /**
- * Find the smallest integer index larger than pos such that array[index].key&gt;=x. If none can
+ * Find the smallest integer index larger than pos such that array[index].key&gt;=min. If none can
  * be found, return size. Based on code by O. Kaser.
  *
- * @param x minimal value
+ * @param min minimal value
  * @param pos index to exceed
  * @return the smallest index greater than pos such that array[index].key is at least as large as
  *         min, or size if it is not possible.

@@ -2798,6 +2798,12 @@ func TestNextAndPreviousValue(t *testing.T) {
 		assert.Equal(t, 129, bmp.NextAbsentValue(65))
 		assert.Equal(t, 129, bmp.NextAbsentValue(128))
 		assert.Equal(t, 129, bmp.NextAbsentValue(129))
+
+		assert.Equal(t, 0, bmp.PreviousAbsentValue(0))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(63))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(64))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(65))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(128))
 	})
 	t.Run("Java Regression2", func(t *testing.T) {
 		// [Java2] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestRunContainer.java#L3655
@@ -2835,6 +2841,20 @@ func TestNextAndPreviousValue(t *testing.T) {
 		assert.Equal(t, 250, bmp.NextAbsentValue(250))
 		assert.Equal(t, 321, bmp.NextAbsentValue(256))
 		assert.Equal(t, 321, bmp.NextAbsentValue(320))
+
+		assert.Equal(t, 0, bmp.PreviousAbsentValue(0))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(63))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(64))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(65))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(128))
+		assert.Equal(t, 129, bmp.PreviousAbsentValue(129))
+		assert.Equal(t, 199, bmp.PreviousAbsentValue(199))
+		assert.Equal(t, 200, bmp.PreviousAbsentValue(200))
+		assert.Equal(t, 250, bmp.PreviousAbsentValue(250))
+		assert.Equal(t, 255, bmp.PreviousAbsentValue(256))
+		assert.Equal(t, 255, bmp.PreviousAbsentValue(300))
+		assert.Equal(t, 500, bmp.PreviousAbsentValue(500))
+		assert.Equal(t, 501, bmp.PreviousAbsentValue(501))
 	})
 
 	t.Run("Java Regression3", func(t *testing.T) {
@@ -2885,6 +2905,20 @@ func TestNextAndPreviousValue(t *testing.T) {
 		assert.Equal(t, 5201, bmp.NextAbsentValue(5000))
 		assert.Equal(t, 5201, bmp.NextAbsentValue(5200))
 		assert.Equal(t, 5201, bmp.NextAbsentValue(5201))
+
+		assert.Equal(t, 0, bmp.PreviousAbsentValue(0))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(63))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(64))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(65))
+		assert.Equal(t, 63, bmp.PreviousAbsentValue(128))
+		assert.Equal(t, 129, bmp.PreviousAbsentValue(129))
+		assert.Equal(t, 199, bmp.PreviousAbsentValue(199))
+		assert.Equal(t, 199, bmp.PreviousAbsentValue(200))
+		assert.Equal(t, 199, bmp.PreviousAbsentValue(250))
+		assert.Equal(t, 2500, bmp.PreviousAbsentValue(2500))
+		assert.Equal(t, 4999, bmp.PreviousAbsentValue(5000))
+		assert.Equal(t, 4999, bmp.PreviousAbsentValue(5200))
+		assert.Equal(t, 5201, bmp.PreviousAbsentValue(5201))
 	})
 
 	t.Run("skip odd ", func(t *testing.T) {
@@ -2896,6 +2930,10 @@ func TestNextAndPreviousValue(t *testing.T) {
 			assert.Equal(t, i*2, bmp.NextValue(i*2))
 			assert.Equal(t, i*2, bmp.PreviousValue(i*2))
 			assert.Equal(t, i*2+1, bmp.NextAbsentValue(i*2+1))
+
+			if i != 0 {
+				assert.Equal(t, i*2-1, bmp.PreviousAbsentValue(i*2))
+			}
 		}
 	})
 
@@ -2913,11 +2951,15 @@ func TestNextAndPreviousValue(t *testing.T) {
 			assert.Equal(t, i*2, bmp.NextValue(i*2))
 			assert.Equal(t, i*2, bmp.PreviousValue(i*2))
 			assert.Equal(t, i*2+1, bmp.NextAbsentValue(i*2))
+			if i != 0 {
+				assert.Equal(t, i*2-1, bmp.PreviousAbsentValue(i*2))
+			}
 		}
 		for i := rangeStart; i < rangeEnd; i++ {
 			assert.Equal(t, i, bmp.NextValue(i))
 			assert.Equal(t, i, bmp.PreviousValue(i))
-			assert.Equal(t, rangeEnd, bmp.NextAbsentValue(rangeEnd))
+			assert.Equal(t, rangeEnd, bmp.NextAbsentValue(i))
+			assert.Equal(t, rangeStart-1, bmp.PreviousAbsentValue((i)))
 		}
 	})
 }
