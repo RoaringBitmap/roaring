@@ -2962,6 +2962,28 @@ func TestNextAndPreviousValue(t *testing.T) {
 			assert.Equal(t, rangeStart-1, bmp.PreviousAbsentValue((i)))
 		}
 	})
+
+	t.Run("randomized", func(t *testing.T) {
+		bmp := New()
+
+		intervalEnd := 4096
+		entries := make([]uint32, 0, intervalEnd)
+
+		for i := 0; i < intervalEnd; i++ {
+			entry := rand.Uint32()
+			bmp.Add(entry)
+			entries = append(entries, entry)
+		}
+
+		for i := 0; i < intervalEnd; i++ {
+			entry := entries[i]
+			assert.Equal(t, entry, uint32(bmp.NextValue(int(entry))))
+			assert.Equal(t, uint32(entry), uint32(bmp.PreviousValue(int(entry))))
+			assert.NotEqual(t, uint32(entry), uint32(bmp.NextAbsentValue(int(entry))))
+			assert.NotEqual(t, uint32(entry), uint32(bmp.PreviousAbsentValue(int(entry))))
+
+		}
+	})
 }
 
 func BenchmarkFromDense(b *testing.B) {
