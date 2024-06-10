@@ -1878,6 +1878,10 @@ func (rb *Bitmap) CloneCopyOnWriteContainers() {
 	rb.highlowcontainer.cloneCopyOnWriteContainers()
 }
 
+// NextValue returns the next largest value in the bitmap, or -1
+// if none is present. This function should not be used inside
+// a performance-sensitive loop: prefer iterators if
+// performance is a concern.
 func (rb *Bitmap) NextValue(target uint32) int64 {
 	originalKey := highbits(target)
 	query := lowbits(target)
@@ -1910,6 +1914,10 @@ func (rb *Bitmap) NextValue(target uint32) int64 {
 	return int64(nextValue)
 }
 
+// PreviousValue returns the previous largest value in the bitmap, or -1
+// if none is present. This function should not be used inside
+// a performance-sensitive loop: prefer iterators if
+// performance is a concern.
 func (rb *Bitmap) PreviousValue(target uint32) int64 {
 	if rb.IsEmpty() {
 		return -1
@@ -1956,6 +1964,10 @@ func (rb *Bitmap) PreviousValue(target uint32) int64 {
 	return int64(prevValue)
 }
 
+// NextAbsentValue returns the next largest missing value in the bitmap, or -1
+// if none is present. This function should not be used inside
+// a performance-sensitive loop: prefer iterators if
+// performance is a concern.
 func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 	originalKey := highbits(target)
 	query := lowbits(target)
@@ -2003,6 +2015,10 @@ func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 	}
 }
 
+// PreviousAbsentValue returns the previous largest missing value in the bitmap, or -1
+// if none is present. This function should not be used inside
+// a performance-sensitive loop: prefer iterators if
+// performance is a concern.
 func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
 	originalKey := highbits(target)
 	query := lowbits(target)
