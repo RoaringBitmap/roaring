@@ -58,7 +58,11 @@ func TestExample_roaring060(t *testing.T) {
 	if err != nil {
 		fmt.Println("Failed reading")
 		t.Errorf("Failed reading")
-
+	}
+	// if buf is an untrusted source, you should validate the result
+	// (this adds a bit of complexity but it is necessary for security)
+	if newrb.Validate() != nil {
+		fmt.Println("Failed validation")
 	}
 	if !rb1.Equals(newrb) {
 		fmt.Println("I did not get back to original bitmap?")

@@ -249,15 +249,20 @@ consider the following sample of code:
 	buf := new(bytes.Buffer)
 	size,err:=rb.WriteTo(buf)
 	if err != nil {
-		t.Errorf("Failed writing")
+		fmt.Println("Failed writing") // return or panic
 	}
 	newrb:= New()
 	size,err=newrb.ReadFrom(buf)
 	if err != nil {
-		t.Errorf("Failed reading")
+		fmt.Println("Failed reading") // return or panic
+	}
+	// if buf is an untrusted source, you should validate the result
+	// (this adds a bit of complexity but it is necessary for security)
+	if newrb.Validate() != nil {
+		fmt.Println("Failed validation") // return or panic
 	}
 	if ! rb.Equals(newrb) {
-		t.Errorf("Cannot retrieve serialized version")
+		fmt.Println("Cannot retrieve serialized version")
 	}
 ```
 
