@@ -31,7 +31,6 @@ type container interface {
 	iadd(x uint16) bool                   // inplace, returns true if x was new.
 	iaddReturnMinimized(uint16) container // may change return type to minimize storage.
 
-	// addRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
 	iaddRange(start, endx int) container // i stands for inplace, range is [firstOfRange,endx)
 
 	iremove(x uint16) bool                   // inplace, returns true if x was present.
@@ -62,7 +61,6 @@ type container interface {
 	lazyOR(r container) container
 	lazyIOR(r container) container
 	getSizeInBytes() int
-	// removeRange(start, final int) container  // range is [firstOfRange,lastOfRange) (unused)
 	iremoveRange(start, final int) container // i stands for inplace, range is [firstOfRange,lastOfRange)
 	selectInt(x uint16) int                  // selectInt returns the xth integer in the container
 	serializedSizeInBytes() int

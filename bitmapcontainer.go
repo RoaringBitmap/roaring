@@ -238,11 +238,10 @@ func (bc *bitmapContainer) getManyIterator() manyIterable {
 }
 
 func (bc *bitmapContainer) getSizeInBytes() int {
-	return len(bc.bitmap) * 8 // + bcBaseBytes
+	return len(bc.bitmap) * 8
 }
 
 func (bc *bitmapContainer) serializedSizeInBytes() int {
-	// return bc.Msgsize()// NOO! This breaks GetSerializedSizeInBytes
 	return len(bc.bitmap) * 8
 }
 
@@ -820,7 +819,7 @@ func (bc *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
 	}
 	ac := newArrayContainerSize(newcardinality)
 	fillArrayAND(ac.content, bc.bitmap, value2.bitmap)
-	ac.content = ac.content[:newcardinality] // not sure why i need this
+	ac.content = ac.content[:newcardinality]
 	return ac
 }
 

@@ -355,7 +355,6 @@ func (ac *arrayContainer) ior(a container) container {
 		return ac.iorArray(x)
 	case *bitmapContainer:
 		return a.(*bitmapContainer).orArray(ac)
-		// return ac.iorBitmap(x) // note: this does not make sense
 	case *runContainer16:
 		if x.isFull() {
 			return x.clone()
