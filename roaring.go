@@ -1885,33 +1885,34 @@ func (rb *Bitmap) CloneCopyOnWriteContainers() {
 func (rb *Bitmap) NextValue(target uint32) int64 {
 	originalKey := highbits(target)
 	query := lowbits(target)
-	nextValue := -1
+	var nextValue int64
+	nextValue = -1
 	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
 	for containerIndex < rb.highlowcontainer.size() && nextValue == -1 {
 		containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
 		container := rb.highlowcontainer.getContainer(containerKey)
 		// if containerKey > orginalKey then we are past the container which mapped to the orignal key
 		// in that case we can just return the minimum from that container
-		var responseBit int
+		var responseBit int64
 		if containerKey > originalKey {
 			bit, err := container.safeMinimum()
 			if err == nil {
 				responseBit = -1
 			}
-			responseBit = int(bit)
+			responseBit = int64(bit)
 		} else {
-			responseBit = container.nextValue(query)
+			responseBit = int64(container.nextValue(query))
 		}
 
 		if responseBit == -1 {
 			nextValue = -1
 		} else {
-			nextValue = int(combineLoHi32(uint32(responseBit), uint32(containerKey)))
+			nextValue = int64(combineLoHi32(uint32(responseBit), uint32(containerKey)))
 		}
 		containerIndex++
 	}
 
-	return int64(nextValue)
+	return nextValue
 }
 
 // PreviousValue returns the previous largest value in the bitmap, or -1
@@ -1925,7 +1926,8 @@ func (rb *Bitmap) PreviousValue(target uint32) int64 {
 
 	originalKey := highbits(uint32(target))
 	query := lowbits(uint32(target))
-	prevValue := -1
+	var prevValue int64
+	prevValue = -1
 	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
 
 	if containerIndex == rb.highlowcontainer.size() {
@@ -1956,12 +1958,12 @@ func (rb *Bitmap) PreviousValue(target uint32) int64 {
 		if responseBit == -1 {
 			prevValue = -1
 		} else {
-			prevValue = int(combineLoHi32(uint32(responseBit), uint32(containerKey)))
+			prevValue = int64(combineLoHi32(uint32(responseBit), uint32(containerKey)))
 		}
 		containerIndex--
 	}
 
-	return int64(prevValue)
+	return prevValue
 }
 
 // NextAbsentValue returns the next largest missing value in the bitmap, or -1
@@ -1971,7 +1973,8 @@ func (rb *Bitmap) PreviousValue(target uint32) int64 {
 func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 	originalKey := highbits(target)
 	query := lowbits(target)
-	nextValue := -1
+	var nextValue int64
+	nextValue = -1
 
 	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
 	if containerIndex == rb.highlowcontainer.size() {
@@ -1989,7 +1992,7 @@ func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 	}
 
 	container := rb.highlowcontainer.getContainer(containerKey)
-	nextValue = container.nextAbsentValue(query)
+	nextValue = int64(container.nextAbsentValue(query))
 	for {
 		if nextValue != (1 << 16) {
 			return int64(combineLoHi32(uint32(nextValue), keyspace))
@@ -2011,7 +2014,7 @@ func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 		}
 		containerKey = nextContainerKey
 		container = rb.highlowcontainer.getContainer(containerKey)
-		nextValue = container.nextAbsentValue(0)
+		nextValue = int64(container.nextAbsentValue(0))
 	}
 }
 
@@ -2022,7 +2025,8 @@ func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
 	originalKey := highbits(target)
 	query := lowbits(target)
-	prevValue := -1
+	var prevValue int64
+	prevValue = -1
 
 	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
 
@@ -2045,7 +2049,7 @@ func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
 	}
 
 	container := rb.highlowcontainer.getContainer(containerKey)
-	prevValue = container.previousAbsentValue(query)
+	prevValue = int64(container.previousAbsentValue(query))
 	for {
 		if prevValue != -1 {
 			return int64(combineLoHi32(uint32(prevValue), keyspace))
@@ -2069,7 +2073,7 @@ func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
 		containerKey = nextContainerKey
 		container = rb.highlowcontainer.getContainer(containerKey)
 		highestPossible16 := (1 << 16) - 1
-		prevValue = container.previousAbsentValue(uint16(highestPossible16))
+		prevValue = int64(container.previousAbsentValue(uint16(highestPossible16)))
 	}
 }
 
