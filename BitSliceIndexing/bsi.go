@@ -277,8 +277,29 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 	if e.bsi.runOptimized {
 		results.RunOptimize()
 	}
-
-	x := e.bsi.BitCount()
+	if len(batch) == 0 {
+		resultsChan <- results
+		return
+	}
+	//以下代码解决在bsi没有设置max或者compare的值超过了max的时候该函数返回的结果不准确的问题
+	/***********************************************************************/
+	var x int
+	if e.op == RANGE {
+		//如果操作是range并且end的位数比ba的长度大，则x设为end的位数
+		if bits.Len64(uint64(e.end)) > e.bsi.BitCount() {
+			x = bits.Len64(uint64(e.end))
+		} else {
+			x = e.bsi.BitCount()
+		}
+	} else {
+		//如果操作不是range并且value位数比ba的长度大，则x设为value的位数
+		if bits.Len64(uint64(e.valueOrStart)) > e.bsi.BitCount() {
+			x = bits.Len64(uint64(e.valueOrStart))
+		} else {
+			x = e.bsi.BitCount()
+		}
+	}
+	/***********************************************************************/
 	startIsNegative := x == 64 && uint64(e.valueOrStart)&(1<<uint64(x-1)) > 0
 	endIsNegative := x == 64 && uint64(e.end)&(1<<uint64(x-1)) > 0
 
@@ -286,10 +307,12 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 		cID := batch[i]
 		eq1, eq2 := true, true
 		lt1, lt2, gt1 := false, false, false
-		j := e.bsi.BitCount() - 1
+		j := x - 1
 		isNegative := false
 		if x == 64 {
-			isNegative = e.bsi.bA[j].Contains(cID)
+			if j < e.bsi.BitCount() {
+				isNegative = e.bsi.bA[j].Contains(cID)
+			}
 			j--
 		}
 		compStartValue := e.valueOrStart
@@ -301,8 +324,13 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 			compEndValue = ^e.end + 1
 		}
 		for ; j >= 0; j-- {
-			sliceContainsBit := e.bsi.bA[j].Contains(cID)
-
+			var sliceContainsBit bool
+			//j的值可能比ba的长度大，所以增加了以下判断
+			if e.bsi.BitCount() <= j {
+				sliceContainsBit = false
+			} else {
+				sliceContainsBit = e.bsi.bA[j].Contains(cID)
+			}
 			if uint64(compStartValue)&(1<<uint64(j)) > 0 {
 				// BIT in value is SET
 				if !sliceContainsBit {
