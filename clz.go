@@ -8,6 +8,12 @@ package roaring
 
 import "math/bits"
 
+// countLeadingOnes returns the number of leading zeros bits in x; the result is 64 for x == 0.
 func countLeadingZeros(x uint64) int {
 	return bits.LeadingZeros64(x)
+}
+
+// countLeadingOnes returns the number of leading ones bits in x; the result is 0 for x == 0.
+func countLeadingOnes(x uint64) int {
+	return bits.LeadingZeros64(^x)
 }

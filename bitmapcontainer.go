@@ -1,7 +1,9 @@
 package roaring
 
 import (
+	"errors"
 	"fmt"
+	"math/bits"
 	"unsafe"
 )
 
@@ -56,6 +58,17 @@ func (bc *bitmapContainer) minimum() uint16 {
 	return MaxUint16
 }
 
+func (bc *bitmapContainer) safeMinimum() (uint16, error) {
+	if len(bc.bitmap) == 0 {
+		return 0, errors.New("Empty bitmap")
+	}
+	val := bc.minimum()
+	if val == MaxUint16 {
+		return 0, errors.New("Empty bitmap")
+	}
+	return val, nil
+}
+
 // i should be non-zero
 func clz(i uint64) int {
 	n := 1
@@ -92,6 +105,17 @@ func (bc *bitmapContainer) maximum() uint16 {
 		}
 	}
 	return uint16(0)
+}
+
+func (bc *bitmapContainer) safeMaximum() (uint16, error) {
+	if len(bc.bitmap) == 0 {
+		return 0, errors.New("Empty bitmap")
+	}
+	val := bc.maximum()
+	if val == uint16(0) {
+		return 0, errors.New("Empty bitmap")
+	}
+	return val, nil
 }
 
 func (bc *bitmapContainer) iterate(cb func(x uint16) bool) bool {
@@ -313,6 +337,7 @@ func (bc *bitmapContainer) iaddReturnMinimized(i uint16) container {
 	return bc
 }
 
+// iadd adds the arg i, returning true if not already present
 func (bc *bitmapContainer) iadd(i uint16) bool {
 	x := int(i)
 	previous := bc.bitmap[x/64]
@@ -1064,6 +1089,7 @@ func (bc *bitmapContainer) fillArray(container []uint16) {
 	}
 }
 
+// NextSetBit returns the next set bit e.g the next int packed into the bitmaparray
 func (bc *bitmapContainer) NextSetBit(i uint) int {
 	var (
 		x      = i / 64
@@ -1086,12 +1112,22 @@ func (bc *bitmapContainer) NextSetBit(i uint) int {
 	return -1
 }
 
+// PrevSetBit returns the previous set bit e.g the previous int packed into the bitmaparray
 func (bc *bitmapContainer) PrevSetBit(i int) int {
 	if i < 0 {
 		return -1
 	}
-	x := i / 64
-	if x >= len(bc.bitmap) {
+
+	return bc.uPrevSetBit(uint(i))
+}
+
+func (bc *bitmapContainer) uPrevSetBit(i uint) int {
+	var (
+		x      = i >> 6
+		length = uint(len(bc.bitmap))
+	)
+
+	if x >= length {
 		return -1
 	}
 
@@ -1101,12 +1137,16 @@ func (bc *bitmapContainer) PrevSetBit(i int) int {
 
 	w = w << uint(63-b)
 	if w != 0 {
-		return i - countLeadingZeros(w)
+		return int(i) - countLeadingZeros(w)
 	}
+	orig := x
 	x--
-	for ; x >= 0; x-- {
+	if x > orig {
+		return -1
+	}
+	for ; x < orig; x-- {
 		if bc.bitmap[x] != 0 {
-			return (x * 64) + 63 - countLeadingZeros(bc.bitmap[x])
+			return int((x*64)+63) - countLeadingZeros(bc.bitmap[x])
 		}
 	}
 	return -1
@@ -1229,6 +1269,153 @@ func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 	}
 
 	return low, high
+}
+
+// nextValue returns either the `target` if found or the next largest value.
+// if the target is out of bounds a -1 is returned
+//
+// Example :
+// Suppose the bitmap container represents the following slice
+// [1,2,10,11,100]
+// target=0 returns 1
+// target=1 returns 1
+// target=10 returns 10
+// target=90 returns 100
+func (bc *bitmapContainer) nextValue(target uint16) int {
+	if bc.cardinality == 0 {
+		return -1
+	}
+
+	return bc.NextSetBit(uint(target))
+}
+
+// nextAbsentValue returns the next absent value.
+// if the target is out of bounds a -1 is returned
+func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
+	if bc.cardinality == 0 {
+		return -1
+	}
+
+	var (
+		x      = target >> 6
+		length = uint(len(bc.bitmap))
+	)
+	if uint(x) >= length {
+		return -1
+	}
+	w := bc.bitmap[x]
+	w = w >> uint(target%64)
+	if w == 0 {
+		return int(target)
+	}
+
+	// Check if all 1's
+	// if statement - we skip the if we have all ones [1,1,1,1...1]
+	if ^w != 0 {
+
+		if countTrailingZeros(w) > 0 {
+			// we have something like [X,Y,Z, 0,0,0]. This means the target bit is zero
+			return int(target)
+		}
+
+		// other wise something like [X,Y,0,1,1,1..1], where x and y can be either 1 or 0.
+
+		trailing := countTrailingOnes(w)
+		return int(target) + trailing
+
+	}
+	x++
+	for ; uint(x) < length; x++ {
+		if bc.bitmap[x] == 0 {
+			return int(x * 64)
+		}
+		if ^bc.bitmap[x] != 0 {
+			trailing := countTrailingOnes(bc.bitmap[x])
+			return int(x*64) + trailing
+		}
+
+	}
+	return -1
+}
+
+// previousValue returns either the `target` if found or the previous largest value.
+// if the target is out of bounds a -1 is returned
+
+// Example :
+// Suppose the bitmap container represents the following slice
+// [1,2,10,11,100]
+// target=0 returns -1
+// target=1 returns -1
+// target=2 returns -1
+// target=10 returns 9
+// target=50 returns 10
+// target=100 returns 99
+func (bc *bitmapContainer) previousValue(target uint16) int {
+	if bc.cardinality == 0 {
+		return -1
+	}
+	return bc.uPrevSetBit(uint(target))
+}
+
+// previousAbsentValue returns the next absent value.
+func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
+	if bc.cardinality == 0 {
+		return -1
+	}
+
+	var (
+		x      = target >> 6
+		length = uint(len(bc.bitmap))
+	)
+	if uint(x) >= length {
+		return -1
+	}
+	w := bc.bitmap[x]
+	shifted := w >> uint(target%64)
+	if shifted == 0 {
+		return int(target)
+	}
+
+	// Check if all 1's
+	// if statement - we skip if we have all ones [1,1,1,1...1] as no value is absent
+	if ^shifted != 0 {
+
+		if countTrailingZeros(shifted) > 0 {
+			// we have something like shifted=[X,Y,Z,..., 0,0,0]. This means the target bit is zero
+			return int(target)
+		}
+
+		// The rotate will rotate the target bit into the leading position.
+		// We know the target bit is not zero because of the countTrailingZero check above
+		// We then shift the target bit out of the way.
+		// Assume a structure like an original structure like [X,Y,Z,..., Target, A, B,C...]
+		// shifted will be [X,Y,Z...Target]
+		// shiftedRotated will be [A,B,C....]
+		// If countLeadingZeros > 0 then A is zero, if not at least A is 1 return
+		// Else count the number of ones's until a 0
+		shiftedRotated := bits.RotateLeft64(w, int(64-uint(target%64))-1) << 1
+		leadingZeros := countLeadingZeros(shiftedRotated)
+		if leadingZeros > 0 {
+			return int(target) - 1
+		}
+		leadingOnes := countLeadingOnes(shiftedRotated)
+		if leadingOnes > 0 {
+			return int(target) - leadingOnes - 1
+		}
+
+	}
+	x++
+	for ; uint(x) < length; x++ {
+		if bc.bitmap[x] == 0 {
+			return int(x * 64)
+		}
+		if ^bc.bitmap[x] != 0 {
+			trailing := countTrailingOnes(bc.bitmap[x])
+			return int(x*64) + trailing
+		}
+
+	}
+	return -1
 }
 
 // validate checks that the container size is non-negative

@@ -329,6 +329,89 @@ func TestBitmapContainerIAndNot(t *testing.T) {
 	require.Equal(t, 3, bc.getCardinality())
 }
 
+func TestPreviousNexts(t *testing.T) {
+	bc := newBitmapContainer()
+	bc.iadd(10)
+	bc.iadd(12)
+	bc.iadd(13)
+	bc.iaddRange(50, 60)
+	// Crosses the 64 division mod boundary
+	bc.iadd(100)
+	// Another 64 division mod boundary
+	bc.iadd(129)
+
+	t.Run("Next value", func(t *testing.T) {
+		assert.Equal(t, 10, bc.nextValue(uint16(0)))
+		assert.Equal(t, 10, bc.nextValue(uint16(5)))
+		assert.Equal(t, 10, bc.nextValue(uint16(10)))
+		assert.Equal(t, 12, bc.nextValue(uint16(11)))
+		assert.Equal(t, 12, bc.nextValue(uint16(12)))
+		assert.Equal(t, 13, bc.nextValue(uint16(13)))
+		assert.Equal(t, 50, bc.nextValue(uint16(14)))
+		assert.Equal(t, 55, bc.nextValue(uint16(55)))
+		assert.Equal(t, 100, bc.nextValue(uint16(61)))
+		assert.Equal(t, 100, bc.nextValue(uint16(100)))
+		assert.Equal(t, 129, bc.nextValue(uint16(101)))
+		assert.Equal(t, 129, bc.nextValue(uint16(129)))
+		assert.Equal(t, -1, bc.nextValue(uint16(130)))
+	})
+
+	t.Run("Previous value", func(t *testing.T) {
+		assert.Equal(t, -1, bc.previousValue(uint16(0)))
+		assert.Equal(t, -1, bc.previousValue(uint16(1)))
+		assert.Equal(t, -1, bc.previousValue(uint16(2)))
+		assert.Equal(t, -1, bc.previousValue(uint16(5)))
+		assert.Equal(t, 10, bc.previousValue(uint16(10)))
+		assert.Equal(t, 10, bc.previousValue(uint16(11)))
+		assert.Equal(t, 12, bc.previousValue(uint16(12)))
+		assert.Equal(t, 13, bc.previousValue(uint16(13)))
+		assert.Equal(t, 13, bc.previousValue(uint16(14)))
+		assert.Equal(t, 55, bc.previousValue(uint16(55)))
+		assert.Equal(t, 59, bc.previousValue(uint16(61)))
+		assert.Equal(t, 100, bc.previousValue(uint16(101)))
+	})
+
+	t.Run("Next Absent value", func(t *testing.T) {
+		assert.Equal(t, 0, bc.nextAbsentValue(uint16(0)))
+		assert.Equal(t, 5, bc.nextAbsentValue(uint16(5)))
+		assert.Equal(t, 11, bc.nextAbsentValue(uint16(11)))
+		assert.Equal(t, 14, bc.nextAbsentValue(uint16(12)))
+		assert.Equal(t, 14, bc.nextAbsentValue(uint16(13)))
+		assert.Equal(t, 14, bc.nextAbsentValue(uint16(14)))
+		assert.Equal(t, 49, bc.nextAbsentValue(uint16(49)))
+		assert.Equal(t, 60, bc.nextAbsentValue(uint16(50)))
+		assert.Equal(t, 60, bc.nextAbsentValue(uint16(60)))
+		assert.Equal(t, 101, bc.nextAbsentValue(uint16(100)))
+		assert.Equal(t, 101, bc.nextAbsentValue(uint16(101)))
+		assert.Equal(t, 130, bc.nextAbsentValue(uint16(129)))
+	})
+
+	t.Run("Previous Absent value", func(t *testing.T) {
+		assert.Equal(t, 0, bc.previousAbsentValue(uint16(0)))
+		assert.Equal(t, 1, bc.previousAbsentValue(uint16(1)))
+		assert.Equal(t, 2, bc.previousAbsentValue(uint16(2)))
+		assert.Equal(t, 5, bc.previousAbsentValue(uint16(5)))
+		assert.Equal(t, 9, bc.previousAbsentValue(uint16(10)))
+		assert.Equal(t, 11, bc.previousAbsentValue(uint16(11)))
+		assert.Equal(t, 11, bc.previousAbsentValue(uint16(12)))
+		assert.Equal(t, 11, bc.previousAbsentValue(uint16(13)))
+		assert.Equal(t, 49, bc.previousAbsentValue(uint16(50)))
+		assert.Equal(t, 49, bc.previousAbsentValue(uint16(51)))
+		assert.Equal(t, 99, bc.previousAbsentValue(uint16(100)))
+		assert.Equal(t, 128, bc.previousAbsentValue(uint16(129)))
+		assert.Equal(t, 130, bc.previousAbsentValue(uint16(130)))
+	})
+}
+
+func TestNextAbsent(t *testing.T) {
+	bc := newBitmapContainer()
+	for i := 0; i < 1<<16; i++ {
+		bc.iadd(uint16(i))
+	}
+	v := bc.nextAbsentValue((1 << 16) - 1)
+	assert.Equal(t, v, 65536)
+}
+
 func TestBitMapContainerValidate(t *testing.T) {
 	bc := newBitmapContainer()
 

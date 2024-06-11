@@ -1878,6 +1878,205 @@ func (rb *Bitmap) CloneCopyOnWriteContainers() {
 	rb.highlowcontainer.cloneCopyOnWriteContainers()
 }
 
+// NextValue returns the next largest value in the bitmap, or -1
+// if none is present. This function should not be used inside
+// a performance-sensitive loop: prefer iterators if
+// performance is a concern.
+func (rb *Bitmap) NextValue(target uint32) int64 {
+	originalKey := highbits(target)
+	query := lowbits(target)
+	var nextValue int64
+	nextValue = -1
+	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
+	for containerIndex < rb.highlowcontainer.size() && nextValue == -1 {
+		containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+		container := rb.highlowcontainer.getContainer(containerKey)
+		// if containerKey > orginalKey then we are past the container which mapped to the orignal key
+		// in that case we can just return the minimum from that container
+		var responseBit int64
+		if containerKey > originalKey {
+			bit, err := container.safeMinimum()
+			if err == nil {
+				responseBit = -1
+			}
+			responseBit = int64(bit)
+		} else {
+			responseBit = int64(container.nextValue(query))
+		}
+
+		if responseBit == -1 {
+			nextValue = -1
+		} else {
+			nextValue = int64(combineLoHi32(uint32(responseBit), uint32(containerKey)))
+		}
+		containerIndex++
+	}
+
+	return nextValue
+}
+
+// PreviousValue returns the previous largest value in the bitmap, or -1
+// if none is present. This function should not be used inside
+// a performance-sensitive loop: prefer iterators if
+// performance is a concern.
+func (rb *Bitmap) PreviousValue(target uint32) int64 {
+	if rb.IsEmpty() {
+		return -1
+	}
+
+	originalKey := highbits(uint32(target))
+	query := lowbits(uint32(target))
+	var prevValue int64
+	prevValue = -1
+	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
+
+	if containerIndex == rb.highlowcontainer.size() {
+		return int64(rb.Maximum())
+	}
+
+	if rb.highlowcontainer.getKeyAtIndex(containerIndex) > originalKey {
+		return -1
+	}
+
+	for containerIndex != -1 && prevValue == -1 {
+		containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+		container := rb.highlowcontainer.getContainer(containerKey)
+		// if containerKey > orginalKey then we are past the container which mapped to the orignal key
+		// in that case we can just return the minimum from that container
+		var responseBit int
+		if containerKey < originalKey {
+			bit, err := container.safeMaximum()
+
+			if err == nil {
+				responseBit = -1
+			}
+			responseBit = int(bit)
+		} else {
+			responseBit = container.previousValue(query)
+		}
+
+		if responseBit == -1 {
+			prevValue = -1
+		} else {
+			prevValue = int64(combineLoHi32(uint32(responseBit), uint32(containerKey)))
+		}
+		containerIndex--
+	}
+
+	return prevValue
+}
+
+// NextAbsentValue returns the next largest missing value in the bitmap, or -1
+// if none is present. This function should not be used inside
+// a performance-sensitive loop: prefer iterators if
+// performance is a concern.
+func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
+	originalKey := highbits(target)
+	query := lowbits(target)
+	var nextValue int64
+	nextValue = -1
+
+	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
+	if containerIndex == rb.highlowcontainer.size() {
+		// if we are here it means no container found, just return the target
+		return int64(target)
+	}
+
+	containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+
+	keyspace := uint32(containerKey) << 16
+	if target < keyspace {
+		// target is less than the start of the keyspace start
+		// that means target cannot be in the keyspace
+		return int64(target)
+	}
+
+	container := rb.highlowcontainer.getContainer(containerKey)
+	nextValue = int64(container.nextAbsentValue(query))
+	for {
+		if nextValue != (1 << 16) {
+			return int64(combineLoHi32(uint32(nextValue), keyspace))
+		}
+
+		if containerIndex == rb.highlowcontainer.size()-1 {
+			val, err := container.safeMaximum()
+			if err == nil {
+				return -1
+			}
+			return int64(val) + 1
+		}
+		containerIndex++
+		nextContainerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+		if containerKey < nextContainerKey {
+			// There is a gap between keys
+			// Just increment the current key and shift to get HoB
+			return int64(containerKey+1) << 16
+		}
+		containerKey = nextContainerKey
+		container = rb.highlowcontainer.getContainer(containerKey)
+		nextValue = int64(container.nextAbsentValue(0))
+	}
+}
+
+// PreviousAbsentValue returns the previous largest missing value in the bitmap, or -1
+// if none is present. This function should not be used inside
+// a performance-sensitive loop: prefer iterators if
+// performance is a concern.
+func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
+	originalKey := highbits(target)
+	query := lowbits(target)
+	var prevValue int64
+	prevValue = -1
+
+	containerIndex := rb.highlowcontainer.advanceUntil(originalKey, -1)
+
+	if containerIndex == rb.highlowcontainer.size() {
+		// if we are here it means no container found, just return the target
+		return int64(target)
+	}
+
+	if containerIndex == -1 {
+		// if we are here it means no container found, just return the target
+		return int64(target)
+	}
+
+	containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+	keyspace := uint32(containerKey) << 16
+	if target < keyspace {
+		// target is less than the start of the keyspace start
+		// that means target cannot be in the keyspace
+		return int64(target)
+	}
+
+	container := rb.highlowcontainer.getContainer(containerKey)
+	prevValue = int64(container.previousAbsentValue(query))
+	for {
+		if prevValue != -1 {
+			return int64(combineLoHi32(uint32(prevValue), keyspace))
+		}
+
+		if containerIndex == 0 {
+			val, err := container.safeMinimum()
+			if err == nil {
+				// OR panic, Java panics
+				return -1
+			}
+			return int64(val) - 1
+		}
+		containerIndex--
+		nextContainerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
+		if nextContainerKey < containerKey-1 {
+			// There is a gap between keys, eg missing container
+			// Just decrement the current key and shift to get HoB of the missing container
+			return (int64(containerKey) << 16) - 1
+		}
+		containerKey = nextContainerKey
+		container = rb.highlowcontainer.getContainer(containerKey)
+		highestPossible16 := (1 << 16) - 1
+		prevValue = int64(container.previousAbsentValue(uint16(highestPossible16)))
+	}
+}
+
 // FlipInt calls Flip after casting the parameters (convenience method)
 func FlipInt(bm *Bitmap, rangeStart, rangeEnd int) *Bitmap {
 	return Flip(bm, uint64(rangeStart), uint64(rangeEnd))

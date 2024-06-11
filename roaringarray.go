@@ -71,6 +71,12 @@ type container interface {
 	String() string
 	containerType() contype
 
+	safeMinimum() (uint16, error)
+	safeMaximum() (uint16, error)
+	nextValue(x uint16) int
+	previousValue(x uint16) int
+	nextAbsentValue(x uint16) int
+	previousAbsentValue(x uint16) int
 	validate() error
 }
 
@@ -292,6 +298,8 @@ func (ra *roaringArray) cloneCopyOnWriteContainers() {
 //	return (ra.binarySearch(0, int64(len(ra.keys)), x) >= 0)
 //}
 
+// getContainer returns the container with key `x`
+// if no such container exists `nil` is returned
 func (ra *roaringArray) getContainer(x uint16) container {
 	i := ra.binarySearch(0, int64(len(ra.keys)), x)
 	if i < 0 {
@@ -339,7 +347,10 @@ func (ra *roaringArray) getWritableContainerAtIndex(i int) container {
 	return ra.containers[i]
 }
 
+// getIndex returns the index of the container with key `x`
+// if no such container exists a negative value is returned
 func (ra *roaringArray) getIndex(x uint16) int {
+	// Todo : test
 	// before the binary search, we optimize for frequent cases
 	size := len(ra.keys)
 	if (size == 0) || (ra.keys[size-1] == x) {
@@ -399,7 +410,10 @@ func (ra *roaringArray) size() int {
 	return len(ra.keys)
 }
 
+// binarySearch returns the index of the key.
+// negative value returned if not found
 func (ra *roaringArray) binarySearch(begin, end int64, ikey uint16) int {
+	// TODO: add unit tests
 	low := begin
 	high := end - 1
 	for low+16 <= high {
@@ -692,6 +706,15 @@ func (ra *roaringArray) hasRunCompression() bool {
 	return false
 }
 
+/**
+ * Find the smallest integer index larger than pos such that array[index].key&gt;=min. If none can
+ * be found, return size. Based on code by O. Kaser.
+ *
+ * @param min minimal value
+ * @param pos index to exceed
+ * @return the smallest index greater than pos such that array[index].key is at least as large as
+ *         min, or size if it is not possible.
+ */
 func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 	lower := pos + 1
 
