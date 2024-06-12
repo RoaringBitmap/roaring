@@ -277,8 +277,27 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 	if e.bsi.runOptimized {
 		results.RunOptimize()
 	}
-
-	x := e.bsi.BitCount()
+	if len(batch) == 0 {
+		resultsChan <- results
+		return
+	}
+	//The following code solves the problem of inaccurate results returned by the function when bsi is not set to max or the value of compare exceeds max
+	var x int
+	if e.op == RANGE {
+		//If the operation is range and the number of bits in end is greater than the length of ba, then x is set to the number of bits in end
+		if bits.Len64(uint64(e.end)) > e.bsi.BitCount() {
+			x = bits.Len64(uint64(e.end))
+		} else {
+			x = e.bsi.BitCount()
+		}
+	} else {
+		//If the operation is not range and the number of value bits is greater than the length of ba, then x is set to the number of value bits
+		if bits.Len64(uint64(e.valueOrStart)) > e.bsi.BitCount() {
+			x = bits.Len64(uint64(e.valueOrStart))
+		} else {
+			x = e.bsi.BitCount()
+		}
+	}
 	startIsNegative := x == 64 && uint64(e.valueOrStart)&(1<<uint64(x-1)) > 0
 	endIsNegative := x == 64 && uint64(e.end)&(1<<uint64(x-1)) > 0
 
@@ -286,10 +305,12 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 		cID := batch[i]
 		eq1, eq2 := true, true
 		lt1, lt2, gt1 := false, false, false
-		j := e.bsi.BitCount() - 1
+		j := x - 1
 		isNegative := false
 		if x == 64 {
-			isNegative = e.bsi.bA[j].Contains(cID)
+			if j < e.bsi.BitCount() {
+				isNegative = e.bsi.bA[j].Contains(cID)
+			}
 			j--
 		}
 		compStartValue := e.valueOrStart
@@ -301,8 +322,13 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 			compEndValue = ^e.end + 1
 		}
 		for ; j >= 0; j-- {
-			sliceContainsBit := e.bsi.bA[j].Contains(cID)
-
+			var sliceContainsBit bool
+			//The value of j may be larger than the length of ba, so the following judgment has been added
+			if e.bsi.BitCount() <= j {
+				sliceContainsBit = false
+			} else {
+				sliceContainsBit = e.bsi.bA[j].Contains(cID)
+			}
 			if uint64(compStartValue)&(1<<uint64(j)) > 0 {
 				// BIT in value is SET
 				if !sliceContainsBit {
