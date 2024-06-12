@@ -281,25 +281,23 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 		resultsChan <- results
 		return
 	}
-	//以下代码解决在bsi没有设置max或者compare的值超过了max的时候该函数返回的结果不准确的问题
-	/***********************************************************************/
+	//The following code solves the problem of inaccurate results returned by the function when bsi is not set to max or the value of compare exceeds max
 	var x int
 	if e.op == RANGE {
-		//如果操作是range并且end的位数比ba的长度大，则x设为end的位数
+		//If the operation is range and the number of bits in end is greater than the length of ba, then x is set to the number of bits in end
 		if bits.Len64(uint64(e.end)) > e.bsi.BitCount() {
 			x = bits.Len64(uint64(e.end))
 		} else {
 			x = e.bsi.BitCount()
 		}
 	} else {
-		//如果操作不是range并且value位数比ba的长度大，则x设为value的位数
+		//If the operation is not range and the number of value bits is greater than the length of ba, then x is set to the number of value bits
 		if bits.Len64(uint64(e.valueOrStart)) > e.bsi.BitCount() {
 			x = bits.Len64(uint64(e.valueOrStart))
 		} else {
 			x = e.bsi.BitCount()
 		}
 	}
-	/***********************************************************************/
 	startIsNegative := x == 64 && uint64(e.valueOrStart)&(1<<uint64(x-1)) > 0
 	endIsNegative := x == 64 && uint64(e.end)&(1<<uint64(x-1)) > 0
 
@@ -325,7 +323,7 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 		}
 		for ; j >= 0; j-- {
 			var sliceContainsBit bool
-			//j的值可能比ba的长度大，所以增加了以下判断
+			//The value of j may be larger than the length of ba, so the following judgment has been added
 			if e.bsi.BitCount() <= j {
 				sliceContainsBit = false
 			} else {
