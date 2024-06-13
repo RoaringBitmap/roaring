@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/v2"
 	"github.com/bits-and-blooms/bitset"
 	"github.com/stretchr/testify/assert"
 )

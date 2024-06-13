@@ -8,7 +8,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/v2"
 	"github.com/RoaringBitmap/roaring/v2/internal"
 )
 
