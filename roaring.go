@@ -12,7 +12,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/RoaringBitmap/roaring/internal"
+	"github.com/RoaringBitmap/roaring/v2/internal"
 	"github.com/bits-and-blooms/bitset"
 )
 
