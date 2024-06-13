@@ -78,7 +78,7 @@ func TestSerializationBasic037(t *testing.T) {
 func TestSerializationToFile038(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
 	fname := "myfile.bin"
-	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
+	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o660)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
@@ -233,7 +233,6 @@ func benchmarkUnserializeFunc(b *testing.B, name string, f func(*Bitmap, []byte)
 		}
 
 		_, err := rb.WriteTo(buf)
-
 		if err != nil {
 			b.Fatalf("Unexpected error occurs: %v", err)
 		}
@@ -284,7 +283,7 @@ func Test_tryReadFromRoaring32WithRoaring64_File(t *testing.T) {
 	}
 
 	name := filepath.Join(tempDir, "r32")
-	if err := ioutil.WriteFile(name, bs, 0600); err != nil {
+	if err := ioutil.WriteFile(name, bs, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	file, err := os.Open(name)

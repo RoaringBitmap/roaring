@@ -12,8 +12,10 @@ import (
 	"github.com/RoaringBitmap/roaring/v2/internal"
 )
 
-const serialCookieNoRunContainer = 12346 // only arrays and bitmaps
-const serialCookie = 12347               // runs, arrays, and bitmaps
+const (
+	serialCookieNoRunContainer = 12346 // only arrays and bitmaps
+	serialCookie               = 12347 // runs, arrays, and bitmaps
+)
 
 // Bitmap represents a compressed bitmap where you can add integers.
 type Bitmap struct {
@@ -25,7 +27,6 @@ func (rb *Bitmap) ToBase64() (string, error) {
 	buf := new(bytes.Buffer)
 	_, err := rb.WriteTo(buf)
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), err
-
 }
 
 // FromBase64 deserializes a bitmap from Base64
@@ -52,7 +53,6 @@ func (rb *Bitmap) ToBytes() ([]byte, error) {
 // implementations (Java, Go, C++) and it has a specification :
 // https://github.com/RoaringBitmap/RoaringFormatSpec#extention-for-64-bit-implementations
 func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
-
 	var n int64
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, uint64(rb.highlowcontainer.size()))
@@ -1241,6 +1241,10 @@ func (rb *Bitmap) Stats() roaring.Statistics {
 // that this function is much cheaper computationally than WriteTo.
 func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
+}
+
+func (rb *Bitmap) Validate() error {
+	return rb.highlowcontainer.validate()
 }
 
 // Roaring32AsRoaring64 inserts a 32-bit roaring bitmap into
