@@ -1,7 +1,7 @@
 package roaring64
 
 import (
-	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/v2"
 )
 
 type roaringArray64 struct {

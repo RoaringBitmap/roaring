@@ -7,7 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/v2"
 )
 
 const (

@@ -188,7 +188,7 @@ package main
 
 import (
     "fmt"
-    "github.com/RoaringBitmap/roaring"
+    "github.com/RoaringBitmap/roaring/v2"
     "bytes"
 )
 
@@ -285,7 +285,7 @@ package main
 
 import (
     "fmt"
-    "github.com/RoaringBitmap/roaring/roaring64"
+    "github.com/RoaringBitmap/roaring/v2/roaring64"
     "bytes"
 )
 
