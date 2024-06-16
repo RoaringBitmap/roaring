@@ -134,6 +134,7 @@ func exclusiveUnion2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	return pos
 }
 
+// union2by2Cardinality computes the cardinality of the union
 func union2by2Cardinality(set1 []uint16, set2 []uint16) int {
 	pos := 0
 	k1 := 0
@@ -196,6 +197,7 @@ func intersection2by2(
 	}
 }
 
+// intersection2by2Cardinality computes the cardinality of the intersection
 func intersection2by2Cardinality(
 	set1 []uint16,
 	set2 []uint16,
@@ -209,41 +211,42 @@ func intersection2by2Cardinality(
 	}
 }
 
+// intersects2by2 computes whether the two sets intersect
 func intersects2by2(
 	set1 []uint16,
 	set2 []uint16,
 ) bool {
 	// could be optimized if one set is much larger than the other one
-	if (0 == len(set1)) || (0 == len(set2)) {
+	if (len(set1) == 0) || (len(set2) == 0) {
 		return false
 	}
-	k1 := 0
-	k2 := 0
-	s1 := set1[k1]
-	s2 := set2[k2]
+	index1 := 0
+	index2 := 0
+	value1 := set1[index1]
+	value2 := set2[index2]
 mainwhile:
 	for {
 
-		if s2 < s1 {
+		if value2 < value1 {
 			for {
-				k2++
-				if k2 == len(set2) {
+				index2++
+				if index2 == len(set2) {
 					break mainwhile
 				}
-				s2 = set2[k2]
-				if s2 >= s1 {
+				value2 = set2[index2]
+				if value2 >= value1 {
 					break
 				}
 			}
 		}
-		if s1 < s2 {
+		if value1 < value2 {
 			for {
-				k1++
-				if k1 == len(set1) {
+				index1++
+				if index1 == len(set1) {
 					break mainwhile
 				}
-				s1 = set1[k1]
-				if s1 >= s2 {
+				value1 = set1[index1]
+				if value1 >= value2 {
 					break
 				}
 			}
@@ -260,7 +263,7 @@ func localintersect2by2(
 	set2 []uint16,
 	buffer []uint16,
 ) int {
-	if (0 == len(set1)) || (0 == len(set2)) {
+	if (len(set1) == 0) || (len(set2) == 0) {
 		return 0
 	}
 	k1 := 0
@@ -313,56 +316,57 @@ mainwhile:
 	return pos
 }
 
+// / localintersect2by2Cardinality computes the cardinality of the intersection
 func localintersect2by2Cardinality(
 	set1 []uint16,
 	set2 []uint16,
 ) int {
-	if (0 == len(set1)) || (0 == len(set2)) {
+	if (len(set1) == 0) || (len(set2) == 0) {
 		return 0
 	}
-	k1 := 0
-	k2 := 0
+	index1 := 0
+	index2 := 0
 	pos := 0
-	s1 := set1[k1]
-	s2 := set2[k2]
+	value1 := set1[index1]
+	value2 := set2[index2]
 mainwhile:
 	for {
-		if s2 < s1 {
+		if value2 < value1 {
 			for {
-				k2++
-				if k2 == len(set2) {
+				index2++
+				if index2 == len(set2) {
 					break mainwhile
 				}
-				s2 = set2[k2]
-				if s2 >= s1 {
+				value2 = set2[index2]
+				if value2 >= value1 {
 					break
 				}
 			}
 		}
-		if s1 < s2 {
+		if value1 < value2 {
 			for {
-				k1++
-				if k1 == len(set1) {
+				index1++
+				if index1 == len(set1) {
 					break mainwhile
 				}
-				s1 = set1[k1]
-				if s1 >= s2 {
+				value1 = set1[index1]
+				if value1 >= value2 {
 					break
 				}
 			}
 		} else {
 			// (set2[k2] == set1[k1])
 			pos++
-			k1++
-			if k1 == len(set1) {
+			index1++
+			if index1 == len(set1) {
 				break
 			}
-			s1 = set1[k1]
-			k2++
-			if k2 == len(set2) {
+			value1 = set1[index1]
+			index2++
+			if index2 == len(set2) {
 				break
 			}
-			s2 = set2[k2]
+			value2 = set2[index2]
 		}
 	}
 	return pos
