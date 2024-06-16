@@ -2030,3 +2030,28 @@ func TestBitMapValidation(t *testing.T) {
 	bm.AddMany(randomEntries)
 	assert.NoError(t, bm.Validate())
 }
+
+func TestRoaringArray64SortOrder(t *testing.T) {
+	t.Run("Empty", func(t *testing.T) {
+		a := roaringArray64{}
+		assert.True(t, a.checkKeysSorted())
+	})
+	t.Run("Empty", func(t *testing.T) {
+		a := roaringArray64{}
+		assert.True(t, a.checkKeysSorted())
+	})
+	t.Run("Cardinality 1", func(t *testing.T) {
+		bm := NewBitmap()
+		bm.Add(65)
+
+		assert.True(t, bm.highlowcontainer.checkKeysSorted())
+	})
+
+	t.Run("Many Entries", func(t *testing.T) {
+		bm := NewBitmap()
+		bm.AddRange(1, 129)
+		bm.AddRange(511, 2049)
+
+		assert.True(t, bm.highlowcontainer.checkKeysSorted())
+	})
+}
