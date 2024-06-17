@@ -1,26 +1,12 @@
 package roaring
 
-func equal(a, b []uint16) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
 func difference(set1 []uint16, set2 []uint16, buffer []uint16) int {
-	if 0 == len(set2) {
+	if len(set2) == 0 {
 		buffer = buffer[:len(set1)]
-		for k := 0; k < len(set1); k++ {
-			buffer[k] = set1[k]
-		}
+		copy(buffer, set1)
 		return len(set1)
 	}
-	if 0 == len(set1) {
+	if len(set1) == 0 {
 		return 0
 	}
 	pos := 0
