@@ -140,7 +140,6 @@ func (ra *roaringArray64) clear() {
 }
 
 func (ra *roaringArray64) clone() *roaringArray64 {
-
 	sa := roaringArray64{}
 	sa.copyOnWrite = ra.copyOnWrite
 
@@ -328,6 +327,15 @@ func (ra *roaringArray64) hasRunCompression() bool {
 	return false
 }
 
+/**
+ * Find the smallest integer index strictly larger than pos such that array[index].key&gt;=min. If none can
+ * be found, return size. Based on code by O. Kaser.
+ *
+ * @param min minimal value
+ * @param pos index to exceed
+ * @return the smallest index greater than pos such that array[index].key is at least as large as
+ *         min, or size if it is not possible.
+ */
 func (ra *roaringArray64) advanceUntil(min uint32, pos int) int {
 	lower := pos + 1
 
