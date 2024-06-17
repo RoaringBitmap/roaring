@@ -485,3 +485,50 @@ func TestBitmapcontainerNextHasMany(t *testing.T) {
 		assert.Equal(t, 256, result)
 	})
 }
+
+func TestBitmapcontainerOrArrayCardinality(t *testing.T) {
+	t.Run("Empty Bitmap and Empty Array", func(t *testing.T) {
+		array := newArrayContainer()
+		bc := newBitmapContainer()
+		result := bc.orArrayCardinality(array)
+
+		assert.Equal(t, 0, result)
+	})
+
+	t.Run("Populated Bitmap with Empty Array", func(t *testing.T) {
+		bc := newBitmapContainer()
+		bc.iaddRange(0, 1024)
+		array := newArrayContainer()
+
+		result := bc.orArrayCardinality(array)
+
+		assert.Equal(t, 1024, result)
+	})
+
+	t.Run("Populated Bitmap with Empty Run Container", func(t *testing.T) {
+		bc := newBitmapContainer()
+		bc.iaddRange(0, 1024)
+
+		runC := newRunContainer16()
+
+		result := runC.orBitmapContainerCardinality(bc)
+
+		assert.Equal(t, 1024, result)
+
+		other := newBitmapContainerFromRun(runC)
+		result = bc.orBitmapCardinality(other)
+
+		assert.Equal(t, 1024, result)
+	})
+
+	t.Run("Populated Bitmap with Empty Bitmap", func(t *testing.T) {
+		bc := newBitmapContainer()
+		bc.iaddRange(0, 1024)
+
+		other := newBitmapContainer()
+
+		result := bc.orBitmapCardinality(other)
+
+		assert.Equal(t, 1024, result)
+	})
+}
