@@ -454,3 +454,34 @@ func TestBitMapContainerValidate(t *testing.T) {
 
 	assert.Error(t, bc.validate())
 }
+
+func TestBitmapcontainerNextHasMany(t *testing.T) {
+	t.Run("Empty Bitmap", func(t *testing.T) {
+		bc := newBitmapContainer()
+		iterator := newBitmapContainerManyIterator(bc)
+		high := uint64(1024)
+		buf := []uint64{}
+		result := iterator.nextMany64(high, buf)
+		assert.Equal(t, 0, result)
+	})
+
+	t.Run("512 in iterator and buf size 512", func(t *testing.T) {
+		bc := newBitmapContainer()
+		bc.iaddRange(0, 512)
+		iterator := newBitmapContainerManyIterator(bc)
+		high := uint64(1024)
+		buf := make([]uint64, 512)
+		result := iterator.nextMany64(high, buf)
+		assert.Equal(t, 512, result)
+	})
+
+	t.Run("512 in iterator and buf size 256", func(t *testing.T) {
+		bc := newBitmapContainer()
+		bc.iaddRange(0, 512)
+		iterator := newBitmapContainerManyIterator(bc)
+		high := uint64(1024)
+		buf := make([]uint64, 256)
+		result := iterator.nextMany64(high, buf)
+		assert.Equal(t, 256, result)
+	})
+}

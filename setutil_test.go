@@ -260,3 +260,133 @@ func TestBinarySearchPastWithBounds(t *testing.T) {
 		})
 	}
 }
+
+func makeLargeSet(start int) []uint16 {
+	data := make([]uint16, 0, 256)
+	for i := 0; i < 256; i++ {
+		data = append(data, uint16(start+i))
+	}
+	return data
+}
+
+func TestSetUtilIntersection2By2Cardinality(t *testing.T) {
+	type searchTest struct {
+		name          string
+		data1         []uint16
+		data2         []uint16
+		expectedValue int
+	}
+
+	tests := []searchTest{
+		{
+			"cardinality 1 intersection",
+			[]uint16{0, 1, 2, 3, 4, 9},
+			[]uint16{8, 9, 10, 11, 12},
+			1,
+		},
+		{
+			"empty set",
+			[]uint16{},
+			[]uint16{8, 9, 10, 11, 12},
+			0,
+		},
+		{
+			"cardinality 0",
+			[]uint16{1},
+			[]uint16{8, 9, 10, 11, 12},
+			0,
+		},
+		{
+			"large first set - cardinality 0",
+			makeLargeSet(1024),
+			[]uint16{8, 9},
+			0,
+		},
+		{
+			"large second set - cardinality 0",
+			[]uint16{8, 9},
+			makeLargeSet(1024),
+			0,
+		},
+		{
+			"large first set - cardinality 2",
+			makeLargeSet(0),
+			[]uint16{8, 9},
+			2,
+		},
+		{
+			"large second set - cardinality 2",
+			[]uint16{8, 9},
+			makeLargeSet(0),
+			2,
+		},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := intersection2by2Cardinality(testCase.data1, testCase.data2)
+			assert.Equal(t, result, testCase.expectedValue)
+		})
+	}
+}
+
+func TestSetUtilUnionBy2Cardinality(t *testing.T) {
+	type searchTest struct {
+		name          string
+		data1         []uint16
+		data2         []uint16
+		expectedValue int
+	}
+
+	tests := []searchTest{
+		{
+			"cardinality 1 intersection",
+			[]uint16{0, 1, 2, 3, 4, 9},
+			[]uint16{8, 9, 10, 11, 12},
+			10,
+		},
+		{
+			"empty set ",
+			[]uint16{},
+			[]uint16{8, 9, 10, 11, 12},
+			5,
+		},
+		{
+			"cardinality 6",
+			[]uint16{1},
+			[]uint16{8, 9, 10, 11, 12},
+			6,
+		},
+		{
+			"large first set - cardinality 258",
+			makeLargeSet(1024),
+			[]uint16{8, 9},
+			258,
+		},
+		{
+			"large second set - cardinality 0",
+			[]uint16{8, 9},
+			makeLargeSet(1024),
+			258,
+		},
+		{
+			"large first set - cardinality 2",
+			makeLargeSet(0),
+			[]uint16{8, 9},
+			256,
+		},
+		{
+			"large second set - cardinality 2",
+			[]uint16{8, 9},
+			makeLargeSet(0),
+			256,
+		},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := union2by2Cardinality(testCase.data1, testCase.data2)
+			assert.Equal(t, result, testCase.expectedValue)
+		})
+	}
+}

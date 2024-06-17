@@ -226,6 +226,7 @@ func (bcmi *bitmapContainerManyIterator) nextMany(hs uint32, buf []uint32) int {
 	return n
 }
 
+// nextMany64 returns the number of values added to the buffer
 func (bcmi *bitmapContainerManyIterator) nextMany64(hs uint64, buf []uint64) int {
 	n := 0
 	base := bcmi.base
