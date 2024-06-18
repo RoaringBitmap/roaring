@@ -8,16 +8,22 @@ import (
 
 func TestRoaringArray64AdvanceUntil(t *testing.T) {
 	bitmap := New()
-	bitmap.AddRange(0, 128)
-	assert.Equal(t, 0, bitmap.highlowcontainer.advanceUntil(0, -1))
-	assert.Equal(t, 1, bitmap.highlowcontainer.advanceUntil(0, 0))
-	assert.Equal(t, 65, bitmap.highlowcontainer.advanceUntil(64, 0))
-}
+	low := 1 << 32
+	mid := 2 << 32
+	high := 3 << 32
+	bitmap.AddRange(uint64(low)-1, uint64(low)+2)
+	bitmap.AddRange(uint64(mid)-1, uint64(mid)+2)
+	bitmap.AddRange(uint64(high)-1, uint64(high)+2)
 
-func TestRoaringArray64AdvanceUntilJavaRegression(t *testing.T) {
-	bitmap := New()
-	bitmap.AddMany([]uint64{0, 3, 16, 18, 21, 29, 30})
-	assert.Equal(t, 1, bitmap.highlowcontainer.advanceUntil(3, -1))
-	assert.Equal(t, 5, bitmap.highlowcontainer.advanceUntil(28, -1))
-	assert.Equal(t, 5, bitmap.highlowcontainer.advanceUntil(29, -1))
+	assert.Equal(t, 0, bitmap.highlowcontainer.advanceUntil(0, -1))
+	assert.Equal(t, 1, bitmap.highlowcontainer.advanceUntil(1, -1))
+	assert.Equal(t, 2, bitmap.highlowcontainer.advanceUntil(2, -1))
+	assert.Equal(t, 3, bitmap.highlowcontainer.advanceUntil(3, -1))
+	assert.Equal(t, 4, bitmap.highlowcontainer.advanceUntil(4, -1))
+
+	assert.Equal(t, 1, bitmap.highlowcontainer.advanceUntil(0, 0))
+	assert.Equal(t, 2, bitmap.highlowcontainer.advanceUntil(1, 1))
+	assert.Equal(t, 3, bitmap.highlowcontainer.advanceUntil(2, 2))
+	assert.Equal(t, 4, bitmap.highlowcontainer.advanceUntil(3, 3))
+	assert.Equal(t, 5, bitmap.highlowcontainer.advanceUntil(4, 4))
 }
