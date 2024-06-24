@@ -245,7 +245,7 @@ func TestRangeRemovalFromContent(t *testing.T) {
 	bm.RemoveRange(0, 30000)
 	c := bm.GetCardinality()
 
-	assert.EqualValues(t, 00, c)
+	assert.EqualValues(t, 0o0, c)
 }
 
 func TestFlipOnEmpty(t *testing.T) {
@@ -624,7 +624,6 @@ func TestBitmap(t *testing.T) {
 
 		assert.Equal(t, len(arrayres), len(arrayand))
 		assert.True(t, ok)
-
 	})
 
 	t.Run("Test AND 4", func(t *testing.T) {
@@ -1401,6 +1400,7 @@ func TestBitmap(t *testing.T) {
 		assert.True(t, valide)
 	})
 }
+
 func TestXORtest4(t *testing.T) {
 	t.Run("XORtest 4", func(t *testing.T) {
 		rb := NewBitmap()
@@ -1895,9 +1895,9 @@ func TestSerialization(t *testing.T) {
 	//assert.Nil(t, err)
 	//assert.True(t, bufBmp.Equals(bmp))
 
-	//var base64 string
-	//base64, err = bufBmp.ToBase64()
-	//assert.Nil(t, err)
+	// var base64 string
+	// base64, err = bufBmp.ToBase64()
+	// assert.Nil(t, err)
 
 	//base64Bmp := New()
 	//_, err = base64Bmp.FromBase64(base64)
@@ -1987,4 +1987,71 @@ func Test32As64(t *testing.T) {
 	r32asr64 := Roaring32AsRoaring64(r32)
 	assert.True(t, r32asr64.Equals(r64))
 	assert.True(t, r64.Equals(r32asr64))
+}
+
+func TestRoaringArray64Validation(t *testing.T) {
+	a := roaringArray64{}
+
+	assert.ErrorIs(t, a.validate(), ErrEmptyKeys)
+
+	a.keys = append(a.keys, uint32(3), uint32(1))
+	assert.ErrorIs(t, a.validate(), ErrKeySortOrder)
+	a.clear()
+
+	// build up cardinality coherent arrays
+	a.keys = append(a.keys, uint32(1), uint32(3), uint32(10))
+	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
+	a.containers = append(a.containers, roaring.NewBitmap(), roaring.NewBitmap(), roaring.NewBitmap())
+	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
+	a.needCopyOnWrite = append(a.needCopyOnWrite, true, false, true)
+	assert.Errorf(t, a.validate(), "zero intervals")
+}
+
+func TestBitMapValidation(t *testing.T) {
+	bm := NewBitmap()
+	bm.AddRange(0, 100)
+	bm.AddRange(306, 406)
+	bm.AddRange(102, 202)
+	bm.AddRange(204, 304)
+	assert.NoError(t, bm.Validate())
+
+	randomEntries := make([]uint64, 0, 1000)
+	for i := 0; i < 1000; i++ {
+		randomEntries = append(randomEntries, rand.Uint64())
+	}
+
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+
+	randomEntries = make([]uint64, 0, 1000)
+	for i := 0; i < 1000; i++ {
+		randomEntries = append(randomEntries, uint64(i))
+	}
+	bm.AddMany(randomEntries)
+	assert.NoError(t, bm.Validate())
+}
+
+func TestRoaringArray64SortOrder(t *testing.T) {
+	t.Run("Empty", func(t *testing.T) {
+		a := roaringArray64{}
+		assert.True(t, a.checkKeysSorted())
+	})
+	t.Run("Empty", func(t *testing.T) {
+		a := roaringArray64{}
+		assert.True(t, a.checkKeysSorted())
+	})
+	t.Run("Cardinality 1", func(t *testing.T) {
+		bm := NewBitmap()
+		bm.Add(65)
+
+		assert.True(t, bm.highlowcontainer.checkKeysSorted())
+	})
+
+	t.Run("Many Entries", func(t *testing.T) {
+		bm := NewBitmap()
+		bm.AddRange(1, 129)
+		bm.AddRange(511, 2049)
+
+		assert.True(t, bm.highlowcontainer.checkKeysSorted())
+	})
 }
