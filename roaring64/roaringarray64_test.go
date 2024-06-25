@@ -40,7 +40,7 @@ func TestCopies(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r1 := 1 << 32
-			r2 := 2 << 32
+			r2 := uint64(2) << 32
 			r3 := 3 << 32
 			r4 := 4 << 32
 			// key := highbits(uint64(r4))
