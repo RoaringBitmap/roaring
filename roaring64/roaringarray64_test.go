@@ -42,7 +42,7 @@ func TestCopies(t *testing.T) {
 			r1 := 1 << 32
 			r2 := uint64(2) << 32
 			r3 := uint64(3) << 32
-			r4 := 4 << 32
+			r4 := uint64(4) << 32
 			// key := highbits(uint64(r4))
 
 			bitmap1 := New()
