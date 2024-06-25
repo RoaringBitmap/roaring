@@ -52,6 +52,29 @@ func TestIssue266(t *testing.T) {
 	}
 }
 
+func TestParOr64(t *testing.T) {
+	t.Run("Test 1", func(t *testing.T) {
+		a := BitmapOf(0, 1, 2, 3, 4)
+		b := BitmapOf(5, 6, 7, 8, 9, 10)
+		c := BitmapOf(11, 12, 13, 14, 15)
+		d := ParOr(0, a, b, c)
+		expected := BitmapOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+		assert.True(t, d.Equals(expected))
+	})
+
+	t.Run("Test 2", func(t *testing.T) {
+		a := BitmapOf(0, 1, 2, 3, 4)
+
+		offset1 := uint64(2 << 16)
+		b := BitmapOf(offset1, offset1+1, offset1+2, offset1+3, offset1+5)
+		offset2 := uint64(4 << 16)
+		c := BitmapOf(offset2, offset2+1, offset2+2, offset2+3, offset2+5)
+		d := ParOr(0, a, b, c)
+		expected := BitmapOf(0, 1, 2, 3, 4, offset1, offset1+1, offset1+2, offset1+3, offset1+5, offset2, offset2+1, offset2+2, offset2+3, offset2+5)
+		assert.True(t, d.Equals(expected))
+	})
+}
+
 func TestRoaringRangeEnd(t *testing.T) {
 	r := New()
 	r.Add(roaring.MaxUint32)

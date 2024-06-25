@@ -406,6 +406,42 @@ func TestFastCard(t *testing.T) {
 	assert.Equal(t, bm.GetCardinality(), bm2.OrCardinality(bm))
 }
 
+func TestFastCardUnequalKeys(t *testing.T) {
+	// These tests will excercise the interior code branches of OrCardinality
+
+	t.Run("Merge small into large", func(t *testing.T) {
+		bm := NewBitmap()
+		bm.AddRange(0, 1024)
+		bm2 := NewBitmap()
+		start := uint64(2 << 16)
+		bm2.AddRange(start, start+3)
+
+		assert.Equal(t, uint64(1027), bm2.OrCardinality(bm))
+	})
+	t.Run("Merge large into small", func(t *testing.T) {
+		bm := NewBitmap()
+		bm.AddRange(0, 1024)
+		bm2 := NewBitmap()
+		start := uint64(2 << 16)
+		bm2.AddRange(start, start+3)
+
+		assert.Equal(t, uint64(1027), bm.OrCardinality(bm2))
+	})
+
+	t.Run("Merge large into small same keyrange start", func(t *testing.T) {
+		bm := NewBitmap()
+		start := uint64(2 << 16)
+		bm.AddRange(0, 1024)
+		bm.AddRange(start, start+3)
+
+		bm2 := NewBitmap()
+		bm2.AddRange(0, 512)
+		bm2.AddRange(start, start+3)
+
+		assert.Equal(t, uint64(1027), bm.OrCardinality(bm2))
+	})
+}
+
 func TestIntersects1(t *testing.T) {
 	bm := NewBitmap()
 	bm.Add(1)

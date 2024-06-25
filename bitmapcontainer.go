@@ -542,7 +542,7 @@ func (bc *bitmapContainer) orArray(value2 *arrayContainer) container {
 }
 
 func (bc *bitmapContainer) orArrayCardinality(value2 *arrayContainer) int {
-	answer := 0
+	answer := bc.getCardinality()
 	c := value2.getCardinality()
 	for k := 0; k < c; k++ {
 		// branchless:

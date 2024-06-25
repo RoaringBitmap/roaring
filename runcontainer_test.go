@@ -2628,6 +2628,101 @@ func TestIntervalValidationsPassing(t *testing.T) {
 	assert.NoError(t, rc.validate())
 }
 
+func TestRunContainerUnionCardinality(t *testing.T) {
+	t.Run("Two Empty Runs", func(t *testing.T) {
+		first := runContainer16{}
+		second := runContainer16{}
+		result := first.unionCardinality(&second)
+		assert.Equal(t, uint(0), result)
+	})
+
+	t.Run("First Run Empty", func(t *testing.T) {
+		first := runContainer16{}
+		second := runContainer16{}
+		second.iaddRange(0, 1024)
+		result := first.unionCardinality(&second)
+		assert.Equal(t, uint(1024), result)
+	})
+
+	t.Run("Second Run Empty", func(t *testing.T) {
+		first := runContainer16{}
+		second := runContainer16{}
+		first.iaddRange(0, 1024)
+		result := first.unionCardinality(&second)
+		assert.Equal(t, uint(1024), result)
+	})
+
+	t.Run("Disjoint Ranges", func(t *testing.T) {
+		first := runContainer16{}
+		first.iaddRange(512, 1024)
+		second := runContainer16{}
+		second.iaddRange(0, 256)
+		result := first.unionCardinality(&second)
+		assert.Equal(t, uint(256+512), result)
+	})
+
+	t.Run("Complete Overlap", func(t *testing.T) {
+		first := runContainer16{}
+		first.iaddRange(0, 256)
+		second := runContainer16{}
+		second.iaddRange(0, 256)
+		result := first.unionCardinality(&second)
+		assert.Equal(t, uint(256), result)
+	})
+}
+
+func TestRunContainerIntersectCardinality(t *testing.T) {
+	t.Run("Two Empty Runs", func(t *testing.T) {
+		first := runContainer16{}
+		second := runContainer16{}
+		result := first.intersectCardinality(&second)
+		assert.Equal(t, 0, result)
+	})
+
+	t.Run("First Run Empty", func(t *testing.T) {
+		first := runContainer16{}
+		second := runContainer16{}
+		second.iaddRange(0, 1024)
+		result := first.intersectCardinality(&second)
+		assert.Equal(t, 0, result)
+	})
+
+	t.Run("Second Run Empty", func(t *testing.T) {
+		first := runContainer16{}
+		second := runContainer16{}
+		first.iaddRange(0, 1024)
+		result := first.intersectCardinality(&second)
+		assert.Equal(t, 0, result)
+	})
+
+	t.Run("Disjoint Ranges", func(t *testing.T) {
+		first := runContainer16{}
+		first.iaddRange(512, 1024)
+		second := runContainer16{}
+		second.iaddRange(0, 256)
+		result := first.intersectCardinality(&second)
+		assert.Equal(t, 0, result)
+	})
+
+	t.Run("Complete Overlap", func(t *testing.T) {
+		first := runContainer16{}
+		first.iaddRange(0, 256)
+		second := runContainer16{}
+		second.iaddRange(0, 256)
+		result := first.intersectCardinality(&second)
+		assert.Equal(t, 256, result)
+	})
+
+	t.Run("Single Element Intersection", func(t *testing.T) {
+		first := runContainer16{}
+		first.iaddRange(0, 257)
+		second := runContainer16{}
+		second.iaddRange(256, 512)
+		result := first.intersectCardinality(&second)
+		assert.Equal(t, 1, result)
+	})
+}
+
 // go test -bench BenchmarkShortIteratorAdvance -run -
 func BenchmarkShortIteratorAdvanceRuntime(b *testing.B) {
 	benchmarkContainerIteratorAdvance(b, newRunContainer16())
