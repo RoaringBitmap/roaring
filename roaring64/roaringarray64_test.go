@@ -8,7 +8,7 @@ import (
 
 func TestRoaringArray64AdvanceUntil(t *testing.T) {
 	bitmap := New()
-	low := 1 << 32
+	low := uint64(1) << 32
 	mid := uint64(2) << 32
 	high := 3 << 32
 	bitmap.AddRange(uint64(low)-1, uint64(low)+2)
