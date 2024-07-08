@@ -2973,6 +2973,17 @@ func TestNextAndPreviousValue(t *testing.T) {
 		}
 	})
 
+	t.Run("Absent target container", func(t *testing.T) {
+		bmp := BitmapOf(2, 3, 131072, MaxUint32)
+
+		assert.Equal(t, int64(3), bmp.PreviousValue(65536))
+		assert.Equal(t, int64(131072), bmp.PreviousValue(MaxUint32>>1))
+		assert.Equal(t, int64(131072), bmp.PreviousValue(MaxUint32-131071))
+
+		bmp = BitmapOf(131072)
+		assert.Equal(t, int64(-1), bmp.PreviousValue(65536))
+	})
+
 	t.Run("skipping with ranges", func(t *testing.T) {
 		bmp := New()
 		intervalEnd := 512
