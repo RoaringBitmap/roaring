@@ -1935,13 +1935,14 @@ func (rb *Bitmap) PreviousValue(target uint32) int64 {
 	}
 
 	if rb.highlowcontainer.getKeyAtIndex(containerIndex) > originalKey {
-		return -1
+		// target absent, key of first container after target too high
+		containerIndex--
 	}
 
 	for containerIndex != -1 && prevValue == -1 {
 		containerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
 		container := rb.highlowcontainer.getContainer(containerKey)
-		// if containerKey > orginalKey then we are past the container which mapped to the orignal key
+		// if containerKey > originalKey then we are past the container which mapped to the original key
 		// in that case we can just return the minimum from that container
 		var responseBit int
 		if containerKey < originalKey {
