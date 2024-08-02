@@ -13,6 +13,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestIssue440(t *testing.T) {
+	a := NewBitmap()
+	a.AddMany([]uint32{1, 2, 3})
+	a.RunOptimize()
+	b1, err := a.MarshalBinary()
+	require.NoError(t, err)
+	a.RunOptimize()
+	b2, err := a.MarshalBinary()
+	require.NoError(t, err)
+	require.Equal(t, b1, b2)
+}
+
 func checkValidity(t *testing.T, rb *Bitmap) {
 	t.Helper()
 

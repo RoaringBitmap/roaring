@@ -1233,7 +1233,7 @@ func (ac *arrayContainer) toEfficientContainer() container {
 	card := ac.getCardinality()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
 
-	if sizeAsRunContainer <= minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
+	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
 		return newRunContainer16FromArray(ac)
 	}
 	if card <= arrayDefaultMaxSize {
