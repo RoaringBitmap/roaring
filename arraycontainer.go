@@ -1227,12 +1227,10 @@ func (ac *arrayContainer) numberOfRuns() (nr int) {
 // convert to run or array *if needed*
 func (ac *arrayContainer) toEfficientContainer() container {
 	numRuns := ac.numberOfRuns()
-
 	sizeAsRunContainer := runContainer16SerializedSizeInBytes(numRuns)
 	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
 	card := ac.getCardinality()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
-
 	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
 		return newRunContainer16FromArray(ac)
 	}

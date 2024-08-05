@@ -42,7 +42,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"unsafe"
 )
 
 // runContainer16 does run-length encoding of sets of
@@ -1013,11 +1012,9 @@ func newRunContainer16TakeOwnership(iv []interval16) *runContainer16 {
 }
 
 const (
-	baseRc16Size        = int(unsafe.Sizeof(runContainer16{}))
-	perIntervalRc16Size = int(unsafe.Sizeof(interval16{}))
+	baseRc16Size        = 2
+	perIntervalRc16Size = 4
 )
-
-const baseDiskRc16Size = int(unsafe.Sizeof(uint16(0)))
 
 // see also runContainer16SerializedSizeInBytes(numRuns int) int
 
@@ -1030,7 +1027,7 @@ func (rc *runContainer16) getSizeInBytes() int {
 // runContainer16SerializedSizeInBytes returns the number of bytes of disk
 // required to hold numRuns in a runContainer16.
 func runContainer16SerializedSizeInBytes(numRuns int) int {
-	return perIntervalRc16Size*numRuns + baseDiskRc16Size
+	return perIntervalRc16Size*numRuns + baseRc16Size
 }
 
 // Add adds a single value k to the set.
@@ -2521,7 +2518,7 @@ func (rc *runContainer16) toEfficientContainer() container {
 	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
 	card := rc.getCardinality()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
-	if sizeAsRunContainer > minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
+	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
 		return rc
 	}
 	if card <= arrayDefaultMaxSize {
