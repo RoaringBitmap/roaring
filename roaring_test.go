@@ -25,6 +25,30 @@ func TestIssue440(t *testing.T) {
 	require.Equal(t, b1, b2)
 }
 
+func TestIssue440_2(t *testing.T) {
+	a := NewBitmap()
+	a.AddMany([]uint32{1, 2, 3, 4})
+	a.RunOptimize()
+	b1, err := a.MarshalBinary()
+	require.NoError(t, err)
+	a.RunOptimize()
+	b2, err := a.MarshalBinary()
+	require.NoError(t, err)
+	require.Equal(t, b1, b2)
+}
+
+func TestIssue440_3(t *testing.T) {
+	a := NewBitmap()
+	a.AddMany([]uint32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13})
+	a.RunOptimize()
+	b1, err := a.MarshalBinary()
+	require.NoError(t, err)
+	a.RunOptimize()
+	b2, err := a.MarshalBinary()
+	require.NoError(t, err)
+	require.Equal(t, b1, b2)
+}
+
 func checkValidity(t *testing.T, rb *Bitmap) {
 	t.Helper()
 

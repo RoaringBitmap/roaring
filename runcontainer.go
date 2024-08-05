@@ -2521,7 +2521,7 @@ func (rc *runContainer16) toEfficientContainer() container {
 	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
 	card := rc.getCardinality()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
-	if sizeAsRunContainer <= minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
+	if sizeAsRunContainer > minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
 		return rc
 	}
 	if card <= arrayDefaultMaxSize {
