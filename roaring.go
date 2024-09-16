@@ -289,8 +289,7 @@ func (rb *Bitmap) Checksum() uint64 {
 // copy-on-write which means that modifying them creates copies. Thus FromUnsafeBytes is more likely to be appropriate for read-only use cases,
 // when the resulting bitmap can be considered immutable.
 //
-// See also the FromBuffer function: most users should prefer FromBuffer unless the need the performance,
-// and are aware of the implications of holding references to the input data buffer.
+// See also the FromBuffer function. We recommend benchmarking both functions to determine which one is more suitable for your use case.
 // See https://github.com/RoaringBitmap/roaring/pull/395 for more details.
 func (rb *Bitmap) FromUnsafeBytes(data []byte, cookieHeader ...byte) (p int64, err error) {
 	stream := internal.NewByteBuffer(data)
