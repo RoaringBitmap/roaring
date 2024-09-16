@@ -973,21 +973,10 @@ func ClearBits(foundSet, target *Bitmap) {
 
 // ClearValues removes the values found in foundSet
 func (b *BSI) ClearValues(foundSet *Bitmap) {
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		b.eBM.AndNot(foundSet)
-	}()
-	for i := 0; i < b.BitCount(); i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			b.bA[j].AndNot(foundSet)
-		}(i)
+	b.eBM.AndNot(foundSet)
+	for i := range b.bA {
+		b.bA[i].AndNot(foundSet)
 	}
-	wg.Wait()
 }
 
 // NewBSIRetainSet - Construct a new BSI from a clone of existing BSI, retain only values contained in foundSet
