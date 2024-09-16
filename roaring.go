@@ -277,14 +277,20 @@ func (rb *Bitmap) Checksum() uint64 {
 	return hash
 }
 
-// FromUnsafeBytes reads a serialized version of this bitmap from the byte buffer without copy.
+// FromUnsafeBytes reads a serialized version of this bitmap from the byte buffer without copy
+// (for advanced users only, you must be an expert Go programmer!).
+// E.g., you can use this method to read a serialized bitmap from a memory-mapped file written out
+// with the WriteTo method.
+// The format specification is
+// https://github.com/RoaringBitmap/RoaringFormatSpec
 // It is the caller's responsibility to ensure that the input data is not modified and remains valid for the entire lifetime of this bitmap.
 // This method avoids small allocations but holds references to the input data buffer. It is GC-friendly, but it may consume more memory eventually.
 // The containers in the resulting bitmap are immutable containers tied to the provided byte array and they rely on
 // copy-on-write which means that modifying them creates copies. Thus FromUnsafeBytes is more likely to be appropriate for read-only use cases,
 // when the resulting bitmap can be considered immutable.
 //
-// See also the FromBuffer function.
+// See also the FromBuffer function: most users should prefer FromBuffer unless the need the performance,
+// and are aware of the implications of holding references to the input data buffer.
 // See https://github.com/RoaringBitmap/roaring/pull/395 for more details.
 func (rb *Bitmap) FromUnsafeBytes(data []byte, cookieHeader ...byte) (p int64, err error) {
 	stream := internal.NewByteBuffer(data)
@@ -292,11 +298,13 @@ func (rb *Bitmap) FromUnsafeBytes(data []byte, cookieHeader ...byte) (p int64, e
 }
 
 // ReadFrom reads a serialized version of this bitmap from stream.
+// E.g., you can use this method to read a serialized bitmap from a file written
+// with the WriteTo method.
 // The format is compatible with other RoaringBitmap
 // implementations (Java, C) and is documented here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec
-// Since io.Reader is regarded as a stream and cannot be read twice.
-// So add cookieHeader to accept the 4-byte data that has been read in roaring64.ReadFrom.
+// Since io.Reader is regarded as a stream and cannot be read twice,
+// we add cookieHeader to accept the 4-byte data that has been read in roaring64.ReadFrom.
 // It is not necessary to pass cookieHeader when call roaring.ReadFrom to read the roaring32 data directly.
 func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err error) {
 	stream, ok := reader.(internal.ByteInput)
@@ -325,7 +333,7 @@ func (rb *Bitmap) MustReadFrom(reader io.Reader, cookieHeader ...byte) (p int64,
 	return
 }
 
-// FromBuffer creates a bitmap from its serialized version stored in buffer
+// FromBuffer creates a bitmap from its serialized version stored in buffer (E.g., as written by WriteTo).
 //
 // The format specification is available here:
 // https://github.com/RoaringBitmap/RoaringFormatSpec

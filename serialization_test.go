@@ -240,6 +240,19 @@ func TestSerializationBasic2_041(t *testing.T) {
 	assert.True(t, rb.Equals(newrb))
 }
 
+func TestFromUnsafeBytes(t *testing.T) {
+	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000, 10000, 100000, 1000000)
+	buf := &bytes.Buffer{}
+	_, err := rb.WriteTo(buf)
+	require.NoError(t, err)
+	b := buf.Bytes()
+	rb2 := NewBitmap()
+	_, err2 := rb2.FromUnsafeBytes(b)
+	require.NoError(t, err2)
+	assert.True(t, rb.Equals(rb2))
+	runtime.KeepAlive(&b)
+}
+
 // roaringarray.writeTo and .readFrom should serialize and unserialize when containing all 3 container types
 func TestSerializationBasic3_042(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000, 10000, 100000, 1000000)
