@@ -250,7 +250,6 @@ func TestFromUnsafeBytes(t *testing.T) {
 	_, err2 := rb2.FromUnsafeBytes(b)
 	require.NoError(t, err2)
 	assert.True(t, rb.Equals(rb2))
-	runtime.KeepAlive(&b)
 }
 
 // roaringarray.writeTo and .readFrom should serialize and unserialize when containing all 3 container types
