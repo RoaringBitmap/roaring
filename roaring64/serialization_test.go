@@ -25,7 +25,6 @@ func TestSerializationOfEmptyBitmap(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
-	data := buf.Bytes()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
@@ -56,7 +55,6 @@ func TestSerializationBasic037(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), rb.GetSerializedSizeInBytes())
-	data := buf.Bytes()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
@@ -112,7 +110,6 @@ func TestSerializationBasic2_041(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, l, buf.Len())
-	data := buf.Bytes()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(buf)
@@ -133,7 +130,6 @@ func TestSerializationBasic3_042(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.EqualValues(t, buf.Len(), int(rb.GetSerializedSizeInBytes()))
-	data := buf.Bytes()
 
 	newrb := NewBitmap()
 	_, err = newrb.ReadFrom(&buf)
