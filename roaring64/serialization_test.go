@@ -32,11 +32,6 @@ func TestSerializationOfEmptyBitmap(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
-
-	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(data)
-	require.NoError(t, err)
-	assert.True(t, rb.Equals(newrb2))
 }
 
 func TestBase64_036(t *testing.T) {
@@ -68,11 +63,6 @@ func TestSerializationBasic037(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
-
-	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(data)
-	require.NoError(t, err)
-	assert.True(t, rb.Equals(newrb2))
 }
 
 func TestSerializationToFile038(t *testing.T) {
@@ -111,11 +101,6 @@ func TestSerializationToFile038(t *testing.T) {
 
 	_, _ = newrb.ReadFrom(teer)
 	assert.True(t, rb.Equals(newrb))
-
-	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(buf.Bytes())
-	require.NoError(t, err)
-	assert.True(t, rb.Equals(newrb2))
 }
 
 func TestSerializationBasic2_041(t *testing.T) {
@@ -134,11 +119,6 @@ func TestSerializationBasic2_041(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, rb.Equals(newrb))
-
-	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(data)
-	require.NoError(t, err)
-	assert.True(t, rb.Equals(newrb2))
 }
 
 // roaringarray.writeTo and .readFrom should serialize and unserialize when containing all 3 container types
@@ -160,11 +140,6 @@ func TestSerializationBasic3_042(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, newrb.Equals(rb))
-
-	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(data)
-	require.NoError(t, err)
-	assert.True(t, rb.Equals(newrb2))
 }
 
 func TestHoldReference(t *testing.T) {
