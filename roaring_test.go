@@ -95,8 +95,6 @@ func checkValidity(t *testing.T, rb *Bitmap) {
 }
 
 func hashTest(t *testing.T, N uint64) {
-	t.Log("rtest N=", N)
-
 	hashes := map[uint64]struct{}{}
 	count := 0
 
@@ -1944,7 +1942,6 @@ func TestHash(t *testing.T) {
 }
 
 func rTest(t *testing.T, N int) {
-	t.Log("rtest N=", N)
 	for gap := 1; gap <= 65536; gap *= 2 {
 		bs1 := bitset.New(0)
 		rb1 := NewBitmap()

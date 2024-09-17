@@ -17,6 +17,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func fromUnsafeBytesChecked(t *testing.T, unsafeBm *Bitmap, b []byte) {
+	var r bytes.Reader
+	r.Reset(b)
+	safeBm := NewBitmap()
+	safeCount, err := safeBm.ReadFrom(&r)
+	unsafeCount, err := unsafeBm.FromUnsafeBytes(b)
+	require.NoError(t, err)
+	require.NoError(t, err)
+	assert.True(t, safeBm.Equals(unsafeBm))
+	assert.EqualValues(t, safeCount, unsafeCount)
+}
+
 func TestSerializationOfEmptyBitmap(t *testing.T) {
 	rb := NewBitmap()
 
@@ -34,8 +46,7 @@ func TestSerializationOfEmptyBitmap(t *testing.T) {
 	assert.True(t, rb.Equals(newrb))
 
 	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(data)
-	require.NoError(t, err)
+	fromUnsafeBytesChecked(t, newrb2, data)
 	assert.True(t, rb.Equals(newrb2))
 }
 
@@ -70,8 +81,7 @@ func TestSerializationBasic037(t *testing.T) {
 	assert.True(t, rb.Equals(newrb))
 
 	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(data)
-	require.NoError(t, err)
+	fromUnsafeBytesChecked(t, newrb2, data)
 	assert.True(t, rb.Equals(newrb2))
 }
 
@@ -113,8 +123,7 @@ func TestSerializationToFile038(t *testing.T) {
 	assert.True(t, rb.Equals(newrb))
 
 	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(buf.Bytes())
-	require.NoError(t, err)
+	fromUnsafeBytesChecked(t, newrb2, buf.Bytes())
 	assert.True(t, rb.Equals(newrb2))
 }
 
@@ -136,8 +145,7 @@ func TestSerializationBasic2_041(t *testing.T) {
 	assert.True(t, rb.Equals(newrb))
 
 	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(data)
-	require.NoError(t, err)
+	fromUnsafeBytesChecked(t, newrb2, data)
 	assert.True(t, rb.Equals(newrb2))
 }
 
@@ -162,8 +170,7 @@ func TestSerializationBasic3_042(t *testing.T) {
 	assert.True(t, newrb.Equals(rb))
 
 	newrb2 := NewBitmap()
-	_, err = newrb2.FromUnsafeBytes(data)
-	require.NoError(t, err)
+	fromUnsafeBytesChecked(t, newrb2, data)
 	assert.True(t, rb.Equals(newrb2))
 }
 

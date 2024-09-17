@@ -1533,7 +1533,6 @@ func TestBigRandomCOW(t *testing.T) {
 }
 
 func rTestCOW(t *testing.T, N int) {
-	t.Log("rtest N=", N)
 	for gap := 1; gap <= 65536; gap *= 2 {
 		bs1 := bitset.New(0)
 		rb1 := NewBitmap()
