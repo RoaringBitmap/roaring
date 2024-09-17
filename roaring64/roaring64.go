@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/RoaringBitmap/roaring/v2"
-	"github.com/RoaringBitmap/roaring/v2/internal"
 )
 
 const (
@@ -79,53 +78,6 @@ func (rb *Bitmap) WriteTo(stream io.Writer) (int64, error) {
 		}
 	}
 	return n, nil
-}
-
-// FromUnsafeBytes reads a serialized version of this bitmap from the byte buffer without copy.
-// It is the caller's responsibility to ensure that the input data is not modified and remains valid for the entire lifetime of this bitmap.
-// This method avoids small allocations but holds references to the input data buffer. It is GC-friendly, but it may consume more memory eventually.
-func (rb *Bitmap) FromUnsafeBytes(data []byte) (p int64, err error) {
-	stream := internal.NewByteBuffer(data)
-	sizeBuf := make([]byte, 8)
-	n, err := stream.Read(sizeBuf)
-	if err != nil {
-		return 0, err
-	}
-	p += int64(n)
-	size := binary.LittleEndian.Uint64(sizeBuf)
-
-	rb.highlowcontainer.resize(0)
-	if cap(rb.highlowcontainer.keys) >= int(size) {
-		rb.highlowcontainer.keys = rb.highlowcontainer.keys[:size]
-	} else {
-		rb.highlowcontainer.keys = make([]uint32, size)
-	}
-	if cap(rb.highlowcontainer.containers) >= int(size) {
-		rb.highlowcontainer.containers = rb.highlowcontainer.containers[:size]
-	} else {
-		rb.highlowcontainer.containers = make([]*roaring.Bitmap, size)
-	}
-	if cap(rb.highlowcontainer.needCopyOnWrite) >= int(size) {
-		rb.highlowcontainer.needCopyOnWrite = rb.highlowcontainer.needCopyOnWrite[:size]
-	} else {
-		rb.highlowcontainer.needCopyOnWrite = make([]bool, size)
-	}
-	for i := uint64(0); i < size; i++ {
-		keyBuf, err := stream.Next(4)
-		if err != nil {
-			return 0, fmt.Errorf("error in bitmap.UnsafeFromBytes: could not read key #%d: %w", i, err)
-		}
-		p += 4
-		rb.highlowcontainer.keys[i] = binary.LittleEndian.Uint32(keyBuf)
-		rb.highlowcontainer.containers[i] = roaring.NewBitmap()
-		n, err := rb.highlowcontainer.containers[i].ReadFrom(stream)
-		if n == 0 || err != nil {
-			return int64(n), fmt.Errorf("Could not deserialize bitmap for key #%d: %s", i, err)
-		}
-		p += int64(n)
-	}
-
-	return p, nil
 }
 
 // ReadFrom reads a serialized version of this bitmap from stream.

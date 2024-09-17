@@ -207,14 +207,6 @@ func TestHoldReference(t *testing.T) {
 	})
 }
 
-func BenchmarkUnserializeFromUnsafeBytes(b *testing.B) {
-	benchmarkUnserializeFunc(b, "FromUnsafeBytes", func(bitmap *Bitmap, data []byte) (int64, error) {
-		copied := make([]byte, len(data))
-		copy(copied, data)
-		return bitmap.FromUnsafeBytes(copied)
-	})
-}
-
 func BenchmarkUnserializeReadFrom(b *testing.B) {
 	benchmarkUnserializeFunc(b, "ReadFrom", func(bitmap *Bitmap, data []byte) (int64, error) {
 		return bitmap.ReadFrom(bytes.NewReader(data))
