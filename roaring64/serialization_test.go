@@ -20,13 +20,13 @@ import (
 func fromUnsafeBytesChecked(t *testing.T, unsafeBm *Bitmap, b []byte) {
 	var r bytes.Reader
 	r.Reset(b)
-	var safeBm Bitmap
+	safeBm := NewBitmap()
 	safeCount, err := safeBm.ReadFrom(&r)
 	unsafeCount, err := unsafeBm.FromUnsafeBytes(b)
 	require.NoError(t, err)
 	require.NoError(t, err)
-	assert.EqualValues(t, safeCount, unsafeCount)
 	assert.True(t, safeBm.Equals(unsafeBm))
+	assert.EqualValues(t, safeCount, unsafeCount)
 }
 
 func TestSerializationOfEmptyBitmap(t *testing.T) {
