@@ -143,7 +143,7 @@ func TestBitMapValidationFromFrozen(t *testing.T) {
 	// The tests expect a certain size, with values at certain location.
 	// The tests are geared toward single byte corruption.
 
-	// There is no way to test Bitmap container corruption once the bitmap is deserialzied
+	// There is no way to test Bitmap container corruption once the bitmap is deserialized
 
 	deserializationTests := []struct {
 		name      string
