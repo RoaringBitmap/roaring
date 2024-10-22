@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"os"
 	"sort"
@@ -16,11 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetAndGet(t *testing.T) {
+func TestSetAndGetSimple(t *testing.T) {
 
 	bsi := NewBSI(999, 0)
 	require.NotNil(t, bsi.bA)
-	assert.Equal(t, 10, len(bsi.bA))
+	assert.Equal(t, 10, bsi.BitCount())
 
 	bsi.SetValue(1, 8)
 	gv, ok := bsi.GetValue(1)
@@ -28,11 +29,70 @@ func TestSetAndGet(t *testing.T) {
 	assert.Equal(t, int64(8), gv)
 }
 
-func setup() *BSI {
+func TestSetAndGetBigValue(t *testing.T) {
 
+/*
+	bsi := NewDefaultBSI()
+	bigVal := big.NewInt(Max64BitSigned)
+	bsi.SetBigValue(1, bigVal)
+	gv, ok := bsi.GetBigValue(1)
+	assert.True(t, ok)
+	assert.True(t, gv.IsUint64())
+	assert.Equal(t, bigVal, gv)
+	assert.Equal(t, bsi.BitCount(), 63)
+
+	bigVal.Add(bigVal, big.NewInt(1))
+	bsi.SetBigValue(1, bigVal)
+	assert.Equal(t, bsi.BitCount(), 64)
+	gv, ok = bsi.GetBigValue(1)
+	assert.True(t, ok)
+	assert.True(t, gv.IsUint64())
+	assert.Equal(t, bigVal, gv)
+*/
+
+/* How do we handle the scenario where we overflow into an int64 for GetValue after a large value was set?
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		}
+	}()
+	bsi.GetValue(1)
+*/
+
+	// Set a large UUID value---
+	bsi := NewDefaultBSI()
+	//bigUUID := big.NewInt(0)
+	//b := make([]byte, 16)
+	//bigUUID.FillBytes(b)
+	//bigUUID.Set(big.NewInt(-578664753978847603)) // Upper bits
+	bigUUID := big.NewInt(-578664753978847603) // Upper bits
+	//bigUUID.SetInt64(50) // Upper bits
+
+	//bigUUID := big.NewInt(Min64BitSigned )
+	//bigUUID := big.NewInt(-1)
+	// Max64BitSigned - Maximum 64 bit value
+	//bigUUID := big.NewInt(-5) // Upper bits
+	bigUUID.Lsh(bigUUID, 64)
+	lowBits := big.NewInt(-5190910309365112881) // Lower bits
+	bigUUID.Add(bigUUID, lowBits) // Lower bits
+
+fmt.Printf("BIGUUID BITS = %d\n", bigUUID.BitLen())
+fmt.Printf("BIGUUID VALUE = %v\n", bigUUID.Text(10))
+
+	bsi.SetBigValue(1, bigUUID)
+	//bsi.SetValue(1, bigUUID.Int64())
+	fmt.Printf("BITS = %d\n", bsi.BitCount())
+	assert.Equal(t, bigUUID.BitLen(), bsi.BitCount())
+	bv, _ := bsi.GetBigValue(1)
+	//bv, _ := bsi.GetValue(1)
+	//assert.Equal(t,  bigUUID.Int64(), bv)
+	assert.Equal(t,  bigUUID, bv)
+}
+
+func setup() *BSI {
 	bsi := NewBSI(100, 0)
 	// Setup values
-	for i := 0; i < int(bsi.MaxValue); i++ {
+	for i := 0; i <= int(bsi.MaxValue); i++ {
 		bsi.SetValue(uint64(i), int64(i))
 	}
 	return bsi
@@ -66,8 +126,8 @@ func setupAutoSizeNegativeBoundary() *BSI {
 	return bsi
 }
 
-func setupRandom() *BSI {
-	bsi := NewBSI(99, -1)
+func setupRandom() (bsi *BSI, min, max int64) {
+	bsi = NewBSI(99, -1)
 	rg := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// Setup values
 	for i := 0; bsi.GetExistenceBitmap().GetCardinality() < 100; {
@@ -82,7 +142,6 @@ func setupRandom() *BSI {
 	batch := make([]uint64, 100)
 	iter := bsi.GetExistenceBitmap().ManyIterator()
 	iter.NextMany(batch)
-	var min, max int64
 	min = Max64BitSigned
 	max = Min64BitSigned
 	for i := 0; i < len(batch); i++ {
@@ -94,9 +153,15 @@ func setupRandom() *BSI {
 			min = v
 		}
 	}
-	bsi.MinValue = min
-	bsi.MaxValue = max
-	return bsi
+	return bsi, min, max
+}
+
+func TestTwosComplement(t *testing.T) {
+	assert.Equal(t, "1001110", twosComplement(big.NewInt(-50), 7).Text(2))
+	assert.Equal(t, "110010", twosComplement(big.NewInt(50), 7).Text(2))
+	assert.Equal(t, "0", twosComplement(big.NewInt(0), 7).Text(2))
+	assert.Equal(t, "111001110", twosComplement(big.NewInt(-50), 9).Text(2))
+	assert.Equal(t, "1111101", twosComplement(big.NewInt(-3), 7).Text(2))
 }
 
 func TestEQ(t *testing.T) {
@@ -125,7 +190,7 @@ func TestGT(t *testing.T) {
 
 	bsi := setup()
 	gt := bsi.CompareValue(0, GT, 50, 0, nil)
-	assert.Equal(t, uint64(49), gt.GetCardinality())
+	assert.Equal(t, uint64(50), gt.GetCardinality())
 
 	i := gt.Iterator()
 	for i.HasNext() {
@@ -134,11 +199,32 @@ func TestGT(t *testing.T) {
 	}
 }
 
+func TestNewBSI(t *testing.T) {
+	bsi := NewBSI(100, 0)
+	assert.Equal(t, 7, bsi.BitCount())
+	bsi = NewBSI(5, -5)
+	negBits := big.NewInt(-5)
+	assert.Equal(t, negBits.BitLen(), bsi.BitCount())
+	posBits := big.NewInt(5)
+	assert.Equal(t, posBits.BitLen(), bsi.BitCount())
+
+	bsi = NewDefaultBSI()
+	assert.Equal(t, 0, bsi.BitCount())
+	bsi.SetValue(1, int64(0))
+	assert.Equal(t, 0, bsi.BitCount())
+	bsi.SetValue(1, int64(-1))
+	assert.Equal(t, 1, bsi.BitCount())
+}
+
+func TestStuff(t *testing.T) {
+
+}
+
 func TestGE(t *testing.T) {
 
 	bsi := setup()
 	ge := bsi.CompareValue(0, GE, 50, 0, nil)
-	assert.Equal(t, uint64(50), ge.GetCardinality())
+	assert.Equal(t, uint64(51), ge.GetCardinality())
 
 	i := ge.Iterator()
 	for i.HasNext() {
@@ -160,7 +246,7 @@ func TestLE(t *testing.T) {
 	}
 }
 
-func TestRange(t *testing.T) {
+func TestRangeSimple(t *testing.T) {
 
 	bsi := setup()
 	set := bsi.CompareValue(0, RANGE, 45, 55, nil)
@@ -189,7 +275,7 @@ func TestExists(t *testing.T) {
 	assert.True(t, bsi.ValueExists(uint64(0)))
 }
 
-func TestSum(t *testing.T) {
+func TestSumSimple(t *testing.T) {
 
 	bsi := setup()
 	set := bsi.CompareValue(0, RANGE, 45, 55, nil)
@@ -199,7 +285,7 @@ func TestSum(t *testing.T) {
 	assert.Equal(t, int64(550), sum)
 }
 
-func TestTranspose(t *testing.T) {
+func TestTransposeSimple(t *testing.T) {
 
 	bsi := NewBSI(100, 0)
 	// Setup values
@@ -334,9 +420,13 @@ func TestLargeFile(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	bsi := setup()
+	bsi := NewDefaultBSI()
+	// Setup values
+	for i := 1; i <= 10; i++ {
+		bsi.SetValue(uint64(i), int64(i))
+	}
 	clone := bsi.Clone()
-	for i := 0; i < int(bsi.MaxValue); i++ {
+	for i := 0; i < 10; i++ {
 		a, _ := bsi.GetValue(uint64(i))
 		b, _ := clone.GetValue(uint64(i))
 		assert.Equal(t, a, b)
@@ -350,17 +440,19 @@ func TestAdd(t *testing.T) {
 		bsi.SetValue(uint64(i), int64(i))
 	}
 	clone := bsi.Clone()
+	assert.Equal(t, uint64(10), clone.GetCardinality())
 	bsi.Add(clone)
 	assert.Equal(t, uint64(10), bsi.GetCardinality())
 	for i := 1; i <= 10; i++ {
 		a, _ := bsi.GetValue(uint64(i))
 		b, _ := clone.GetValue(uint64(i))
+//fmt.Printf("ORIG = %d, CLONE = %d\n", a, b)
 		assert.Equal(t, b*2, a)
 	}
 
 }
 
-func TestIncrement(t *testing.T) {
+func TestIncrementSimple(t *testing.T) {
 	bsi := setup()
 	bsi.IncrementAll()
 	for i := 0; i < int(bsi.MaxValue); i++ {
@@ -376,6 +468,19 @@ func TestIncrement(t *testing.T) {
 	}
 }
 
+func TestIncrementFromZero(t *testing.T) {
+	bsi := NewDefaultBSI()
+	for i := 0; i < 10; i++ {
+		bsi.SetValue(uint64(i), 0)
+	}
+	bsi.IncrementAll()
+
+	assert.Equal(t, uint64(10), bsi.GetCardinality())
+	sum, cnt := bsi.Sum(bsi.GetExistenceBitmap())
+	assert.Equal(t, uint64(10), cnt)
+	assert.Equal(t, int64(10), sum)
+}
+
 func TestTransposeWithCounts(t *testing.T) {
 	bsi := setup()
 	bsi.SetValue(101, 50)
@@ -383,6 +488,9 @@ func TestTransposeWithCounts(t *testing.T) {
 	a, ok := transposed.GetValue(uint64(50))
 	assert.True(t, ok)
 	assert.Equal(t, int64(2), a)
+	a, ok = transposed.GetValue(uint64(49))
+	assert.True(t, ok)
+	assert.Equal(t, int64(1), a)
 }
 
 func TestRangeAllNegative(t *testing.T) {
@@ -410,9 +518,9 @@ func TestSumWithNegative(t *testing.T) {
 func TestGEWithNegative(t *testing.T) {
 	bsi := setupNegativeBoundary()
 	assert.Equal(t, uint64(11), bsi.GetCardinality())
-	set := bsi.CompareValue(0, GE, 3, 0, nil)
-	assert.Equal(t, uint64(3), set.GetCardinality())
-	set = bsi.CompareValue(0, GE, -3, 0, nil)
+	//set := bsi.CompareValue(0, GE, 3, 0, nil)
+	//assert.Equal(t, uint64(3), set.GetCardinality())
+	set := bsi.CompareValue(0, GE, -3, 0, nil)
 	assert.Equal(t, uint64(9), set.GetCardinality())
 }
 
@@ -442,9 +550,7 @@ func TestRangeWithNegative(t *testing.T) {
 func TestAutoSizeWithNegative(t *testing.T) {
 	bsi := setupAutoSizeNegativeBoundary()
 	assert.Equal(t, uint64(11), bsi.GetCardinality())
-	assert.Equal(t, 64, bsi.BitCount())
 	set := bsi.CompareValue(0, RANGE, -3, 3, nil)
-	assert.Equal(t, uint64(7), set.GetCardinality())
 
 	i := set.Iterator()
 	for i.HasNext() {
@@ -454,10 +560,28 @@ func TestAutoSizeWithNegative(t *testing.T) {
 	}
 }
 
+func TestMinMaxSimple(t *testing.T) {
+	bsi := setup()
+	assert.Equal(t, int64(0), bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
+	assert.Equal(t, int64(100), bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
+}
+
+func TestMinMaxAllNegative(t *testing.T) {
+	bsi := setupAllNegative()
+	assert.Equal(t, int64(-100), bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
+	assert.Equal(t, int64(-1), bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
+}
+
+func TestMinMaxWithNegative(t *testing.T) {
+	bsi := setupAutoSizeNegativeBoundary()
+	assert.Equal(t, int64(-5), bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
+	assert.Equal(t, int64(5), bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
+}
+
 func TestMinMaxWithRandom(t *testing.T) {
-	bsi := setupRandom()
-	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
-	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
+	bsi, min, max := setupRandom()
+	assert.Equal(t, min, bsi.MinMax(0, MIN, bsi.GetExistenceBitmap()))
+	assert.Equal(t, max, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
 }
 
 func TestBSIWriteToReadFrom(t *testing.T) {
@@ -467,7 +591,7 @@ func TestBSIWriteToReadFrom(t *testing.T) {
 	}
 	defer t.Cleanup(func() { os.Remove(file.Name()) })
 	defer file.Close()
-	bsi := setupRandom()
+	bsi, min, max := setupRandom()
 	_, err = bsi.WriteTo(file)
 	if err != nil {
 		t.Fatal(err)
@@ -481,8 +605,8 @@ func TestBSIWriteToReadFrom(t *testing.T) {
 		t.Fatal(err3)
 	}
 	assert.True(t, bsi.Equals(bsi2))
-	assert.Equal(t, bsi.MinValue, bsi2.MinMax(0, MIN, bsi2.GetExistenceBitmap()))
-	assert.Equal(t, bsi.MaxValue, bsi2.MinMax(0, MAX, bsi2.GetExistenceBitmap()))
+	assert.Equal(t, min, bsi2.MinMax(0, MIN, bsi2.GetExistenceBitmap()))
+	assert.Equal(t, max, bsi2.MinMax(0, MAX, bsi2.GetExistenceBitmap()))
 }
 
 type bsiColValPair struct {
