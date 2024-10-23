@@ -13,8 +13,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	// Min64BitSigned - Minimum 64 bit value
+	Min64BitSigned = -9223372036854775808
+	// Max64BitSigned - Maximum 64 bit value
+	Max64BitSigned = 9223372036854775807
 )
 
 func TestSetAndGetSimple(t *testing.T) {
@@ -31,62 +40,104 @@ func TestSetAndGetSimple(t *testing.T) {
 
 func TestSetAndGetBigValue(t *testing.T) {
 
-/*
+	// Set a large UUID value---
 	bsi := NewDefaultBSI()
-	bigVal := big.NewInt(Max64BitSigned)
-	bsi.SetBigValue(1, bigVal)
-	gv, ok := bsi.GetBigValue(1)
-	assert.True(t, ok)
-	assert.True(t, gv.IsUint64())
-	assert.Equal(t, bigVal, gv)
-	assert.Equal(t, bsi.BitCount(), 63)
+	bigUUID := big.NewInt(-578664753978847603) // Upper bits
+	bigUUID.Lsh(bigUUID, 64)
+	lowBits := big.NewInt(-5190910309365112881) // Lower bits
+	bigUUID.Add(bigUUID, lowBits) // Lower bits
 
-	bigVal.Add(bigVal, big.NewInt(1))
-	bsi.SetBigValue(1, bigVal)
-	assert.Equal(t, bsi.BitCount(), 64)
-	gv, ok = bsi.GetBigValue(1)
-	assert.True(t, ok)
-	assert.True(t, gv.IsUint64())
-	assert.Equal(t, bigVal, gv)
-*/
+	bsi.SetBigValue(1, bigUUID)
+	assert.Equal(t, bigUUID.BitLen(), bsi.BitCount())
+	bv, _ := bsi.GetBigValue(1)
+	assert.Equal(t,  bigUUID, bv)
 
-/* How do we handle the scenario where we overflow into an int64 for GetValue after a large value was set?
+	// Any code past this point will expect a panic error.  This will happen if a large value was set
+	// with SetBigValue() followed by a call to GetValue() where the set value exceeds 64 bits.
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("The code did not panic")
 		}
 	}()
-	bsi.GetValue(1)
-*/
+	bsi.GetValue(1)  // this should panic.  If so the test will pass.
+}
 
-	// Set a large UUID value---
+func TestSetAndGetUUIDValue(t *testing.T) {
+	uuidVal, _ := uuid.NewRandom()
+	b, errx := uuidVal.MarshalBinary()
+	assert.Nil(t, errx)
+	bigUUID := new(big.Int)
+	bigUUID.SetBytes(b)
 	bsi := NewDefaultBSI()
-	//bigUUID := big.NewInt(0)
-	//b := make([]byte, 16)
-	//bigUUID.FillBytes(b)
-	//bigUUID.Set(big.NewInt(-578664753978847603)) // Upper bits
-	bigUUID := big.NewInt(-578664753978847603) // Upper bits
-	//bigUUID.SetInt64(50) // Upper bits
-
-	//bigUUID := big.NewInt(Min64BitSigned )
-	//bigUUID := big.NewInt(-1)
-	// Max64BitSigned - Maximum 64 bit value
-	//bigUUID := big.NewInt(-5) // Upper bits
-	bigUUID.Lsh(bigUUID, 64)
-	lowBits := big.NewInt(-5190910309365112881) // Lower bits
-	bigUUID.Add(bigUUID, lowBits) // Lower bits
-
-fmt.Printf("BIGUUID BITS = %d\n", bigUUID.BitLen())
-fmt.Printf("BIGUUID VALUE = %v\n", bigUUID.Text(10))
-
 	bsi.SetBigValue(1, bigUUID)
-	//bsi.SetValue(1, bigUUID.Int64())
-	fmt.Printf("BITS = %d\n", bsi.BitCount())
 	assert.Equal(t, bigUUID.BitLen(), bsi.BitCount())
 	bv, _ := bsi.GetBigValue(1)
-	//bv, _ := bsi.GetValue(1)
-	//assert.Equal(t,  bigUUID.Int64(), bv)
 	assert.Equal(t,  bigUUID, bv)
+
+	newUUID, err := uuid.FromBytes(bv.Bytes())
+	assert.Nil(t, err)
+
+	assert.Equal(t, uuidVal.String(), newUUID.String())
+}
+
+func secondsAndNanosToBigInt(seconds int64, nanos int32) *big.Int {
+	b := make([]byte, 12)
+	binary.BigEndian.PutUint64(b[:8], uint64(seconds))
+	binary.BigEndian.PutUint32(b[8:], uint32(nanos))
+	bigTime := new(big.Int)
+	bigTime.SetBytes(b)
+	return bigTime
+}
+
+func bigIntToSecondsAndNanos(big *big.Int) (seconds int64, nanos int32) {
+	buf := make([]byte, 12)
+	big.FillBytes(buf)
+	seconds = int64(binary.BigEndian.Uint64(buf[:8]))
+	nanos = int32(binary.BigEndian.Uint32(buf[8:]))
+	return
+}
+
+func TestSetAndGetBigTimestamp(t *testing.T) {
+
+	// Store a timestamp in a BSI as 2 values, seconds as int64 and nanosecond interval as int32 (96 bits)
+	bigTime := secondsAndNanosToBigInt(int64(33286611346), int32(763295273))
+	bsi := NewDefaultBSI()
+	bsi.SetBigValue(1, bigTime)
+
+	// Recover and check the known timestamp
+	bv, _ := bsi.GetBigValue(1)
+	seconds, nanoseconds := bigIntToSecondsAndNanos(bv)
+	ts := time.Unix(seconds, int64(nanoseconds))
+	assert.Equal(t, "3024-10-23T16:55:46.763295273Z", ts.Format(time.RFC3339Nano))
+	assert.Equal(t, 67, bsi.BitCount())
+}
+
+func TestRangeBig(t *testing.T) {
+
+	bsi := NewDefaultBSI()
+
+	// Populate large timestamp values
+	for i := 0; i <= 100; i++ {
+		t := time.Now()
+		newTime := t.AddDate(1000, 0, 0) // Add 1000 years
+		secs := int64(newTime.UnixMilli() / 1000)
+		nano := int32(newTime.Nanosecond())
+		bigTime := secondsAndNanosToBigInt(secs, nano)
+		bsi.SetBigValue(uint64(i), bigTime)
+	}
+
+	start, _ := bsi.GetBigValue(uint64(45)) // starting value at columnID 45
+	end, _ := bsi.GetBigValue(uint64(55))  // ending value at columnID 55
+    set := bsi.CompareBigValue(0, RANGE, start, end, nil)
+    assert.Equal(t, uint64(11), set.GetCardinality())
+    
+    i := set.Iterator()
+    for i.HasNext() {
+        v := i.Next()
+        assert.GreaterOrEqual(t, uint64(v), uint64(45))
+        assert.LessOrEqual(t, uint64(v), uint64(55))
+    }
+	assert.Equal(t, 67, bsi.BitCount())
 }
 
 func setup() *BSI {
@@ -446,7 +497,6 @@ func TestAdd(t *testing.T) {
 	for i := 1; i <= 10; i++ {
 		a, _ := bsi.GetValue(uint64(i))
 		b, _ := clone.GetValue(uint64(i))
-//fmt.Printf("ORIG = %d, CLONE = %d\n", a, b)
 		assert.Equal(t, b*2, a)
 	}
 

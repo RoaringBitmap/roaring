@@ -8,13 +8,6 @@ import (
 	"sync"
 )
 
-const (
-	// Min64BitSigned - Minimum 64 bit value
-	Min64BitSigned = -9223372036854775808
-	// Max64BitSigned - Maximum 64 bit value
-	Max64BitSigned = 9223372036854775807
-)
-
 // BSI is at its simplest is an array of bitmaps that represent an encoded
 // binary value.  The advantage of a BSI is that comparisons can be made
 // across ranges of values whereas a bitmap can only represent the existence
@@ -109,20 +102,13 @@ func (b *BSI) SetBigValue(columnID uint64, value *big.Int) {
 		}
 	}
 
-//fmt.Printf(" text = %v\n", value.Text(2))
-//fmt.Printf("value = %b\n      ->", value.Int64())
-//fmt.Println("->")
-	//for i := 0; i < b.BitCount(); i++ {
 	for i := b.BitCount(); i >= 0; i-- {
 		if value.Bit(i) == 0 {
-//fmt.Print("0")
 			b.bA[i].Remove(columnID)
 		} else {
-//fmt.Print("1")
 			b.bA[i].Add(columnID)
 		}
 	}
-//fmt.Println()
 	b.eBM.Add(columnID)
 }
 
@@ -137,7 +123,6 @@ func (b *BSI) GetValue(columnID uint64) (value int64, exists bool) {
 	if !exists {
 		return
 	}
-/*
 	if !bv.IsInt64() {
 		if bv.Sign() == -1 {
 			msg := fmt.Errorf("can't represent a negative %d bit value as an int64", b.BitCount())
@@ -148,24 +133,7 @@ func (b *BSI) GetValue(columnID uint64) (value int64, exists bool) {
 			panic(msg)
 		}
 	}
-*/
 	return bv.Int64(), exists
-}
-
-func (b *BSI) DumpBits(columnID uint64) {
-	exists := b.eBM.Contains(columnID)
-	if !exists {
-		return
-	}
-	fmt.Printf("BITS[")
-	for i := b.BitCount(); i >= 0; i-- {
-		if b.bA[i].Contains(columnID) {
-			fmt.Print("1")
-		} else {
-			fmt.Print("0")
-		}
-	}
-	fmt.Println("]")
 }
 
 // GetBigValue gets the value at the column ID. Second param will be false for non-existent values.
@@ -175,18 +143,13 @@ func (b *BSI) GetBigValue(columnID uint64) (value *big.Int, exists bool) {
 		return
 	}
 	val := big.NewInt(0)
-//fmt.Printf("LEN ARRAY = %d\n", len(b.bA))
-//fmt.Printf("ISNEG = %v\n", b.IsNegative(columnID))
-//fmt.Printf("GETVAL ->")
 	for i := b.BitCount(); i >= 0; i-- {
 		if b.bA[i].Contains(columnID) {
 			bigBit := big.NewInt(1)
 			bigBit.Lsh(bigBit, uint(i))
 			val.Or(val, bigBit)
-//fmt.Printf("[%s]1 ", bigBit.Text(2))
 		}
 	}
-//fmt.Println()
 
 	if b.IsNegative(columnID) {
 		val = negativeTwosComplementToInt(val)
