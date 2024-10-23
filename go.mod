@@ -1,6 +1,6 @@
 module github.com/RoaringBitmap/roaring/v2
 
-go 1.22
+go 1.15
 
 require (
 	github.com/bits-and-blooms/bitset v1.12.0
