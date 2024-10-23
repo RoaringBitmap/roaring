@@ -285,7 +285,7 @@ type task struct {
 	op           Operation
 	valueOrStart *big.Int
 	end          *big.Int
-	values       map[int64]struct{}
+	values       map[string]struct{}
 	bits         *Bitmap
 }
 
@@ -897,10 +897,21 @@ func (b *BSI) WriteTo(w io.Writer) (n int64, err error) {
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
 func (b *BSI) BatchEqual(parallelism int, values []int64) *Bitmap {
+	//convert list of int64 values to big.Int(s)
+	bigValues := make([]*big.Int, len(values))
+	for i, v := range values {
+	    bigValues[i] = big.NewInt(v)
+	}
+	return b.BatchEqualBig(parallelism, bigValues)
+}
 
-	valMap := make(map[int64]struct{}, len(values))
+
+// BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
+func (b *BSI) BatchEqualBig(parallelism int, values []*big.Int) *Bitmap {
+
+	valMap := make(map[string]struct{}, len(values))
 	for i := 0; i < len(values); i++ {
-		valMap[values[i]] = struct{}{}
+		valMap[string(values[i].Bytes())] = struct{}{}
 	}
 	comp := &task{bsi: b, values: valMap}
 	return parallelExecutor(parallelism, comp, batchEqual, &b.eBM)
@@ -918,8 +929,8 @@ func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,
 
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
-		if value, ok := e.bsi.GetValue(uint64(cID)); ok {
-			if _, yes := e.values[int64(value)]; yes {
+		if value, ok := e.bsi.GetBigValue(uint64(cID)); ok {
+			if _, yes := e.values[string(value.Bytes())]; yes {
 				results.Add(cID)
 			}
 		}

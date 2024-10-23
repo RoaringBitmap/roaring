@@ -502,6 +502,21 @@ func TestAdd(t *testing.T) {
 
 }
 
+func TestBatchValueBig(t *testing.T) {
+	bsi := NewDefaultBSI()
+
+	// create a big value
+	bv := big.NewInt(Max64BitSigned)
+	bv.Mul(bv, big.NewInt(100))
+
+	// Populate large timestamp values
+	for i := 0; i <= 100; i++ {
+		bsi.SetBigValue(uint64(i), bv)
+	}
+	result := bsi.BatchEqualBig(0, []*big.Int{bv})
+	assert.Equal(t, uint64(101), result.GetCardinality())
+}
+
 func TestIncrementSimple(t *testing.T) {
 	bsi := setup()
 	bsi.IncrementAll()
