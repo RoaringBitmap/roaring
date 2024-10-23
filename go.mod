@@ -2,8 +2,6 @@ module github.com/RoaringBitmap/roaring/v2
 
 go 1.22
 
-toolchain go1.23.2
-
 require (
 	github.com/bits-and-blooms/bitset v1.12.0
 	github.com/google/uuid v1.6.0
