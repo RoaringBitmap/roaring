@@ -76,7 +76,7 @@ func (b *BSI) GetCardinality() uint64 {
 
 // BitCount returns the number of bits needed to represent values.
 func (b *BSI) BitCount() int {
-	return len(b.bA) - 1  // Exclude sign bit
+	return len(b.bA) - 1 // Exclude sign bit
 }
 
 // IsBigUInt returns the number of bits needed to represent values.
@@ -302,7 +302,6 @@ func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int6
 	return b.CompareBigValue(parallelism, op, big.NewInt(valueOrStart), big.NewInt(end), foundSet)
 }
 
-
 // CompareBigValue compares value.
 // Values should be in the range of the BSI (max, min).  If the value is outside the range, the result
 // might erroneous.  The operation parameter indicates the type of comparison to be made.
@@ -320,64 +319,51 @@ func (b *BSI) CompareBigValue(parallelism int, op Operation, valueOrStart, end *
 	return parallelExecutor(parallelism, comp, compareValue, foundSet)
 }
 
-/*
-func twosComplement(val *big.Int, bits int) *big.Int {
-	if val.Sign() != -1 {
-		return val
-	}
-	inverted := new(big.Int).Not(val)
-    mask := new(big.Int).Lsh(big.NewInt(1), uint(val.BitLen() + 1))
-    inverted.And(val, mask.Sub(mask, big.NewInt(1)))
-	val.Set(inverted)
-	return val
-}
-*/
-
 // Returns a twos complement value given a value, the return will be bit extended to 'bits' length
 // if the value is negative
 func twosComplement(num *big.Int, bitCount int) *big.Int {
-    // Check if the number is negative
-    isNegative := num.Sign() < 0
+	// Check if the number is negative
+	isNegative := num.Sign() < 0
 
-    // Get the absolute value if negative
-    abs := new(big.Int).Abs(num)
+	// Get the absolute value if negative
+	abs := new(big.Int).Abs(num)
 
-    // Convert to binary string
-    binStr := abs.Text(2)
+	// Convert to binary string
+	binStr := abs.Text(2)
 
-    // Pad with zeros to the left
-    if len(binStr) < bitCount {
-        binStr = fmt.Sprintf("%0*s", bitCount, binStr)
-    }
+	// Pad with zeros to the left
+	if len(binStr) < bitCount {
+		binStr = fmt.Sprintf("%0*s", bitCount, binStr)
+	}
 
-    // If negative, calculate two's complement
-    if isNegative {
-        // Invert bits
-        inverted := make([]byte, len(binStr))
-        for i := range binStr {
-            if binStr[i] == '0' {
-                inverted[i] = '1'
-            } else {
-                inverted[i] = '0'
-            }
-        }
+	// If negative, calculate two's complement
+	if isNegative {
+		// Invert bits
+		inverted := make([]byte, len(binStr))
+		for i := range binStr {
+			if binStr[i] == '0' {
+				inverted[i] = '1'
+			} else {
+				inverted[i] = '0'
+			}
+		}
 
-        // Add 1
-        carry := byte(1)
-        for i := len(inverted) - 1; i >= 0; i-- {
-            inverted[i] += carry
-            if inverted[i] == '2' {
-                inverted[i] = '0'
-            } else {
-                break
-            }
-        }
-        binStr = string(inverted)
-    }
+		// Add 1
+		carry := byte(1)
+		for i := len(inverted) - 1; i >= 0; i-- {
+			inverted[i] += carry
+			if inverted[i] == '2' {
+				inverted[i] = '0'
+			} else {
+				break
+			}
+		}
+		binStr = string(inverted)
+	}
 
-    bigInt := new(big.Int)
-    _, _ = bigInt.SetString(binStr, 2)
-    return bigInt
+	bigInt := new(big.Int)
+	_, _ = bigInt.SetString(binStr, 2)
+	return bigInt
 }
 
 func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.WaitGroup) {
@@ -391,7 +377,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 
 	startIsNegative := e.valueOrStart.Sign() == -1
 	endIsNegative := e.end.Sign() == -1
-	
+
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
 		eq1, eq2 := true, true
@@ -401,10 +387,10 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 		compStartValue := e.valueOrStart
 		compEndValue := e.end
 		if isNegative != startIsNegative {
-			compStartValue = twosComplement(e.valueOrStart, e.bsi.BitCount() + 1)
+			compStartValue = twosComplement(e.valueOrStart, e.bsi.BitCount()+1)
 		}
 		if isNegative != endIsNegative {
-			compEndValue = twosComplement(e.end, e.bsi.BitCount() + 1)
+			compEndValue = twosComplement(e.end, e.bsi.BitCount()+1)
 		}
 
 		for ; j >= 0; j-- {
@@ -427,7 +413,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 							break
 						}
 					}
-				} 
+				}
 			} else {
 				// BIT in value is CLEAR
 				if sliceContainsBit {
@@ -473,8 +459,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 					}
 				}
 			}
-		} 
-
+		}
 
 		switch e.op {
 		case LT:
@@ -554,9 +539,7 @@ func (b *BSI) MinMaxBig(parallelism int, op Operation, foundSet *Bitmap) *big.In
 	}
 
 	for val := range resultsChan {
-		//if (op == MAX && val > minMax) || (op == MIN && val <= minMax) {
 		if (op == MAX && val.Cmp(minMax) > 0) || (op == MIN && val.Cmp(minMax) <= 0) {
-//fmt.Printf("VAL = %s > %s = %d\n", val.Text(10), minMax.Text(10), val.Cmp(minMax))
 			minMax = val
 		}
 	}
@@ -564,15 +547,15 @@ func (b *BSI) MinMaxBig(parallelism int, op Operation, foundSet *Bitmap) *big.In
 }
 
 func minMaxSignedInt(bits int) (*big.Int, *big.Int) {
-    // Calculate the maximum value
-    max := new(big.Int).Lsh(big.NewInt(1), uint(bits-1))
-    max.Sub(max, big.NewInt(1))
+	// Calculate the maximum value
+	max := new(big.Int).Lsh(big.NewInt(1), uint(bits-1))
+	max.Sub(max, big.NewInt(1))
 
-    // Calculate the minimum value
-    min := new(big.Int).Neg(max)
-    min.Sub(min, big.NewInt(1))
+	// Calculate the minimum value
+	min := new(big.Int).Neg(max)
+	min.Sub(min, big.NewInt(1))
 
-    return min, max
+	return min, max
 }
 
 func (b *BSI) minOrMax(op Operation, batch []uint64, resultsChan chan *big.Int, wg *sync.WaitGroup) {
@@ -601,8 +584,8 @@ func (b *BSI) minOrMax(op Operation, batch []uint64, resultsChan chan *big.Int, 
 		if isNegative != valueIsNegative {
 			// convert compValue to twos complement
 			inverted := new(big.Int).Not(compValue)
-	       	mask := new(big.Int).Lsh(big.NewInt(1), uint(compValue.BitLen()))
-	        inverted.And(inverted, mask.Sub(mask, big.NewInt(1)))
+			mask := new(big.Int).Lsh(big.NewInt(1), uint(compValue.BitLen()))
+			inverted.And(inverted, mask.Sub(mask, big.NewInt(1)))
 			inverted.Add(inverted, big.NewInt(1))
 		}
 
@@ -610,9 +593,9 @@ func (b *BSI) minOrMax(op Operation, batch []uint64, resultsChan chan *big.Int, 
 		for ; j >= 0; j-- {
 			sliceContainsBit := b.bA[j].Contains(cID)
 			if sliceContainsBit {
-           		bigBit := big.NewInt(1)
-           		bigBit.Lsh(bigBit, uint(j))
-           		cVal.Or(cVal, bigBit)
+				bigBit := big.NewInt(1)
+				bigBit.Lsh(bigBit, uint(j))
+				cVal.Or(cVal, bigBit)
 				if isNegative {
 					cVal = negativeTwosComplementToInt(cVal)
 				}
@@ -666,7 +649,6 @@ func (b *BSI) Sum(foundSet *Bitmap) (int64, uint64) {
 	return val.Int64(), count
 }
 
-
 // SumBigValues - Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet
 // is also returned (for calculating the average).   This method will sum arbitrarily large values.
 func (b *BSI) SumBigValues(foundSet *Bitmap) (sum *big.Int, count uint64) {
@@ -679,7 +661,7 @@ func (b *BSI) SumBigValues(foundSet *Bitmap) (sum *big.Int, count uint64) {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
-			resultsChan <- int64(foundSet.AndCardinality(&b.bA[j])<<uint(j))
+			resultsChan <- int64(foundSet.AndCardinality(&b.bA[j]) << uint(j))
 		}(i)
 	}
 	wg.Wait()
@@ -689,7 +671,7 @@ func (b *BSI) SumBigValues(foundSet *Bitmap) (sum *big.Int, count uint64) {
 		sum.Add(sum, big.NewInt(val))
 	}
 	sum.Sub(sum, big.NewInt(int64(foundSet.AndCardinality(&b.bA[b.BitCount()])<<uint(b.BitCount()))))
-	
+
 	return sum, count
 }
 
@@ -900,13 +882,12 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *Bitmap {
 	//convert list of int64 values to big.Int(s)
 	bigValues := make([]*big.Int, len(values))
 	for i, v := range values {
-	    bigValues[i] = big.NewInt(v)
+		bigValues[i] = big.NewInt(v)
 	}
 	return b.BatchEqualBig(parallelism, bigValues)
 }
 
-
-// BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
+// BatchEqualBig returns a bitmap containing the column IDs where the values are contained within the list of values provided.
 func (b *BSI) BatchEqualBig(parallelism int, values []*big.Int) *Bitmap {
 
 	valMap := make(map[string]struct{}, len(values))
@@ -970,7 +951,7 @@ func (b *BSI) ClearValues(foundSet *Bitmap) {
 func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 
 	newBSI := NewDefaultBSI()
-	newBSI.bA = make([]Bitmap, b.BitCount() + 1)
+	newBSI.bA = make([]Bitmap, b.BitCount()+1)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -1006,7 +987,7 @@ func (b *BSI) Add(other *BSI) {
 
 func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 
-	if i >= b.BitCount() + 1 || b.BitCount() == 0 {
+	if i >= b.BitCount()+1 || b.BitCount() == 0 {
 		b.bA = append(b.bA, Bitmap{})
 	}
 	carry := And(&b.bA[i], foundSet)

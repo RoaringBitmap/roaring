@@ -45,12 +45,12 @@ func TestSetAndGetBigValue(t *testing.T) {
 	bigUUID := big.NewInt(-578664753978847603) // Upper bits
 	bigUUID.Lsh(bigUUID, 64)
 	lowBits := big.NewInt(-5190910309365112881) // Lower bits
-	bigUUID.Add(bigUUID, lowBits) // Lower bits
+	bigUUID.Add(bigUUID, lowBits)               // Lower bits
 
 	bsi.SetBigValue(1, bigUUID)
 	assert.Equal(t, bigUUID.BitLen(), bsi.BitCount())
 	bv, _ := bsi.GetBigValue(1)
-	assert.Equal(t,  bigUUID, bv)
+	assert.Equal(t, bigUUID, bv)
 
 	// Any code past this point will expect a panic error.  This will happen if a large value was set
 	// with SetBigValue() followed by a call to GetValue() where the set value exceeds 64 bits.
@@ -59,7 +59,7 @@ func TestSetAndGetBigValue(t *testing.T) {
 			t.Errorf("The code did not panic")
 		}
 	}()
-	bsi.GetValue(1)  // this should panic.  If so the test will pass.
+	bsi.GetValue(1) // this should panic.  If so the test will pass.
 }
 
 func TestSetAndGetUUIDValue(t *testing.T) {
@@ -72,7 +72,7 @@ func TestSetAndGetUUIDValue(t *testing.T) {
 	bsi.SetBigValue(1, bigUUID)
 	assert.Equal(t, bigUUID.BitLen(), bsi.BitCount())
 	bv, _ := bsi.GetBigValue(1)
-	assert.Equal(t,  bigUUID, bv)
+	assert.Equal(t, bigUUID, bv)
 
 	newUUID, err := uuid.FromBytes(bv.Bytes())
 	assert.Nil(t, err)
@@ -127,16 +127,16 @@ func TestRangeBig(t *testing.T) {
 	}
 
 	start, _ := bsi.GetBigValue(uint64(45)) // starting value at columnID 45
-	end, _ := bsi.GetBigValue(uint64(55))  // ending value at columnID 55
-    set := bsi.CompareBigValue(0, RANGE, start, end, nil)
-    assert.Equal(t, uint64(11), set.GetCardinality())
-    
-    i := set.Iterator()
-    for i.HasNext() {
-        v := i.Next()
-        assert.GreaterOrEqual(t, uint64(v), uint64(45))
-        assert.LessOrEqual(t, uint64(v), uint64(55))
-    }
+	end, _ := bsi.GetBigValue(uint64(55))   // ending value at columnID 55
+	set := bsi.CompareBigValue(0, RANGE, start, end, nil)
+	assert.Equal(t, uint64(11), set.GetCardinality())
+
+	i := set.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.GreaterOrEqual(t, uint64(v), uint64(45))
+		assert.LessOrEqual(t, uint64(v), uint64(55))
+	}
 	assert.Equal(t, 67, bsi.BitCount())
 }
 
