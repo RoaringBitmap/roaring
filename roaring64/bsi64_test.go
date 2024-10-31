@@ -649,6 +649,12 @@ func TestMinMaxWithRandom(t *testing.T) {
 	assert.Equal(t, max, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
 }
 
+func TestMinMaxWithNilFoundSet(t *testing.T) {
+	bsi, min, max := setupRandom()
+	assert.Equal(t, min, bsi.MinMax(0, MIN, nil))
+	assert.Equal(t, max, bsi.MinMax(0, MAX, nil))
+}
+
 func TestBSIWriteToReadFrom(t *testing.T) {
 	file, err := ioutil.TempFile("./testdata", "bsi-test")
 	if err != nil {

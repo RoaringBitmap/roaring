@@ -509,6 +509,10 @@ func (b *BSI) MinMaxBig(parallelism int, op Operation, foundSet *Bitmap) *big.In
 
 	resultsChan := make(chan *big.Int, n)
 
+	if foundSet == nil {
+		foundSet = &b.eBM
+	}
+
 	card := foundSet.GetCardinality()
 	x := card / uint64(n)
 
