@@ -312,6 +312,13 @@ func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int6
 func (b *BSI) CompareBigValue(parallelism int, op Operation, valueOrStart, end *big.Int,
 	foundSet *Bitmap) *Bitmap {
 
+	if valueOrStart == nil {
+		valueOrStart = b.MinMaxBig(parallelism, MIN, &b.eBM)
+	}
+	if end == nil {
+		end = b.MinMaxBig(parallelism, MAX, &b.eBM)
+	}
+
 	comp := &task{bsi: b, op: op, valueOrStart: valueOrStart, end: end}
 	if foundSet == nil {
 		return parallelExecutor(parallelism, comp, compareValue, &b.eBM)
@@ -656,7 +663,9 @@ func (b *BSI) Sum(foundSet *Bitmap) (int64, uint64) {
 // SumBigValues - Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet
 // is also returned (for calculating the average).   This method will sum arbitrarily large values.
 func (b *BSI) SumBigValues(foundSet *Bitmap) (sum *big.Int, count uint64) {
-
+	if foundSet == nil {
+		foundSet = &b.eBM
+	}
 	sum = new(big.Int)
 	count = foundSet.GetCardinality()
 	resultsChan := make(chan int64, b.BitCount())
@@ -691,7 +700,9 @@ func (b *BSI) Transpose() *Bitmap {
 //
 // TODO: This implementation is functional but not performant, needs to be re-written perhaps using SIMD SSE2 instructions.
 func (b *BSI) IntersectAndTranspose(parallelism int, foundSet *Bitmap) *Bitmap {
-
+	if foundSet == nil {
+		foundSet = &b.eBM
+	}
 	trans := &task{bsi: b}
 	return parallelExecutor(parallelism, trans, transpose, foundSet)
 }
@@ -1009,7 +1020,12 @@ func (b *BSI) addDigit(foundSet *Bitmap, i int) {
 // is useful for situations where there is a one-to-many relationship between the vectored integer sets.  The resulting BSI
 // contains the number of times a particular value appeared in the input BSI.
 func (b *BSI) TransposeWithCounts(parallelism int, foundSet, filterSet *Bitmap) *BSI {
-
+	if foundSet == nil {
+		foundSet = &b.eBM
+	}
+	if filterSet == nil {
+		filterSet = &b.eBM
+	}
 	return parallelExecutorBSIResults(parallelism, b, transposeWithCounts, foundSet, filterSet, true)
 }
 
@@ -1039,6 +1055,9 @@ func transposeWithCounts(input *BSI, filterSet *Bitmap, batch []uint64, resultsC
 
 // Increment - In-place increment of values in a BSI.  Found set select columns for incrementing.
 func (b *BSI) Increment(foundSet *Bitmap) {
+	if foundSet == nil {
+		foundSet = &b.eBM
+	}
 	b.addDigit(foundSet, 0)
 	b.eBM.Or(foundSet)
 }
