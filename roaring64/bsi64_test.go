@@ -112,6 +112,13 @@ func TestSetAndGetBigTimestamp(t *testing.T) {
 	assert.Equal(t, 67, bsi.BitCount())
 }
 
+// This tests a corner case where a zero value is set on an empty BSI.  The bit count should never be zero.
+func TestSetInitialValueZero(t *testing.T) {
+	bsi := NewDefaultBSI()
+	bsi.SetBigValue(1, big.NewInt(0))
+	assert.Equal(t, 1, bsi.BitCount())
+}
+
 func TestRangeBig(t *testing.T) {
 
 	bsi := NewDefaultBSI()
@@ -262,13 +269,9 @@ func TestNewBSI(t *testing.T) {
 	bsi = NewDefaultBSI()
 	assert.Equal(t, 0, bsi.BitCount())
 	bsi.SetValue(1, int64(0))
-	assert.Equal(t, 0, bsi.BitCount())
+	assert.Equal(t, 1, bsi.BitCount())
 	bsi.SetValue(1, int64(-1))
 	assert.Equal(t, 1, bsi.BitCount())
-}
-
-func TestStuff(t *testing.T) {
-
 }
 
 func TestGE(t *testing.T) {
