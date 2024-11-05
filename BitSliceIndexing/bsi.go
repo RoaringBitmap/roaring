@@ -435,6 +435,10 @@ func (b *BSI) MinMax(parallelism int, op Operation, foundSet *roaring.Bitmap) in
 
 	resultsChan := make(chan int64, n)
 
+	if foundSet == nil {
+		foundSet = b.eBM
+	}
+
 	card := foundSet.GetCardinality()
 	x := card / uint64(n)
 
@@ -545,7 +549,9 @@ func (b *BSI) minOrMax(op Operation, batch []uint32, resultsChan chan int64, wg 
 // Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet
 // is also returned (for calculating the average).
 func (b *BSI) Sum(foundSet *roaring.Bitmap) (sum int64, count uint64) {
-
+	if foundSet == nil {
+		foundSet = b.eBM
+	}
 	count = foundSet.GetCardinality()
 	var wg sync.WaitGroup
 	for i := 0; i < b.BitCount(); i++ {
@@ -569,7 +575,9 @@ func (b *BSI) Transpose() *roaring.Bitmap {
 // the column IDs in the source (foundSet) as compared with this BSI.  This can be useful for
 // vectoring one set of integers to another.
 func (b *BSI) IntersectAndTranspose(parallelism int, foundSet *roaring.Bitmap) *roaring.Bitmap {
-
+	if foundSet == nil {
+		foundSet = b.eBM
+	}
 	trans := &task{bsi: b}
 	return parallelExecutor(parallelism, trans, transpose, foundSet)
 }
@@ -820,7 +828,9 @@ func (b *BSI) addDigit(foundSet *roaring.Bitmap, i int) {
 // is useful for situations where there is a one-to-many relationship between the vectored integer sets.  The resulting BSI
 // contains the number of times a particular value appeared in the input BSI as an integer count.
 func (b *BSI) TransposeWithCounts(parallelism int, foundSet *roaring.Bitmap) *BSI {
-
+	if foundSet == nil {
+		foundSet = b.eBM
+	}
 	return parallelExecutorBSIResults(parallelism, b, transposeWithCounts, foundSet, true)
 }
 
@@ -847,6 +857,9 @@ func transposeWithCounts(input *BSI, batch []uint32, resultsChan chan *BSI, wg *
 
 // Increment - In-place increment of values in a BSI.  Found set select columns for incrementing.
 func (b *BSI) Increment(foundSet *roaring.Bitmap) {
+	if foundSet == nil {
+		foundSet = b.eBM
+	}
 	b.addDigit(foundSet, 0)
 	b.eBM.Or(foundSet)
 }

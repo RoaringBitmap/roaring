@@ -649,6 +649,12 @@ func TestMinMaxWithRandom(t *testing.T) {
 	assert.Equal(t, max, bsi.MinMax(0, MAX, bsi.GetExistenceBitmap()))
 }
 
+func TestMinMaxWithNilFoundSet(t *testing.T) {
+	bsi, min, max := setupRandom()
+	assert.Equal(t, min, bsi.MinMax(0, MIN, nil))
+	assert.Equal(t, max, bsi.MinMax(0, MAX, nil))
+}
+
 func TestBSIWriteToReadFrom(t *testing.T) {
 	file, err := ioutil.TempFile("./testdata", "bsi-test")
 	if err != nil {
@@ -763,4 +769,53 @@ func TestMutatedBsiEquality(t *testing.T) {
 	// Now fresh has been mutated in the same pattern as mutated.
 	fresh.SetValue(0, 1)
 	assert.True(t, fresh.Equals(mutated))
+}
+
+func TestSumWithNil(t *testing.T) {
+	bsi := setupNegativeBoundary()
+	assert.Equal(t, uint64(11), bsi.GetCardinality())
+	sum, cnt := bsi.Sum(nil)
+	assert.Equal(t, uint64(11), cnt)
+	assert.Equal(t, int64(0), sum)
+}
+
+func TestTransposeWithCountsNil(t *testing.T) {
+	bsi := setup()
+	bsi.SetValue(101, 50)
+	transposed := bsi.TransposeWithCounts(0, nil, nil)
+	a, ok := transposed.GetValue(uint64(50))
+	assert.True(t, ok)
+	assert.Equal(t, int64(2), a)
+	a, ok = transposed.GetValue(uint64(49))
+	assert.True(t, ok)
+	assert.Equal(t, int64(1), a)
+}
+
+func TestRangeNilBig(t *testing.T) {
+
+	bsi := NewDefaultBSI()
+
+	// Populate large timestamp values
+	for i := 0; i <= 100; i++ {
+		t := time.Now()
+		newTime := t.AddDate(1000, 0, 0) // Add 1000 years
+		secs := int64(newTime.UnixMilli() / 1000)
+		nano := int32(newTime.Nanosecond())
+		bigTime := secondsAndNanosToBigInt(secs, nano)
+		bsi.SetBigValue(uint64(i), bigTime)
+	}
+
+	start, _ := bsi.GetBigValue(uint64(45)) // starting value at columnID 45
+	end, _ := bsi.GetBigValue(uint64(55))   // ending value at columnID 55
+	setStart := bsi.CompareBigValue(0, RANGE, nil, end, nil)
+	tmpStart := bsi.CompareBigValue(0, RANGE, bsi.MinMaxBig(0, MIN, nil), end, nil)
+	assert.Equal(t, tmpStart.GetCardinality(), setStart.GetCardinality())
+
+	setEnd := bsi.CompareBigValue(0, RANGE, start, nil, nil)
+	tmpEnd := bsi.CompareBigValue(0, RANGE, start, bsi.MinMaxBig(0, MAX, nil), nil)
+	assert.Equal(t, tmpEnd.GetCardinality(), setEnd.GetCardinality())
+
+	setAll := bsi.CompareBigValue(0, RANGE, nil, nil, nil)
+	tmpAll := bsi.CompareBigValue(0, RANGE, bsi.MinMaxBig(0, MIN, nil), bsi.MinMaxBig(0, MAX, nil), nil)
+	assert.Equal(t, tmpAll.GetCardinality(), setAll.GetCardinality())
 }

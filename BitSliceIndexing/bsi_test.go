@@ -475,3 +475,28 @@ func TestIssue426(t *testing.T) {
 	fmt.Println(bitmap.ToArray())
 	assert.Equal(t, uint64(0), bitmap.GetCardinality())
 }
+
+func TestMinMaxWithNil(t *testing.T) {
+	bsi := setupRandom()
+	assert.Equal(t, bsi.MinValue, bsi.MinMax(0, MIN, nil))
+	assert.Equal(t, bsi.MaxValue, bsi.MinMax(0, MAX, nil))
+}
+
+func TestSumWithNil(t *testing.T) {
+
+	bsi := setup()
+
+	sum, count := bsi.Sum(bsi.GetExistenceBitmap())
+	sumNil, countNil := bsi.Sum(nil)
+	assert.Equal(t, countNil, count)
+	assert.Equal(t, sumNil, sum)
+}
+
+func TestTransposeWithCountsNil(t *testing.T) {
+	bsi := setup()
+	bsi.SetValue(101, 50)
+	transposed := bsi.TransposeWithCounts(0, nil)
+	a, ok := transposed.GetValue(uint64(50))
+	assert.True(t, ok)
+	assert.Equal(t, int64(2), a)
+}
