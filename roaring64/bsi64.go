@@ -97,6 +97,9 @@ func (b *BSI) SetBigValue(columnID uint64, value *big.Int) {
 	// If max/min values are set to zero then automatically determine bit array size
 	if b.MaxValue == 0 && b.MinValue == 0 {
 		minBits := value.BitLen() + 1
+		if minBits == 1 {
+			minBits = 2
+		}
 		for len(b.bA) < minBits {
 			b.bA = append(b.bA, Bitmap{})
 		}
