@@ -402,7 +402,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 		if isNegative != startIsNegative {
 			compStartValue = twosComplement(e.valueOrStart, e.bsi.BitCount()+1)
 		}
-		if isNegative != endIsNegative {
+		if isNegative != endIsNegative && e.end != nil {
 			compEndValue = twosComplement(e.end, e.bsi.BitCount()+1)
 		}
 
