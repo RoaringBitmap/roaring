@@ -318,7 +318,7 @@ func (b *BSI) CompareBigValue(parallelism int, op Operation, valueOrStart, end *
 	if valueOrStart == nil {
 		valueOrStart = b.MinMaxBig(parallelism, MIN, &b.eBM)
 	}
-	if end == nil {
+	if end == nil && op == RANGE {
 		end = b.MinMaxBig(parallelism, MAX, &b.eBM)
 	}
 
@@ -386,7 +386,10 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 	}
 
 	startIsNegative := e.valueOrStart.Sign() == -1
-	endIsNegative := e.end.Sign() == -1
+	endIsNegative := true
+	if e.end != nil {
+		endIsNegative = e.end.Sign() == -1
+	}
 
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
@@ -399,7 +402,7 @@ func compareValue(e *task, batch []uint64, resultsChan chan *Bitmap, wg *sync.Wa
 		if isNegative != startIsNegative {
 			compStartValue = twosComplement(e.valueOrStart, e.bsi.BitCount()+1)
 		}
-		if isNegative != endIsNegative {
+		if isNegative != endIsNegative && e.end != nil {
 			compEndValue = twosComplement(e.end, e.bsi.BitCount()+1)
 		}
 
@@ -735,12 +738,12 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 	bits := len(b.bA)
 	for i := 0; i < len(bsis); i++ {
 		if len(bsis[i].bA) > bits {
-			bits = bsis[i].BitCount()
+			bits = len(bsis[i].bA )
 		}
 	}
 
 	// Make sure we have enough bit slices
-	for bits > b.BitCount() {
+	for bits > len(b.bA) {
 		bm := Bitmap{}
 		bm.RunOptimize()
 		b.bA = append(b.bA, bm)
