@@ -822,3 +822,84 @@ func TestRangeNilBig(t *testing.T) {
 	tmpAll := bsi.CompareBigValue(0, RANGE, bsi.MinMaxBig(0, MIN, nil), bsi.MinMaxBig(0, MAX, nil), nil)
 	assert.Equal(t, tmpAll.GetCardinality(), setAll.GetCardinality())
 }
+
+func TestEQONeil(t *testing.T) {
+
+	bsi := setup()
+	eq := bsi.CompareValueONeil( EQ, 50, 0, nil)
+	assert.Equal(t, uint64(1), eq.GetCardinality())
+
+	assert.True(t, eq.ContainsInt(50))
+}
+
+func TestLTONeil(t *testing.T) {
+
+	bsi := setup()
+	lt := bsi.CompareValueONeil(LT, 50, 0, nil)
+	assert.Equal(t, uint64(50), lt.GetCardinality())
+
+	i := lt.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.Less(t, uint64(v), uint64(50))
+	}
+}
+
+func TestGTONeil(t *testing.T) {
+
+	bsi := setup()
+	gt := bsi.CompareValueONeil( GT, 50, 0, nil)
+	assert.Equal(t, uint64(50), gt.GetCardinality())
+
+	i := gt.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.Greater(t, uint64(v), uint64(50))
+	}
+}
+
+func TestGEONeil(t *testing.T) {
+
+	bsi := setup()
+	ge := bsi.CompareValueONeil(GE, 50, 0, nil)
+	assert.Equal(t, uint64(51), ge.GetCardinality())
+
+	i := ge.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.GreaterOrEqual(t, uint64(v), uint64(50))
+	}
+}
+
+func TestLEONeil(t *testing.T) {
+
+	bsi := setup()
+	le := bsi.CompareValueONeil( LE, 50, 0, nil)
+	assert.Equal(t, uint64(51), le.GetCardinality())
+
+	i := le.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.LessOrEqual(t, uint64(v), uint64(50))
+	}
+}
+
+func TestRangeSimpleONeil(t *testing.T) {
+
+	bsi := setup()
+	set := bsi.CompareValueONeil( RANGE, 45, 55, nil)
+	assert.Equal(t, uint64(11), set.GetCardinality())
+
+	i := set.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.GreaterOrEqual(t, uint64(v), uint64(45))
+		assert.LessOrEqual(t, uint64(v), uint64(55))
+	}
+}
+
+func TestRangeBigONeil(t *testing.T) {
+	bsi := setup()
+	set := bsi.CompareValueONeil( RANGE, 0, 103, nil)
+	assert.Equal(t, uint64(101), set.GetCardinality())
+}

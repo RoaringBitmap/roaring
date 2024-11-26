@@ -738,7 +738,7 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 	bits := len(b.bA)
 	for i := 0; i < len(bsis); i++ {
 		if len(bsis[i].bA) > bits {
-			bits = len(bsis[i].bA )
+			bits = len(bsis[i].bA)
 		}
 	}
 
@@ -1103,4 +1103,218 @@ func (b *BSI) GetSizeInBytes() int {
 		size += bm.GetSizeInBytes()
 	}
 	return int(size)
+}
+
+// CompareValueONeil compares value.
+// BSI Compare using single thread
+// this Function compose algorithm from O'Neil and Owen Kaser
+// the GE algorithm is from Owen since the performance is better.  others are from O'Neil
+// Only for param (startOrValue and end) >= 0
+// @param operation
+// @param startOrValue the start or value of comparison, when the comparison operation is range, it's start,
+// when others,it's value.
+// @param end          the end value of comparison. when the comparison operation is not range,the end = 0
+// @param foundSet     columnId set we want compare,using RoaringBitmap to express
+// @return columnId set we found in this bsi with giving conditions, using RoaringBitmap to express
+func (b *BSI) CompareValueONeil(op Operation, valueOrStart, end int64,
+	foundSet *Bitmap) *Bitmap {
+	return b.CompareBigValueONeil(op, big.NewInt(valueOrStart), big.NewInt(end), foundSet)
+}
+
+// CompareBigValueONeil compares value.
+func (b *BSI) CompareBigValueONeil(op Operation, valueOrStart, end *big.Int,
+	foundSet *Bitmap) *Bitmap {
+
+	minValue := big.NewInt(b.minValue())
+	maxValue := big.NewInt(b.maxValue())
+	if valueOrStart == nil {
+		valueOrStart = minValue
+	}
+	if end == nil && op == RANGE {
+		end = maxValue
+	}
+
+	all := New()
+	all.Or(&b.eBM)
+	if foundSet != nil {
+		all.And(foundSet)
+	}
+
+	result := b.compareUsingMinMax(op, valueOrStart, end, all, minValue, maxValue)
+	if result != nil {
+		return result
+	}
+	switch op {
+	case EQ:
+		return b.oNeilCompare(EQ, valueOrStart, foundSet)
+	case GE:
+		return b.oNeilCompare(GE, valueOrStart, foundSet)
+	case GT:
+		return b.oNeilCompare(GT, valueOrStart, foundSet)
+	case LT:
+		return b.oNeilCompare(LT, valueOrStart, foundSet)
+	case LE:
+		return b.oNeilCompare(LE, valueOrStart, foundSet)
+	case RANGE:
+		if valueOrStart.Cmp(minValue) == -1 {
+			valueOrStart = minValue
+		}
+		if end.Cmp(maxValue) == 1 {
+			end = maxValue
+		}
+		left := b.oNeilCompare(GE, valueOrStart, foundSet)
+		right := b.oNeilCompare(LE, end, foundSet)
+		return And(left, right)
+	default:
+		return nil
+	}
+}
+
+func (b *BSI) compareUsingMinMax(operation Operation, valueOrStart, end *big.Int, all *Bitmap, minValue, maxValue *big.Int) *Bitmap {
+	empty := New()
+	switch operation {
+	case LT:
+		if valueOrStart.Cmp(maxValue) == 1 {
+			return all
+		} else if !(valueOrStart.Cmp(minValue) == 1) {
+			return empty
+		}
+		break
+	case LE:
+		if !(valueOrStart.Cmp(maxValue) == -1) {
+			return all
+		} else if valueOrStart.Cmp(minValue) == -1 {
+			return empty
+		}
+		break
+	case GT:
+		if valueOrStart.Cmp(minValue) == -1 {
+			return all
+		} else if !(valueOrStart.Cmp(maxValue) == -1) {
+			return empty
+		}
+		break
+	case GE:
+		if !(valueOrStart.Cmp(minValue) == 1) {
+			return all
+		} else if valueOrStart.Cmp(maxValue) == 1 {
+			return empty
+		}
+		break
+	case EQ:
+		if minValue == maxValue && minValue == valueOrStart {
+			return all
+		} else if valueOrStart.Cmp(minValue) == -1 || valueOrStart.Cmp(maxValue) == 1 {
+			return empty
+		}
+		break
+	case RANGE:
+		if !(valueOrStart.Cmp(minValue) == 1) && !(end.Cmp(maxValue) == -1) {
+			return all
+		} else if valueOrStart.Cmp(maxValue) == 1 || end.Cmp(minValue) == -1 {
+			return empty
+		}
+		break
+	default:
+		return nil
+	}
+	return nil
+}
+
+func (b *BSI) oNeilCompare(operation Operation, predicate *big.Int, foundSet *Bitmap) *Bitmap {
+	fixedFoundSet := foundSet
+	if foundSet == nil {
+		fixedFoundSet = &b.eBM
+	}
+	GTB := New()
+	LTB := New()
+	EQB := New()
+	EQB.Or(&b.eBM)
+
+	for i := b.BitCount() - 1; i >= 0; i-- {
+		bit := predicate.Bit(i)
+		if bit == 1 {
+			LTB.Or(AndNot(EQB, &b.bA[i]))
+			EQB.And(&b.bA[i])
+		} else {
+			GTB.Or(And(EQB, &b.bA[i]))
+			EQB.AndNot(&b.bA[i])
+		}
+	}
+
+	EQB.And(fixedFoundSet)
+	switch operation {
+	case EQ:
+		return EQB
+	case GT:
+		return And(GTB, fixedFoundSet)
+	case LT:
+		return And(LTB, fixedFoundSet)
+	case LE:
+		LTB.Or(EQB)
+		return And(LTB, fixedFoundSet)
+	case GE:
+		GTB.Or(EQB)
+		return And(GTB, fixedFoundSet)
+	}
+	return nil
+}
+
+// minValue get min value from bsi, cost less time than MinMax
+func (b *BSI) minValue() int64 {
+	if b.eBM.IsEmpty() {
+		return 0
+	}
+	return b.minBigValue().Int64()
+}
+
+func (b *BSI) minBigValue() *big.Int {
+	if b.eBM.IsEmpty() {
+		return big.NewInt(0)
+	}
+	minValueId := New()
+	minValueId.Or(&b.eBM)
+	for i := len(b.bA) - 1; i >= 0; i-- {
+		tmp := AndNot(minValueId, &b.bA[i])
+		if !tmp.IsEmpty() {
+			minValueId = tmp
+		}
+	}
+	return big.NewInt(b.valueAt(minValueId.Minimum()))
+}
+
+func (b *BSI) maxValue() int64 {
+	if b.eBM.IsEmpty() {
+		return 0
+	}
+	return b.maxBigValue().Int64()
+}
+
+func (b *BSI) maxBigValue() *big.Int {
+	if b.eBM.IsEmpty() {
+		return big.NewInt(0)
+	}
+	maxValueId := New()
+	maxValueId.Or(&b.eBM)
+	for i := len(b.bA) - 1; i >= 0; i-- {
+		tmp := And(maxValueId, &b.bA[i])
+		if !tmp.IsEmpty() {
+			maxValueId = tmp
+		}
+	}
+	return big.NewInt(b.valueAt(maxValueId.Minimum()))
+}
+
+func (b *BSI) valueAt(columnId uint64) int64 {
+	return b.bigValueAt(columnId).Int64()
+}
+
+func (b *BSI) bigValueAt(columnId uint64) *big.Int {
+	value := big.NewInt(0)
+	for i := 0; i < len(b.bA); i++ {
+		if b.bA[i].Contains(columnId) {
+			value.SetBit(value, i, 1)
+		}
+	}
+	return value
 }

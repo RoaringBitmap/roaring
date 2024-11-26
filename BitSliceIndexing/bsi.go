@@ -868,3 +868,178 @@ func (b *BSI) Increment(foundSet *roaring.Bitmap) {
 func (b *BSI) IncrementAll() {
 	b.Increment(b.GetExistenceBitmap())
 }
+
+
+// CompareValueONeil compares value.
+func (b *BSI) CompareValueONeil(op Operation, valueOrStart, end int64,
+	foundSet *roaring.Bitmap) *roaring.Bitmap {
+
+	minValue := b.minValue()
+	maxValue := b.maxValue()
+
+	all := roaring.New()
+	all.Or(b.eBM)
+	if foundSet != nil {
+		all.And(foundSet)
+	}
+
+	result := b.compareUsingMinMax(op, valueOrStart, end, all, minValue, maxValue)
+	if result != nil {
+		return result
+	}
+	switch op {
+	case EQ:
+		return b.oNeilCompare(EQ, valueOrStart, foundSet)
+	case GE:
+		return b.oNeilCompare(GE, valueOrStart, foundSet)
+	case GT:
+		return b.oNeilCompare(GT, valueOrStart, foundSet)
+	case LT:
+		return b.oNeilCompare(LT, valueOrStart, foundSet)
+	case LE:
+		return b.oNeilCompare(LE, valueOrStart, foundSet)
+	case RANGE:
+		if valueOrStart < minValue {
+			valueOrStart = minValue
+		}
+		if end > maxValue {
+			end = maxValue
+		}
+		left := b.oNeilCompare(GE, valueOrStart, foundSet)
+		right := b.oNeilCompare(LE, end, foundSet)
+		return roaring.And(left, right)
+	default:
+		return nil
+	}
+}
+
+func (b *BSI) compareUsingMinMax(operation Operation, valueOrStart, end int64, all *roaring.Bitmap, minValue, maxValue int64) *roaring.Bitmap {
+	empty := roaring.New()
+	switch operation {
+	case LT:
+		if valueOrStart > maxValue {
+			return all
+		} else if valueOrStart <= minValue {
+			return empty
+		}
+		break
+	case LE:
+		if valueOrStart >= maxValue  {
+			return all
+		} else if valueOrStart < minValue {
+			return empty
+		}
+		break
+	case GT:
+		if valueOrStart < minValue {
+			return all
+		} else if valueOrStart >= maxValue {
+			return empty
+		}
+		break
+	case GE:
+		if valueOrStart <= minValue {
+			return all
+		} else if valueOrStart > maxValue {
+			return empty
+		}
+		break
+	case EQ:
+		if minValue == maxValue && minValue == valueOrStart {
+			return all
+		} else if valueOrStart < minValue || valueOrStart > maxValue {
+			return empty
+		}
+		break
+	case RANGE:
+		if valueOrStart <= minValue && end>=maxValue {
+			return all
+		} else if valueOrStart > maxValue || end < minValue {
+			return empty
+		}
+		break
+	default:
+		return nil
+	}
+	return nil
+}
+
+func (b *BSI) oNeilCompare(operation Operation, predicate int64, foundSet *roaring.Bitmap) *roaring.Bitmap {
+	fixedFoundSet := foundSet
+	if foundSet == nil {
+		fixedFoundSet = b.eBM
+	}
+	GTB := roaring.New()
+	LTB := roaring.New()
+	EQB := roaring.New()
+	EQB.Or(b.eBM)
+
+	for i := b.BitCount() - 1; i >= 0; i-- {
+		bit := (predicate >> i) & 1
+		if bit == 1 {
+			LTB.Or(roaring.AndNot(EQB, b.bA[i]))
+			EQB.And(b.bA[i])
+		} else {
+			GTB.Or(roaring.And(EQB, b.bA[i]))
+			EQB.AndNot(b.bA[i])
+		}
+	}
+
+	EQB.And(fixedFoundSet)
+	switch operation {
+	case EQ:
+		return EQB
+	case GT:
+		return roaring.And(GTB, fixedFoundSet)
+	case LT:
+		return roaring.And(LTB, fixedFoundSet)
+	case LE:
+		LTB.Or(EQB)
+		return roaring.And(LTB, fixedFoundSet)
+	case GE:
+		GTB.Or(EQB)
+		return roaring.And(GTB, fixedFoundSet)
+	}
+	return nil
+}
+
+// minValue get min value from bsi, cost less time than MinMax
+func (b *BSI) minValue() int64 {
+	if b.eBM.IsEmpty() {
+		return 0
+	}
+	minValueId := roaring.New()
+	minValueId.Or(b.eBM)
+	for i := len(b.bA) - 1; i >= 0; i-- {
+		tmp := roaring.AndNot(minValueId, b.bA[i])
+		if !tmp.IsEmpty() {
+			minValueId = tmp
+		}
+	}
+	return b.valueAt(minValueId.Minimum())
+}
+
+func (b *BSI) maxValue() int64 {
+	if b.eBM.IsEmpty() {
+		return 0
+	}
+	maxValueId := roaring.New()
+	maxValueId.Or(b.eBM)
+	for i := len(b.bA) - 1; i >= 0; i-- {
+		tmp := roaring.And(maxValueId, b.bA[i])
+		if !tmp.IsEmpty() {
+			maxValueId = tmp
+		}
+	}
+	return b.valueAt(maxValueId.Minimum())
+}
+
+func (b *BSI) valueAt(columnId uint32) int64 {
+	value := int64(0)
+	for i := 0; i < len(b.bA); i++ {
+		if b.bA[i].Contains(columnId) {
+			value |= 1 << i
+		}
+	}
+	return value
+}
