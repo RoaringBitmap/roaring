@@ -2464,12 +2464,8 @@ func (rc *runContainer16) toBitmapContainer() *bitmapContainer {
 }
 
 func (rc *runContainer16) iandNotRunContainer16(x2 *runContainer16) container {
-	rcb := rc.toBitmapContainer()
-	x2b := x2.toBitmapContainer()
-	rcb.iandNotBitmapSurely(x2b)
 	// TODO: check size and optimize the return value
-	// TODO: is inplace modification really required? If not, elide the copy.
-	rc2 := newRunContainer16FromBitmapContainer(rcb)
+	rc2 := rc.AndNotRunContainer16(x2)
 	*rc = *rc2
 	return rc
 }
