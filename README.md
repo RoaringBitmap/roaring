@@ -163,7 +163,7 @@ they include
   - github.com/philhofer/fwd
   - github.com/jtolds/gls
 
-Note that the smat library requires Go 1.6 or better.
+Note that the smat library requires Go 1.15 or better.
 
 #### Installation
 
@@ -361,7 +361,7 @@ https://coveralls.io/github/RoaringBitmap/roaring?branch=master
 Type
 
          go test -bench Benchmark -run -
-         
+
 To run benchmarks on [Real Roaring Datasets](https://github.com/RoaringBitmap/real-roaring-datasets)
 run the following:
 
@@ -374,9 +374,8 @@ BENCH_REAL_DATA=1 go test -bench BenchmarkRealData -run -
 
 You can use roaring with gore:
 
-- go get -u github.com/motemen/gore
+- go install github.com/x-motemen/gore/cmd/gore@latest
 - Make sure that ``$GOPATH/bin`` is in your ``$PATH``.
-- go get github.com/RoaringBitmap/roaring
 
 ```go
 $ gore
