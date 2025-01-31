@@ -1504,8 +1504,8 @@ func (iv interval16) isNonContiguousDisjoint(b interval16) bool {
 		return false
 	}
 
-	nonContiguous1 := iv.start == b.last()+1 || iv.last() == b.start+1
-	nonContiguous2 := b.start == iv.last()+1 || b.last() == iv.start+1
+	nonContiguous1 := uint32(iv.start) == uint32(b.last())+1 || uint32(iv.last()) == uint32(b.start)+1
+	nonContiguous2 := uint32(b.start) == uint32(iv.last())+1 || uint32(b.last()) == uint32(iv.start)+1
 	if nonContiguous1 || nonContiguous2 {
 		return false
 	}
