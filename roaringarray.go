@@ -90,7 +90,6 @@ const (
 )
 
 var (
-	ErrEmptyKeys             = errors.New("keys were empty")
 	ErrKeySortOrder          = errors.New("keys were out of order")
 	ErrCardinalityConstraint = errors.New("size of arrays was not coherent")
 )
@@ -798,10 +797,6 @@ func (ra *roaringArray) checkKeysSorted() bool {
 // validate checks the referential integrity
 // ensures len(keys) == len(containers), recurses and checks each container type
 func (ra *roaringArray) validate() error {
-	if len(ra.keys) == 0 {
-		return ErrEmptyKeys
-	}
-
 	if !ra.checkKeysSorted() {
 		return ErrKeySortOrder
 	}

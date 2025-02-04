@@ -62,7 +62,6 @@ type interval16 struct {
 var (
 	ErrRunIntervalsEmpty  = errors.New("run contained no interval")
 	ErrRunNonSorted       = errors.New("runs were not sorted")
-	ErrRunIntervalLength  = errors.New("interval had zero length")
 	ErrRunIntervalEqual   = errors.New("intervals were equal")
 	ErrRunIntervalOverlap = errors.New("intervals overlapped or were continguous")
 	ErrRunIntervalSize    = errors.New("too many intervals relative to data")
@@ -2757,10 +2756,9 @@ func (rc *runContainer16) validate() error {
 
 	intervalsSum := 0
 	for outeridx := range rc.iv {
-
-		if rc.iv[outeridx].length == 0 {
-			return ErrRunIntervalLength
-		}
+		// The length being stored is the actual length - 1.
+		// So we need to add 1 to get the actual length.
+		// It is not possible to have a run with length 0.
 
 		outerInterval := rc.iv[outeridx]
 
@@ -2799,7 +2797,7 @@ func (rc *runContainer16) validate() error {
 			return ErrRunIntervalSize
 		}
 	} else {
-		if !(len(rc.iv) < (intervalsSum / 2)) {
+		if !(2*len(rc.iv) < intervalsSum) {
 			return ErrRunIntervalSize
 		}
 	}
