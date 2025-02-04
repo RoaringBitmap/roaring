@@ -449,10 +449,12 @@ func (ra *roaringArray64) validate() error {
 	}
 
 	for _, maps := range ra.containers {
-
 		err := maps.Validate()
 		if err != nil {
 			return err
+		}
+		if maps.IsEmpty() {
+			return errors.New("empty container")
 		}
 	}
 

@@ -2742,7 +2742,7 @@ func TestRoaringArrayValidation(t *testing.T) {
 	a.containers = append(a.containers, &runContainer16{}, &runContainer16{}, &runContainer16{})
 	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
 	a.needCopyOnWrite = append(a.needCopyOnWrite, true, false, true)
-	assert.Errorf(t, a.validate(), "zero intervals")
+	assert.ErrorIs(t, a.validate(), ErrRunIntervalsEmpty)
 }
 
 func TestBitMapValidation(t *testing.T) {
