@@ -107,8 +107,8 @@ func TestSetAndGetBigTimestamp(t *testing.T) {
 	// Recover and check the known timestamp
 	bv, _ := bsi.GetBigValue(1)
 	seconds, nanoseconds := bigIntToSecondsAndNanos(bv)
-	ts := time.Unix(seconds, int64(nanoseconds))
-	assert.Equal(t, "3024-10-23T16:55:46.763295273Z", ts.Format(time.RFC3339Nano))
+	assert.Equal(t, seconds, int64(33286611346))
+	assert.Equal(t, nanoseconds, int32(763295273))
 	assert.Equal(t, 67, bsi.BitCount())
 }
 

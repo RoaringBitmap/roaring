@@ -2732,8 +2732,6 @@ func TestFromBitSet(t *testing.T) {
 func TestRoaringArrayValidation(t *testing.T) {
 	a := newRoaringArray()
 
-	assert.ErrorIs(t, a.validate(), ErrEmptyKeys)
-
 	a.keys = append(a.keys, uint16(3), uint16(1))
 	assert.ErrorIs(t, a.validate(), ErrKeySortOrder)
 	a.clear()
@@ -2744,7 +2742,7 @@ func TestRoaringArrayValidation(t *testing.T) {
 	a.containers = append(a.containers, &runContainer16{}, &runContainer16{}, &runContainer16{})
 	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
 	a.needCopyOnWrite = append(a.needCopyOnWrite, true, false, true)
-	assert.Errorf(t, a.validate(), "zero intervals")
+	assert.ErrorIs(t, a.validate(), ErrRunIntervalsEmpty)
 }
 
 func TestBitMapValidation(t *testing.T) {
@@ -2805,11 +2803,9 @@ func TestBitMapValidationFromDeserialization(t *testing.T) {
 				bm.AddRange(100, 110)
 			},
 			corruptor: func(s []byte) {
-				// 13 is the length of the run
-				// Setting to zero causes an invalid run
 				s[13] = 0
 			},
-			err: ErrRunIntervalLength,
+			err: ErrRunIntervalSize,
 		},
 		{
 			name: "Creates Interval Overlap",
@@ -3309,4 +3305,60 @@ func TestIssue467CaseLarge(t *testing.T) {
 	b.AddRange(235777, 252162)
 	b.RunOptimize()
 	require.NoError(t, b.Validate())
+}
+
+func TestValidateEmpty(t *testing.T) {
+	require.NoError(t, New().Validate())
+}
+
+func TestValidate469(t *testing.T) {
+	b := New()
+	b.RemoveRange(0, 180)
+	b.AddRange(0, 180)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(180, 217)
+	b.AddRange(180, 217)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(217, 2394)
+	b.RemoveRange(2394, 2427)
+	b.AddRange(2394, 2427)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(2427, 2428)
+	b.AddRange(2427, 2428)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(2428, 3345)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(3345, 3346)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(3346, 3597)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(3597, 3815)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(3815, 3816)
+	require.NoError(t, b.Validate())
+	b.AddRange(3815, 3816)
+	require.NoError(t, b.Validate())
+	b.RemoveRange(3816, 3856)
+	b.RemoveRange(3856, 4067)
+	b.RemoveRange(4067, 4069)
+	b.RemoveRange(4069, 4071)
+	b.RemoveRange(4071, 4095)
+	b.RemoveRange(4095, 4096)
+	require.NoError(t, b.Validate())
+	b.RunOptimize()
+	require.False(t, b.IsEmpty())
+	require.NoError(t, b.Validate())
+}
+
+func TestValidateFromV1(t *testing.T) {
+	v1 := New()
+	for i := 0; i <= 2; i++ {
+		v1.Add(uint32(i))
+	}
+	v1.RunOptimize()
+	b, err := v1.MarshalBinary()
+	require.NoError(t, err)
+	v2 := New()
+	require.NoError(t, v2.UnmarshalBinary(b))
+	require.NoError(t, v2.Validate())
 }

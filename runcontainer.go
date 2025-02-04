@@ -62,7 +62,6 @@ type interval16 struct {
 var (
 	ErrRunIntervalsEmpty  = errors.New("run contained no interval")
 	ErrRunNonSorted       = errors.New("runs were not sorted")
-	ErrRunIntervalLength  = errors.New("interval had zero length")
 	ErrRunIntervalEqual   = errors.New("intervals were equal")
 	ErrRunIntervalOverlap = errors.New("intervals overlapped or were continguous")
 	ErrRunIntervalSize    = errors.New("too many intervals relative to data")
@@ -2757,10 +2756,9 @@ func (rc *runContainer16) validate() error {
 
 	intervalsSum := 0
 	for outeridx := range rc.iv {
-
-		if rc.iv[outeridx].length == 0 {
-			return ErrRunIntervalLength
-		}
+		// The length being stored is the actual length - 1.
+		// So we need to add 1 to get the actual length.
+		// It is not possible to have a run with length 0.
 
 		outerInterval := rc.iv[outeridx]
 
@@ -2794,15 +2792,20 @@ func (rc *runContainer16) validate() error {
 		    check that the number of runs < (number of distinct values) / 2
 		    (otherwise you could use an array container)
 	*/
-	if MaxIntervalsSum <= intervalsSum {
-		if !(len(rc.iv) < MaxNumIntervals) {
-			return ErrRunIntervalSize
-		}
-	} else {
-		if !(len(rc.iv) < (intervalsSum / 2)) {
-			return ErrRunIntervalSize
-		}
-	}
 
+	sizeAsRunContainer := runContainer16SerializedSizeInBytes(len(rc.iv))
+	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
+	sizeAsArrayContainer := arrayContainerSizeInBytes(intervalsSum)
+	fmt.Println(sizeAsRunContainer, sizeAsBitmapContainer, sizeAsArrayContainer)
+	// this is always ok:
+	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
+		return nil
+	}
+	if sizeAsRunContainer >= sizeAsBitmapContainer {
+		return ErrRunIntervalSize
+	}
+	if sizeAsRunContainer >= sizeAsArrayContainer {
+		return ErrRunIntervalSize
+	}
 	return nil
 }

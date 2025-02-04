@@ -2133,6 +2133,9 @@ func (rb *Bitmap) Stats() Statistics {
 	return stats
 }
 
+// Validate checks if the bitmap is internally consistent.
+// You may call it after deserialization to check that the bitmap is valid.
+// This function returns an error if the bitmap is invalid, nil otherwise.
 func (rb *Bitmap) Validate() error {
 	return rb.highlowcontainer.validate()
 }
