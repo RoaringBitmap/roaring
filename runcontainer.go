@@ -2792,15 +2792,20 @@ func (rc *runContainer16) validate() error {
 		    check that the number of runs < (number of distinct values) / 2
 		    (otherwise you could use an array container)
 	*/
-	if MaxIntervalsSum <= intervalsSum {
-		if !(len(rc.iv) < MaxNumIntervals) {
-			return ErrRunIntervalSize
-		}
-	} else {
-		if !(2*len(rc.iv) < intervalsSum) {
-			return ErrRunIntervalSize
-		}
-	}
 
+	sizeAsRunContainer := runContainer16SerializedSizeInBytes(len(rc.iv))
+	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
+	sizeAsArrayContainer := arrayContainerSizeInBytes(intervalsSum)
+	fmt.Println(sizeAsRunContainer, sizeAsBitmapContainer, sizeAsArrayContainer)
+	// this is always ok:
+	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
+		return nil
+	}
+	if sizeAsRunContainer >= sizeAsBitmapContainer {
+		return ErrRunIntervalSize
+	}
+	if sizeAsRunContainer >= sizeAsArrayContainer {
+		return ErrRunIntervalSize
+	}
 	return nil
 }
