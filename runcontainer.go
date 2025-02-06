@@ -2796,7 +2796,6 @@ func (rc *runContainer16) validate() error {
 	sizeAsRunContainer := runContainer16SerializedSizeInBytes(len(rc.iv))
 	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(intervalsSum)
-	fmt.Println(sizeAsRunContainer, sizeAsBitmapContainer, sizeAsArrayContainer)
 	// this is always ok:
 	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
 		return nil
