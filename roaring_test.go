@@ -1827,6 +1827,20 @@ func TestBitmap(t *testing.T) {
 
 		assert.True(t, valide)
 	})
+
+	t.Run("ToExistingArray-Test", func(t *testing.T) {
+		values := make([]uint32, 0, 110)
+		rb := NewBitmap()
+
+		for i := 10; i < 120; i++ {
+			values = append(values, uint32(i))
+		}
+		rb.AddMany(values)
+		assert.Equal(t, values, rb.ToArray())
+		existing := make([]uint32, len(values))
+		buf := rb.ToExistingArray(&existing)
+		assert.Equal(t, values, *buf)
+	})
 }
 
 func TestXORtest4(t *testing.T) {
