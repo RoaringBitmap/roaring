@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 
 	"github.com/RoaringBitmap/roaring/v2/internal"
@@ -442,6 +443,9 @@ func (rb *Bitmap) toArray(array *[]uint32) *[]uint32 {
 // slice that is given to ToExistingArray. It is the callers duty to make sure the slice
 // has the right size.
 func (rb *Bitmap) ToExistingArray(array *[]uint32) *[]uint32 {
+	size := int(rb.GetCardinality())
+	*array = slices.Grow(*array, size)
+	*array = (*array)[:size]
 	return rb.toArray(array)
 }
 
