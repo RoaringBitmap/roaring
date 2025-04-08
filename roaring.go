@@ -438,6 +438,9 @@ func (rb *Bitmap) toArray(array *[]uint32) *[]uint32 {
 	return array
 }
 
+// ToExistingArray stores all of the integers stored in the Bitmap in sorted order in the
+// slice that is given to ToExistingArray. It is the callers duty to make sure the slice
+// has the right size.
 func (rb *Bitmap) ToExistingArray(array *[]uint32) *[]uint32 {
 	return rb.toArray(array)
 }
