@@ -105,9 +105,9 @@ func TestBackward(t *testing.T) {
 		b.AddInt(MaxUint32)
 		it := Values(b)
 
-		// only one value MaxUint16
+		// only one value MaxUint32
 		it(func(val uint32) bool {
-			assert.EqualValues(t, MaxUint32, val)
+			assert.EqualValues(t, uint32(MaxUint32), val)
 			return true
 		})
 	})
