@@ -346,7 +346,7 @@ func (rb *Bitmap) CheckedAdd(x uint64) bool {
 	return true
 }
 
-// AddInt adds the integer x to the bitmap (convenience method: the parameter is casted to uint32 and we call Add)
+// AddInt adds the integer x to the bitmap (convenience method: the parameter is casted to uint64 and we call Add)
 func (rb *Bitmap) AddInt(x int) {
 	rb.Add(uint64(x))
 }
