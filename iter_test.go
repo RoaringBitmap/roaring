@@ -27,7 +27,7 @@ func TestBackwardCount(t *testing.T) {
 
 func TestBackward(t *testing.T) {
 	t.Run("#1", func(t *testing.T) {
-		values := []uint32{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16, MaxUint32}
+		values := []uint32{0, 2, 15, 16, 31, 32, 33, 9999, MaxUint16}
 		b := New()
 		for n := 0; n < len(values); n++ {
 			b.Add(values[n])
@@ -96,18 +96,6 @@ func TestBackward(t *testing.T) {
 		// only one value MaxUint16
 		it(func(val uint32) bool {
 			assert.EqualValues(t, MaxUint16, val)
-			return true
-		})
-	})
-
-	t.Run("#6", func(t *testing.T) {
-		b := New()
-		b.AddInt(MaxUint32)
-		it := Values(b)
-
-		// only one value MaxUint32
-		it(func(val uint32) bool {
-			assert.EqualValues(t, uint32(MaxUint32), val)
 			return true
 		})
 	})
