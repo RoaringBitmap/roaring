@@ -500,3 +500,77 @@ func TestTransposeWithCountsNil(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, int64(2), a)
 }
+
+func TestEQONeil(t *testing.T) {
+	bsi := setup()
+	eq := bsi.CompareValue(0, EQ, 50, 0, nil)
+	assert.Equal(t, uint64(1), eq.GetCardinality())
+
+	assert.True(t, eq.ContainsInt(50))
+}
+
+func TestLTONeil(t *testing.T) {
+
+	bsi := setup()
+	lt := bsi.CompareValue(0, LT, 50, 0, nil)
+	assert.Equal(t, uint64(50), lt.GetCardinality())
+
+	i := lt.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.Less(t, uint64(v), uint64(50))
+	}
+}
+
+func TestGTONeil(t *testing.T) {
+
+	bsi := setup()
+	gt := bsi.CompareValue(0, GT, 50, 0, nil)
+	assert.Equal(t, uint64(49), gt.GetCardinality())
+
+	i := gt.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.Greater(t, uint64(v), uint64(50))
+	}
+}
+
+func TestGEONeil(t *testing.T) {
+
+	bsi := setup()
+	ge := bsi.CompareValue(0, GE, 50, 0, nil)
+	assert.Equal(t, uint64(50), ge.GetCardinality())
+
+	i := ge.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.GreaterOrEqual(t, uint64(v), uint64(50))
+	}
+}
+
+func TestLEONeil(t *testing.T) {
+
+	bsi := setup()
+	le := bsi.CompareValue(0, LE, 50, 0, nil)
+	assert.Equal(t, uint64(51), le.GetCardinality())
+
+	i := le.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.LessOrEqual(t, uint64(v), uint64(50))
+	}
+}
+
+func TestRangeONeil(t *testing.T) {
+
+	bsi := setup()
+	set := bsi.CompareValue(0, RANGE, 45, 55, nil)
+	assert.Equal(t, uint64(11), set.GetCardinality())
+
+	i := set.Iterator()
+	for i.HasNext() {
+		v := i.Next()
+		assert.GreaterOrEqual(t, uint64(v), uint64(45))
+		assert.LessOrEqual(t, uint64(v), uint64(55))
+	}
+}
