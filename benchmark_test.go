@@ -54,6 +54,19 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 	if counter != expectedCardinality {
 		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
 	}
+	b.Run("values iteration", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			counter = 0
+			Values(bm)(func(_ uint32) bool {
+				counter++
+				return true
+			})
+		}
+		b.StopTimer()
+	})
+	if counter != expectedCardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
+	}
 	b.Run("reverse iteration with alloc", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
 			counter = 0
@@ -78,6 +91,19 @@ func BenchmarkIteratorAlloc(b *testing.B) {
 				ir.Next()
 				counter++
 			}
+		}
+		b.StopTimer()
+	})
+	if counter != expectedCardinality {
+		b.Fatalf("Cardinalities don't match: %d, %d", counter, expectedCardinality)
+	}
+	b.Run("backward iteration", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			counter = 0
+			Backward(bm)(func(_ uint32) bool {
+				counter++
+				return true
+			})
 		}
 		b.StopTimer()
 	})
