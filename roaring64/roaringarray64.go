@@ -14,7 +14,6 @@ type roaringArray64 struct {
 }
 
 var (
-	ErrEmptyKeys             = errors.New("keys were empty")
 	ErrKeySortOrder          = errors.New("keys were out of order")
 	ErrCardinalityConstraint = errors.New("size of arrays was not coherent")
 )
@@ -437,10 +436,6 @@ func (ra *roaringArray64) checkKeysSorted() bool {
 // validate checks the referential integrity
 // ensures len(keys) == len(containers), recurses and checks each container type
 func (ra *roaringArray64) validate() error {
-	if len(ra.keys) == 0 {
-		return ErrEmptyKeys
-	}
-
 	if !ra.checkKeysSorted() {
 		return ErrKeySortOrder
 	}
@@ -454,10 +449,12 @@ func (ra *roaringArray64) validate() error {
 	}
 
 	for _, maps := range ra.containers {
-
 		err := maps.Validate()
 		if err != nil {
 			return err
+		}
+		if maps.IsEmpty() {
+			return errors.New("empty container")
 		}
 	}
 

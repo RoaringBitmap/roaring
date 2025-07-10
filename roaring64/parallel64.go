@@ -39,9 +39,13 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	// on some systems, would block indefinitely.
 	keyRange := uint64(hKey) - uint64(lKey) + 1
 	if keyRange == 1 {
-		// revert to FastOr. Since the key range is 0
-		// no container-level aggregation parallelism is achievable
-		return FastOr(bitmaps...)
+		// All bitmaps have the same key,
+		// we can merge the 32-bit roaring bitmaps in parallel
+		var bms32s = make([]*roaring.Bitmap, 0, len(bitmaps))
+		for _, b := range bitmaps {
+			bms32s = append(bms32s, b.highlowcontainer.containers...)
+		}
+		return roaring32AsRoaring64(roaring.ParOr(parallelism, bms32s...), lKey)
 	}
 
 	if parallelism == 0 {

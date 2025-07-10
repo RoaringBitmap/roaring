@@ -2588,13 +2588,12 @@ func TestIntervalValidationFailing(t *testing.T) {
 	start := -4
 	for i := 0; i < MaxNumIntervals; i++ {
 		start += 4
-		end := start + 2
+		end := start + 1
 		a := newInterval16Range(uint16(start), uint16(end))
 		rc.iv = append(rc.iv, a)
 
 	}
 	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
-
 	// too many small runs, use array
 	rc = &runContainer16{}
 	start = -3

@@ -346,7 +346,7 @@ func (rb *Bitmap) CheckedAdd(x uint64) bool {
 	return true
 }
 
-// AddInt adds the integer x to the bitmap (convenience method: the parameter is casted to uint32 and we call Add)
+// AddInt adds the integer x to the bitmap (convenience method: the parameter is casted to uint64 and we call Add)
 func (rb *Bitmap) AddInt(x int) {
 	rb.Add(uint64(x))
 }
@@ -1248,9 +1248,13 @@ func (rb *Bitmap) Validate() error {
 // Roaring32AsRoaring64 inserts a 32-bit roaring bitmap into
 // a 64-bit roaring bitmap. No copy is made.
 func Roaring32AsRoaring64(bm32 *roaring.Bitmap) *Bitmap {
+	return roaring32AsRoaring64(bm32, 0)
+}
+
+func roaring32AsRoaring64(bm32 *roaring.Bitmap, key uint32) *Bitmap {
 	rb := NewBitmap()
 	rb.highlowcontainer.resize(0)
-	rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, 0)
+	rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, key)
 	rb.highlowcontainer.containers = append(rb.highlowcontainer.containers, bm32)
 	rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, false)
 	return rb
