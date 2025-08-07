@@ -738,7 +738,7 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 	bits := len(b.bA)
 	for i := 0; i < len(bsis); i++ {
 		if len(bsis[i].bA) > bits {
-			bits = len(bsis[i].bA )
+			bits = len(bsis[i].bA)
 		}
 	}
 
@@ -942,11 +942,7 @@ func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,
 
 // ClearBits cleared the bits that exist in the target if they are also in the found set.
 func ClearBits(foundSet, target *Bitmap) {
-	iter := foundSet.Iterator()
-	for iter.HasNext() {
-		cID := iter.Next()
-		target.Remove(cID)
-	}
+	target.AndNot(foundSet)
 }
 
 // ClearValues removes the values found in foundSet
@@ -956,13 +952,13 @@ func (b *BSI) ClearValues(foundSet *Bitmap) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		ClearBits(foundSet, &b.eBM)
+		b.eBM.AndNot(foundSet)
 	}()
 	for i := 0; i < b.BitCount(); i++ {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
-			ClearBits(foundSet, &b.bA[j])
+			b.bA[j].AndNot(foundSet)
 		}(i)
 	}
 	wg.Wait()
