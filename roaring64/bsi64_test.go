@@ -107,8 +107,8 @@ func TestSetAndGetBigTimestamp(t *testing.T) {
 	// Recover and check the known timestamp
 	bv, _ := bsi.GetBigValue(1)
 	seconds, nanoseconds := bigIntToSecondsAndNanos(bv)
-	ts := time.Unix(seconds, int64(nanoseconds))
-	assert.Equal(t, "3024-10-23T16:55:46.763295273Z", ts.Format(time.RFC3339Nano))
+	assert.Equal(t, seconds, int64(33286611346))
+	assert.Equal(t, nanoseconds, int32(763295273))
 	assert.Equal(t, 67, bsi.BitCount())
 }
 
@@ -212,6 +212,27 @@ func setupRandom() (bsi *BSI, min, max int64) {
 		}
 	}
 	return bsi, min, max
+}
+
+func setupLargeBSI(t testing.TB) *BSI {
+	t.Helper()
+
+	datEBM, err := os.ReadFile("./testdata/age/EBM")
+	if err != nil {
+		return nil
+	}
+	b := make([][]byte, 9)
+	b[0] = datEBM
+	for i := 1; i <= 8; i++ {
+		b[i], err = os.ReadFile(fmt.Sprintf("./testdata/age/%d", i))
+		if err != nil {
+			return nil
+		}
+	}
+	bsi := NewDefaultBSI()
+	err = bsi.UnmarshalBinary(b)
+	require.NoError(t, err)
+	return bsi
 }
 
 func TestTwosComplement(t *testing.T) {
@@ -408,58 +429,11 @@ func TestNewBSIRetainSet(t *testing.T) {
 
 func TestLargeFile(t *testing.T) {
 
-	datEBM, err := ioutil.ReadFile("./testdata/age/EBM")
-	if err != nil {
+	bsi := setupLargeBSI(t)
+	if bsi == nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
 	}
-	dat1, err := ioutil.ReadFile("./testdata/age/1")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	dat2, err := ioutil.ReadFile("./testdata/age/2")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	dat3, err := ioutil.ReadFile("./testdata/age/3")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	dat4, err := ioutil.ReadFile("./testdata/age/4")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	dat5, err := ioutil.ReadFile("./testdata/age/5")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	dat6, err := ioutil.ReadFile("./testdata/age/6")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	dat7, err := ioutil.ReadFile("./testdata/age/7")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-	dat8, err := ioutil.ReadFile("./testdata/age/8")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-		return
-	}
-
-	b := [][]byte{datEBM, dat1, dat2, dat3, dat4, dat5, dat6, dat7, dat8}
-
-	bsi := NewDefaultBSI()
-	//bsi.RunOptimize()
-	err = bsi.UnmarshalBinary(b)
-	require.Nil(t, err)
 
 	resultA := bsi.CompareValue(0, EQ, 55, 0, nil)
 	assert.Equal(t, uint64(574600), resultA.GetCardinality())
@@ -902,4 +876,22 @@ func TestRangeBigONeil(t *testing.T) {
 	bsi := setup()
 	set := bsi.CompareValueONeil( RANGE, 0, 103, nil)
 	assert.Equal(t, uint64(101), set.GetCardinality())
+}
+
+func BenchmarkClearValues(b *testing.B) {
+	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
+	resultA := bsi.CompareValue(0, EQ, 55, 0, nil)
+
+	assert.Equal(b, uint64(574600), resultA.GetCardinality())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		b2 := bsi.Clone()
+		b.StartTimer()
+		b2.ClearValues(resultA)
+	}
 }

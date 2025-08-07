@@ -421,6 +421,11 @@ func FromBitSet(bitset *bitset.BitSet) *Bitmap {
 // ToArray creates a new slice containing all of the integers stored in the Bitmap in sorted order
 func (rb *Bitmap) ToArray() []uint32 {
 	array := make([]uint32, rb.GetCardinality())
+	ar := rb.toArray(&array)
+	return *ar
+}
+
+func (rb *Bitmap) toArray(array *[]uint32) *[]uint32 {
 	pos := 0
 	pos2 := 0
 
@@ -428,9 +433,16 @@ func (rb *Bitmap) ToArray() []uint32 {
 		hs := uint32(rb.highlowcontainer.getKeyAtIndex(pos)) << 16
 		c := rb.highlowcontainer.getContainerAtIndex(pos)
 		pos++
-		pos2 = c.fillLeastSignificant16bits(array, pos2, hs)
+		pos2 = c.fillLeastSignificant16bits(*array, pos2, hs)
 	}
 	return array
+}
+
+// ToExistingArray stores all of the integers stored in the Bitmap in sorted order in the
+// slice that is given to ToExistingArray. It is the callers duty to make sure the slice
+// has the right size.
+func (rb *Bitmap) ToExistingArray(array *[]uint32) *[]uint32 {
+	return rb.toArray(array)
 }
 
 // GetSizeInBytes estimates the memory usage of the Bitmap. Note that this
@@ -2133,6 +2145,9 @@ func (rb *Bitmap) Stats() Statistics {
 	return stats
 }
 
+// Validate checks if the bitmap is internally consistent.
+// You may call it after deserialization to check that the bitmap is valid.
+// This function returns an error if the bitmap is invalid, nil otherwise.
 func (rb *Bitmap) Validate() error {
 	return rb.highlowcontainer.validate()
 }

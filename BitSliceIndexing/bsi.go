@@ -754,11 +754,7 @@ func batchEqual(e *task, batch []uint32, resultsChan chan *roaring.Bitmap,
 
 // ClearBits cleared the bits that exist in the target if they are also in the found set.
 func ClearBits(foundSet, target *roaring.Bitmap) {
-	iter := foundSet.Iterator()
-	for iter.HasNext() {
-		cID := iter.Next()
-		target.Remove(cID)
-	}
+	target.AndNot(foundSet)
 }
 
 // ClearValues removes the values found in foundSet
@@ -768,13 +764,13 @@ func (b *BSI) ClearValues(foundSet *roaring.Bitmap) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		ClearBits(foundSet, b.eBM)
+		b.eBM.AndNot(foundSet)
 	}()
 	for i := 0; i < b.BitCount(); i++ {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
-			ClearBits(foundSet, b.bA[j])
+			b.bA[j].AndNot(foundSet)
 		}(i)
 	}
 	wg.Wait()

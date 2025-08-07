@@ -2015,8 +2015,6 @@ func Test32As64(t *testing.T) {
 func TestRoaringArray64Validation(t *testing.T) {
 	a := roaringArray64{}
 
-	assert.ErrorIs(t, a.validate(), ErrEmptyKeys)
-
 	a.keys = append(a.keys, uint32(3), uint32(1))
 	assert.ErrorIs(t, a.validate(), ErrKeySortOrder)
 	a.clear()

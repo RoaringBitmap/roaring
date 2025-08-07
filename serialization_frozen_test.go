@@ -171,11 +171,9 @@ func TestBitMapValidationFromFrozen(t *testing.T) {
 				bm.AddRange(100, 110)
 			},
 			corruptor: func(s []byte) {
-				// 13 is the length of the run
-				// Setting to zero causes an invalid run
 				s[2] = 0
 			},
-			err: ErrRunIntervalLength,
+			err: ErrRunIntervalSize,
 		},
 		{
 			name: "Creates Interval Overlap",

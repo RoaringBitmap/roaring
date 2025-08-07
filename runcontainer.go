@@ -62,7 +62,6 @@ type interval16 struct {
 var (
 	ErrRunIntervalsEmpty  = errors.New("run contained no interval")
 	ErrRunNonSorted       = errors.New("runs were not sorted")
-	ErrRunIntervalLength  = errors.New("interval had zero length")
 	ErrRunIntervalEqual   = errors.New("intervals were equal")
 	ErrRunIntervalOverlap = errors.New("intervals overlapped or were continguous")
 	ErrRunIntervalSize    = errors.New("too many intervals relative to data")
@@ -1504,8 +1503,8 @@ func (iv interval16) isNonContiguousDisjoint(b interval16) bool {
 		return false
 	}
 
-	nonContiguous1 := iv.start == b.last()+1 || iv.last() == b.start+1
-	nonContiguous2 := b.start == iv.last()+1 || b.last() == iv.start+1
+	nonContiguous1 := uint32(iv.start) == uint32(b.last())+1 || uint32(iv.last()) == uint32(b.start)+1
+	nonContiguous2 := uint32(b.start) == uint32(iv.last())+1 || uint32(b.last()) == uint32(iv.start)+1
 	if nonContiguous1 || nonContiguous2 {
 		return false
 	}
@@ -2464,12 +2463,8 @@ func (rc *runContainer16) toBitmapContainer() *bitmapContainer {
 }
 
 func (rc *runContainer16) iandNotRunContainer16(x2 *runContainer16) container {
-	rcb := rc.toBitmapContainer()
-	x2b := x2.toBitmapContainer()
-	rcb.iandNotBitmapSurely(x2b)
 	// TODO: check size and optimize the return value
-	// TODO: is inplace modification really required? If not, elide the copy.
-	rc2 := newRunContainer16FromBitmapContainer(rcb)
+	rc2 := rc.AndNotRunContainer16(x2)
 	*rc = *rc2
 	return rc
 }
@@ -2761,10 +2756,9 @@ func (rc *runContainer16) validate() error {
 
 	intervalsSum := 0
 	for outeridx := range rc.iv {
-
-		if rc.iv[outeridx].length == 0 {
-			return ErrRunIntervalLength
-		}
+		// The length being stored is the actual length - 1.
+		// So we need to add 1 to get the actual length.
+		// It is not possible to have a run with length 0.
 
 		outerInterval := rc.iv[outeridx]
 
@@ -2798,15 +2792,19 @@ func (rc *runContainer16) validate() error {
 		    check that the number of runs < (number of distinct values) / 2
 		    (otherwise you could use an array container)
 	*/
-	if MaxIntervalsSum <= intervalsSum {
-		if !(len(rc.iv) < MaxNumIntervals) {
-			return ErrRunIntervalSize
-		}
-	} else {
-		if !(len(rc.iv) < (intervalsSum / 2)) {
-			return ErrRunIntervalSize
-		}
-	}
 
+	sizeAsRunContainer := runContainer16SerializedSizeInBytes(len(rc.iv))
+	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
+	sizeAsArrayContainer := arrayContainerSizeInBytes(intervalsSum)
+	// this is always ok:
+	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
+		return nil
+	}
+	if sizeAsRunContainer >= sizeAsBitmapContainer {
+		return ErrRunIntervalSize
+	}
+	if sizeAsRunContainer >= sizeAsArrayContainer {
+		return ErrRunIntervalSize
+	}
 	return nil
 }
