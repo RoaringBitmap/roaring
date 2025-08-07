@@ -444,6 +444,10 @@ func BenchmarkSetRoaring(b *testing.B) {
 
 func BenchmarkClearValues(b *testing.B) {
 	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
+		return
+	}
 	resultA := bsi.CompareValue(0, EQ, 55, 0, nil)
 	assert.Equal(b, uint64(520157), resultA.GetCardinality())
 	b.ResetTimer()
