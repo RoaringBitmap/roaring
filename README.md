@@ -415,3 +415,9 @@ The two versions were written independently.
 ### Mailing list/discussion group
 
 https://groups.google.com/forum/#!forum/roaring-bitmaps
+
+
+### Further reading
+
+<p>Mastering Programming: From Testing to Performance in Go</p>
+<div><a href="https://www.amazon.com/dp/B0FMPGSWR5"><img style="margin-left: auto; margin-right: auto;" src="https://m.media-amazon.com/images/I/61feneHS7kL._SL1499_.jpg" alt="" width="250px" /></a></div>
