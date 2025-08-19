@@ -414,8 +414,7 @@ The two versions were written independently.
 
 ### Mailing list/discussion group
 
-https://groups.google.com/forum/#!forum/roaring-bitmaps
-
+https://groups.google.com/g/roaring-bitmaps
 
 ### Further reading
 
