@@ -115,9 +115,35 @@ func (b *BSI) SetBigValue(columnID uint64, value *big.Int) {
 	b.eBM.Add(columnID)
 }
 
+func (b *BSI) SetBigMany(foundSet *Bitmap, value *big.Int) {
+	// If max/min values are set to zero then automatically determine bit array size
+	if b.MaxValue == 0 && b.MinValue == 0 {
+		minBits := value.BitLen() + 1
+		if minBits == 1 {
+			minBits = 2
+		}
+		for len(b.bA) < minBits {
+			b.bA = append(b.bA, Bitmap{})
+		}
+	}
+	for i := b.BitCount(); i >= 0; i-- {
+		if value.Bit(i) == 0 {
+			b.bA[i].AndNot(foundSet)
+		} else {
+			b.bA[i].Or(foundSet)
+		}
+	}
+	b.eBM.Or(foundSet)
+}
+
 // SetValue sets a value for a given columnID.
 func (b *BSI) SetValue(columnID uint64, value int64) {
 	b.SetBigValue(columnID, big.NewInt(value))
+}
+
+// SetMany sets a value for all columns in foundSet
+func (b *BSI) SetMany(foundSet *Bitmap, value int64) {
+	b.SetBigMany(foundSet, big.NewInt(value))
 }
 
 // GetValue gets the value at the column ID. Second param will be false for non-existent values.
