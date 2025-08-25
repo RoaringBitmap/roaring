@@ -24,6 +24,17 @@ func TestSetAndGet(t *testing.T) {
 	assert.Equal(t, int64(8), gv)
 }
 
+func TestSetMany(t *testing.T) {
+	bsi := setup()
+	// update with mix of existing and new columns
+	upd := roaring.BitmapOf(30, 31, 32, 33, 34, 35, 101, 102, 103)
+	bsi.SetMany(upd, 35)
+
+	matches := bsi.CompareValue(0, EQ, 35, 0, nil)
+
+	assert.True(t, upd.Equals(matches))
+}
+
 func setup() *BSI {
 
 	bsi := NewBSI(100, 0)

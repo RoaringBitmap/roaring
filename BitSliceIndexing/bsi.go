@@ -113,6 +113,29 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 	b.eBM.Add(uint32(columnID))
 }
 
+// SetMany sets a value for foundSet
+func (b *BSI) SetMany(foundSet *roaring.Bitmap, value int64) {
+
+	// If max/min values are set to zero then automatically determine bit array size
+	if b.MaxValue == 0 && b.MinValue == 0 {
+		for i := bits.Len64(uint64(value)) - b.BitCount(); i > 0; i-- {
+			b.bA = append(b.bA, roaring.NewBitmap())
+			if b.runOptimized {
+				b.bA[i].RunOptimize()
+			}
+		}
+	}
+
+	for i := 0; i < b.BitCount(); i++ {
+		if uint64(value)&(1<<uint64(i)) > 0 {
+			b.bA[i].Or(foundSet)
+		} else {
+			b.bA[i].AndNot(foundSet)
+		}
+	}
+	b.eBM.Or(foundSet)
+}
+
 // GetValue gets the value at the column ID.  Second param will be false for non-existent values.
 func (b *BSI) GetValue(columnID uint64) (int64, bool) {
 	value := int64(0)

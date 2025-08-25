@@ -38,6 +38,18 @@ func TestSetAndGetSimple(t *testing.T) {
 	assert.Equal(t, int64(8), gv)
 }
 
+func TestSetMany(t *testing.T) {
+	bsi := setup()
+
+	upd := BitmapOf(30, 31, 32, 33, 34, 35, 101, 102, 103)
+	// update many including existing columns
+	bsi.SetMany(upd, 35)
+
+	matches := bsi.CompareValue(0, EQ, 35, 0, nil)
+
+	assert.True(t, upd.Equals(matches))
+}
+
 func TestSetAndGetBigValue(t *testing.T) {
 
 	// Set a large UUID value---
