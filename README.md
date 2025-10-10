@@ -416,6 +416,11 @@ The two versions were written independently.
 
 https://groups.google.com/g/roaring-bitmaps
 
+## Stars
+
+
+[![Star History Chart](https://api.star-history.com/svg?repos=RoaringBitmap/roaring&type=Date)](https://www.star-history.com/#RoaringBitmap/roaring&Date)
+
 ### Further reading
 
 <p>Mastering Programming: From Testing to Performance in Go</p>
