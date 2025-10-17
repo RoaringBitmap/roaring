@@ -417,8 +417,10 @@ func (ac *arrayContainer) iorArray(value2 *arrayContainer) container {
 func (ac *arrayContainer) iorBitmap(bc2 *bitmapContainer) container {
 	bc1 := ac.toBitmapContainer()
 	bc1.iorBitmap(bc2)
-	*ac = *newArrayContainerFromBitmap(bc1)
-	return ac
+	// DO NOT DO THIS:
+	// *ac = *newArrayContainerFromBitmap(bc1)
+	// This will create gigantic array containers in the case of repeated calls to iorBitmap.
+	return bc1
 }
 
 func (ac *arrayContainer) iorRun16(rc *runContainer16) container {

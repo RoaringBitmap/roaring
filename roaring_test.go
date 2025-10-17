@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	randv2 "math/rand/v2"
+
 	"strconv"
 	"testing"
 
@@ -12,6 +14,39 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSplitter_BrokeBm(t *testing.T) {
+	bm1 := NewBitmap()
+	bm2 := NewBitmap()
+	bm3 := NewBitmap()
+
+	for i := 0; i < 2000; i++ {
+		bm1.Add(uint32(i))
+		bm2.Add(uint32(i + 2000))
+		bm3.Add(uint32(i * 4000))
+	}
+	res := FastOr(bm1, bm2, bm3)
+
+	require.NoError(t, res.Validate())
+
+	return
+}
+
+func TestRoaring_AndMask(t *testing.T) {
+	r := randv2.New(randv2.NewPCG(13, 22)) // reproducible random
+
+	rb := NewBitmap()
+	for j := 0; j < 1_000_000; j++ {
+		rb.Add(r.Uint32N(10_000_000) + 5_000_000)
+	}
+
+	mask := New()
+	mask.AddRange(1, 10_000_001)
+	mask.And(rb)
+
+	err := mask.Validate()
+	require.NoError(t, err) // this fails
+}
 
 func TestIssue440(t *testing.T) {
 	a := NewBitmap()
