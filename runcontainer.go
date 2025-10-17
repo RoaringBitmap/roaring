@@ -1887,9 +1887,13 @@ func (rc *runContainer16) iand(a container) container {
 	case *runContainer16:
 		return rc.inplaceIntersect(c)
 	case *arrayContainer:
+		// inplace intersection with array is not supported
+		// It is likely not very useful either.
 		return rc.andArray(c)
 	case *bitmapContainer:
-		return rc.iandBitmapContainer(c)
+		// inplace intersection with bitmap is not supported
+		// It is very difficult to do this inplace and likely not useful.
+		return rc.andBitmapContainer(c)
 	}
 	panic("unsupported container type")
 }
@@ -1897,12 +1901,6 @@ func (rc *runContainer16) iand(a container) container {
 func (rc *runContainer16) inplaceIntersect(rc2 *runContainer16) container {
 	sect := rc.intersect(rc2)
 	*rc = *sect
-	return rc
-}
-
-func (rc *runContainer16) iandBitmapContainer(bc *bitmapContainer) container {
-	isect := rc.andBitmapContainer(bc)
-	*rc = *newRunContainer16FromContainer(isect)
 	return rc
 }
 
