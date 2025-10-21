@@ -1823,7 +1823,11 @@ func (rc *runContainer16) and(a container) container {
 	}
 	switch c := a.(type) {
 	case *runContainer16:
-		return rc.intersect(c)
+		// Important: there is no reason to believe that the
+		// result of intersecting two run containers is itself
+		// a run container. Hence we convert to efficient container.
+		// We only use run containers when they are efficient.
+		return rc.intersect(c).toEfficientContainer()
 	case *arrayContainer:
 		return rc.andArray(c)
 	case *bitmapContainer:
@@ -1885,7 +1889,11 @@ func (rc *runContainer16) iand(a container) container {
 	}
 	switch c := a.(type) {
 	case *runContainer16:
-		return rc.inplaceIntersect(c)
+		// Important: there is no reason to believe that the
+		// result of intersecting two run containers is itself
+		// a run container. Hence we convert to efficient container.
+		// We only use run containers when they are efficient.
+		return rc.inplaceIntersect(c).toEfficientContainer()
 	case *arrayContainer:
 		// inplace intersection with array is not supported
 		// It is likely not very useful either.
@@ -2198,7 +2206,7 @@ func (rc *runContainer16) ior(a container) container {
 	case *arrayContainer:
 		return rc.iorArray(c)
 	case *bitmapContainer:
-		return rc.iorBitmapContainer(c)
+		return rc.orBitmapContainer(c)
 	}
 	panic("unsupported container type")
 }
@@ -2213,13 +2221,14 @@ func (rc *runContainer16) inplaceUnion(rc2 *runContainer16) container {
 	return rc
 }
 
-func (rc *runContainer16) iorBitmapContainer(bc *bitmapContainer) container {
-	it := bc.getShortIterator()
-	for it.hasNext() {
-		rc.Add(it.next())
-	}
-	return rc
-}
+// Such code should not be used as it will not preserve the container invariants:
+//func (rc *runContainer16) iorBitmapContainer(bc *bitmapContainer) container {
+//	it := bc.getShortIterator()
+//	for it.hasNext() {
+//		rc.Add(it.next())
+//	}
+//	return rc
+//}
 
 func (rc *runContainer16) iorArray(ac *arrayContainer) container {
 	if rc.isEmpty() {
