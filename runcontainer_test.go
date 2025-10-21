@@ -1058,10 +1058,6 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 					b = append(b, uint16(r1))
 					mb[r1] = true
 				}
-
-				// showArray16(a, "a")
-				// showArray16(b, "b")
-
 				// hash version of union
 				hashi := make(map[int]bool)
 				for k := range ma {
@@ -1092,21 +1088,21 @@ func TestRle16RandomInplaceUnionAgainstOtherContainers012(t *testing.T) {
 				// vs runContainer
 				rcb := newRunContainer16FromVals(false, b...)
 
-				rcVsBcUnion.ior(bc)
-				rcVsAcUnion.ior(ac)
-				rcVsRcbUnion.ior(rcb)
+				rcVsBcUnionAnswer := rcVsBcUnion.ior(bc)
+				rcVsAcUnionAnswer := rcVsAcUnion.ior(ac)
+				rcVsRcbUnionAnswer := rcVsRcbUnion.ior(rcb)
 
 				for k := range hashi {
-					assert.True(t, rcVsBcUnion.contains(uint16(k)))
+					assert.True(t, rcVsBcUnionAnswer.contains(uint16(k)))
 
-					assert.True(t, rcVsAcUnion.contains(uint16(k)))
+					assert.True(t, rcVsAcUnionAnswer.contains(uint16(k)))
 
-					assert.True(t, rcVsRcbUnion.contains(uint16(k)))
+					assert.True(t, rcVsRcbUnionAnswer.contains(uint16(k)))
 				}
 
-				assert.Equal(t, len(hashi), rcVsBcUnion.getCardinality())
-				assert.Equal(t, len(hashi), rcVsAcUnion.getCardinality())
-				assert.Equal(t, len(hashi), rcVsRcbUnion.getCardinality())
+				assert.Equal(t, len(hashi), rcVsBcUnionAnswer.getCardinality())
+				assert.Equal(t, len(hashi), rcVsAcUnionAnswer.getCardinality())
+				assert.Equal(t, len(hashi), rcVsRcbUnionAnswer.getCardinality())
 			}
 		}
 

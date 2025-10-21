@@ -1477,7 +1477,6 @@ main:
 				}
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
-
 				answer.highlowcontainer.appendContainer(s1, x1.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)), false)
 				pos1++
 				pos2++
@@ -1516,6 +1515,7 @@ main:
 				if !C.isEmpty() {
 					answer.highlowcontainer.appendContainer(s1, C, false)
 				}
+
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {
