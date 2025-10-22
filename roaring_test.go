@@ -2,6 +2,7 @@ package roaring
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"math/rand"
@@ -14,6 +15,77 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestFuzzerPanicRepro_1761171725501558000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEPAAMAAQD1/wMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	bm.Describe()
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAEAAAAPAAEAEAAAAPb/9/8=")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm2.Describe()
+	bm.AndNot(bm2)
+}
+
+func TestFuzzerRepro_1761171217612329001(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEPAAMAAQDo/wMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.Flip(uint64(1048555), uint64(1048555)+1)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+
+func TestFuzzerRepro_1761171217612329000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEPAAMAAQDo/wMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.Flip(uint64(1048555), uint64(1048555)+1)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+
+func TestFuzzerRepro_1761171056770369000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEAAAMAAQACAAMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.Remove(3)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+func TestFuzzerRepro_1761170740641699000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEAAAMAAQA2AAMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.AddInt(112)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
 
 var bm1Arr = []uint32{279981785, 279982923, 279988809, 279995913}
 

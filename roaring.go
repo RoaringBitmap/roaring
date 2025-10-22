@@ -2145,6 +2145,34 @@ func (rb *Bitmap) Stats() Statistics {
 	return stats
 }
 
+// Describe prints a description of the bitmap's containers to stdout
+func (rb *Bitmap) Describe() {
+	fmt.Printf("Bitmap with %d containers:\n", len(rb.highlowcontainer.containers))
+	for i, c := range rb.highlowcontainer.containers {
+		key := rb.highlowcontainer.keys[i]
+		shared := ""
+		if rb.highlowcontainer.needCopyOnWrite[i] {
+			shared = " (shared)"
+		}
+		switch c.(type) {
+		case *arrayContainer:
+			fmt.Printf("  Container %d (key %d): array, cardinality %d%s\n", i, key, c.getCardinality(), shared)
+		case *bitmapContainer:
+			fmt.Printf("  Container %d (key %d): bitmap, cardinality %d%s\n", i, key, c.getCardinality(), shared)
+		case *runContainer16:
+			fmt.Printf("  Container %d (key %d): run, cardinality %d%s\n", i, key, c.getCardinality(), shared)
+		default:
+			fmt.Printf("  Container %d (key %d): unknown type, cardinality %d%s\n", i, key, c.getCardinality(), shared)
+		}
+	}
+	valid := rb.Validate()
+	if valid != nil {
+		fmt.Printf("  Bitmap is INVALID: %v\n", valid)
+	} else {
+		fmt.Printf("  Bitmap is valid\n")
+	}
+}
+
 // Validate checks if the bitmap is internally consistent.
 // You may call it after deserialization to check that the bitmap is valid.
 // This function returns an error if the bitmap is invalid, nil otherwise.

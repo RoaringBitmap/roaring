@@ -1949,7 +1949,7 @@ func (rc *runContainer16) andNot(a container) container {
 	case *bitmapContainer:
 		return rc.andNotBitmap(c)
 	case *runContainer16:
-		return rc.andNotRunContainer16(c)
+		return rc.andNotRunContainer16(c).toEfficientContainer()
 	}
 	panic("unsupported container type")
 }
@@ -2110,7 +2110,7 @@ func (rc *runContainer16) equals(o container) bool {
 
 func (rc *runContainer16) iaddReturnMinimized(x uint16) container {
 	rc.Add(x)
-	return rc
+	return rc.toEfficientContainer()
 }
 
 func (rc *runContainer16) iadd(x uint16) (wasNew bool) {
@@ -2119,7 +2119,7 @@ func (rc *runContainer16) iadd(x uint16) (wasNew bool) {
 
 func (rc *runContainer16) iremoveReturnMinimized(x uint16) container {
 	rc.removeKey(x)
-	return rc
+	return rc.toEfficientContainer()
 }
 
 func (rc *runContainer16) iremove(x uint16) bool {
@@ -2379,7 +2379,7 @@ func (rc *runContainer16) xor(a container) container {
 	case *bitmapContainer:
 		return rc.xorBitmap(c)
 	case *runContainer16:
-		return rc.xorRunContainer16(c)
+		return rc.xorRunContainer16(c).toEfficientContainer()
 	}
 	panic("unsupported container type")
 }
@@ -2391,7 +2391,7 @@ func (rc *runContainer16) iandNot(a container) container {
 	case *bitmapContainer:
 		return rc.iandNotBitmap(c)
 	case *runContainer16:
-		return rc.iandNotRunContainer16(c)
+		return rc.iandNotRunContainer16(c).toEfficientContainer()
 	}
 	panic("unsupported container type")
 }
@@ -2406,7 +2406,7 @@ func (rc *runContainer16) inot(firstOfRange, endx int) container {
 	}
 	// TODO: minimize copies, do it all inplace; not() makes a copy.
 	rc = rc.Not(firstOfRange, endx)
-	return rc
+	return rc.toEfficientContainer()
 }
 
 func (rc *runContainer16) rank(x uint16) int {
@@ -2480,21 +2480,23 @@ func (rc *runContainer16) iandNotArray(ac *arrayContainer) container {
 	rcb := rc.toBitmapContainer()
 	acb := ac.toBitmapContainer()
 	rcb.iandNotBitmapSurely(acb)
-	// TODO: check size and optimize the return value
-	// TODO: is inplace modification really required? If not, elide the copy.
-	rc2 := newRunContainer16FromBitmapContainer(rcb)
-	*rc = *rc2
-	return rc
+	answer := rcb.toEfficientContainer()
+	if runrc, ok := answer.(*runContainer16); ok {
+		*rc = *runrc
+		return rc
+	}
+	return answer
 }
 
 func (rc *runContainer16) iandNotBitmap(bc *bitmapContainer) container {
 	rcb := rc.toBitmapContainer()
 	rcb.iandNotBitmapSurely(bc)
-	// TODO: check size and optimize the return value
-	// TODO: is inplace modification really required? If not, elide the copy.
-	rc2 := newRunContainer16FromBitmapContainer(rcb)
-	*rc = *rc2
-	return rc
+	answer := rcb.toEfficientContainer()
+	if runrc, ok := answer.(*runContainer16); ok {
+		*rc = *runrc
+		return rc
+	}
+	return answer
 }
 
 func (rc *runContainer16) xorRunContainer16(x2 *runContainer16) container {
