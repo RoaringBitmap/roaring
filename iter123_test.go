@@ -87,7 +87,7 @@ func TestBackward123(t *testing.T) {
 
 		// only one value MaxUint32
 		for val := range Backward(b) {
-			assert.EqualValues(t, MaxUint32, val)
+			assert.EqualValues(t, uint32(MaxUint32), val)
 		}
 	})
 }
