@@ -1412,18 +1412,18 @@ func TestRle16RandomInplaceAndNot017(t *testing.T) {
 				rcVsAcIandnot := rc.Clone()
 				rcVsRcbIandnot := rc.Clone()
 
-				rcVsBcIandnot.iandNot(bc)
-				rcVsAcIandnot.iandNot(ac)
-				rcVsRcbIandnot.iandNot(rcb)
+				answerVsBcIandnot := rcVsBcIandnot.iandNot(bc)
+				answerVsAcIandnot := rcVsAcIandnot.iandNot(ac)
+				answerVsRcbIandnot := rcVsRcbIandnot.iandNot(rcb)
 
 				for k := range hashi {
-					assert.True(t, rcVsBcIandnot.contains(uint16(k)))
-					assert.True(t, rcVsAcIandnot.contains(uint16(k)))
-					assert.True(t, rcVsRcbIandnot.contains(uint16(k)))
+					assert.True(t, answerVsBcIandnot.contains(uint16(k)))
+					assert.True(t, answerVsAcIandnot.contains(uint16(k)))
+					assert.True(t, answerVsRcbIandnot.contains(uint16(k)))
 				}
-				assert.Equal(t, len(hashi), rcVsBcIandnot.getCardinality())
-				assert.Equal(t, len(hashi), rcVsAcIandnot.getCardinality())
-				assert.Equal(t, len(hashi), rcVsRcbIandnot.getCardinality())
+				assert.Equal(t, len(hashi), answerVsBcIandnot.getCardinality())
+				assert.Equal(t, len(hashi), answerVsAcIandnot.getCardinality())
+				assert.Equal(t, len(hashi), answerVsRcbIandnot.getCardinality())
 			}
 		}
 

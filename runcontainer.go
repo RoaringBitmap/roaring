@@ -1949,7 +1949,7 @@ func (rc *runContainer16) andNot(a container) container {
 	case *bitmapContainer:
 		return rc.andNotBitmap(c)
 	case *runContainer16:
-		return rc.andNotRunContainer16(c)
+		return rc.andNotRunContainer16(c).toEfficientContainer()
 	}
 	panic("unsupported container type")
 }
@@ -2110,7 +2110,7 @@ func (rc *runContainer16) equals(o container) bool {
 
 func (rc *runContainer16) iaddReturnMinimized(x uint16) container {
 	rc.Add(x)
-	return rc
+	return rc.toEfficientContainer()
 }
 
 func (rc *runContainer16) iadd(x uint16) (wasNew bool) {
@@ -2119,7 +2119,7 @@ func (rc *runContainer16) iadd(x uint16) (wasNew bool) {
 
 func (rc *runContainer16) iremoveReturnMinimized(x uint16) container {
 	rc.removeKey(x)
-	return rc
+	return rc.toEfficientContainer()
 }
 
 func (rc *runContainer16) iremove(x uint16) bool {
@@ -2180,15 +2180,9 @@ func (rc *runContainer16) orArray(ac *arrayContainer) container {
 	if rc.isEmpty() {
 		return ac.clone()
 	}
-	intervals, cardMinusOne := runArrayUnionToRuns(rc, ac)
+	intervals, cardminusone := runArrayUnionToRuns(rc, ac)
 	result := newRunContainer16TakeOwnership(intervals)
-	if len(intervals) >= MaxNumIntervals && cardMinusOne >= arrayDefaultMaxSize {
-		return newBitmapContainerFromRun(result)
-	}
-	if len(intervals)*2 > 1+int(cardMinusOne) {
-		return result.toArrayContainer()
-	}
-	return result
+	return result.toEfficientContainerFromCardinality(int(cardminusone) + 1)
 }
 
 // orArray finds the union of rc and ac.
@@ -2218,7 +2212,7 @@ func (rc *runContainer16) inplaceUnion(rc2 *runContainer16) container {
 			rc.Add(uint16(i))
 		}
 	}
-	return rc
+	return rc.toEfficientContainer()
 }
 
 // Such code should not be used as it will not preserve the container invariants:
@@ -2242,13 +2236,8 @@ func (rc *runContainer16) iorArray(ac *arrayContainer) container {
 	// this can be done with methods like the in-place array container union
 	// but maybe lazily moving the remaining elements back.
 	rc.iv, cardMinusOne = runArrayUnionToRuns(rc, ac)
-	if len(rc.iv) >= MaxNumIntervals && cardMinusOne >= arrayDefaultMaxSize {
-		return newBitmapContainerFromRun(rc)
-	}
-	if len(rc.iv)*2 > 1+int(cardMinusOne) {
-		return rc.toArrayContainer()
-	}
-	return rc
+	return rc.toEfficientContainerFromCardinality(int(cardMinusOne) + 1)
+
 }
 
 func runArrayUnionToRuns(rc *runContainer16, ac *arrayContainer) ([]interval16, uint16) {
@@ -2391,7 +2380,7 @@ func (rc *runContainer16) iandNot(a container) container {
 	case *bitmapContainer:
 		return rc.iandNotBitmap(c)
 	case *runContainer16:
-		return rc.iandNotRunContainer16(c)
+		return rc.iandNotRunContainer16(c).toEfficientContainer()
 	}
 	panic("unsupported container type")
 }
@@ -2406,7 +2395,7 @@ func (rc *runContainer16) inot(firstOfRange, endx int) container {
 	}
 	// TODO: minimize copies, do it all inplace; not() makes a copy.
 	rc = rc.Not(firstOfRange, endx)
-	return rc
+	return rc.toEfficientContainer()
 }
 
 func (rc *runContainer16) rank(x uint16) int {
@@ -2462,10 +2451,11 @@ func (rc *runContainer16) andNotBitmap(bc *bitmapContainer) container {
 
 func (rc *runContainer16) toBitmapContainer() *bitmapContainer {
 	bc := newBitmapContainer()
+	bc.cardinality = 0
 	for i := range rc.iv {
+		bc.cardinality += rc.iv[i].runlen()
 		bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last())+1)
 	}
-	bc.computeCardinality()
 	return bc
 }
 
@@ -2480,21 +2470,23 @@ func (rc *runContainer16) iandNotArray(ac *arrayContainer) container {
 	rcb := rc.toBitmapContainer()
 	acb := ac.toBitmapContainer()
 	rcb.iandNotBitmapSurely(acb)
-	// TODO: check size and optimize the return value
-	// TODO: is inplace modification really required? If not, elide the copy.
-	rc2 := newRunContainer16FromBitmapContainer(rcb)
-	*rc = *rc2
-	return rc
+	answer := rcb.toEfficientContainer()
+	if runrc, ok := answer.(*runContainer16); ok {
+		*rc = *runrc
+		return rc
+	}
+	return answer
 }
 
 func (rc *runContainer16) iandNotBitmap(bc *bitmapContainer) container {
 	rcb := rc.toBitmapContainer()
 	rcb.iandNotBitmapSurely(bc)
-	// TODO: check size and optimize the return value
-	// TODO: is inplace modification really required? If not, elide the copy.
-	rc2 := newRunContainer16FromBitmapContainer(rcb)
-	*rc = *rc2
-	return rc
+	answer := rcb.toEfficientContainer()
+	if runrc, ok := answer.(*runContainer16); ok {
+		*rc = *runrc
+		return rc
+	}
+	return answer
 }
 
 func (rc *runContainer16) xorRunContainer16(x2 *runContainer16) container {
@@ -2519,6 +2511,20 @@ func (rc *runContainer16) toEfficientContainer() container {
 	sizeAsRunContainer := rc.getSizeInBytes()
 	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
 	card := rc.getCardinality()
+	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
+	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
+		return rc
+	}
+	if card <= arrayDefaultMaxSize {
+		return rc.toArrayContainer()
+	}
+	bc := newBitmapContainerFromRun(rc)
+	return bc
+}
+
+func (rc *runContainer16) toEfficientContainerFromCardinality(card int) container {
+	sizeAsRunContainer := rc.getSizeInBytes()
+	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
 	sizeAsArrayContainer := arrayContainerSizeInBytes(card)
 	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
 		return rc

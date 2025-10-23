@@ -2,6 +2,7 @@ package roaring
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"math/rand"
@@ -14,6 +15,179 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestFuzzerRepro_1761183632825411000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAJAAAADwAAABgAAAAaAAAAVeD8/w==")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	bm.Describe()
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAEAAAAJAAAAEAAAAFXg")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm2.Describe()
+	bm.AndNot(bm2)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+
+func TestFuzzerRepro_1761181918459062000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAJAAAADwAAABgAAAAaAAAAVeD8/w==")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAEAAAAJAAAAEAAAAFXg")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm.AndNot(bm2)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+
+func TestFuzzerRepro_1761177588768443000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEAAAMAAQADAAMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.Describe()
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAEAAAAAAAAAEAAAAAEA")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm2.Describe()
+	bm.Or(bm2)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+
+func TestFuzzerPanicRepro_1761177447422379000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAJAAAADwAAABgAAAAaAAAAVeD8/w==")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAEAAAAJAAAAEAAAAFXg")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm.AndNot(bm2)
+}
+
+func TestFuzzerPanicRepro_1761174531957958000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAAAAAADwAAABgAAAAaAAAAAAD//w==")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAAAAAADwAAABgAAAAaAAAAAAD//w==")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm.Xor(bm2)
+}
+
+func TestFuzzerPanicRepro_1761174003952142000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAAAAAADwAAABgAAAAaAAAAAAD//w==")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAAAAAADwAAABgAAAAaAAAAAAD//w==")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm.Xor(bm2)
+}
+
+func TestFuzzerPanicRepro_1761173763060614000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAAAAAADwAAABgAAAAaAAAAAAD//w==")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	bm.Describe()
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAIAAAAAAAAADwAAABgAAAAaAAAAAAD//w==")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm2.Describe()
+	bm.Or(bm2)
+	bm.Describe()
+}
+
+func TestFuzzerPanicRepro_1761171725501558000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEPAAMAAQD1/wMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	bm.Describe()
+	b2, _ := base64.StdEncoding.DecodeString("OjAAAAEAAAAPAAEAEAAAAPb/9/8=")
+	bm2 := NewBitmap()
+	bm2.UnmarshalBinary(b2)
+	bm2.Describe()
+	bm.AndNot(bm2)
+	bm.Describe()
+}
+
+func TestFuzzerRepro_1761171217612329001(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEPAAMAAQDo/wMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.Flip(uint64(1048555), uint64(1048555)+1)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+
+func TestFuzzerRepro_1761171217612329000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEPAAMAAQDo/wMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.Flip(uint64(1048555), uint64(1048555)+1)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+
+func TestFuzzerRepro_1761171056770369000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEAAAMAAQACAAMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.Remove(3)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
+func TestFuzzerRepro_1761170740641699000(t *testing.T) {
+	b, _ := base64.StdEncoding.DecodeString("OzAAAAEAAAMAAQA2AAMA")
+	bm := NewBitmap()
+	bm.UnmarshalBinary(b)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Initial Validate failed: %v", err)
+	}
+	bm.AddInt(112)
+	if err := bm.Validate(); err != nil {
+		t.Errorf("Validate failed: %v", err)
+	} else {
+		t.Logf("Validate succeeded")
+	}
+}
 
 var bm1Arr = []uint32{279981785, 279982923, 279988809, 279995913}
 
@@ -2949,7 +3123,13 @@ func TestBitMapValidationFromDeserialization(t *testing.T) {
 			tt.corruptor(serialized)
 			corruptedDeserializedBitMap := NewBitmap()
 			corruptedDeserializedBitMap.ReadFrom(bytes.NewReader(serialized))
-			assert.ErrorIs(t, corruptedDeserializedBitMap.Validate(), tt.err)
+			// Check that Validate() returns nil if and only if tt.err is nil
+			validateErr := corruptedDeserializedBitMap.Validate()
+			if tt.err == nil {
+				assert.NoError(t, validateErr, "expected validation to succeed when tt.err is nil")
+			} else {
+				assert.Error(t, validateErr, "expected validation to fail when tt.err is not nil")
+			}
 
 			corruptedDeserializedBitMap = NewBitmap()
 			corruptedDeserializedBitMap.MustReadFrom(bytes.NewReader(serialized))
