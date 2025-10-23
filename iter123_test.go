@@ -83,7 +83,7 @@ func TestBackward123(t *testing.T) {
 
 	t.Run("#6", func(t *testing.T) {
 		b := New()
-		b.AddInt(MaxUint32)
+		b.Add(MaxUint32)
 
 		// only one value MaxUint32
 		for val := range Backward(b) {
