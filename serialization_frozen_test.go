@@ -215,7 +215,13 @@ func TestBitMapValidationFromFrozen(t *testing.T) {
 			tt.corruptor(serialized)
 			corruptedDeserializedBitMap := NewBitmap()
 
-			assert.ErrorIs(t, corruptedDeserializedBitMap.MustFrozenView(serialized), tt.err)
+			// Check that MustFrozenView returns nil if and only if tt.err is nil
+			frozenViewErr := corruptedDeserializedBitMap.MustFrozenView(serialized)
+			if tt.err == nil {
+				assert.NoError(t, frozenViewErr, "expected MustFrozenView to succeed when tt.err is nil")
+			} else {
+				assert.Error(t, frozenViewErr, "expected MustFrozenView to fail when tt.err is not nil")
+			}
 		})
 	}
 }

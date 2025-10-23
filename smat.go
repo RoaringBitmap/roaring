@@ -20,7 +20,7 @@ You should see a directory `workdir` created with initial corpus files.
 
 2. Run the fuzz test:
 ```
-go test -run='^$' -fuzz=FuzzSmat -fuzztime=30s -timeout=60s
+go test -run='^$' -fuzz=FuzzSmat -fuzztime=300s -timeout=60s
 ```
 
 Adjust `-fuzztime` as needed for longer or shorter runs. If crashes are found,
@@ -107,11 +107,13 @@ var smatActionMap = smat.ActionMap{
 
 	smat.ActionID('o'): smatAction(" or", smatWrap(smatOr)),
 	smat.ActionID('a'): smatAction(" and", smatWrap(smatAnd)),
+	smat.ActionID('z'): smatAction(" xor", smatWrap(smatXor)),
 
 	smat.ActionID('#'): smatAction(" cardinality", smatWrap(smatCardinality)),
 
 	smat.ActionID('O'): smatAction(" orCardinality", smatWrap(smatOrCardinality)),
 	smat.ActionID('A'): smatAction(" andCardinality", smatWrap(smatAndCardinality)),
+	smat.ActionID('Z'): smatAction(" xorCardinality", smatWrap(smatXorCardinality)),
 
 	smat.ActionID('c'): smatAction(" clear", smatWrap(smatClear)),
 	smat.ActionID('r'): smatAction(" runOptimize", smatWrap(smatRunOptimize)),
@@ -209,7 +211,7 @@ func smatAction(name string, f func(ctx smat.Context) (smat.State, error)) func(
 								repro += "\tbm.RunOptimize()\n"
 							} else if strings.Contains(lastAction.Name, "clear") {
 								repro += "\tbm.Clear()\n"
-							} else if strings.Contains(lastAction.Name, "or") {
+							} else if lastAction.Name == " or" {
 								pairIndexY := lastAction.Y % len(lastAction.PairSnapshots)
 								if pairIndexY < len(lastAction.PairSnapshots) {
 									snapshotY := lastAction.PairSnapshots[pairIndexY]
@@ -220,7 +222,7 @@ func smatAction(name string, f func(ctx smat.Context) (smat.State, error)) func(
 										repro += "\tbm.Or(bm2)\n"
 									}
 								}
-							} else if strings.Contains(lastAction.Name, "and") {
+							} else if lastAction.Name == " and" {
 								pairIndexY := lastAction.Y % len(lastAction.PairSnapshots)
 								if pairIndexY < len(lastAction.PairSnapshots) {
 									snapshotY := lastAction.PairSnapshots[pairIndexY]
@@ -231,7 +233,7 @@ func smatAction(name string, f func(ctx smat.Context) (smat.State, error)) func(
 										repro += "\tbm.And(bm2)\n"
 									}
 								}
-							} else if strings.Contains(lastAction.Name, "difference") {
+							} else if lastAction.Name == " difference" {
 								pairIndexY := lastAction.Y % len(lastAction.PairSnapshots)
 								if pairIndexY < len(lastAction.PairSnapshots) {
 									snapshotY := lastAction.PairSnapshots[pairIndexY]
@@ -242,7 +244,20 @@ func smatAction(name string, f func(ctx smat.Context) (smat.State, error)) func(
 										repro += "\tbm.AndNot(bm2)\n"
 									}
 								}
-							} // add more as needed
+							} else if lastAction.Name == " xor" {
+								pairIndexY := lastAction.Y % len(lastAction.PairSnapshots)
+								if pairIndexY < len(lastAction.PairSnapshots) {
+									snapshotY := lastAction.PairSnapshots[pairIndexY]
+									if snapshotY != "<nil>" && !strings.HasPrefix(snapshotY, "<") {
+										repro += fmt.Sprintf("\tb2, _ := base64.StdEncoding.DecodeString(\"%s\")\n", snapshotY)
+										repro += "\tbm2 := NewBitmap()\n"
+										repro += "\tbm2.UnmarshalBinary(b2)\n"
+										repro += "\tbm.Xor(bm2)\n"
+									}
+								}
+							} else {
+								repro += fmt.Sprintf("\t// Unhandled action: %s\n", lastAction.Name)
+							}
 						} else {
 							repro += "\t// invalid snapshot\n"
 						}
@@ -382,6 +397,19 @@ func smatOr(c *smatContext) {
 	})
 }
 
+func smatXor(c *smatContext) {
+	c.withPair(c.x, func(px *smatPair) {
+		c.withPair(c.y, func(py *smatPair) {
+			px.Validate()
+			py.Validate()
+			px.bm.Xor(py.bm)
+			px.bs = px.bs.SymmetricDifference(py.bs)
+			px.checkEquals()
+			py.checkEquals()
+		})
+	})
+}
+
 func smatAndCardinality(c *smatContext) {
 	c.withPair(c.x, func(px *smatPair) {
 		c.withPair(c.y, func(py *smatPair) {
@@ -407,6 +435,22 @@ func smatOrCardinality(c *smatContext) {
 			c1 := px.bs.UnionCardinality(py.bs)
 			if c0 != uint64(c1) {
 				panic("expected same or cardinality")
+			}
+			px.checkEquals()
+			py.checkEquals()
+		})
+	})
+}
+
+func smatXorCardinality(c *smatContext) {
+	c.withPair(c.x, func(px *smatPair) {
+		c.withPair(c.y, func(py *smatPair) {
+			px.Validate()
+			py.Validate()
+			c0 := px.bm.OrCardinality(py.bm) - px.bm.AndCardinality(py.bm)
+			c1 := px.bs.SymmetricDifferenceCardinality(py.bs)
+			if c0 != uint64(c1) {
+				panic("expected same xor cardinality")
 			}
 			px.checkEquals()
 			py.checkEquals()
@@ -492,9 +536,6 @@ func smatDifference(c *smatContext) {
 }
 
 func (p *smatPair) checkEquals() {
-	if !p.equalsBitSet(p.bs, p.bm) {
-		panic("bitset mismatch")
-	}
 	valid := p.bm.Validate()
 	if valid != nil {
 		// marshal current bitmap
@@ -556,7 +597,7 @@ func (p *smatPair) checkEquals() {
 						repro += "\tbm.RunOptimize()\n"
 					} else if strings.Contains(lastAction.Name, "clear") {
 						repro += "\tbm.Clear()\n"
-					} else if strings.Contains(lastAction.Name, "or") {
+					} else if lastAction.Name == " or" {
 						pairIndexY := lastAction.Y % len(lastAction.PairSnapshots)
 						if pairIndexY < len(lastAction.PairSnapshots) {
 							snapshotY := lastAction.PairSnapshots[pairIndexY]
@@ -567,7 +608,7 @@ func (p *smatPair) checkEquals() {
 								repro += "\tbm.Or(bm2)\n"
 							}
 						}
-					} else if strings.Contains(lastAction.Name, "and") {
+					} else if lastAction.Name == " and" {
 						pairIndexY := lastAction.Y % len(lastAction.PairSnapshots)
 						if pairIndexY < len(lastAction.PairSnapshots) {
 							snapshotY := lastAction.PairSnapshots[pairIndexY]
@@ -578,7 +619,7 @@ func (p *smatPair) checkEquals() {
 								repro += "\tbm.And(bm2)\n"
 							}
 						}
-					} else if strings.Contains(lastAction.Name, "difference") {
+					} else if lastAction.Name == " difference" {
 						pairIndexY := lastAction.Y % len(lastAction.PairSnapshots)
 						if pairIndexY < len(lastAction.PairSnapshots) {
 							snapshotY := lastAction.PairSnapshots[pairIndexY]
@@ -589,7 +630,20 @@ func (p *smatPair) checkEquals() {
 								repro += "\tbm.AndNot(bm2)\n"
 							}
 						}
-					} // add more as needed
+					} else if lastAction.Name == " xor" {
+						pairIndexY := lastAction.Y % len(lastAction.PairSnapshots)
+						if pairIndexY < len(lastAction.PairSnapshots) {
+							snapshotY := lastAction.PairSnapshots[pairIndexY]
+							if snapshotY != "<nil>" && !strings.HasPrefix(snapshotY, "<") {
+								repro += fmt.Sprintf("\tb2, _ := base64.StdEncoding.DecodeString(\"%s\")\n", snapshotY)
+								repro += "\tbm2 := NewBitmap()\n"
+								repro += "\tbm2.UnmarshalBinary(b2)\n"
+								repro += "\tbm.Xor(bm2)\n"
+							}
+						}
+					} else {
+						repro += fmt.Sprintf("\t// Unhandled action: %s\n", lastAction.Name)
+					}
 					repro += "\tif err := bm.Validate(); err != nil {\n"
 					repro += "\t\tt.Errorf(\"Validate failed: %v\", err)\n"
 					repro += "\t} else {\n"
@@ -627,6 +681,9 @@ func (p *smatPair) checkEquals() {
 		}
 
 		panic(fmt.Sprintf("[checkEquals] bitmap invalid: %v\ncurrentBase64:%s\nlastAction:%s\n", valid, curSnap, last))
+	}
+	if !p.equalsBitSet(p.bs, p.bm) {
+		panic("bitset mismatch")
 	}
 }
 

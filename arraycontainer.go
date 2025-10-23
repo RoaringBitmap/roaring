@@ -11,6 +11,7 @@ type arrayContainer struct {
 
 var (
 	ErrArrayIncorrectSort = errors.New("incorrectly sorted array")
+	ErrEmptyArray         = errors.New("empty array")
 	ErrArrayInvalidSize   = errors.New("invalid array size")
 )
 
@@ -1291,7 +1292,7 @@ func (ac *arrayContainer) validate() error {
 	cardinality := ac.getCardinality()
 
 	if cardinality <= 0 {
-		return ErrArrayInvalidSize
+		return ErrEmptyArray
 	}
 
 	if cardinality > arrayDefaultMaxSize {

@@ -1302,6 +1302,10 @@ main:
 
 // Xor computes the symmetric difference between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) Xor(x2 *Bitmap) {
+	if rb == x2 {
+		rb.Clear()
+		return
+	}
 	pos1 := 0
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
@@ -1316,8 +1320,7 @@ func (rb *Bitmap) Xor(x2 *Bitmap) {
 					break
 				}
 			} else if s1 > s2 {
-				c := x2.highlowcontainer.getWritableContainerAtIndex(pos2)
-				rb.highlowcontainer.insertNewKeyValueAt(pos1, x2.highlowcontainer.getKeyAtIndex(pos2), c)
+				rb.highlowcontainer.insertNewKeyValueAt(pos1, x2.highlowcontainer.getKeyAtIndex(pos2), x2.highlowcontainer.getContainerAtIndex(pos2).clone())
 				length1++
 				pos1++
 				pos2++
@@ -1370,7 +1373,8 @@ main:
 				}
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
-				rb.highlowcontainer.replaceKeyAndContainerAtIndex(pos1, s1, rb.highlowcontainer.getUnionedWritableContainer(pos1, x2.highlowcontainer.getContainerAtIndex(pos2)), false)
+				newcont := rb.highlowcontainer.getUnionedWritableContainer(pos1, x2.highlowcontainer.getContainerAtIndex(pos2))
+				rb.highlowcontainer.replaceKeyAndContainerAtIndex(pos1, s1, newcont, false)
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {
@@ -1388,6 +1392,10 @@ main:
 
 // AndNot computes the difference between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) AndNot(x2 *Bitmap) {
+	if rb == x2 {
+		rb.Clear()
+		return
+	}
 	pos1 := 0
 	pos2 := 0
 	intersectionsize := 0
@@ -1543,6 +1551,9 @@ main:
 
 // Xor computes the symmetric difference between two bitmaps and returns the result
 func Xor(x1, x2 *Bitmap) *Bitmap {
+	if x1 == x2 {
+		return NewBitmap()
+	}
 	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
@@ -1580,6 +1591,9 @@ func Xor(x1, x2 *Bitmap) *Bitmap {
 
 // AndNot computes the difference between two bitmaps and returns the result
 func AndNot(x1, x2 *Bitmap) *Bitmap {
+	if x1 == x2 {
+		return NewBitmap()
+	}
 	answer := NewBitmap()
 	pos1 := 0
 	pos2 := 0
