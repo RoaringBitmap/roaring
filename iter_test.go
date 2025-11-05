@@ -268,7 +268,7 @@ func TestUnset(t *testing.T) {
 		})
 
 		// Should include all values from 50-150 except 100
-		assert.Equal(t, 100, len(actual)) // 150-50+1 - 1 = 101 - 1 = 100
+		assert.Equal(t, 100, len(actual)) // 150-50+1-1 = 100
 		assert.Contains(t, actual, uint32(50))
 		assert.Contains(t, actual, uint32(99))
 		assert.NotContains(t, actual, uint32(100))
