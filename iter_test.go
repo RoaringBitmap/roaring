@@ -275,4 +275,20 @@ func TestUnset(t *testing.T) {
 		assert.Contains(t, actual, uint32(101))
 		assert.Contains(t, actual, uint32(150))
 	})
+
+	t.Run("min is in the bitmap", func(t *testing.T) {
+		b := New()
+		b.AddInt(100)
+
+		it := Unset(b, 100, 105)
+
+		actual := make([]uint32, 0)
+		it(func(val uint32) bool {
+			actual = append(actual, val)
+			return true
+		})
+		expected := []uint32{101, 102, 103, 104, 105}
+
+		assert.Equal(t, expected, actual)
+	})
 }

@@ -755,8 +755,6 @@ func (ui *unsetIterator) Initialize(b *Bitmap, min, max uint32) {
 	ui.max = max
 	ui.current = min
 	ui.it = b.Iterator()
-	ui.hasNext = min <= max
-
 	// Advance to first value >= min
 	ui.it.AdvanceIfNeeded(min)
 	ui.updateHasNext()
