@@ -294,7 +294,7 @@ func TestUnset(t *testing.T) {
 
 	t.Run("extreme max", func(t *testing.T) {
 		b := New()
-		b.AddInt(4294967295)
+		b.Add(4294967295)
 
 		it := Unset(b, 4294967294, 4294967295)
 
