@@ -742,6 +742,70 @@ func (ii *manyIntIterator) Initialize(a *Bitmap) {
 	ii.init()
 }
 
+type unsetIterator struct {
+	min, max uint32
+	current  uint32
+	it       IntPeekable
+	hasNext  bool
+}
+
+// Initialize configures the unset iterator to iterate over values in [min, max] that are not in the bitmap
+func (ui *unsetIterator) Initialize(b *Bitmap, min, max uint32) {
+	ui.min = min
+	ui.max = max
+	ui.current = min
+	ui.it = b.Iterator()
+	ui.hasNext = min <= max
+
+	// Advance to first value >= min
+	ui.it.AdvanceIfNeeded(min)
+	ui.updateHasNext()
+}
+
+func (ui *unsetIterator) HasNext() bool {
+	return ui.hasNext
+}
+
+func (ui *unsetIterator) Next() uint32 {
+	if !ui.hasNext {
+		panic("Next() called when HasNext() returns false")
+	}
+
+	result := ui.current
+	ui.current++
+	ui.updateHasNext()
+	return result
+}
+
+func (ui *unsetIterator) updateHasNext() {
+	for ui.current <= ui.max {
+		if !ui.it.HasNext() {
+			// No more set bits, we have values to yield
+			ui.hasNext = true
+			return
+		}
+
+		nextSet := ui.it.PeekNext()
+		if nextSet > ui.max {
+			// Next set bit is beyond our range, we have values to yield
+			ui.hasNext = true
+			return
+		}
+
+		if ui.current < nextSet {
+			// We have unset values before the next set bit
+			ui.hasNext = true
+			return
+		}
+
+		// Skip the set bit
+		ui.it.Next()
+		ui.current = nextSet + 1
+	}
+
+	ui.hasNext = false
+}
+
 // String creates a string representation of the Bitmap
 func (rb *Bitmap) String() string {
 	// inspired by https://github.com/fzandona/goroar/
@@ -821,6 +885,14 @@ func (rb *Bitmap) ReverseIterator() IntIterable {
 func (rb *Bitmap) ManyIterator() ManyIntIterable {
 	p := new(manyIntIterator)
 	p.Initialize(rb)
+	return p
+}
+
+// UnsetIterator creates a new IntIterable to iterate over values in the range [min, max] that are NOT contained in the bitmap.
+// The iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
+func (rb *Bitmap) UnsetIterator(min, max uint32) IntIterable {
+	p := new(unsetIterator)
+	p.Initialize(rb, min, max)
 	return p
 }
 
