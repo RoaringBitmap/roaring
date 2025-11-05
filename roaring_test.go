@@ -2618,6 +2618,241 @@ func TestFromBitSet(t *testing.T) {
 	})
 }
 
+func TestRanges(t *testing.T) {
+	tests := []struct {
+		name string
+		add  func(*Bitmap)
+		want [][2]uint64
+	}{
+		{
+			name: "single_range",
+			add: func(b *Bitmap) {
+				b.AddRange(100, 200)
+			},
+			want: [][2]uint64{{100, 200}},
+		},
+		{
+			name: "multiple_ranges",
+			add: func(b *Bitmap) {
+				b.AddRange(100, 200)
+				b.AddRange(300, 400)
+				b.AddRange(1000, 2000)
+			},
+			want: [][2]uint64{
+				{100, 200},
+				{300, 400},
+				{1000, 2000},
+			},
+		},
+		{
+			name: "large_range",
+			add: func(b *Bitmap) {
+				b.AddRange(0, 0x10000)
+			},
+			want: [][2]uint64{{0, 0x10000}},
+		},
+		{
+			name: "adjacent_ranges",
+			add: func(b *Bitmap) {
+				b.AddRange(0, 100)
+				b.AddRange(100, 200)
+			},
+			want: [][2]uint64{{0, 200}},
+		},
+		{
+			name: "range_spanning_multiple_containers",
+			add: func(b *Bitmap) {
+				b.AddRange(0, 300000)
+			},
+			want: [][2]uint64{{0, 300000}},
+		},
+		{
+			name: "empty_bitmap",
+			add:  func(b *Bitmap) {},
+			want: nil,
+		},
+		{
+			name: "single_bit",
+			add: func(b *Bitmap) {
+				b.Add(42)
+			},
+			want: [][2]uint64{{42, 43}},
+		},
+		{
+			name: "full_container",
+			add: func(b *Bitmap) {
+				b.AddRange(0, 65536)
+			},
+			want: [][2]uint64{{0, 65536}},
+		},
+		{
+			name: "range_spanning_exactly_two_containers",
+			add: func(b *Bitmap) {
+				b.AddRange(0, 131072)
+			},
+			want: [][2]uint64{{0, 131072}},
+		},
+		{
+			name: "scattered_bits",
+			add: func(b *Bitmap) {
+				b.Add(1)
+				b.Add(3)
+				b.Add(5)
+			},
+			want: [][2]uint64{{1, 2}, {3, 4}, {5, 6}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rb := NewBitmap()
+			tt.add(rb)
+
+			var got [][2]uint64
+			for start, end := range rb.Ranges() {
+				got = append(got, [2]uint64{start, end})
+			}
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestInvertRanges(t *testing.T) {
+	collectRanges := func(seq func(func(uint64, uint64) bool)) [][2]uint64 {
+		var result [][2]uint64
+		seq(func(start, end uint64) bool {
+			result = append(result, [2]uint64{start, end})
+			return true
+		})
+		return result
+	}
+
+	t.Run("empty", func(t *testing.T) {
+		empty := func(yield func(uint64, uint64) bool) {}
+		inverted := collectRanges(InvertRanges(empty))
+		assert.Equal(t, [][2]uint64{{0, uint64(MaxUint32) + 1}}, inverted)
+	})
+
+	t.Run("single_range_middle", func(t *testing.T) {
+		single := func(yield func(uint64, uint64) bool) {
+			yield(100, 200)
+		}
+		inverted := collectRanges(InvertRanges(single))
+		assert.Equal(t, [][2]uint64{
+			{0, 100},
+			{200, uint64(MaxUint32) + 1},
+		}, inverted)
+	})
+
+	t.Run("multiple_ranges", func(t *testing.T) {
+		multiple := func(yield func(uint64, uint64) bool) {
+			yield(10, 20)
+			yield(30, 40)
+			yield(50, 60)
+		}
+		inverted := collectRanges(InvertRanges(multiple))
+		assert.Equal(t, [][2]uint64{
+			{0, 10},
+			{20, 30},
+			{40, 50},
+			{60, uint64(MaxUint32) + 1},
+		}, inverted)
+	})
+
+	t.Run("range_at_start", func(t *testing.T) {
+		atStart := func(yield func(uint64, uint64) bool) {
+			yield(0, 100)
+		}
+		inverted := collectRanges(InvertRanges(atStart))
+		assert.Equal(t, [][2]uint64{
+			{100, uint64(MaxUint32) + 1},
+		}, inverted)
+	})
+
+	t.Run("range_at_end", func(t *testing.T) {
+		atEnd := func(yield func(uint64, uint64) bool) {
+			yield(uint64(MaxUint32)-99, uint64(MaxUint32)+1)
+		}
+		inverted := collectRanges(InvertRanges(atEnd))
+		assert.Equal(t, [][2]uint64{
+			{0, uint64(MaxUint32) - 99},
+		}, inverted)
+	})
+
+	t.Run("full_range", func(t *testing.T) {
+		full := func(yield func(uint64, uint64) bool) {
+			yield(0, uint64(MaxUint32)+1)
+		}
+		inverted := collectRanges(InvertRanges(full))
+		assert.Empty(t, inverted)
+	})
+
+	t.Run("adjacent_ranges", func(t *testing.T) {
+		adjacent := func(yield func(uint64, uint64) bool) {
+			yield(10, 20)
+			yield(20, 30)
+			yield(30, 40)
+		}
+		inverted := collectRanges(InvertRanges(adjacent))
+		assert.Equal(t, [][2]uint64{
+			{0, 10},
+			{40, uint64(MaxUint32) + 1},
+		}, inverted)
+	})
+
+	t.Run("early_stop", func(t *testing.T) {
+		multiple := func(yield func(uint64, uint64) bool) {
+			if !yield(10, 20) {
+				return
+			}
+			if !yield(30, 40) {
+				return
+			}
+			yield(50, 60)
+		}
+		var result [][2]uint64
+		for start, end := range InvertRanges(multiple) {
+			result = append(result, [2]uint64{start, end})
+			if len(result) == 2 {
+				break
+			}
+		}
+		assert.Equal(t, [][2]uint64{
+			{0, 10},
+			{20, 30},
+		}, result)
+	})
+
+	t.Run("with_bitmap_ranges", func(t *testing.T) {
+		rb := NewBitmap()
+		rb.AddRange(100, 200)
+		rb.AddRange(300, 400)
+		rb.AddRange(1000, 2000)
+
+		inverted := collectRanges(InvertRanges(rb.Ranges()))
+		assert.Equal(t, [][2]uint64{
+			{0, 100},
+			{200, 300},
+			{400, 1000},
+			{2000, uint64(MaxUint32) + 1},
+		}, inverted)
+	})
+
+	t.Run("large_ranges", func(t *testing.T) {
+		rb := NewBitmap()
+		rb.AddRange(0, 0x10000)
+		rb.AddRange(0x20000, 0x30000)
+		rb.AddRange(uint64(MaxUint32)-1000, uint64(MaxUint32)+1)
+
+		inverted := collectRanges(InvertRanges(rb.Ranges()))
+		assert.Equal(t, [][2]uint64{
+			{0x10000, 0x20000},
+			{0x30000, uint64(MaxUint32) - 1000},
+		}, inverted)
+	})
+}
+
 func BenchmarkFromDense(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		dense := make([]uint64, rb.DenseSize())

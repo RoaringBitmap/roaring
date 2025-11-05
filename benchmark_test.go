@@ -541,6 +541,53 @@ func BenchmarkIterateRoaring(b *testing.B) {
 			}
 		}
 	})
+	b.Run("ranges", func(b *testing.B) {
+		b.ReportAllocs()
+
+		s := newBitmap()
+
+		b.ResetTimer()
+
+		for j := 0; j < b.N; j++ {
+			c9 = uint(0)
+			for range s.Ranges() {
+				c9++
+			}
+		}
+	})
+	b.Run("unsetIterator", func(b *testing.B) {
+		b.ReportAllocs()
+
+		s := Flip(newBitmap(), 0, 0x100000000)
+
+		b.ResetTimer()
+
+		for j := 0; j < b.N; j++ {
+			c9 = uint(0)
+			i := s.UnsetIterator()
+			for i.HasNext() {
+				i.Next()
+				c9++
+			}
+		}
+	})
+	b.Run("unsetIteratorWithFlip", func(b *testing.B) {
+		b.ReportAllocs()
+
+		s := Flip(newBitmap(), 0, 0x100000000)
+
+		b.ResetTimer()
+
+		for j := 0; j < b.N; j++ {
+			c9 = uint(0)
+
+			i := Flip(s, 0, 0x100000000).Iterator()
+			for i.HasNext() {
+				i.Next()
+				c9++
+			}
+		}
+	})
 
 	b.Run("iterate-compressed", func(b *testing.B) {
 		b.ReportAllocs()

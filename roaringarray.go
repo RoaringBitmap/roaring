@@ -43,6 +43,7 @@ type container interface {
 	iterate(cb func(x uint16) bool) bool
 	getReverseIterator() shortIterable
 	getManyIterator() manyIterable
+	getUnsetIterator() shortPeekable
 	contains(i uint16) bool
 	maximum() uint16
 	minimum() uint16

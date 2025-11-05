@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"iter"
 	"strconv"
 
 	"github.com/RoaringBitmap/roaring/internal"
@@ -791,6 +792,203 @@ func (rb *Bitmap) ManyIterator() ManyIntIterable {
 	p := new(manyIntIterator)
 	p.Initialize(rb)
 	return p
+}
+
+type intUnsetIterator struct {
+	containerIndex   int
+	nextKey          int
+	hs               uint32
+	iter             shortPeekable
+	highlowcontainer *roaringArray
+
+	arrayUnsetIter    arrayContainerUnsetIterator
+	runUnsetIter      runUnsetIterator16
+	bitmapUnsetIter   bitmapContainerUnsetIterator
+	emptyContainerVal uint16
+}
+
+// HasNext returns true if there are more integers to iterate over
+func (iui *intUnsetIterator) HasNext() bool {
+	// Skip containers that have no unset bits
+	for iui.nextKey < 65536 {
+		if iui.iter == nil {
+			// We're in an empty container gap, which has unset bits
+			return true
+		}
+		if iui.iter.hasNext() {
+			// Current container has unset bits
+			return true
+		}
+		// Current container has no unset bits, move to next
+		iui.nextKey++
+		iui.containerIndex++
+		iui.init()
+	}
+	return false
+}
+
+func (iui *intUnsetIterator) init() {
+	// Check if we're in an empty container gap
+	if iui.containerIndex >= iui.highlowcontainer.size() ||
+		iui.highlowcontainer.getKeyAtIndex(iui.containerIndex) > uint16(iui.nextKey) {
+		// We're in a gap - iterate through empty container
+		iui.emptyContainerVal = 0
+		iui.iter = nil
+		return
+	}
+
+	// We're in an actual container
+	iui.hs = uint32(iui.nextKey) << 16
+	c := iui.highlowcontainer.getContainerAtIndex(iui.containerIndex)
+	switch t := c.(type) {
+	case *arrayContainer:
+		iui.arrayUnsetIter = *newArrayContainerUnsetIterator(t)
+		iui.iter = &iui.arrayUnsetIter
+	case *runContainer16:
+		iui.runUnsetIter = *t.newRunUnsetIterator16()
+		iui.iter = &iui.runUnsetIter
+	case *bitmapContainer:
+		iui.bitmapUnsetIter = *newBitmapContainerUnsetIterator(t)
+		iui.iter = &iui.bitmapUnsetIter
+	}
+}
+
+// Next returns the next integer
+func (iui *intUnsetIterator) Next() uint32 {
+	if iui.iter == nil {
+		// We're in an empty container gap
+		x := (uint32(iui.nextKey) << 16) | uint32(iui.emptyContainerVal)
+		iui.emptyContainerVal++
+		if iui.emptyContainerVal == 0 {
+			// Wrapped around, move to next container
+			iui.nextKey++
+			iui.init()
+		}
+		return x
+	}
+
+	x := uint32(iui.iter.next()) | iui.hs
+	if !iui.iter.hasNext() {
+		iui.nextKey++
+		iui.containerIndex++
+		iui.init()
+	}
+	return x
+}
+
+// PeekNext peeks the next value without advancing the iterator
+func (iui *intUnsetIterator) PeekNext() uint32 {
+	if iui.iter == nil {
+		return (uint32(iui.nextKey) << 16) | uint32(iui.emptyContainerVal)
+	}
+	return uint32(iui.iter.peekNext()&maxLowBit) | iui.hs
+}
+
+// AdvanceIfNeeded advances as long as the next value is smaller than minval
+func (iui *intUnsetIterator) AdvanceIfNeeded(minval uint32) {
+	targetKey := int(minval >> 16)
+
+	for iui.HasNext() && iui.nextKey < targetKey {
+		iui.nextKey++
+		// Find the next container that matches or exceeds nextKey
+		for iui.containerIndex < iui.highlowcontainer.size() &&
+			int(iui.highlowcontainer.getKeyAtIndex(iui.containerIndex)) < iui.nextKey {
+			iui.containerIndex++
+		}
+		iui.init()
+	}
+
+	if iui.HasNext() && iui.nextKey == targetKey {
+		if iui.iter != nil {
+			iui.iter.advanceIfNeeded(lowbits(minval))
+			if !iui.iter.hasNext() {
+				iui.nextKey++
+				iui.containerIndex++
+				iui.init()
+			}
+		} else {
+			lowVal := lowbits(minval)
+			if iui.emptyContainerVal < lowVal {
+				iui.emptyContainerVal = lowVal
+			}
+		}
+	}
+}
+
+// IntUnsetIterator is meant to allow you to iterate through the unset values of a bitmap, see Initialize(a *Bitmap)
+type IntUnsetIterator = intUnsetIterator
+
+// Initialize configures the existing iterator so that it can iterate through the unset values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (iui *intUnsetIterator) Initialize(a *Bitmap) {
+	iui.containerIndex = 0
+	iui.nextKey = 0
+	iui.highlowcontainer = &a.highlowcontainer
+	iui.init()
+}
+
+// UnsetIterator creates a new IntPeekable to iterate over the integers not contained in the bitmap, in sorted order;
+// the iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
+func (rb *Bitmap) UnsetIterator() IntPeekable {
+	p := new(intUnsetIterator)
+	p.Initialize(rb)
+	return p
+}
+
+// Ranges returns an iterator over all the [start, end)
+// ranges of 1-bits in b in order.
+func (rb *Bitmap) Ranges() iter.Seq2[uint64, uint64] {
+	return func(yield func(uint64, uint64) bool) {
+		iter := rb.Iterator()
+		flipIter := rb.UnsetIterator()
+		prevEnd := uint32(0)
+		for {
+			iter.AdvanceIfNeeded(prevEnd)
+			if !iter.HasNext() {
+				return
+			}
+			i0 := iter.Next()
+			flipIter.AdvanceIfNeeded(i0 + 1)
+			var i1 uint64
+			if flipIter.HasNext() {
+				i1 = uint64(flipIter.Next())
+			} else {
+				i1 = 0xffffffff + 1
+			}
+			if !yield(uint64(i0), i1) {
+				return
+			}
+			if i1 > 0xffffffff {
+				return
+			}
+			prevEnd = uint32(i1)
+		}
+	}
+}
+
+// InvertRanges returns an iterator over all the ranges of bits
+// not in r, which should hold a sequence of distinct ordered
+// [start, end) ranges.
+//
+// In general, b.InvertRanges(b.Ranges) returns the equivalent
+// of Flip(b).Ranges(), but without creating a temporary
+// flipped copy of b.
+func InvertRanges(r iter.Seq2[uint64, uint64]) iter.Seq2[uint64, uint64] {
+	return func(yield func(uint64, uint64) bool) {
+		prevEnd := uint64(0)
+		for i0, i1 := range r {
+			if i0 > prevEnd {
+				if !yield(prevEnd, i0) {
+					return
+				}
+			}
+			prevEnd = i1
+		}
+		if prevEnd < 0x100000000 {
+			yield(prevEnd, 0x100000000)
+		}
+	}
 }
 
 // Clone creates a copy of the Bitmap
