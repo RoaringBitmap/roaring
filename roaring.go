@@ -744,7 +744,7 @@ func (ii *manyIntIterator) Initialize(a *Bitmap) {
 
 type unsetIterator struct {
 	min, max uint32
-	current  uint32
+	current  uint64 // use uint64 to avoid overflow
 	it       IntPeekable
 	hasNext  bool
 }
@@ -753,7 +753,7 @@ type unsetIterator struct {
 func (ui *unsetIterator) Initialize(b *Bitmap, min, max uint32) {
 	ui.min = min
 	ui.max = max
-	ui.current = min
+	ui.current = uint64(min)
 	ui.it = b.Iterator()
 	// Advance to first value >= min
 	ui.it.AdvanceIfNeeded(min)
@@ -772,11 +772,11 @@ func (ui *unsetIterator) Next() uint32 {
 	result := ui.current
 	ui.current++
 	ui.updateHasNext()
-	return result
+	return uint32(result)
 }
 
 func (ui *unsetIterator) updateHasNext() {
-	for ui.current <= ui.max {
+	for ui.current <= uint64(ui.max) {
 		if !ui.it.HasNext() {
 			// No more set bits, we have values to yield
 			ui.hasNext = true
@@ -790,7 +790,7 @@ func (ui *unsetIterator) updateHasNext() {
 			return
 		}
 
-		if ui.current < nextSet {
+		if ui.current < uint64(nextSet) {
 			// We have unset values before the next set bit
 			ui.hasNext = true
 			return
@@ -798,7 +798,7 @@ func (ui *unsetIterator) updateHasNext() {
 
 		// Skip the set bit
 		ui.it.Next()
-		ui.current = nextSet + 1
+		ui.current = uint64(nextSet) + 1
 	}
 
 	ui.hasNext = false

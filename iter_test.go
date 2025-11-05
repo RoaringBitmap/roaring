@@ -291,4 +291,20 @@ func TestUnset(t *testing.T) {
 
 		assert.Equal(t, expected, actual)
 	})
+
+	t.Run("extreme max", func(t *testing.T) {
+		b := New()
+		b.AddInt(4294967295)
+
+		it := Unset(b, 4294967294, 4294967295)
+
+		actual := make([]uint32, 0)
+		it(func(val uint32) bool {
+			actual = append(actual, val)
+			return true
+		})
+		expected := []uint32{4294967294}
+
+		assert.Equal(t, expected, actual)
+	})
 }
