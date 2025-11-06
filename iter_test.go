@@ -434,7 +434,7 @@ func TestUnsetIteratorPeekable(t *testing.T) {
 
 	t.Run("range including max uint32 unset", func(t *testing.T) {
 		b := New()
-		b.AddInt(4294967294) // Set the value before max
+		b.Add(4294967294) // Set the value before max
 
 		it := b.UnsetIterator(4294967294, 4294967295)
 
@@ -449,7 +449,7 @@ func TestUnsetIteratorPeekable(t *testing.T) {
 
 	t.Run("max uint32 set", func(t *testing.T) {
 		b := New()
-		b.AddInt(4294967295) // Set max uint32
+		b.Add(4294967295) // Set max uint32
 
 		it := b.UnsetIterator(4294967294, 4294967295)
 
