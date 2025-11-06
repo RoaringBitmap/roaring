@@ -804,6 +804,35 @@ func (ui *unsetIterator) updateHasNext() {
 	ui.hasNext = false
 }
 
+// PeekNext returns the next value without advancing the iterator
+func (ui *unsetIterator) PeekNext() uint32 {
+	if !ui.hasNext {
+		panic("PeekNext() called when HasNext() returns false")
+	}
+	return uint32(ui.current)
+}
+
+// AdvanceIfNeeded advances the iterator so that the next value is at least minval
+func (ui *unsetIterator) AdvanceIfNeeded(minval uint32) {
+	if minval <= ui.min {
+		return // Already at or before the start of our range
+	}
+
+	if minval > ui.max {
+		// Beyond our range, no more values
+		ui.hasNext = false
+		return
+	}
+
+	// Set current to minval, but make sure we skip any set bits
+	ui.current = uint64(minval)
+
+	// Advance the internal iterator to be at or beyond minval
+	ui.it.AdvanceIfNeeded(minval)
+
+	ui.updateHasNext()
+}
+
 // String creates a string representation of the Bitmap
 func (rb *Bitmap) String() string {
 	// inspired by https://github.com/fzandona/goroar/
@@ -886,9 +915,9 @@ func (rb *Bitmap) ManyIterator() ManyIntIterable {
 	return p
 }
 
-// UnsetIterator creates a new IntIterable to iterate over values in the range [min, max] that are NOT contained in the bitmap.
+// UnsetIterator creates a new IntPeekable to iterate over values in the range [min, max] that are NOT contained in the bitmap.
 // The iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
-func (rb *Bitmap) UnsetIterator(min, max uint32) IntIterable {
+func (rb *Bitmap) UnsetIterator(min, max uint32) IntPeekable {
 	p := new(unsetIterator)
 	p.Initialize(rb, min, max)
 	return p

@@ -308,3 +308,157 @@ func TestUnset(t *testing.T) {
 		assert.Equal(t, expected, actual)
 	})
 }
+
+func TestUnsetIteratorPeekable(t *testing.T) {
+	t.Run("peek next", func(t *testing.T) {
+		b := New()
+		b.AddInt(5)
+		b.AddInt(8)
+
+		it := b.UnsetIterator(3, 10)
+
+		// First value should be 3
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(3), it.PeekNext())
+		assert.Equal(t, uint32(3), it.Next())
+
+		// Next should be 4
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(4), it.PeekNext())
+		assert.Equal(t, uint32(4), it.Next())
+
+		// Next should be 6 (skipping 5 which is set)
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(6), it.PeekNext())
+		assert.Equal(t, uint32(6), it.Next())
+
+		// Next should be 7
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(7), it.PeekNext())
+		assert.Equal(t, uint32(7), it.Next())
+
+		// Next should be 9 (skipping 8 which is set)
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(9), it.PeekNext())
+		assert.Equal(t, uint32(9), it.Next())
+
+		// Next should be 10
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(10), it.PeekNext())
+		assert.Equal(t, uint32(10), it.Next())
+
+		// No more values
+		assert.False(t, it.HasNext())
+	})
+
+	t.Run("advance if needed", func(t *testing.T) {
+		b := New()
+		b.AddInt(5)
+		b.AddInt(8)
+		b.AddInt(12)
+
+		it := b.UnsetIterator(1, 15)
+
+		// Skip to values >= 7
+		it.AdvanceIfNeeded(7)
+
+		// Should now be at 7 (skipping 5 which is set)
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(7), it.PeekNext())
+		assert.Equal(t, uint32(7), it.Next())
+
+		// Next should be 9 (skipping 8 which is set)
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(9), it.PeekNext())
+		assert.Equal(t, uint32(9), it.Next())
+
+		// Skip to values >= 11
+		it.AdvanceIfNeeded(11)
+
+		// Should now be at 11 (skipping 12 which is set)
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(11), it.PeekNext())
+		assert.Equal(t, uint32(11), it.Next())
+
+		// Next should be 13
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(13), it.PeekNext())
+		assert.Equal(t, uint32(13), it.Next())
+
+		// Skip beyond range
+		it.AdvanceIfNeeded(20)
+		assert.False(t, it.HasNext())
+	})
+
+	t.Run("advance if needed before range", func(t *testing.T) {
+		b := New()
+		b.AddInt(5)
+
+		it := b.UnsetIterator(10, 15)
+
+		// Try to advance to a value before our range start
+		it.AdvanceIfNeeded(5)
+
+		// Should still start from 10
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(10), it.PeekNext())
+	})
+
+	t.Run("advance if needed beyond range", func(t *testing.T) {
+		b := New()
+		b.AddInt(5)
+
+		it := b.UnsetIterator(10, 15)
+
+		// Advance beyond our range
+		it.AdvanceIfNeeded(20)
+
+		// Should have no more values
+		assert.False(t, it.HasNext())
+	})
+
+	t.Run("peek next on empty iterator", func(t *testing.T) {
+		b := New()
+		b.AddInt(5) // Set bit in middle of range
+
+		it := b.UnsetIterator(5, 5) // Range contains only the set bit
+
+		// Should have no values
+		assert.False(t, it.HasNext())
+
+		// PeekNext should panic when HasNext is false
+		assert.Panics(t, func() {
+			it.PeekNext()
+		})
+	})
+
+	t.Run("range including max uint32 unset", func(t *testing.T) {
+		b := New()
+		b.AddInt(4294967294) // Set the value before max
+
+		it := b.UnsetIterator(4294967294, 4294967295)
+
+		// Should have 4294967295 (max uint32) as it's unset
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(4294967295), it.PeekNext())
+		assert.Equal(t, uint32(4294967295), it.Next())
+
+		// No more values
+		assert.False(t, it.HasNext())
+	})
+
+	t.Run("max uint32 set", func(t *testing.T) {
+		b := New()
+		b.AddInt(4294967295) // Set max uint32
+
+		it := b.UnsetIterator(4294967294, 4294967295)
+
+		// Should have 4294967294 as it's unset, but not 4294967295
+		assert.True(t, it.HasNext())
+		assert.Equal(t, uint32(4294967294), it.PeekNext())
+		assert.Equal(t, uint32(4294967294), it.Next())
+
+		// No more values
+		assert.False(t, it.HasNext())
+	})
+}
