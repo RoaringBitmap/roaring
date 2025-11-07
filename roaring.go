@@ -814,8 +814,8 @@ func (ui *unsetIterator) PeekNext() uint32 {
 
 // AdvanceIfNeeded advances the iterator so that the next value is at least minval
 func (ui *unsetIterator) AdvanceIfNeeded(minval uint32) {
-	if minval <= ui.min {
-		return // Already at or before the start of our range
+	if uint64(minval) <= ui.current {
+		return // Already at or past minval
 	}
 
 	if minval > ui.max {
