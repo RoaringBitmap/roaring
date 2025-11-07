@@ -600,6 +600,22 @@ func BenchmarkIterateRoaring(b *testing.B) {
 			})
 		}
 	})
+	b.Run("unsetIterator", func(b *testing.B) {
+		b.ReportAllocs()
+
+		s := Flip(newBitmap(), 0, 0x100000000)
+
+		b.ResetTimer()
+
+		for j := 0; j < b.N; j++ {
+			c9 = uint(0)
+			i := s.UnsetIterator(0, 0xffffffff)
+			for i.HasNext() {
+				i.Next()
+				c9++
+			}
+		}
+	})
 }
 
 // go test -bench BenchmarkSparseIterate -run -
