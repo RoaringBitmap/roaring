@@ -417,6 +417,24 @@ func TestUnsetIteratorPeekable(t *testing.T) {
 		assert.False(t, it.HasNext())
 	})
 
+	t.Run("advance if needed on current value", func(t *testing.T) {
+		b := New()
+		b.AddRange(0, 0x10000)
+		iter := b.UnsetIterator(0, 0x10002)
+		var got []uint32
+		prev := uint32(0)
+		for len(got) < 10 {
+			iter.AdvanceIfNeeded(prev)
+			if !iter.HasNext() {
+				break
+			}
+			x := iter.Next()
+			got = append(got, x)
+			prev = x
+		}
+		assert.Equal(t, []uint32{0x10000, 0x10001, 0x10002}, got)
+	})
+
 	t.Run("peek next on empty iterator", func(t *testing.T) {
 		b := New()
 		b.AddInt(5) // Set bit in middle of range
