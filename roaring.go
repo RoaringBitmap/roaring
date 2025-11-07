@@ -743,20 +743,25 @@ func (ii *manyIntIterator) Initialize(a *Bitmap) {
 }
 
 type unsetIterator struct {
-	min, max uint32
-	current  uint64 // use uint64 to avoid overflow
-	it       IntPeekable
-	hasNext  bool
+	start, end uint64
+	current    uint64
+	it         IntPeekable
+	hasNext    bool
 }
 
-// Initialize configures the unset iterator to iterate over values in [min, max] that are not in the bitmap
-func (ui *unsetIterator) Initialize(b *Bitmap, min, max uint32) {
-	ui.min = min
-	ui.max = max
-	ui.current = uint64(min)
+// Initialize configures the unset iterator to iterate over values in [start, end) that are not in the bitmap
+func (ui *unsetIterator) Initialize(b *Bitmap, start, end uint64) {
+	if end > 0x100000000 {
+		panic("end > 0x100000000")
+	}
+	ui.start = start
+	ui.end = end
+	ui.current = start
 	ui.it = b.Iterator()
-	// Advance to first value >= min
-	ui.it.AdvanceIfNeeded(min)
+	// Advance to first value >= start
+	if start <= MaxUint32 {
+		ui.it.AdvanceIfNeeded(uint32(start))
+	}
 	ui.updateHasNext()
 }
 
@@ -776,7 +781,7 @@ func (ui *unsetIterator) Next() uint32 {
 }
 
 func (ui *unsetIterator) updateHasNext() {
-	for ui.current <= uint64(ui.max) {
+	for ui.current < ui.end {
 		if !ui.it.HasNext() {
 			// No more set bits, we have values to yield
 			ui.hasNext = true
@@ -784,8 +789,8 @@ func (ui *unsetIterator) updateHasNext() {
 		}
 
 		nextSet := ui.it.PeekNext()
-		if nextSet > ui.max {
-			// Next set bit is beyond our range, we have values to yield
+		if uint64(nextSet) >= ui.end {
+			// Next set bit is at or beyond our range, we have values to yield
 			ui.hasNext = true
 			return
 		}
@@ -818,8 +823,8 @@ func (ui *unsetIterator) AdvanceIfNeeded(minval uint32) {
 		return // Already at or past minval
 	}
 
-	if minval > ui.max {
-		// Beyond our range, no more values
+	if uint64(minval) >= ui.end {
+		// At or beyond our range, no more values
 		ui.hasNext = false
 		return
 	}
@@ -915,11 +920,11 @@ func (rb *Bitmap) ManyIterator() ManyIntIterable {
 	return p
 }
 
-// UnsetIterator creates a new IntPeekable to iterate over values in the range [min, max] that are NOT contained in the bitmap.
+// UnsetIterator creates a new IntPeekable to iterate over values in the range [start, end) that are NOT contained in the bitmap.
 // The iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
-func (rb *Bitmap) UnsetIterator(min, max uint32) IntPeekable {
+func (rb *Bitmap) UnsetIterator(start, end uint64) IntPeekable {
 	p := new(unsetIterator)
-	p.Initialize(rb, min, max)
+	p.Initialize(rb, start, end)
 	return p
 }
 

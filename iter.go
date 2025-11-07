@@ -32,7 +32,7 @@ func Backward(b *Bitmap) func(func(uint32) bool) {
 // The iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
 func Unset(b *Bitmap, min, max uint32) func(func(uint32) bool) {
 	return func(yield func(uint32) bool) {
-		it := b.UnsetIterator(min, max)
+		it := b.UnsetIterator(uint64(min), uint64(max)+1)
 		for it.HasNext() {
 			if !yield(it.Next()) {
 				return
