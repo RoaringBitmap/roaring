@@ -120,10 +120,10 @@ func TestValues(t *testing.T) {
 	assert.Equal(t, testSize, n)
 }
 
-func TestUnset(t *testing.T) {
+func TestUnsetClosed(t *testing.T) {
 	t.Run("empty bitmap", func(t *testing.T) {
 		b := New()
-		it := Unset(b, 5, 10)
+		it := UnsetClosed(b, 5, 10)
 
 		expected := []uint32{5, 6, 7, 8, 9, 10}
 		actual := make([]uint32, 0)
@@ -142,7 +142,7 @@ func TestUnset(t *testing.T) {
 		b.AddInt(7)
 		b.AddInt(12)
 
-		it := Unset(b, 5, 10)
+		it := UnsetClosed(b, 5, 10)
 
 		expected := []uint32{5, 6, 8, 9, 10}
 		actual := make([]uint32, 0)
@@ -161,7 +161,7 @@ func TestUnset(t *testing.T) {
 		b.AddInt(2)
 		b.AddInt(3)
 
-		it := Unset(b, 10, 15)
+		it := UnsetClosed(b, 10, 15)
 
 		expected := []uint32{10, 11, 12, 13, 14, 15}
 		actual := make([]uint32, 0)
@@ -180,7 +180,7 @@ func TestUnset(t *testing.T) {
 		b.AddInt(8)
 		b.AddInt(9)
 
-		it := Unset(b, 3, 12)
+		it := UnsetClosed(b, 3, 12)
 
 		expected := []uint32{3, 4, 6, 7, 10, 11, 12}
 		actual := make([]uint32, 0)
@@ -195,7 +195,7 @@ func TestUnset(t *testing.T) {
 
 	t.Run("min greater than max", func(t *testing.T) {
 		b := New()
-		it := Unset(b, 10, 5)
+		it := UnsetClosed(b, 10, 5)
 
 		count := 0
 		it(func(val uint32) bool {
@@ -210,7 +210,7 @@ func TestUnset(t *testing.T) {
 		b := New()
 		b.AddInt(5)
 
-		it := Unset(b, 3, 3)
+		it := UnsetClosed(b, 3, 3)
 
 		expected := []uint32{3}
 		actual := make([]uint32, 0)
@@ -227,7 +227,7 @@ func TestUnset(t *testing.T) {
 		b := New()
 		b.AddInt(5)
 
-		it := Unset(b, 5, 5)
+		it := UnsetClosed(b, 5, 5)
 
 		count := 0
 		it(func(val uint32) bool {
@@ -241,7 +241,7 @@ func TestUnset(t *testing.T) {
 	t.Run("early termination", func(t *testing.T) {
 		b := New()
 
-		it := Unset(b, 1, 10)
+		it := UnsetClosed(b, 1, 10)
 
 		actual := make([]uint32, 0)
 		it(func(val uint32) bool {
@@ -259,7 +259,7 @@ func TestUnset(t *testing.T) {
 		b.AddInt(500)
 		b.AddInt(1000)
 
-		it := Unset(b, 50, 150)
+		it := UnsetClosed(b, 50, 150)
 
 		actual := make([]uint32, 0)
 		it(func(val uint32) bool {
@@ -280,7 +280,7 @@ func TestUnset(t *testing.T) {
 		b := New()
 		b.AddInt(100)
 
-		it := Unset(b, 100, 105)
+		it := UnsetClosed(b, 100, 105)
 
 		actual := make([]uint32, 0)
 		it(func(val uint32) bool {
@@ -296,7 +296,7 @@ func TestUnset(t *testing.T) {
 		b := New()
 		b.Add(4294967295)
 
-		it := Unset(b, 4294967294, 4294967295)
+		it := UnsetClosed(b, 4294967294, 4294967295)
 
 		actual := make([]uint32, 0)
 		it(func(val uint32) bool {
