@@ -28,11 +28,31 @@ func Backward(b *Bitmap) func(func(uint32) bool) {
 	}
 }
 
-// Unset creates an iterator that yields values in the range [min, max] that are NOT contained in the bitmap.
+// UnsetClosed creates an iterator that yields values in the range [min, max] that are NOT contained in the bitmap.
 // The iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
-func Unset(b *Bitmap, min, max uint32) func(func(uint32) bool) {
+func UnsetClosed(b *Bitmap, min, max uint32) func(func(uint32) bool) {
 	return func(yield func(uint32) bool) {
-		it := b.UnsetIterator(min, max)
+		it := b.UnsetIteratorClosed(min, max)
+		for it.HasNext() {
+			if !yield(it.Next()) {
+				return
+			}
+		}
+	}
+}
+
+// Unset creates an iterator that yields values in the range [rangeStart, rangeEnd) that are NOT contained in the bitmap.
+// The iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
+func Unset(b *Bitmap, rangeStart, rangeEnd uint64) func(func(uint32) bool) {
+	if rangeEnd > MaxUint32+1 {
+		panic("rangeEnd > MaxUint32+1")
+	}
+	if rangeStart > MaxUint32+1 {
+		panic("rangeStart > MaxUint32+1")
+	}
+
+	return func(yield func(uint32) bool) {
+		it := b.UnsetIterator(uint32(rangeStart), uint32(rangeEnd-1))
 		for it.HasNext() {
 			if !yield(it.Next()) {
 				return

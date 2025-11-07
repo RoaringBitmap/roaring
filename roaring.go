@@ -915,11 +915,25 @@ func (rb *Bitmap) ManyIterator() ManyIntIterable {
 	return p
 }
 
-// UnsetIterator creates a new IntPeekable to iterate over values in the range [min, max] that are NOT contained in the bitmap.
+// UnsetIteratorClosed creates a new IntPeekable to iterate over values in the range [min, max] that are NOT contained in the bitmap.
 // The iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
-func (rb *Bitmap) UnsetIterator(min, max uint32) IntPeekable {
+func (rb *Bitmap) UnsetIteratorClosed(min, max uint32) IntPeekable {
 	p := new(unsetIterator)
 	p.Initialize(rb, min, max)
+	return p
+}
+
+// UnsetIterator creates a new IntPeekable to iterate over values in the range [rangeStart, rangeEnd) that are NOT contained in the bitmap.
+// The iterator becomes invalid if the bitmap is modified (e.g., with Add or Remove).
+func (rb *Bitmap) UnsetIterator(rangeStart, rangeEnd uint64) IntPeekable {
+	if rangeEnd > MaxUint32+1 {
+		panic("rangeEnd > MaxUint32+1")
+	}
+	if rangeStart > MaxUint32+1 {
+		panic("rangeStart > MaxUint32+1")
+	}
+	p := new(unsetIterator)
+	p.Initialize(rb, uint32(rangeStart), uint32(rangeEnd-1))
 	return p
 }
 
