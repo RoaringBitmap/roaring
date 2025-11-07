@@ -52,7 +52,7 @@ func Unset(b *Bitmap, rangeStart, rangeEnd uint64) func(func(uint32) bool) {
 	}
 
 	return func(yield func(uint32) bool) {
-		it := b.UnsetIterator(uint32(rangeStart), uint32(rangeEnd-1))
+		it := b.UnsetIteratorClosed(uint32(rangeStart), uint32(rangeEnd-1))
 		for it.HasNext() {
 			if !yield(it.Next()) {
 				return
