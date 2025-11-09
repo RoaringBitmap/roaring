@@ -64,7 +64,7 @@ func TestSerializationBasic037(t *testing.T) {
 
 func TestSerializationToFile038(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
-	fname := "myfile.bin"
+	fname := filepath.Join(t.TempDir(), "myfile.bin")
 	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
@@ -89,10 +89,7 @@ func TestSerializationToFile038(t *testing.T) {
 		return
 	}
 
-	defer func() {
-		fin.Close()
-		_ = os.Remove(fname)
-	}()
+	defer fin.Close()
 
 	_, _ = newrb.ReadFrom(fin)
 	assert.True(t, rb.Equals(newrb))
