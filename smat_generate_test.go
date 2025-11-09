@@ -5,7 +5,6 @@ package roaring
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -21,7 +20,7 @@ func TestGenerateSmatCorpus(t *testing.T) {
 				err, i, actionSeq)
 		}
 		os.MkdirAll("workdir/corpus", 0700)
-		ioutil.WriteFile(fmt.Sprintf("workdir/corpus/%d", i), byteSequence, 0600)
+		os.WriteFile(fmt.Sprintf("workdir/corpus/%d", i), byteSequence, 0600)
 	}
 }
 

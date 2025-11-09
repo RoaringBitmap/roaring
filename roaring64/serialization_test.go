@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -276,7 +275,7 @@ func Test_tryReadFromRoaring32WithRoaring64(t *testing.T) {
 }
 
 func Test_tryReadFromRoaring32WithRoaring64_File(t *testing.T) {
-	tempDir, err := ioutil.TempDir("./", "testdata")
+	tempDir, err := os.MkdirTemp("./", "testdata")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
@@ -290,7 +289,7 @@ func Test_tryReadFromRoaring32WithRoaring64_File(t *testing.T) {
 	}
 
 	name := filepath.Join(tempDir, "r32")
-	if err := ioutil.WriteFile(name, bs, 0o600); err != nil {
+	if err := os.WriteFile(name, bs, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	file, err := os.Open(name)

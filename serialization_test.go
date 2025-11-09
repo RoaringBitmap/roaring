@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -102,7 +101,7 @@ func TestSerializationToFile038(t *testing.T) {
 func TestSerializationReadRunsFromFile039(t *testing.T) {
 	fn := "testdata/bitmapwithruns.bin"
 
-	by, err := ioutil.ReadFile(fn)
+	by, err := os.ReadFile(fn)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
@@ -464,7 +463,7 @@ func TestBitmap_FromBuffer(t *testing.T) {
 	t.Run("bitmap with runs", func(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
 
-		buf, err := ioutil.ReadFile(file)
+		buf, err := os.ReadFile(file)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 			return
@@ -480,7 +479,7 @@ func TestBitmap_FromBuffer(t *testing.T) {
 
 	t.Run("bitmap without runs", func(t *testing.T) {
 		fn := "testdata/bitmapwithruns.bin"
-		buf, err := ioutil.ReadFile(fn)
+		buf, err := os.ReadFile(fn)
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
@@ -496,7 +495,7 @@ func TestBitmap_FromBuffer(t *testing.T) {
 	// all3.classic somehow created by other tests.
 	t.Run("all3.classic bitmap", func(t *testing.T) {
 		file := "testdata/all3.classic"
-		buf, err := ioutil.ReadFile(file)
+		buf, err := os.ReadFile(file)
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
@@ -511,7 +510,7 @@ func TestBitmap_FromBuffer(t *testing.T) {
 
 	t.Run("testdata/bitmapwithruns.bin bitmap Ops", func(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
-		buf, err := ioutil.ReadFile(file)
+		buf, err := os.ReadFile(file)
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
@@ -545,7 +544,7 @@ func TestBitmap_FromBuffer(t *testing.T) {
 
 	t.Run("marking all containers as requiring COW", func(t *testing.T) {
 		file := "testdata/bitmapwithruns.bin"
-		buf, err := ioutil.ReadFile(file)
+		buf, err := os.ReadFile(file)
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
@@ -572,7 +571,7 @@ func TestSerializationCrashers(t *testing.T) {
 	}
 
 	for _, crasher := range crashers {
-		data, err := ioutil.ReadFile(crasher)
+		data, err := os.ReadFile(crasher)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 			return
