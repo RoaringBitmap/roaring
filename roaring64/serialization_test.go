@@ -113,7 +113,7 @@ func TestSerializationToFile038(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	teer := io.TeeReader(fin, buf)
 
-	defer 		fin.Close()
+	defer fin.Close()
 
 	_, _ = newrb.ReadFrom(teer)
 	assert.True(t, rb.Equals(newrb))
