@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
@@ -645,11 +644,10 @@ func TestMinMaxWithNilFoundSet(t *testing.T) {
 }
 
 func TestBSIWriteToReadFrom(t *testing.T) {
-	file, err := ioutil.TempFile("./testdata", "bsi-test")
+	file, err := os.CreateTemp(t.TempDir(), "bsi-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer t.Cleanup(func() { os.Remove(file.Name()) })
 	defer file.Close()
 	bsi, min, max := setupRandom()
 	_, err = bsi.WriteTo(file)

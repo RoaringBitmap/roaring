@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -87,7 +86,7 @@ func TestSerializationBasic037(t *testing.T) {
 
 func TestSerializationToFile038(t *testing.T) {
 	rb := BitmapOf(1, 2, 3, 4, 5, 100, 1000)
-	fname := "myfile.bin"
+	fname := filepath.Join(t.TempDir(), "myfile.bin")
 	fout, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o660)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
@@ -114,10 +113,7 @@ func TestSerializationToFile038(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	teer := io.TeeReader(fin, buf)
 
-	defer func() {
-		fin.Close()
-		_ = os.Remove(fname)
-	}()
+	defer fin.Close()
 
 	_, _ = newrb.ReadFrom(teer)
 	assert.True(t, rb.Equals(newrb))
@@ -276,7 +272,7 @@ func Test_tryReadFromRoaring32WithRoaring64(t *testing.T) {
 }
 
 func Test_tryReadFromRoaring32WithRoaring64_File(t *testing.T) {
-	tempDir, err := ioutil.TempDir("./", "testdata")
+	tempDir, err := os.MkdirTemp("./", "testdata")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 		return
@@ -290,7 +286,7 @@ func Test_tryReadFromRoaring32WithRoaring64_File(t *testing.T) {
 	}
 
 	name := filepath.Join(tempDir, "r32")
-	if err := ioutil.WriteFile(name, bs, 0o600); err != nil {
+	if err := os.WriteFile(name, bs, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	file, err := os.Open(name)

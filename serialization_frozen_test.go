@@ -6,7 +6,6 @@ package roaring
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -49,12 +48,12 @@ func TestFrozenFormat(t *testing.T) {
 		t.Run("view "+name, func(t *testing.T) {
 			t.Parallel()
 
-			frozenBuf, err := ioutil.ReadFile(fpath)
+			frozenBuf, err := os.ReadFile(fpath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 				return
 			}
-			portableBuf, err := ioutil.ReadFile(ppath)
+			portableBuf, err := os.ReadFile(ppath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 				return
@@ -75,12 +74,12 @@ func TestFrozenFormat(t *testing.T) {
 		t.Run("freeze "+name, func(t *testing.T) {
 			t.Parallel()
 
-			frozenBuf, err := ioutil.ReadFile(fpath)
+			frozenBuf, err := os.ReadFile(fpath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 				return
 			}
-			portableBuf, err := ioutil.ReadFile(ppath)
+			portableBuf, err := os.ReadFile(ppath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 				return
@@ -106,12 +105,12 @@ func TestFrozenFormat(t *testing.T) {
 		t.Run("freeze with writer"+name, func(t *testing.T) {
 			t.Parallel()
 
-			frozenBuf, err := ioutil.ReadFile(fpath)
+			frozenBuf, err := os.ReadFile(fpath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 				return
 			}
-			portableBuf, err := ioutil.ReadFile(ppath)
+			portableBuf, err := os.ReadFile(ppath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
 				return
