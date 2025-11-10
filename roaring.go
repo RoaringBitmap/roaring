@@ -812,7 +812,7 @@ func (iui *unsetIterator) init() {
 	c := iui.highlowcontainer.getContainerAtIndex(iui.containerIndex)
 	switch t := c.(type) {
 	case *arrayContainer:
-		iui.arrayUnsetIter = *newArrayContainerUnsetIterator(t)
+		iui.arrayUnsetIter = *newArrayContainerUnsetIterator(t.content)
 		iui.iter = &iui.arrayUnsetIter
 	case *runContainer16:
 		iui.runUnsetIter = *t.newRunUnsetIterator16()

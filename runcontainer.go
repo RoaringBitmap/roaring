@@ -2002,7 +2002,7 @@ func (rui *runUnsetIterator16) hasNext() bool {
 func (rui *runUnsetIterator16) next() uint16 {
 	val := rui.nextVal
 	rui.nextVal++
-	if rui.curIndex < len(rui.rc.iv) && uint16(rui.nextVal) == rui.rc.iv[rui.curIndex].start {
+	if rui.curIndex < len(rui.rc.iv) && uint16(rui.nextVal) >= rui.rc.iv[rui.curIndex].start {
 		rui.nextVal = int(rui.rc.iv[rui.curIndex].start) + int(rui.rc.iv[rui.curIndex].length) + 1
 		rui.curIndex++
 	}
