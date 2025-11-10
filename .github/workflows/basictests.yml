@@ -17,6 +17,14 @@ jobs:
         go-version: ${{ matrix.go-version }}
     - name: Checkout code
       uses: actions/checkout@v4
+    - name: Check formatting
+      run: |
+        # Check formatting of all Go files in the project
+        if [ "$(gofmt -s -l $(find . -name "*.go" -type f) | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted with go fmt:"
+          gofmt -s -l $(find . -name "*.go" -type f)
+          exit 1
+        fi
     - name: Test
       run: |
         go build -tags appengine
