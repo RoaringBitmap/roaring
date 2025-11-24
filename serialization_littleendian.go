@@ -6,9 +6,8 @@ package roaring
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
-	"reflect"
-	"runtime"
 	"unsafe"
 )
 
@@ -26,51 +25,30 @@ func (bc *bitmapContainer) writeTo(stream io.Writer) (int, error) {
 }
 
 func uint64SliceAsByteSlice(slice []uint64) []byte {
-	// make a new slice header
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
-
-	// update its capacity and length
-	header.Len *= 8
-	header.Cap *= 8
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	result := *(*[]byte)(unsafe.Pointer(&header))
-	runtime.KeepAlive(&slice)
-
-	// return it
-	return result
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	const size = unsafe.Sizeof(uint64(0))
+	return unsafe.Slice(((*byte)(unsafe.Pointer(ptr))), int(size)*len(slice))
 }
 
 func uint16SliceAsByteSlice(slice []uint16) []byte {
-	// make a new slice header
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
-
-	// update its capacity and length
-	header.Len *= 2
-	header.Cap *= 2
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	result := *(*[]byte)(unsafe.Pointer(&header))
-	runtime.KeepAlive(&slice)
-
-	// return it
-	return result
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	const size = unsafe.Sizeof(uint16(0))
+	return unsafe.Slice(((*byte)(unsafe.Pointer(ptr))), int(size)*len(slice))
 }
 
 func interval16SliceAsByteSlice(slice []interval16) []byte {
-	// make a new slice header
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&slice))
-
-	// update its capacity and length
-	header.Len *= 4
-	header.Cap *= 4
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	result := *(*[]byte)(unsafe.Pointer(&header))
-	runtime.KeepAlive(&slice)
-
-	// return it
-	return result
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	const size = unsafe.Sizeof(interval16{})
+	return unsafe.Slice(((*byte)(unsafe.Pointer(ptr))), int(size)*len(slice))
 }
 
 func (bc *bitmapContainer) asLittleEndianByteSlice() []byte {
@@ -86,69 +64,39 @@ func (bc *bitmapContainer) asLittleEndianByteSlice() []byte {
 // or modified while you hold the returned slince.
 // //
 func byteSliceAsUint16Slice(slice []byte) (result []uint16) { // here we create a new slice holder
-	if len(slice)%2 != 0 {
-		panic("Slice size should be divisible by 2")
+	const sz = int(unsafe.Sizeof(uint16(0)))
+	if len(slice)%sz != 0 {
+		panic(fmt.Sprintf("Slice size should be divisible by %d", sz))
 	}
-	// reference: https://go101.org/article/unsafe.html
-
-	// make a new slice header
-	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
-
-	// transfer the data from the given slice to a new variable (our result)
-	rHeader.Data = bHeader.Data
-	rHeader.Len = bHeader.Len / 2
-	rHeader.Cap = bHeader.Cap / 2
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
-
-	// return result
-	return
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	return unsafe.Slice((*uint16)(unsafe.Pointer(ptr)), len(slice)/sz)
 }
 
 func byteSliceAsUint64Slice(slice []byte) (result []uint64) {
-	if len(slice)%8 != 0 {
-		panic("Slice size should be divisible by 8")
+	const sz = int(unsafe.Sizeof(uint64(0)))
+	if len(slice)%sz != 0 {
+		panic(fmt.Sprintf("Slice size should be divisible by %d", sz))
 	}
-	// reference: https://go101.org/article/unsafe.html
-
-	// make a new slice header
-	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
-
-	// transfer the data from the given slice to a new variable (our result)
-	rHeader.Data = bHeader.Data
-	rHeader.Len = bHeader.Len / 8
-	rHeader.Cap = bHeader.Cap / 8
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
-
-	// return result
-	return
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	return unsafe.Slice((*uint64)(unsafe.Pointer(ptr)), len(slice)/sz)
 }
 
 func byteSliceAsInterval16Slice(slice []byte) (result []interval16) {
-	if len(slice)%4 != 0 {
-		panic("Slice size should be divisible by 4")
+	const sz = int(unsafe.Sizeof(interval16{}))
+	if len(slice)%sz != 0 {
+		panic(fmt.Sprintf("Slice size should be divisible by %d", sz))
 	}
-	// reference: https://go101.org/article/unsafe.html
-
-	// make a new slice header
-	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
-
-	// transfer the data from the given slice to a new variable (our result)
-	rHeader.Data = bHeader.Data
-	rHeader.Len = bHeader.Len / 4
-	rHeader.Cap = bHeader.Cap / 4
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
-
-	// return result
-	return
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	return unsafe.Slice((*interval16)(unsafe.Pointer(ptr)), len(slice)/sz)
 }
 
 func byteSliceAsContainerSlice(slice []byte) (result []container) {
@@ -158,114 +106,59 @@ func byteSliceAsContainerSlice(slice []byte) (result []container) {
 	if len(slice)%containerSize != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(container)")
 	}
-	// reference: https://go101.org/article/unsafe.html
-
-	// make a new slice header
-	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
-
-	// transfer the data from the given slice to a new variable (our result)
-	rHeader.Data = bHeader.Data
-	rHeader.Len = bHeader.Len / containerSize
-	rHeader.Cap = bHeader.Cap / containerSize
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
-
-	// return result
-	return
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	return unsafe.Slice((*container)(unsafe.Pointer(ptr)), len(slice)/containerSize)
 }
 
 func byteSliceAsBitsetSlice(slice []byte) (result []bitmapContainer) {
-	bitsetSize := int(unsafe.Sizeof(bitmapContainer{}))
+	const bitsetSize = int(unsafe.Sizeof(bitmapContainer{}))
 	if len(slice)%bitsetSize != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(bitmapContainer)")
 	}
-	// reference: https://go101.org/article/unsafe.html
-
-	// make a new slice header
-	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
-
-	// transfer the data from the given slice to a new variable (our result)
-	rHeader.Data = bHeader.Data
-	rHeader.Len = bHeader.Len / bitsetSize
-	rHeader.Cap = bHeader.Cap / bitsetSize
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
-
-	// return result
-	return
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	return unsafe.Slice((*bitmapContainer)(unsafe.Pointer(ptr)), len(slice)/bitsetSize)
 }
 
 func byteSliceAsArraySlice(slice []byte) (result []arrayContainer) {
-	arraySize := int(unsafe.Sizeof(arrayContainer{}))
+	const arraySize = int(unsafe.Sizeof(arrayContainer{}))
 	if len(slice)%arraySize != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(arrayContainer)")
 	}
-	// reference: https://go101.org/article/unsafe.html
-
-	// make a new slice header
-	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
-
-	// transfer the data from the given slice to a new variable (our result)
-	rHeader.Data = bHeader.Data
-	rHeader.Len = bHeader.Len / arraySize
-	rHeader.Cap = bHeader.Cap / arraySize
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
-
-	// return result
-	return
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	return unsafe.Slice((*arrayContainer)(unsafe.Pointer(ptr)), len(slice)/arraySize)
 }
 
 func byteSliceAsRun16Slice(slice []byte) (result []runContainer16) {
-	run16Size := int(unsafe.Sizeof(runContainer16{}))
+	const run16Size = int(unsafe.Sizeof(runContainer16{}))
 	if len(slice)%run16Size != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(runContainer16)")
 	}
-	// reference: https://go101.org/article/unsafe.html
-
-	// make a new slice header
-	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
-
-	// transfer the data from the given slice to a new variable (our result)
-	rHeader.Data = bHeader.Data
-	rHeader.Len = bHeader.Len / run16Size
-	rHeader.Cap = bHeader.Cap / run16Size
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
-
-	// return result
-	return
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	return unsafe.Slice((*runContainer16)(unsafe.Pointer(ptr)), len(slice)/run16Size)
 }
 
 func byteSliceAsBoolSlice(slice []byte) (result []bool) {
-	boolSize := int(unsafe.Sizeof(true))
+	const boolSize = int(unsafe.Sizeof(true))
 	if len(slice)%boolSize != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(bool)")
 	}
-	// reference: https://go101.org/article/unsafe.html
-
-	// make a new slice header
-	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	rHeader := (*reflect.SliceHeader)(unsafe.Pointer(&result))
-
-	// transfer the data from the given slice to a new variable (our result)
-	rHeader.Data = bHeader.Data
-	rHeader.Len = bHeader.Len / boolSize
-	rHeader.Cap = bHeader.Cap / boolSize
-
-	// instantiate result and use KeepAlive so data isn't unmapped.
-	runtime.KeepAlive(&slice) // it is still crucial, GC can free it)
-
-	// return result
-	return
+	ptr := unsafe.SliceData(slice)
+	if ptr == nil {
+		return nil
+	}
+	return unsafe.Slice((*bool)(unsafe.Pointer(ptr)), len(slice)/boolSize)
 }
 
 // FrozenView creates a static view of a serialized bitmap stored in buf.
