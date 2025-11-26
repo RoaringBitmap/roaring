@@ -223,28 +223,24 @@ func (rb *Bitmap) WriteDenseTo(bitmap []uint64) {
 	}
 }
 
-// Checksum computes a hash (currently FNV-1a) for a bitmap that is suitable for
+// Checksum computes a hash (FNV-1a) for a bitmap that is suitable for
 // using bitmaps as elements in hash sets or as keys in hash maps, as well as
-// generally quicker comparisons.
-// The implementation is biased towards efficiency in little endian machines, so
-// expect some extra CPU cycles and memory to be used if your machine is big endian.
-// Likewise, do not use this to verify integrity unless you are certain you will load
-// the bitmap on a machine with the same endianess used to create it. (Thankfully
-// very few people use big endian machines these days.)
+// generally quick comparisons.
 func (rb *Bitmap) Checksum() uint64 {
 	const (
 		offset = 14695981039346656037
 		prime  = 1099511628211
 	)
 
-	var bytes []byte
-
 	hash := uint64(offset)
 
-	bytes = uint16SliceAsByteSlice(rb.highlowcontainer.keys)
-
-	for _, b := range bytes {
-		hash ^= uint64(b)
+	// Hash the keys (uint16 slice) directly
+	for _, key := range rb.highlowcontainer.keys {
+		// Hash low byte first (little endian)
+		hash ^= uint64(key & 0xFF)
+		hash *= prime
+		// Hash high byte
+		hash ^= uint64(key >> 8)
 		hash *= prime
 	}
 
@@ -255,23 +251,51 @@ func (rb *Bitmap) Checksum() uint64 {
 
 		switch c := c.(type) {
 		case *bitmapContainer:
-			bytes = uint64SliceAsByteSlice(c.bitmap)
+			for _, val := range c.bitmap {
+				// Hash in little-endian byte order (unrolled loop)
+				hash ^= uint64(val & 0xFF)
+				hash *= prime
+				hash ^= uint64((val >> 8) & 0xFF)
+				hash *= prime
+				hash ^= uint64((val >> 16) & 0xFF)
+				hash *= prime
+				hash ^= uint64((val >> 24) & 0xFF)
+				hash *= prime
+				hash ^= uint64((val >> 32) & 0xFF)
+				hash *= prime
+				hash ^= uint64((val >> 40) & 0xFF)
+				hash *= prime
+				hash ^= uint64((val >> 48) & 0xFF)
+				hash *= prime
+				hash ^= uint64((val >> 56) & 0xFF)
+				hash *= prime
+			}
 		case *arrayContainer:
-			bytes = uint16SliceAsByteSlice(c.content)
+			for _, val := range c.content {
+				// Hash low byte first (little endian)
+				hash ^= uint64(val & 0xFF)
+				hash *= prime
+				// Hash high byte
+				hash ^= uint64(val >> 8)
+				hash *= prime
+			}
 		case *runContainer16:
-			bytes = interval16SliceAsByteSlice(c.iv)
+			for _, iv := range c.iv {
+				// Hash start (uint16)
+				hash ^= uint64(iv.start & 0xFF)
+				hash *= prime
+				hash ^= uint64(iv.start >> 8)
+				hash *= prime
+				// Hash length (uint16)
+				hash ^= uint64(iv.length & 0xFF)
+				hash *= prime
+				hash ^= uint64(iv.length >> 8)
+				hash *= prime
+			}
 		default:
 			panic("invalid container type")
 		}
 
-		if len(bytes) == 0 {
-			panic("empty containers are not supported")
-		}
-
-		for _, b := range bytes {
-			hash ^= uint64(b)
-			hash *= prime
-		}
 	}
 
 	return hash
