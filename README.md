@@ -375,7 +375,7 @@ go get github.com/RoaringBitmap/real-roaring-datasets
 BENCH_REAL_DATA=1 go test -bench BenchmarkRealData -run -
 ```
 
-### Iterative use
+### Interactive use
 
 You can use roaring with gore:
 
