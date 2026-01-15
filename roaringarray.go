@@ -596,6 +596,17 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 		if err != nil {
 			return stream.GetReadBytes(), fmt.Errorf("malformed bitmap, failed to read is-run bitmap, got: %s", err)
 		}
+		isAllZero := true
+		for i := 0; i < isRunBitmapSize; i++ {
+			if isRunBitmap[i] != 0 {
+				isAllZero = false
+				break
+			}
+		}
+		if isAllZero {
+			return stream.GetReadBytes(), fmt.Errorf("malformed bitmap, is-run bitmap cannot be all zero")
+		}
+
 	} else if cookie == serialCookieNoRunContainer {
 		size, err = stream.ReadUInt32()
 		if err != nil {
