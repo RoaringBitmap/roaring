@@ -28,6 +28,11 @@ type container interface {
 	// smaller or equal to x. rank(infinity) would be getCardinality().
 	rank(uint16) int
 
+	// getCardinalityInRange returns the number of integers that are
+	// within the half-open range [start, end). It is equivalent to
+	// rank(end-1) - rank(start-1) but may be faster.
+	getCardinalityInRange(start, end uint) int
+
 	iadd(x uint16) bool                   // inplace, returns true if x was new.
 	iaddReturnMinimized(uint16) container // may change return type to minimize storage.
 

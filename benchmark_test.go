@@ -1304,3 +1304,55 @@ func BenchmarkAndNot(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkCardinalityInRange compares CardinalityInRange vs the naïve Rank(end-1)-Rank(start-1) approach
+// across different bitmap sizes and range widths to demonstrate the O(log n + k) vs O(n)
+// difference.
+func BenchmarkCardinalityInRange(b *testing.B) {
+	// Build bitmaps of varying sizes: each has numContainers containers with 100 values each.
+	for _, numContainers := range []int{10, 100, 1000} {
+		// Build the bitmap: numContainers containers, each with 100 values.
+		rb := NewBitmap()
+		for c := 0; c < numContainers; c++ {
+			base := uint32(c) << 16 // each container has a different high-16-bit key
+			for v := uint32(0); v < 100; v++ {
+				rb.Add(base + v*10)
+			}
+		}
+
+		for _, rangeContainers := range []int{1, 10, 100, 1000} {
+			if rangeContainers > numContainers {
+				continue
+			}
+			// Place the range in the middle of the bitmap so both methods do real work.
+			mid := numContainers / 2
+			rangeStart := uint64(uint32(mid-(rangeContainers/2)) << 16)
+			rangeEnd := uint64(uint32(mid+(rangeContainers+1)/2) << 16)
+
+			label := fmt.Sprintf("containers=%d/rangeSpan=%d", numContainers, rangeContainers)
+
+			b.Run(label+"/RankViaTwoRanks", func(b *testing.B) {
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					r := rb.Rank(uint32(rangeEnd - 1))
+					if rangeStart > 0 {
+						r -= rb.Rank(uint32(rangeStart - 1))
+					}
+					if r == 0 && numContainers == 0 {
+						b.Fatal("unexpected") // prevent dead-code elimination
+					}
+				}
+			})
+
+			b.Run(label+"/CardinalityInRange", func(b *testing.B) {
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					r := rb.CardinalityInRange(rangeStart, rangeEnd)
+					if r == 0 && numContainers == 0 {
+						b.Fatal("unexpected") // prevent dead-code elimination
+					}
+				}
+			})
+		}
+	}
+}

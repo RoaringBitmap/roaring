@@ -1248,6 +1248,79 @@ func (rb *Bitmap) Rank(x uint32) uint64 {
 	return size
 }
 
+// CardinalityInRange returns the number of integers that are in the half-open range [start, end).
+// It is equivalent to Rank(uint32(end-1)) - Rank(uint32(start-1)) for start > 0,
+// but is optimized to only scan containers that overlap the range, making it
+// O(k) in the number of containers spanned by [start, end) rather than O(n)
+// in total containers. The parameter type is uint64 to allow end = 1<<32
+// (the full 32-bit range).
+func (rb *Bitmap) CardinalityInRange(start, end uint64) uint64 {
+	if start >= end {
+		return 0
+	}
+	if end > MaxUint32+1 {
+		end = MaxUint32 + 1
+	}
+
+	hbStart := highbits(uint32(start))
+	hbEnd := highbits(uint32(end - 1)) // end-1 is the last included value
+
+	size := rb.highlowcontainer.size()
+
+	// Binary-search to find the first container index >= hbStart.
+	startIdx := rb.highlowcontainer.getIndex(hbStart)
+	if startIdx < 0 {
+		startIdx = -startIdx - 1 // insertion point
+	}
+	if startIdx >= size {
+		return 0
+	}
+
+	result := uint64(0)
+
+	// Handle the case where start and end are in the same container.
+	if hbStart == hbEnd {
+		key := rb.highlowcontainer.getKeyAtIndex(startIdx)
+		if key == hbStart {
+			lo := uint(lowbits(uint32(start)))
+			hi := uint(lowbits(uint32(end-1))) + 1
+			return uint64(rb.highlowcontainer.getContainerAtIndex(startIdx).getCardinalityInRange(lo, hi))
+		}
+		return 0
+	}
+
+	// Handle the first container (may be partial).
+	key := rb.highlowcontainer.getKeyAtIndex(startIdx)
+	if key == hbStart {
+		lo := uint(lowbits(uint32(start)))
+		result += uint64(rb.highlowcontainer.getContainerAtIndex(startIdx).getCardinalityInRange(lo, 1<<16))
+		startIdx++
+	}
+
+	// Binary-search to find the last container index <= hbEnd.
+	endIdx := rb.highlowcontainer.getIndex(hbEnd)
+	endPresent := endIdx >= 0
+	if endIdx < 0 {
+		endIdx = -endIdx - 2 // index of the last container with key < hbEnd
+	}
+
+	// Tight loop over middle containers — no per-iteration key comparisons.
+	for i := startIdx; i <= endIdx; i++ {
+		if endPresent && i == endIdx {
+			break // this is the end container, handled below
+		}
+		result += uint64(rb.highlowcontainer.getContainerAtIndex(i).getCardinality())
+	}
+
+	// Handle the last container (may be partial).
+	if endPresent {
+		hi := uint(lowbits(uint32(end-1))) + 1
+		result += uint64(rb.highlowcontainer.getContainerAtIndex(endIdx).getCardinalityInRange(0, hi))
+	}
+
+	return result
+}
+
 // Select returns the xth integer in the bitmap. If you pass 0, you get
 // the smallest element. Note that this function differs in convention from
 // the Rank function which returns 1 on the smallest value.

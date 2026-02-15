@@ -2489,6 +2489,100 @@ func (rc *runContainer16) rank(x uint16) int {
 	return rnk
 }
 
+// getCardinalityInRange returns the number of values in the half-open range [start, end).
+func (rc *runContainer16) getCardinalityInRange(start, end uint) int {
+	if start >= end || len(rc.iv) == 0 {
+		return 0
+	}
+	// end is exclusive, so the last included value is end-1.
+	last := end - 1
+
+	// Find the interval containing or just before 'start'.
+	wStart, startInside, _ := rc.search(int(start))
+	// Find the interval containing or just before 'last'.
+	wEnd, endInside, _ := rc.search(int(last))
+
+	if wStart < 0 && wEnd < 0 {
+		// Both are before the first interval → nothing in range.
+		return 0
+	}
+
+	// Determine the effective first interval index to start counting from.
+	firstIdx := wStart
+	if !startInside {
+		// start falls between intervals or before the first; next interval is wStart+1.
+		firstIdx = wStart + 1
+	}
+	// Determine the effective last interval index.
+	lastIdx := wEnd
+	if !endInside && wEnd >= 0 {
+		// last falls between intervals; the last fully-before interval is wEnd,
+		// but its values are all < start of next, and we need values <= last.
+		// All of wEnd's values are < start (if wEnd < firstIdx), we handle below.
+		lastIdx = wEnd
+	}
+
+	if firstIdx >= len(rc.iv) {
+		return 0
+	}
+	if lastIdx < 0 || lastIdx < firstIdx-1 {
+		return 0
+	}
+
+	// If start and end land in the same interval (or there's only one relevant).
+	if firstIdx == lastIdx && firstIdx >= 0 {
+		ivStart := uint(rc.iv[firstIdx].start)
+		ivEnd := uint(rc.iv[firstIdx].last())
+		// Clamp
+		lo := start
+		if ivStart > lo {
+			lo = ivStart
+		}
+		hi := last
+		if ivEnd < hi {
+			hi = ivEnd
+		}
+		if lo > hi {
+			return 0
+		}
+		return int(hi-lo) + 1
+	}
+
+	result := 0
+
+	// Handle the first interval (may be partial if start > iv[firstIdx].start).
+	if startInside && firstIdx == wStart {
+		// start is inside this interval; count from start to end of interval.
+		result += int(uint(rc.iv[firstIdx].last())-start) + 1
+	} else if firstIdx < len(rc.iv) {
+		// start is before this interval; count the full interval.
+		result += rc.iv[firstIdx].runlen()
+	}
+
+	// Sum full intervals strictly between firstIdx and lastIdx.
+	for i := firstIdx + 1; i < lastIdx; i++ {
+		result += rc.iv[i].runlen()
+	}
+
+	// Handle the last interval (may be partial if last < iv[lastIdx].last()).
+	if lastIdx > firstIdx && lastIdx < len(rc.iv) {
+		if endInside {
+			// last is inside this interval; count from start of interval to last.
+			result += int(last-uint(rc.iv[lastIdx].start)) + 1
+		} else {
+			// last is beyond this interval; count the full interval.
+			// But wait — if !endInside, then last < iv[lastIdx].start,
+			// which means lastIdx's values are all > last. Don't count it.
+			// Actually, wEnd == lastIdx means iv[lastIdx].start <= last (from search semantics).
+			// If !endInside and wEnd == lastIdx, last is between iv[lastIdx].last() and iv[lastIdx+1].start.
+			// That means last >= iv[lastIdx].last()+1, so we can count the full interval.
+			result += rc.iv[lastIdx].runlen()
+		}
+	}
+
+	return result
+}
+
 func (rc *runContainer16) selectInt(x uint16) int {
 	var offset int
 	for k := range rc.iv {
