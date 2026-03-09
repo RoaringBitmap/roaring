@@ -1009,6 +1009,31 @@ func (b *BSI) ClearValues(foundSet *Bitmap) {
 	}
 }
 
+// Retain removes from the BSI all values whose column IDs are not in retain,
+// modifying the BSI in place. It returns the number of column IDs dropped.
+//
+// This is the in-place equivalent of NewBSIRetainSet. Prefer it when no copy
+// is needed, such as when the BSI will be immediately re-serialized — it
+// avoids the allocation of a new BSI and all its bit planes.
+//
+// The bit planes (bA) are only updated when the existence bitmap actually
+// shrinks. This is safe because BSI consistency guarantees that bA contains no
+// set bits for column IDs absent from eBM; if eBM is unchanged after the
+// intersection then retain covers all existing column IDs and bA needs no
+// update.
+func (b *BSI) Retain(retain *Bitmap) (dropped uint64) {
+	preCard := b.eBM.GetCardinality()
+	b.eBM.And(retain)
+	dropped = preCard - b.eBM.GetCardinality()
+	if dropped == 0 {
+		return
+	}
+	for i := range b.bA {
+		b.bA[i].And(retain)
+	}
+	return
+}
+
 // NewBSIRetainSet - Construct a new BSI from a clone of existing BSI, retain only values contained in foundSet
 func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 
