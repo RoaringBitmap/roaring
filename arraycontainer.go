@@ -963,6 +963,29 @@ func (ac *arrayContainer) rank(x uint16) int {
 	return -answer - 1
 }
 
+// getCardinalityInRange returns the number of values in the half-open range [start, end).
+func (ac *arrayContainer) getCardinalityInRange(start, end uint) int {
+	if start >= end {
+		return 0
+	}
+	// Find the first index >= start
+	loIdx := binarySearch(ac.content, uint16(start))
+	if loIdx < 0 {
+		loIdx = -loIdx - 1
+	}
+	// end can be up to 65536 (1<<16), which overflows uint16.
+	// In that case, all elements from loIdx onward are included.
+	if end > MaxUint16 {
+		return len(ac.content) - loIdx
+	}
+	// Find the first index >= end (i.e., past the last included value)
+	hiIdx := binarySearch(ac.content, uint16(end))
+	if hiIdx < 0 {
+		hiIdx = -hiIdx - 1
+	}
+	return hiIdx - loIdx
+}
+
 func (ac *arrayContainer) selectInt(x uint16) int {
 	return int(ac.content[x])
 }

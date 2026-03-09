@@ -877,6 +877,152 @@ func TestBitmapRank2(t *testing.T) {
 	assert.EqualValues(t, 32, rank)
 }
 
+// TestCardinalityInRangeEquivalence verifies that CardinalityInRange(start, end) == Rank(end-1) - Rank(start-1)
+// for many inputs, across all container types.
+func TestCardinalityInRangeEquivalence(t *testing.T) {
+	for N := uint32(1); N <= 1048576; N *= 2 {
+		t.Run("N="+strconv.Itoa(int(N)), func(t *testing.T) {
+			for gap := uint32(1); gap <= 65536; gap *= 2 {
+				rb := NewBitmap()
+				for x := uint32(0); x <= N; x += gap {
+					rb.Add(x)
+				}
+				// Test various [start, end) ranges
+				testPoints := []uint64{0, 1, 63, 64, 65, 100, 1000, uint64(N / 2), uint64(N), uint64(N + 1), 1 << 16, (1 << 16) + 1}
+				for _, s := range testPoints {
+					for _, e := range testPoints {
+						if s >= e {
+							continue
+						}
+						got := rb.CardinalityInRange(s, e)
+						// Compute expected via two Rank calls.
+						var expected uint64
+						if s == 0 {
+							expected = rb.Rank(uint32(e - 1))
+						} else {
+							expected = rb.Rank(uint32(e-1)) - rb.Rank(uint32(s-1))
+						}
+						if got != expected {
+							t.Errorf("CardinalityInRange(%d, %d) = %d, want %d (N=%d, gap=%d)",
+								s, e, got, expected, N, gap)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestCardinalityInRangeEmpty tests that empty ranges return 0.
+func TestCardinalityInRangeEmpty(t *testing.T) {
+	rb := NewBitmap()
+	rb.AddRange(100, 200)
+	assert.EqualValues(t, 0, rb.CardinalityInRange(50, 50))   // empty range
+	assert.EqualValues(t, 0, rb.CardinalityInRange(100, 100)) // empty range
+	assert.EqualValues(t, 0, rb.CardinalityInRange(200, 100)) // inverted range
+	assert.EqualValues(t, 0, rb.CardinalityInRange(300, 400)) // no values in range
+	assert.EqualValues(t, 0, rb.CardinalityInRange(0, 100))   // no values before the range
+}
+
+// TestCardinalityInRangeSingleContainer tests ranges within a single container.
+func TestCardinalityInRangeSingleContainer(t *testing.T) {
+	rb := NewBitmap()
+	for i := uint32(0); i < 100; i++ {
+		rb.Add(i * 3) // values: 0, 3, 6, 9, ..., 297
+	}
+	// All within container 0 (high bits = 0)
+	assert.EqualValues(t, 100, rb.CardinalityInRange(0, 300)) // all values
+	assert.EqualValues(t, 1, rb.CardinalityInRange(0, 1))     // just 0
+	assert.EqualValues(t, 1, rb.CardinalityInRange(0, 3))     // just 0
+	assert.EqualValues(t, 2, rb.CardinalityInRange(0, 4))     // 0 and 3
+	assert.EqualValues(t, 1, rb.CardinalityInRange(3, 4))     // just 3
+	assert.EqualValues(t, 1, rb.CardinalityInRange(3, 6))     // just 3
+	assert.EqualValues(t, 2, rb.CardinalityInRange(3, 7))     // 3 and 6
+}
+
+// TestCardinalityInRangeMultiContainer tests ranges spanning multiple containers (high 16 bits).
+func TestCardinalityInRangeMultiContainer(t *testing.T) {
+	rb := NewBitmap()
+	// Put values in 3 different containers:
+	// Container 0 (key=0): values 0..99
+	for i := uint32(0); i < 100; i++ {
+		rb.Add(i)
+	}
+	// Container 1 (key=1): values 65536..65635
+	for i := uint32(0); i < 100; i++ {
+		rb.Add(65536 + i)
+	}
+	// Container 3 (key=3): values 196608..196707 (skip container 2)
+	for i := uint32(0); i < 100; i++ {
+		rb.Add(196608 + i)
+	}
+
+	// Entire range
+	assert.EqualValues(t, 300, rb.CardinalityInRange(0, 200000))
+	// Just container 0
+	assert.EqualValues(t, 100, rb.CardinalityInRange(0, 65536))
+	// Just container 1
+	assert.EqualValues(t, 100, rb.CardinalityInRange(65536, 131072))
+	// Containers 0 and 1
+	assert.EqualValues(t, 200, rb.CardinalityInRange(0, 131072))
+	// Partial container 0 + full container 1 + partial container 3
+	assert.EqualValues(t, 50+100+50, rb.CardinalityInRange(50, 196658))
+	// Range in the gap (container 2 doesn't exist)
+	assert.EqualValues(t, 0, rb.CardinalityInRange(131072, 196608))
+	// Range spanning the gap
+	assert.EqualValues(t, 100+100, rb.CardinalityInRange(65536, 196708))
+}
+
+// TestCardinalityInRangeRunOptimized tests CardinalityInRange with run-compressed containers.
+func TestCardinalityInRangeRunOptimized(t *testing.T) {
+	rb := NewBitmap()
+	// Create a large consecutive range which will be run-optimized.
+	rb.AddRange(1000, 5000)
+	rb.AddRange(70000, 80000) // second container (key=1)
+	rb.RunOptimize()
+
+	assert.EqualValues(t, 4000, rb.CardinalityInRange(1000, 5000))
+	assert.EqualValues(t, 10000, rb.CardinalityInRange(70000, 80000))
+	assert.EqualValues(t, 100, rb.CardinalityInRange(1000, 1100))
+	assert.EqualValues(t, 4000+10000, rb.CardinalityInRange(0, 100000))
+	assert.EqualValues(t, 0, rb.CardinalityInRange(5000, 70000)) // gap between runs
+	assert.EqualValues(t, 4000+10000, rb.CardinalityInRange(1000, 80000))
+	// Partial into both
+	assert.EqualValues(t, 3000+5000, rb.CardinalityInRange(2000, 75000))
+}
+
+// TestCardinalityInRangeBitmapContainer tests CardinalityInRange with bitmap containers (>4096 values in one container).
+func TestCardinalityInRangeBitmapContainer(t *testing.T) {
+	rb := NewBitmap()
+	// Add enough values to trigger bitmap container: every other value in [0, 16384).
+	for i := uint32(0); i < 16384; i += 2 {
+		rb.Add(i)
+	}
+	// 8192 values: 0, 2, 4, ..., 16382
+
+	assert.EqualValues(t, 8192, rb.CardinalityInRange(0, 16384))
+	assert.EqualValues(t, 1, rb.CardinalityInRange(0, 1))      // just 0
+	assert.EqualValues(t, 1, rb.CardinalityInRange(0, 2))      // just 0
+	assert.EqualValues(t, 2, rb.CardinalityInRange(0, 3))      // 0, 2
+	assert.EqualValues(t, 50, rb.CardinalityInRange(0, 100))   // 0, 2, 4, ..., 98
+	assert.EqualValues(t, 50, rb.CardinalityInRange(100, 200)) // 100, 102, ..., 198
+	assert.EqualValues(t, 0, rb.CardinalityInRange(1, 2))      // no even values in [1, 2)
+	assert.EqualValues(t, 1, rb.CardinalityInRange(1, 3))      // just 2
+}
+
+// TestCardinalityInRangeFullUint32Range tests CardinalityInRange with end = 1<<32 (full uint32 range).
+func TestCardinalityInRangeFullUint32Range(t *testing.T) {
+	rb := NewBitmap()
+	rb.Add(0)
+	rb.Add(0xFFFFFFFF) // MaxUint32
+	rb.Add(0x80000000) // mid-point
+
+	assert.EqualValues(t, 3, rb.CardinalityInRange(0, 1<<32))
+	assert.EqualValues(t, 1, rb.CardinalityInRange(0, 1))
+	assert.EqualValues(t, 1, rb.CardinalityInRange(0xFFFFFFFF, 1<<32))
+	assert.EqualValues(t, 2, rb.CardinalityInRange(0x80000000, 1<<32))
+}
+
 func TestBitmapRank(t *testing.T) {
 	for N := uint32(1); N <= 1048576; N *= 2 {
 		t.Run("rank tests"+strconv.Itoa(int(N)), func(t *testing.T) {
