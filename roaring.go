@@ -253,21 +253,21 @@ func (rb *Bitmap) Checksum() uint64 {
 		case *bitmapContainer:
 			for _, val := range c.bitmap {
 				// Hash in little-endian byte order (unrolled loop)
-				hash ^= uint64(val & 0xFF)
+				hash ^= val & 0xFF
 				hash *= prime
-				hash ^= uint64((val >> 8) & 0xFF)
+				hash ^= (val >> 8) & 0xFF
 				hash *= prime
-				hash ^= uint64((val >> 16) & 0xFF)
+				hash ^= (val >> 16) & 0xFF
 				hash *= prime
-				hash ^= uint64((val >> 24) & 0xFF)
+				hash ^= (val >> 24) & 0xFF
 				hash *= prime
-				hash ^= uint64((val >> 32) & 0xFF)
+				hash ^= (val >> 32) & 0xFF
 				hash *= prime
-				hash ^= uint64((val >> 40) & 0xFF)
+				hash ^= (val >> 40) & 0xFF
 				hash *= prime
-				hash ^= uint64((val >> 48) & 0xFF)
+				hash ^= (val >> 48) & 0xFF
 				hash *= prime
-				hash ^= uint64((val >> 56) & 0xFF)
+				hash ^= (val >> 56) & 0xFF
 				hash *= prime
 			}
 		case *arrayContainer:
