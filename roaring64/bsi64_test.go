@@ -86,9 +86,39 @@ func TestSetAndGetUUIDValue(t *testing.T) {
 	bv, _ := bsi.GetBigValue(1)
 	assert.Equal(t, bigUUID, bv)
 
-	newUUID, err := uuid.FromBytes(bv.Bytes())
+	// big.Int.Bytes() drops leading zero bytes; use FillBytes to restore the
+	// original length so uuid.FromBytes receives exactly len(b) bytes.
+	bvBytes := make([]byte, len(b))
+	bv.FillBytes(bvBytes)
+	newUUID, err := uuid.FromBytes(bvBytes)
 	assert.Nil(t, err)
 
+	assert.Equal(t, uuidVal.String(), newUUID.String())
+}
+
+// TestSetAndGetUUIDValueLeadingZero is a deterministic regression test for the
+// case where the UUID binary representation has a leading zero byte, which
+// big.Int.Bytes() would silently drop.
+func TestSetAndGetUUIDValueLeadingZero(t *testing.T) {
+	// Construct a UUID whose MarshalBinary starts with 0x00.
+	var uuidVal uuid.UUID
+	uuidVal[0] = 0x00
+	uuidVal[6] = 0x40 // version 4
+	uuidVal[8] = 0x80 // variant bits
+	b, errx := uuidVal.MarshalBinary()
+	require.Nil(t, errx)
+	require.Equal(t, 0x00, int(b[0]), "test requires leading zero byte")
+
+	bigUUID := new(big.Int)
+	bigUUID.SetBytes(b)
+	bsi := NewDefaultBSI()
+	bsi.SetBigValue(1, bigUUID)
+	bv, _ := bsi.GetBigValue(1)
+
+	bvBytes := make([]byte, len(b))
+	bv.FillBytes(bvBytes)
+	newUUID, err := uuid.FromBytes(bvBytes)
+	assert.Nil(t, err)
 	assert.Equal(t, uuidVal.String(), newUUID.String())
 }
 
