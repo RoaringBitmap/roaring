@@ -990,6 +990,20 @@ func (b *BSI) ClearValues(foundSet *Bitmap) {
 	wg.Wait()
 }
 
+// Retains only values found in retain. Returns how many values were not retained.
+func (b *BSI) Retain(retain *Bitmap) (dropped uint64) {
+	preCard := b.eBM.GetCardinality()
+	b.eBM.And(retain)
+	dropped = preCard - b.eBM.GetCardinality()
+	if dropped == 0 {
+		return
+	}
+	for i := range b.bA {
+		b.bA[i].And(retain)
+	}
+	return
+}
+
 // NewBSIRetainSet - Construct a new BSI from a clone of existing BSI, retain only values contained in foundSet
 func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 
