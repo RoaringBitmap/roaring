@@ -814,6 +814,11 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 	b.eBM = *ParOr(parallelism, x...)
 }
 
+func (b *BSI) FromBitmaps(bms []Bitmap) {
+	b.eBM = bms[0]
+	b.bA = bms[1:]
+}
+
 // UnmarshalBinary de-serialize a BSI.  The value at bitData[0] is the EBM.  Other indices are in least to most
 // significance order starting at bitData[1] (bit position 0).
 func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
