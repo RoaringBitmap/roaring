@@ -814,6 +814,30 @@ func (b *BSI) ParOr(parallelism int, bsis ...*BSI) {
 	b.eBM = *ParOr(parallelism, x...)
 }
 
+// FromBitmaps initializes the BSI from a pre-built slice of bitmaps.
+// bms[0] is the existence bitmap (eBM); bms[1:] are the bit planes in
+// least-to-most-significant order (bit position 0 first), matching the
+// layout used by MarshalBinary/UnmarshalBinary.
+//
+// The caller transfers ownership of the slice and all bitmaps within it;
+// the BSI aliases the slice directly without copying. The caller must not
+// modify the slice or any of its elements after this call.
+//
+// The no-copy design is intentional. The primary use case is deserialization
+// pipelines where the existence bitmap is not stored on disk but reconstructed
+// by ORing the bit planes, and all bitmaps are freshly allocated from the
+// stream. Copying at that point would be wasteful. The caller's slice goes out
+// of scope immediately after the call, so aliasing is safe.
+//
+// Panics if len(bms) < 1.
+func (b *BSI) FromBitmaps(bms []Bitmap) {
+	if len(bms) < 1 {
+		panic("FromBitmaps: bms must have at least one element (the existence bitmap)")
+	}
+	b.eBM = bms[0]
+	b.bA = bms[1:]
+}
+
 // UnmarshalBinary de-serialize a BSI.  The value at bitData[0] is the EBM.  Other indices are in least to most
 // significance order starting at bitData[1] (bit position 0).
 func (b *BSI) UnmarshalBinary(bitData [][]byte) error {
