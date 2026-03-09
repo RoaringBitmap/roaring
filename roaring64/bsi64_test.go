@@ -806,6 +806,23 @@ func TestRangeNilBig(t *testing.T) {
 	assert.Equal(t, tmpAll.GetCardinality(), setAll.GetCardinality())
 }
 
+func TestRetain(t *testing.T) {
+	bsi := setup() // values 0..100 inclusive = 101 entries
+	retain := BitmapOf(50)
+	dropped := bsi.Retain(retain)
+	assert.Equal(t, uint64(100), dropped)
+	assert.Equal(t, uint64(1), bsi.GetCardinality())
+	val, ok := bsi.GetValue(50)
+	assert.True(t, ok)
+	assert.Equal(t, int64(50), val)
+
+	// When retain covers all existing column IDs, nothing is dropped and bA is
+	// not touched (the dropped==0 early-return path).
+	dropped = bsi.Retain(BitmapOf(50, 99))
+	assert.Equal(t, uint64(0), dropped)
+	assert.Equal(t, uint64(1), bsi.GetCardinality())
+}
+
 func BenchmarkClearValues(b *testing.B) {
 	bsi := setupLargeBSI(b)
 	if bsi == nil {
