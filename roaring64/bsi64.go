@@ -971,7 +971,13 @@ func ClearBits(foundSet, target *Bitmap) {
 	target.AndNot(foundSet)
 }
 
-// ClearValues removes the values found in foundSet
+// ClearValues removes from the BSI all values whose column IDs are in
+// foundSet, modifying the BSI in place.
+//
+// The implementation is intentionally serial. A previous goroutine-per-bit-plane
+// approach was slower in practice: goroutine creation overhead dominated for
+// typical BSI sizes, and the cost compounds when ClearValues is called in a
+// tight loop (e.g. once per term across an entire index during a deletion pass).
 func (b *BSI) ClearValues(foundSet *Bitmap) {
 	b.eBM.AndNot(foundSet)
 	for i := range b.bA {
