@@ -180,3 +180,48 @@ func TestIteratorAdvance(t *testing.T) {
 		assert.EqualValues(t, 31, i.PeekNext())
 	})
 }
+
+func TestIteratorInitialize(t *testing.T) {
+	values := []uint64{0, 2, 15, 16, 31, 32, 33, 9999, roaring.MaxUint16, roaring.MaxUint32, roaring.MaxUint32 * 2, math.MaxUint64}
+	bm := New()
+	for _, v := range values {
+		bm.Add(v)
+	}
+
+	t.Run("IntIterator64 stack-allocated", func(t *testing.T) {
+		var it IntIterator64
+		it.Initialize(bm)
+		n := 0
+		for it.HasNext() {
+			assert.Equal(t, values[n], it.Next())
+			n++
+		}
+		assert.Equal(t, len(values), n)
+	})
+
+	t.Run("IntReverseIterator64 stack-allocated", func(t *testing.T) {
+		var it IntReverseIterator64
+		it.Initialize(bm)
+		n := len(values) - 1
+		for it.HasNext() {
+			assert.Equal(t, values[n], it.Next())
+			n--
+		}
+		assert.Equal(t, -1, n)
+	})
+
+	t.Run("ManyIntIterator64 stack-allocated", func(t *testing.T) {
+		var it ManyIntIterator64
+		it.Initialize(bm)
+		buf := make([]uint64, 4)
+		var got []uint64
+		for {
+			n := it.NextMany(buf)
+			if n == 0 {
+				break
+			}
+			got = append(got, buf[:n]...)
+		}
+		assert.Equal(t, values, got)
+	})
+}

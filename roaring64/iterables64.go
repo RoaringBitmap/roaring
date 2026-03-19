@@ -25,6 +25,12 @@ type intIterator struct {
 	hs               uint64
 	iter             roaring.IntPeekable
 	highlowcontainer *roaringArray64
+
+	// These embedded iterators per container type help reduce load in the GC.
+	// This way, instead of making up-to 4 billion allocations per full iteration
+	// we get a single allocation and simply reinitialize the embedded iterator
+	// and point to it in the generic `iter` member on each key bound.
+	bitmapIter roaring.IntIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -34,8 +40,9 @@ func (ii *intIterator) HasNext() bool {
 
 func (ii *intIterator) init() {
 	if ii.highlowcontainer.size() > ii.pos {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).Iterator()
 		ii.hs = uint64(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 32
+		ii.bitmapIter.Initialize(ii.highlowcontainer.getContainerAtIndex(ii.pos))
+		ii.iter = &ii.bitmapIter
 	}
 }
 
@@ -74,11 +81,21 @@ func (ii *intIterator) AdvanceIfNeeded(minval uint64) {
 	}
 }
 
+// IntIterator64 is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
+type IntIterator64 = intIterator
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (ii *intIterator) Initialize(a *Bitmap) {
+	ii.pos = 0
+	ii.highlowcontainer = &a.highlowcontainer
+	ii.init()
+}
+
 func newIntIterator(a *Bitmap) *intIterator {
 	p := new(intIterator)
-	p.pos = 0
-	p.highlowcontainer = &a.highlowcontainer
-	p.init()
+	p.Initialize(a)
 	return p
 }
 
@@ -87,6 +104,9 @@ type intReverseIterator struct {
 	hs               uint64
 	iter             roaring.IntIterable
 	highlowcontainer *roaringArray64
+
+	// Stack-allocated embedded iterator to reduce GC pressure.
+	bitmapIter roaring.IntReverseIterator
 }
 
 // HasNext returns true if there are more integers to iterate over
@@ -96,8 +116,9 @@ func (ii *intReverseIterator) HasNext() bool {
 
 func (ii *intReverseIterator) init() {
 	if ii.pos >= 0 {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).ReverseIterator()
 		ii.hs = uint64(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 32
+		ii.bitmapIter.Initialize(ii.highlowcontainer.getContainerAtIndex(ii.pos))
+		ii.iter = &ii.bitmapIter
 	} else {
 		ii.iter = nil
 	}
@@ -113,11 +134,21 @@ func (ii *intReverseIterator) Next() uint64 {
 	return x
 }
 
+// IntReverseIterator64 is meant to allow you to iterate through the values of a bitmap in reverse, see Initialize(a *Bitmap)
+type IntReverseIterator64 = intReverseIterator
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap in reverse.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (ii *intReverseIterator) Initialize(a *Bitmap) {
+	ii.highlowcontainer = &a.highlowcontainer
+	ii.pos = a.highlowcontainer.size() - 1
+	ii.init()
+}
+
 func newIntReverseIterator(a *Bitmap) *intReverseIterator {
 	p := new(intReverseIterator)
-	p.highlowcontainer = &a.highlowcontainer
-	p.pos = a.highlowcontainer.size() - 1
-	p.init()
+	p.Initialize(a)
 	return p
 }
 
@@ -132,12 +163,16 @@ type manyIntIterator struct {
 	hs               uint64
 	iter             roaring.ManyIntIterable
 	highlowcontainer *roaringArray64
+
+	// Stack-allocated embedded iterator to reduce GC pressure.
+	bitmapIter roaring.ManyIntIterator
 }
 
 func (ii *manyIntIterator) init() {
 	if ii.highlowcontainer.size() > ii.pos {
-		ii.iter = ii.highlowcontainer.getContainerAtIndex(ii.pos).ManyIterator()
 		ii.hs = uint64(ii.highlowcontainer.getKeyAtIndex(ii.pos)) << 32
+		ii.bitmapIter.Initialize(ii.highlowcontainer.getContainerAtIndex(ii.pos))
+		ii.iter = &ii.bitmapIter
 	} else {
 		ii.iter = nil
 	}
@@ -160,10 +195,20 @@ func (ii *manyIntIterator) NextMany(buf []uint64) int {
 	return n
 }
 
+// ManyIntIterator64 is meant to allow you to iterate through the values of a bitmap, see Initialize(a *Bitmap)
+type ManyIntIterator64 = manyIntIterator
+
+// Initialize configures the existing iterator so that it can iterate through the values of
+// the provided bitmap.
+// The iteration results are undefined if the bitmap is modified (e.g., with Add or Remove).
+func (ii *manyIntIterator) Initialize(a *Bitmap) {
+	ii.pos = 0
+	ii.highlowcontainer = &a.highlowcontainer
+	ii.init()
+}
+
 func newManyIntIterator(a *Bitmap) *manyIntIterator {
 	p := new(manyIntIterator)
-	p.pos = 0
-	p.highlowcontainer = &a.highlowcontainer
-	p.init()
+	p.Initialize(a)
 	return p
 }
