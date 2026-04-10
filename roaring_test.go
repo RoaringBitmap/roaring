@@ -1155,6 +1155,32 @@ func TestCardinalityInRangeRunOptimized(t *testing.T) {
 	assert.EqualValues(t, 3000+5000, rb.CardinalityInRange(2000, 75000))
 }
 
+// TestCardinalityInRangeRunGapWithinContainer tests CardinalityInRange when
+// two run intervals exist in the same container with a gap between them.
+func TestCardinalityInRangeRunGapWithinContainer(t *testing.T) {
+	rb := NewBitmap()
+	rb.AddRange(0, 1024)
+	rb.AddRange(2048, 3072)
+	rb.RunOptimize()
+
+	// Querying within each run should return the correct count.
+	assert.EqualValues(t, 1024, rb.CardinalityInRange(0, 1024))
+	assert.EqualValues(t, 1024, rb.CardinalityInRange(2048, 3072))
+
+	// The gap [1024, 2048) has zero set bits.
+	assert.EqualValues(t, 0, rb.CardinalityInRange(1024, 2048))
+
+	// Ranges that span the gap should not count the gap.
+	assert.EqualValues(t, 2048, rb.CardinalityInRange(0, 3072))
+
+	// Boundary: bit 1023 is set, bit 1024 is not.
+	assert.EqualValues(t, 1, rb.CardinalityInRange(1023, 1024))
+	assert.EqualValues(t, 1, rb.CardinalityInRange(1023, 1025))
+
+	// Partial ranges touching each side of the gap.
+	assert.EqualValues(t, 512+512, rb.CardinalityInRange(512, 2560))
+}
+
 // TestCardinalityInRangeBitmapContainer tests CardinalityInRange with bitmap containers (>4096 values in one container).
 func TestCardinalityInRangeBitmapContainer(t *testing.T) {
 	rb := NewBitmap()
