@@ -165,12 +165,12 @@ func TestRangeBig(t *testing.T) {
 
 	bsi := NewDefaultBSI()
 
-	// Populate large timestamp values
+	// Use a fixed base time so values are deterministic and strictly ordered.
+	base := time.Date(3026, 1, 1, 0, 0, 0, 0, time.UTC)
 	for i := 0; i <= 100; i++ {
-		t := time.Now()
-		newTime := t.AddDate(1000, 0, 0) // Add 1000 years
-		secs := newTime.UnixMilli() / 1000
-		nano := int32(newTime.Nanosecond())
+		ts := base.Add(time.Duration(i) * time.Second)
+		secs := ts.UnixMilli() / 1000
+		nano := int32(ts.Nanosecond())
 		bigTime := secondsAndNanosToBigInt(secs, nano)
 		bsi.SetBigValue(uint64(i), bigTime)
 	}
