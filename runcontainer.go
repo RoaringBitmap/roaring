@@ -2543,7 +2543,7 @@ func (rc *runContainer16) getCardinalityInRange(start, end uint) int {
 	if firstIdx >= len(rc.iv) {
 		return 0
 	}
-	if lastIdx < 0 || lastIdx < firstIdx-1 {
+	if lastIdx < 0 || lastIdx < firstIdx {
 		return 0
 	}
 
