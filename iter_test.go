@@ -480,3 +480,42 @@ func TestUnsetIteratorPeekable(t *testing.T) {
 		assert.False(t, it.HasNext())
 	})
 }
+
+func TestRanges(t *testing.T) {
+	b := New()
+	b.AddRange(5, 10)
+	b.AddRange(20, 25)
+	b.AddRange(100, 105)
+	var ranges [][2]uint64
+	for start, end := range b.Ranges() {
+		ranges = append(ranges, [2]uint64{uint64(start), end})
+	}
+	assert.Equal(t, [][2]uint64{{5, 10}, {20, 25}, {100, 105}}, ranges)
+
+	// Merges across container boundaries
+	b2 := New()
+	b2.AddRange(0xFFF0, 0x10010)
+	ranges = nil
+	for start, end := range b2.Ranges() {
+		ranges = append(ranges, [2]uint64{uint64(start), end})
+	}
+	assert.Equal(t, [][2]uint64{{0xFFF0, 0x10010}}, ranges)
+
+	// Scattered values become individual ranges
+	b3 := New()
+	b3.Add(1)
+	b3.Add(3)
+	b3.Add(5)
+	ranges = nil
+	for start, end := range b3.Ranges() {
+		ranges = append(ranges, [2]uint64{uint64(start), end})
+	}
+	assert.Equal(t, [][2]uint64{{1, 2}, {3, 4}, {5, 6}}, ranges)
+
+	// Empty bitmap
+	count := 0
+	for range New().Ranges() {
+		count++
+	}
+	assert.Equal(t, 0, count)
+}
