@@ -92,36 +92,43 @@ func (b *Bitmap) Ranges() iter.Seq2[uint32, uint64] {
 				pos := uint(0)
 
 				for pos < length {
-					if bm[pos] == 0 {
+					w := bm[pos]
+					if w == 0 {
 						pos++
 						continue
 					}
 
-					w := bm[pos]
-					lo := uint(countTrailingZeros(w))
-					bitStart := pos*64 + lo
+					for w != 0 {
+						lo := uint(countTrailingZeros(w))
+						bitStart := pos*64 + lo
 
-					ones := uint(countTrailingOnes(w >> lo))
-					if lo+ones < 64 {
-						if !emit(hs|uint64(bitStart), hs|uint64(bitStart+ones)) {
-							return
-						}
-						pos = (bitStart + ones) / 64
-					} else {
-						pos++
-						for pos < length && bm[pos] == 0xFFFFFFFFFFFFFFFF {
-							pos++
-						}
-						var bitEnd uint
-						if pos < length {
-							bitEnd = pos*64 + uint(countTrailingOnes(bm[pos]))
+						ones := uint(countTrailingOnes(w >> lo))
+						if lo+ones < 64 {
+							if !emit(hs+uint64(bitStart), hs+uint64(bitStart+ones)) {
+								return
+							}
+							w &= ^((uint64(1) << (lo + ones)) - 1)
 						} else {
-							bitEnd = length * 64
-						}
-						if !emit(hs|uint64(bitStart), hs|uint64(bitEnd)) {
-							return
+							pos++
+							for pos < length && bm[pos] == 0xFFFFFFFFFFFFFFFF {
+								pos++
+							}
+							var bitEnd uint
+							if pos < length {
+								trailing := uint(countTrailingOnes(bm[pos]))
+								bitEnd = pos*64 + trailing
+								w = bm[pos] & ^((uint64(1) << trailing) - 1)
+							} else {
+								bitEnd = length * 64
+								w = 0
+							}
+							if !emit(hs+uint64(bitStart), hs+uint64(bitEnd)) {
+								return
+							}
+							continue
 						}
 					}
+					pos++
 				}
 
 			case *arrayContainer:
@@ -135,7 +142,7 @@ func (b *Bitmap) Ranges() iter.Seq2[uint32, uint64] {
 						end++
 						i++
 					}
-					if !emit(hs|start, hs|end) {
+					if !emit(hs+start, hs+end) {
 						return
 					}
 				}
