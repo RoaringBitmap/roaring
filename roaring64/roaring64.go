@@ -700,7 +700,7 @@ main:
 				}
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
-				rb.highlowcontainer.getContainerAtIndex(pos1).Or(x2.highlowcontainer.getContainerAtIndex(pos2))
+				rb.highlowcontainer.getWritableContainerAtIndex(pos1).Or(x2.highlowcontainer.getContainerAtIndex(pos2))
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {

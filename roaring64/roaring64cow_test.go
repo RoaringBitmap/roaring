@@ -1768,3 +1768,32 @@ func TestCloneCOWContainers(t *testing.T) {
 
 	//assert.EqualValues(t, rb.ToArray(), newRb1.ToArray())
 }
+
+// TestOrCOWSharedContainer verifies that in-place Or on a CoW-cloned bitmap
+// does not mutate containers shared with the clone source.
+func TestOrCOWSharedContainer(t *testing.T) {
+	rb1 := NewBitmap()
+	rb1.SetCopyOnWrite(true)
+	// Populate a single high-key container with values in [0, 1000).
+	for i := uint64(0); i < 1000; i++ {
+		rb1.Add(i)
+	}
+
+	// Clone: rb2 shares rb1's container, with needCopyOnWrite set on both sides.
+	rb2 := rb1.Clone()
+
+	// x has values in the same high-key container that are not already in rb1/rb2.
+	x := NewBitmap()
+	for i := uint64(1000); i < 2000; i++ {
+		x.Add(i)
+	}
+
+	// In-place Or into rb1. Must NOT mutate the container shared with rb2.
+	rb1.Or(x)
+
+	assert.EqualValues(t, 2000, rb1.GetCardinality())
+	assert.EqualValues(t, 1000, rb2.GetCardinality(),
+		"rb2 was corrupted: Or on rb1 mutated a CoW-shared container")
+	assert.False(t, rb2.Contains(1500),
+		"rb2 was corrupted: contains a value that was only added to rb1")
+}
