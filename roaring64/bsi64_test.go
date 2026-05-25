@@ -870,3 +870,26 @@ func BenchmarkClearValues(b *testing.B) {
 		b2.ClearValues(resultA)
 	}
 }
+
+// TestGetValueNegativeAfterGrowth checks that negative values stored in a
+// NewDefaultBSI are returned correctly after bA grows because a larger positive
+// value is added later. Previously, the sign bit was stranded at the old slot
+// when bA was extended, causing wrong-sign results.
+// See https://github.com/RoaringBitmap/roaring/issues/462
+func TestGetValueNegativeAfterGrowth(t *testing.T) {
+	bsi := NewDefaultBSI()
+	for i := int64(-15); i <= 15; i++ {
+		bsi.SetValue(uint64(i+15), i)
+	}
+
+	val, exists := bsi.GetValue(0)
+	require.True(t, exists)
+	assert.Equal(t, int64(-15), val, "before growth")
+
+	// Adding 16 requires an extra bit and grows bA, shifting the sign slot.
+	bsi.SetValue(uint64(16+15), 16)
+
+	val, exists = bsi.GetValue(0)
+	require.True(t, exists)
+	assert.Equal(t, int64(-15), val, "after growth")
+}

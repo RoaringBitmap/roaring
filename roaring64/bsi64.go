@@ -100,8 +100,20 @@ func (b *BSI) SetBigValue(columnID uint64, value *big.Int) {
 		if minBits == 1 {
 			minBits = 2
 		}
-		for len(b.bA) < minBits {
-			b.bA = append(b.bA, Bitmap{})
+		if len(b.bA) < minBits {
+			oldSignPos := len(b.bA) - 1
+			for len(b.bA) < minBits {
+				b.bA = append(b.bA, Bitmap{})
+			}
+			// When bA grows, the sign slot shifts from oldSignPos to the new end
+			// of bA. For existing negative entries (whose sign bit is set in
+			// bA[oldSignPos]), sign-extension requires that all intermediate bit
+			// positions between oldSignPos and the new sign position also be set.
+			// Copy the old sign bitmap into every new slot (sign extension).
+			newSignPos := len(b.bA) - 1
+			for i := oldSignPos + 1; i <= newSignPos; i++ {
+				b.bA[i].Or(&b.bA[oldSignPos])
+			}
 		}
 	}
 
@@ -122,8 +134,16 @@ func (b *BSI) SetBigMany(foundSet *Bitmap, value *big.Int) {
 		if minBits == 1 {
 			minBits = 2
 		}
-		for len(b.bA) < minBits {
-			b.bA = append(b.bA, Bitmap{})
+		if len(b.bA) < minBits {
+			oldSignPos := len(b.bA) - 1
+			for len(b.bA) < minBits {
+				b.bA = append(b.bA, Bitmap{})
+			}
+			// Sign-extend existing negative entries into the new bit slots.
+			newSignPos := len(b.bA) - 1
+			for i := oldSignPos + 1; i <= newSignPos; i++ {
+				b.bA[i].Or(&b.bA[oldSignPos])
+			}
 		}
 	}
 	for i := b.BitCount(); i >= 0; i-- {
