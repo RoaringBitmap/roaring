@@ -81,6 +81,13 @@ main:
 				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 			} else {
 				c1 := x1.highlowcontainer.getWritableContainerAtIndex(pos1)
+				// runContainer16.lazyIOR falls back to a slow ior path
+				// (O(N log R) per merged element); promote to bitmapContainer
+				// first, whose lazy union is O(1024) regardless of cardinality.
+				// See https://github.com/RoaringBitmap/roaring/issues/81.
+				if rc, ok := c1.(*runContainer16); ok && !rc.isFull() {
+					c1 = rc.toBitmapContainer()
+				}
 				x1.highlowcontainer.containers[pos1] = c1.lazyIOR(x2.highlowcontainer.getContainerAtIndex(pos2))
 				x1.highlowcontainer.needCopyOnWrite[pos1] = false
 				pos1++

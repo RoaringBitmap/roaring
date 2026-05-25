@@ -1356,3 +1356,65 @@ func BenchmarkCardinalityInRange(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkFastOrRunContainers measures FastOr over inputs containing
+// runContainer16 slots (the shape AddRange and RunOptimize produce),
+// exercising the runContainer16 -> bitmapContainer pre-promotion in
+// (*Bitmap).lazyOR. See issue #81.
+//
+// go test -bench BenchmarkFastOrRunContainers -benchmem -run - -benchtime=2s
+func BenchmarkFastOrRunContainers(b *testing.B) {
+	const numBitmaps = 15
+	const blocksPerBitmap = 40 // each block = 1<<16 bits
+	const runsPerBlock = 8
+
+	rng := rand.New(rand.NewSource(42))
+	bms := make([]*Bitmap, numBitmaps)
+	for i := 0; i < numBitmaps; i++ {
+		bm := NewBitmap()
+		for blk := 0; blk < blocksPerBitmap; blk++ {
+			base := uint64(blk) << 16
+			offset := uint64(rng.Intn(1000))
+			for r := 0; r < runsPerBlock; r++ {
+				start := base + offset + uint64(r)*8000 + uint64(i*37)
+				end := start + 6000
+				blockEnd := base + (1 << 16)
+				if end > blockEnd {
+					end = blockEnd
+				}
+				if start >= blockEnd {
+					break
+				}
+				bm.AddRange(start, end)
+			}
+		}
+		bm.RunOptimize()
+		bms[i] = bm
+	}
+
+	// Sanity-check: the workload must actually contain runContainer16,
+	// otherwise the bench wouldn't exercise the patched path.
+	hasRunContainer := false
+	for _, bm := range bms {
+		for _, c := range bm.highlowcontainer.containers {
+			if _, ok := c.(*runContainer16); ok {
+				hasRunContainer = true
+				break
+			}
+		}
+		if hasRunContainer {
+			break
+		}
+	}
+	if !hasRunContainer {
+		b.Fatalf("workload did not produce any runContainer16; bench would not exercise the patched path")
+	}
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		res := FastOr(bms...)
+		if res.GetCardinality() == 0 {
+			b.Fatal("unexpected empty result")
+		}
+	}
+}
