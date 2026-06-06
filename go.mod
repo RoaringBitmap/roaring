@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.4
 
 require (
-	github.com/bits-and-blooms/bitset v1.24.2
+	github.com/bits-and-blooms/bitset v1.24.4
 	github.com/google/uuid v1.6.0
 	github.com/mschoch/smat v0.2.0
 	github.com/stretchr/testify v1.11.1
