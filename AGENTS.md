@@ -14,9 +14,9 @@ The library's documented contract is explicit and consistent across the public A
 
 Relevant documentation locations:
 
-- [roaring.go](/Users/dlemire/CVS/github/roaring/roaring.go): doc comments on `ReadFrom`, `MustReadFrom`, `FromBuffer`, `FromUnsafeBytes`, `UnmarshalBinary`, and `Validate`.
-- [roaring64/roaring64.go](/Users/dlemire/CVS/github/roaring/roaring64/roaring64.go): equivalent `ReadFrom`, `UnmarshalBinary`, and `Validate` for 64-bit bitmaps.
-- [README.md](/Users/dlemire/CVS/github/roaring/README.md) (the serialization example, around lines 250-272): sample code showing the required validate-after-deserialize pattern for untrusted input, with the explicit comment: "if buf is an untrusted source, you should validate the result".
+- roaring.go: doc comments on `ReadFrom`, `MustReadFrom`, `FromBuffer`, `FromUnsafeBytes`, `UnmarshalBinary`, and `Validate`.
+- roaring64/roaring64.go: equivalent `ReadFrom`, `UnmarshalBinary`, and `Validate` for 64-bit bitmaps.
+- README.md (the serialization example, around lines 250-272): sample code showing the required validate-after-deserialize pattern for untrusted input, with the explicit comment: "if buf is an untrusted source, you should validate the result".
 
 The format specification is documented at https://github.com/RoaringBitmap/RoaringFormatSpec. The Go, Java, C and C++ implementations are binary compatible.
 
