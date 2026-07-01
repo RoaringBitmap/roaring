@@ -1,5 +1,5 @@
-//go:build !amd64 || appengine || go1.9
-// +build !amd64 appengine go1.9
+//go:build !amd64 || appengine
+// +build !amd64 appengine
 
 package roaring
 
