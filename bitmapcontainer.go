@@ -69,39 +69,11 @@ func (bc *bitmapContainer) safeMinimum() (uint16, error) {
 	return val, nil
 }
 
-// i should be non-zero
-func clz(i uint64) int {
-	n := 1
-	x := uint32(i >> 32)
-	if x == 0 {
-		n += 32
-		x = uint32(i)
-	}
-	if x>>16 == 0 {
-		n += 16
-		x = x << 16
-	}
-	if x>>24 == 0 {
-		n += 8
-		x = x << 8
-	}
-	if x>>28 == 0 {
-		n += 4
-		x = x << 4
-	}
-	if x>>30 == 0 {
-		n += 2
-		x = x << 2
-	}
-	return n - int(x>>31)
-}
-
 func (bc *bitmapContainer) maximum() uint16 {
 	for i := len(bc.bitmap); i > 0; i-- {
 		w := bc.bitmap[i-1]
 		if w != 0 {
-			r := clz(w)
-			return uint16((i-1)*64 + 63 - r)
+			return uint16((i-1)*64 + 63 - countLeadingZeros(w))
 		}
 	}
 	return uint16(0)
