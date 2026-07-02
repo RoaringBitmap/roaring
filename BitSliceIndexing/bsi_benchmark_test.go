@@ -171,3 +171,64 @@ func TestBatchEqualConsistentWithGetValue(t *testing.T) {
 		}
 	}
 }
+
+// TestBatchEqualExistenceAuthority pins BatchEqual results to the existence
+// bitmap. UnmarshalBinary accepts plane data that is not a subset of eBM (the
+// checked-in testdata/age fixture is such data), and every read path treats
+// eBM as authoritative, so columns present in a plane but absent from eBM must
+// never appear in results.
+func TestBatchEqualExistenceAuthority(t *testing.T) {
+	// Synthetic state: column 2 has bits in plane 0 but is absent from eBM.
+	ebm := roaring.BitmapOf(1)
+	plane := roaring.BitmapOf(1, 2)
+	ebmData, err := ebm.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	planeData, err := plane.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bsi := NewDefaultBSI()
+	if err := bsi.UnmarshalBinary([][]byte{ebmData, planeData}); err != nil {
+		t.Fatal(err)
+	}
+	res := bsi.BatchEqual(0, []int64{1})
+	assert.True(t, res.Contains(1))
+	assert.False(t, res.Contains(2), "column 2 is not in eBM and must not match")
+
+	// The age fixture ships with plane cardinalities above the eBM cardinality;
+	// results must still be a subset of eBM.
+	large := setupLargeBSI(t)
+	if large == nil {
+		t.Skip("skipping, large BSI setup failed")
+	}
+	for _, vals := range [][]int64{{16}, {55, 57}, {0, 1, 2, 3}} {
+		res := large.BatchEqual(0, vals)
+		outside := roaring.AndNot(res, large.GetExistenceBitmap())
+		assert.True(t, outside.IsEmpty(), "BatchEqual(%v) returned %d columns outside eBM", vals, outside.GetCardinality())
+	}
+}
+
+// Benchmarks across query-list shapes: work sharing behaves differently for
+// small lists, dense contiguous ranges (which collapse to a few plane
+// operations), and scattered values (no range collapse).
+func BenchmarkBatchEqualM128(b *testing.B)          { benchmarkBatchEqualM(b, 128, 1) }
+func BenchmarkBatchEqualM128Scattered(b *testing.B) { benchmarkBatchEqualM(b, 128, 2) }
+func BenchmarkBatchEqualM200(b *testing.B)          { benchmarkBatchEqualM(b, 200, 1) }
+
+func benchmarkBatchEqualM(b *testing.B, m int, stride int64) {
+	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("skipping, large BSI setup failed")
+	}
+	vals := make([]int64, m)
+	for i := range vals {
+		vals[i] = int64(i)*stride + stride - 1
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res := bsi.BatchEqual(0, vals)
+		_ = res
+	}
+}

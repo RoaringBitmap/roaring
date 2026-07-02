@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/bits"
 	"runtime"
+	"sort"
 	"sync"
 	"sync/atomic"
 
@@ -271,7 +272,6 @@ type task struct {
 	op           Operation
 	valueOrStart int64
 	end          int64
-	values       map[int64]struct{}
 	bits         *roaring.Bitmap
 }
 
@@ -743,134 +743,100 @@ func (b *BSI) MarshalBinary() ([][]byte, error) {
 	return data, nil
 }
 
-// maxVectorizedBatchSize is the threshold above which BatchEqual falls back
-// to the scalar parallel executor. This prevents a memory allocation/CPU scaling
-// cliff when querying a very large list of unique values (large M) on a small/sparse
-// database, which would otherwise allocate and process M intermediate bitmaps.
-const maxVectorizedBatchSize = 128
-
-// maxInPlaceCombineSize is the threshold below which BatchEqual combines the
-// computed match bitmaps sequentially in-place using Bitmap.Or rather than roaring.ParOr.
-// This avoids the goroutine spawning, chunking spec, and channel allocation overhead
-// of ParOr when combining a small number of bitmaps, keeping allocs/op low and
-// avoiding a performance regression on typical small queries.
-const maxInPlaceCombineSize = 16
-
-// BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
+// BatchEqual returns a bitmap containing the column IDs where the values are contained
+// within the list of values provided. The parallelism parameter is accepted for API
+// compatibility; work is shared across values, so the query runs on the calling goroutine.
 func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	if b.eBM.IsEmpty() || len(values) == 0 {
 		return roaring.NewBitmap()
 	}
 
-	if parallelism < 0 {
-		parallelism = 0
-	}
-
-	// Deduplicate values
-	valMap := make(map[int64]struct{}, len(values))
-	for _, v := range values {
-		valMap[v] = struct{}{}
-	}
-
-	// Filter and collect valid unique values
 	bitCount := b.BitCount()
-	validValues := make([]int64, 0, len(valMap))
-	for v := range valMap {
-		if bitCount >= 64 {
-			validValues = append(validValues, v)
-		} else {
-			if v >= 0 && uint64(v) < (uint64(1)<<uint64(bitCount)) {
-				validValues = append(validValues, v)
-			}
-		}
-	}
 
-	if len(validValues) == 0 {
+	// Deduplicate, and drop values that cannot be represented in bitCount
+	// planes: GetValue can never observe such a value, so it matches no column.
+	seen := make(map[uint64]struct{}, len(values))
+	vals := make([]uint64, 0, len(values))
+	for _, v := range values {
+		u := uint64(v)
+		if bitCount < 64 && (v < 0 || u >= uint64(1)<<uint(bitCount)) {
+			continue
+		}
+		if _, ok := seen[u]; ok {
+			continue
+		}
+		seen[u] = struct{}{}
+		vals = append(vals, u)
+	}
+	if len(vals) == 0 {
 		return roaring.NewBitmap()
 	}
+	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
 
-	// Fallback to scalar parallel executor if query list is very large
-	if len(validValues) > maxVectorizedBatchSize {
-		comp := &task{bsi: b, values: valMap}
-		return parallelExecutor(parallelism, comp, batchEqualFallback, b.eBM)
-	}
-
-	bitmaps := make([]*roaring.Bitmap, len(validValues))
-	for i, v := range validValues {
-		bitmaps[i] = b.getEqualBitmap(v)
-	}
-
-	var finalResult *roaring.Bitmap
-	if len(bitmaps) == 1 {
-		finalResult = bitmaps[0]
-	} else if len(bitmaps) <= maxInPlaceCombineSize {
-		finalResult = bitmaps[0]
-		for i := 1; i < len(bitmaps); i++ {
-			finalResult.Or(bitmaps[i])
-		}
-	} else {
-		finalResult = roaring.ParOr(parallelism, bitmaps...)
-	}
-
+	result := b.matchTrie(vals, bitCount-1, b.eBM, false)
 	if b.runOptimized {
-		finalResult.RunOptimize()
+		result.RunOptimize()
 	}
-	return finalResult
+	return result
 }
 
-// getEqualBitmap returns a bitmap of column IDs whose value is exactly v
-func (b *BSI) getEqualBitmap(v int64) *roaring.Bitmap {
-	bitCount := b.BitCount()
-	// Find first set bit to start with a sparse bitmap instead of eBM
-	firstSetBit := -1
-	for i := 0; i < bitCount; i++ {
-		if (uint64(v) & (1 << uint64(i))) != 0 {
-			firstSetBit = i
-			break
+// matchTrie returns the columns in prefix whose bits on planes [0, p] equal the low
+// p+1 bits of any value in vals. vals must be unique, sorted, and share identical bits
+// above plane p; prefix holds the columns matching those shared upper bits, so results
+// stay rooted in the existence bitmap the recursion starts from. owned reports whether
+// prefix is a private intermediate the callee may consume in place. Each shared value
+// prefix is intersected exactly once and empty intermediates prune the recursion, so
+// total work is bounded by the size of the values' bit trie and the data actually
+// present, not len(vals) × BitCount().
+func (b *BSI) matchTrie(vals []uint64, p int, prefix *roaring.Bitmap, owned bool) *roaring.Bitmap {
+	if prefix.IsEmpty() {
+		if owned {
+			return prefix
 		}
+		return roaring.NewBitmap()
 	}
-
-	var vBM *roaring.Bitmap
-	if firstSetBit != -1 {
-		vBM = b.bA[firstSetBit].Clone()
-		for i := 0; i < bitCount; i++ {
-			if i == firstSetBit {
-				continue
-			}
-			if (uint64(v) & (1 << uint64(i))) != 0 {
-				vBM.And(b.bA[i])
-			} else {
-				vBM.AndNot(b.bA[i])
-			}
+	// Either all planes are consumed (exactly one value remains and prefix matched
+	// every one of its bits), or vals covers every bit pattern of the remaining
+	// planes, which collapses dense value ranges to a single operation. In both
+	// cases every column in prefix matches.
+	if p < 0 || (p < 63 && uint64(len(vals)) == uint64(1)<<uint(p+1)) {
+		if owned {
+			return prefix
 		}
-	} else {
-		vBM = b.eBM.Clone()
-		for i := 0; i < bitCount; i++ {
-			vBM.AndNot(b.bA[i])
-		}
+		return prefix.Clone()
 	}
-	return vBM
+	// vals is sorted and shares all bits above p, so bit p partitions it in place.
+	cut := sort.Search(len(vals), func(i int) bool { return vals[i]&(uint64(1)<<uint(p)) != 0 })
+	lo, hi := vals[:cut], vals[cut:]
+	switch {
+	case len(hi) == 0:
+		return b.matchTrie(lo, p-1, planeChild(prefix, b.bA[p], false, owned), true)
+	case len(lo) == 0:
+		return b.matchTrie(hi, p-1, planeChild(prefix, b.bA[p], true, owned), true)
+	default:
+		// Materialize the set branch before the clear branch may consume prefix.
+		hiBM := roaring.And(prefix, b.bA[p])
+		result := b.matchTrie(lo, p-1, planeChild(prefix, b.bA[p], false, owned), true)
+		result.Or(b.matchTrie(hi, p-1, hiBM, true))
+		return result
+	}
 }
 
-func batchEqualFallback(e *task, batch []uint32, resultsChan chan *roaring.Bitmap,
-	wg *sync.WaitGroup) {
-
-	defer wg.Done()
-
-	results := roaring.NewBitmap()
-	if e.bsi.runOptimized {
-		results.RunOptimize()
-	}
-
-	for i := 0; i < len(batch); i++ {
-		cID := batch[i]
-		if value, ok := e.bsi.GetValue(uint64(cID)); ok {
-			if _, yes := e.values[value]; yes {
-				results.Add(cID)
-			}
+// planeChild narrows prefix by one bitplane: prefix ∧ plane when set, prefix ∧ ¬plane
+// otherwise. When the caller owns prefix it is consumed in place to avoid a copy.
+func planeChild(prefix, plane *roaring.Bitmap, set, owned bool) *roaring.Bitmap {
+	if owned {
+		if set {
+			prefix.And(plane)
+		} else {
+			prefix.AndNot(plane)
 		}
+		return prefix
 	}
-	resultsChan <- results
+	if set {
+		return roaring.And(prefix, plane)
+	}
+	return roaring.AndNot(prefix, plane)
 }
 
 // ClearBits cleared the bits that exist in the target if they are also in the found set.
