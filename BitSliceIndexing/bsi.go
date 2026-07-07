@@ -773,11 +773,124 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	}
 	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
 
+	if len(vals) >= 128 && b.shouldUseParallelScan(vals, bitCount) {
+		result := b.parallelBatchEqualScan(parallelism, vals)
+		if b.runOptimized {
+			result.RunOptimize()
+		}
+		return result
+	}
+
 	result := b.matchTrie(vals, bitCount-1, b.eBM, false)
 	if b.runOptimized {
 		result.RunOptimize()
 	}
 	return result
+}
+
+func (b *BSI) shouldUseParallelScan(vals []uint64, bitCount int) bool {
+	// Guard against BSIs with excessive bitplanes to ensure safe limits.
+	if bitCount > 128 {
+		return false
+	}
+	// Avoid scanning for perfectly contiguous ranges which are highly efficient on the trie.
+	if vals[len(vals)-1]-vals[0] == uint64(len(vals)-1) {
+		return false
+	}
+	// If existence bitmap has only 1 container, sequential trie walk is already very fast.
+	if b.eBM.GetContainerCount() < 2 {
+		return false
+	}
+	// Verify if the unique query values split frequently to cause a branch blowup on the trie.
+	if estimateBranchCount(vals, bitCount-1, 64) < 64 {
+		return false
+	}
+	// The overhead of launching goroutines is only justified on sufficiently large existence bitmaps.
+	if b.eBM.GetCardinality() < 100000 {
+		return false
+	}
+	return true
+}
+
+func estimateBranchCount(vals []uint64, p int, limit int) int {
+	if len(vals) <= 1 || limit <= 0 {
+		return 0
+	}
+	// Quick O(1) check: if the values are perfectly contiguous, branch count is 0
+	if vals[len(vals)-1]-vals[0] == uint64(len(vals)-1) {
+		return 0
+	}
+	if p >= 64 {
+		p = 63
+	}
+	if p < 0 || (p < 63 && uint64(len(vals)) == uint64(1)<<uint(p+1)) {
+		return 0
+	}
+	mask := uint64(1) << uint(p)
+	cut := sort.Search(len(vals), func(i int) bool {
+		return vals[i]&mask != 0
+	})
+	if cut == 0 || cut == len(vals) {
+		return estimateBranchCount(vals, p-1, limit)
+	}
+	leftLimit := limit - 1
+	leftBranch := estimateBranchCount(vals[:cut], p-1, leftLimit)
+	rightLimit := leftLimit - leftBranch
+	rightBranch := estimateBranchCount(vals[cut:], p-1, rightLimit)
+	return 1 + leftBranch + rightBranch
+}
+
+func (b *BSI) parallelBatchEqualScan(parallelism int, vals []uint64) *roaring.Bitmap {
+	var n int = parallelism
+	if n <= 0 {
+		n = runtime.NumCPU()
+	}
+	if n > 1024 {
+		n = 1024
+	}
+
+	card := b.eBM.GetCardinality()
+	if card == 0 {
+		return roaring.NewBitmap()
+	}
+	if uint64(n) > card {
+		n = int(card)
+	}
+
+	resultsChan := make(chan *roaring.Bitmap, n)
+	x := card / uint64(n)
+	remainder := card - (x * uint64(n))
+
+	var wg sync.WaitGroup
+	iter := b.eBM.ManyIterator()
+
+	bitCount := b.BitCount()
+
+	for i := 0; i < n; i++ {
+		var batch []uint32
+		if i == n-1 {
+			batch = make([]uint32, x+remainder)
+		} else {
+			batch = make([]uint32, x)
+		}
+		iter.NextMany(batch)
+		wg.Add(1)
+		go func(cols []uint32) {
+			defer wg.Done()
+			out := roaring.ParallelBSIScanHelper(cols, b.bA, bitCount, vals)
+			resultsChan <- out
+		}(batch)
+	}
+
+	wg.Wait()
+	close(resultsChan)
+
+	ba := make([]*roaring.Bitmap, 0, n)
+	for bm := range resultsChan {
+		ba = append(ba, bm)
+	}
+
+	return roaring.ParOr(0, ba...)
 }
 
 // matchTrie returns the columns in prefix whose bits on planes [0, p] equal the low

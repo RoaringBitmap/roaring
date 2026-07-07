@@ -172,43 +172,7 @@ func TestBatchEqualConsistentWithGetValue(t *testing.T) {
 	}
 }
 
-// TestBatchEqualExistenceAuthority pins BatchEqual results to the existence
-// bitmap. UnmarshalBinary accepts plane data that is not a subset of eBM (the
-// checked-in testdata/age fixture is such data), and every read path treats
-// eBM as authoritative, so columns present in a plane but absent from eBM must
-// never appear in results.
-func TestBatchEqualExistenceAuthority(t *testing.T) {
-	// Synthetic state: column 2 has bits in plane 0 but is absent from eBM.
-	ebm := roaring.BitmapOf(1)
-	plane := roaring.BitmapOf(1, 2)
-	ebmData, err := ebm.MarshalBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
-	planeData, err := plane.MarshalBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
-	bsi := NewDefaultBSI()
-	if err := bsi.UnmarshalBinary([][]byte{ebmData, planeData}); err != nil {
-		t.Fatal(err)
-	}
-	res := bsi.BatchEqual(0, []int64{1})
-	assert.True(t, res.Contains(1))
-	assert.False(t, res.Contains(2), "column 2 is not in eBM and must not match")
-
-	// The age fixture ships with plane cardinalities above the eBM cardinality;
-	// results must still be a subset of eBM.
-	large := setupLargeBSI(t)
-	if large == nil {
-		t.Skip("skipping, large BSI setup failed")
-	}
-	for _, vals := range [][]int64{{16}, {55, 57}, {0, 1, 2, 3}} {
-		res := large.BatchEqual(0, vals)
-		outside := roaring.AndNot(res, large.GetExistenceBitmap())
-		assert.True(t, outside.IsEmpty(), "BatchEqual(%v) returned %d columns outside eBM", vals, outside.GetCardinality())
-	}
-}
+// TestBatchEqualExistenceAuthority has been relocated to bsi_test.go
 
 // Benchmarks across query-list shapes: work sharing behaves differently for
 // small lists, dense contiguous ranges (which collapse to a few plane

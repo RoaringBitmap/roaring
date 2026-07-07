@@ -1243,6 +1243,11 @@ func (rb *Bitmap) IsEmpty() bool {
 	return rb.highlowcontainer.size() == 0
 }
 
+// GetContainerCount returns the number of containers in the bitmap.
+func (rb *Bitmap) GetContainerCount() int {
+	return rb.highlowcontainer.size()
+}
+
 // GetCardinality returns the number of integers contained in the bitmap
 func (rb *Bitmap) GetCardinality() uint64 {
 	size := uint64(0)
