@@ -744,8 +744,9 @@ func (b *BSI) MarshalBinary() ([][]byte, error) {
 }
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained
-// within the list of values provided. The parallelism parameter is accepted for API
-// compatibility; work is shared across values, so the query runs on the calling goroutine.
+// within the list of values provided. The trie path shares work across values and runs
+// on the calling goroutine; on scattered queries that would fan the trie out it falls
+// back to a linear existence-bitmap scan, which parallelism splits across goroutines.
 func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	if b.eBM.IsEmpty() || len(values) == 0 {
 		return roaring.NewBitmap()
@@ -788,35 +789,23 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	return result
 }
 
+// shouldUseParallelScan reports whether BatchEqual should skip the match trie in
+// favor of a linear existence-bitmap scan. estimateBranchCount caps the trie's
+// branch fan-out; past the crossover the trie degenerates into an intermediate-
+// bitmap blowup, and only then is the scan's goroutine cost worth paying. The
+// scan also needs a large existence bitmap for the parallelism to earn its keep.
 func (b *BSI) shouldUseParallelScan(vals []uint64, bitCount int) bool {
-	// Guard against BSIs with excessive bitplanes to ensure safe limits.
-	if bitCount > 128 {
-		return false
-	}
-	// Avoid scanning for perfectly contiguous ranges which are highly efficient on the trie.
-	if vals[len(vals)-1]-vals[0] == uint64(len(vals)-1) {
-		return false
-	}
-	// If existence bitmap has only 1 container, sequential trie walk is already very fast.
-	if b.eBM.GetContainerCount() < 2 {
-		return false
-	}
-	// Verify if the unique query values split frequently to cause a branch blowup on the trie.
-	if estimateBranchCount(vals, bitCount-1, 64) < 64 {
-		return false
-	}
-	// The overhead of launching goroutines is only justified on sufficiently large existence bitmaps.
-	if b.eBM.GetCardinality() < 100000 {
-		return false
-	}
-	return true
+	return estimateBranchCount(vals, bitCount-1, 64) >= 64 && b.eBM.GetCardinality() >= 100000
 }
 
+// estimateBranchCount bounds the branches the match trie would take on vals over
+// planes [0, p], stopping once the count reaches limit. Perfectly contiguous
+// ranges collapse to zero. It reads sorted query values only, so the estimate
+// costs nothing against the data.
 func estimateBranchCount(vals []uint64, p int, limit int) int {
 	if len(vals) <= 1 || limit <= 0 {
 		return 0
 	}
-	// Quick O(1) check: if the values are perfectly contiguous, branch count is 0
 	if vals[len(vals)-1]-vals[0] == uint64(len(vals)-1) {
 		return 0
 	}
@@ -840,15 +829,21 @@ func estimateBranchCount(vals []uint64, p int, limit int) int {
 	return 1 + leftBranch + rightBranch
 }
 
+// parallelBatchEqualScan computes BatchEqual by a flat membership scan: it reads
+// each existing column's value with GetValue and keeps the ones present in vals.
+// The existence bitmap is authoritative, so the result is always a subset of it.
+// This trades the trie's intermediate-bitmap allocations for one pass over the
+// data, which wins when the query fans the trie out (see shouldUseParallelScan).
 func (b *BSI) parallelBatchEqualScan(parallelism int, vals []uint64) *roaring.Bitmap {
-	var n int = parallelism
+	want := make(map[uint64]struct{}, len(vals))
+	for _, v := range vals {
+		want[v] = struct{}{}
+	}
+
+	n := parallelism
 	if n <= 0 {
 		n = runtime.NumCPU()
 	}
-	if n > 1024 {
-		n = 1024
-	}
-
 	card := b.eBM.GetCardinality()
 	if card == 0 {
 		return roaring.NewBitmap()
@@ -857,31 +852,33 @@ func (b *BSI) parallelBatchEqualScan(parallelism int, vals []uint64) *roaring.Bi
 		n = int(card)
 	}
 
-	resultsChan := make(chan *roaring.Bitmap, n)
 	x := card / uint64(n)
 	remainder := card - (x * uint64(n))
+	iter := b.eBM.ManyIterator()
+	resultsChan := make(chan *roaring.Bitmap, n)
 
 	var wg sync.WaitGroup
-	iter := b.eBM.ManyIterator()
-
-	bitCount := b.BitCount()
-
 	for i := 0; i < n; i++ {
-		var batch []uint32
+		size := x
 		if i == n-1 {
-			batch = make([]uint32, x+remainder)
-		} else {
-			batch = make([]uint32, x)
+			size += remainder
 		}
+		batch := make([]uint32, size)
 		iter.NextMany(batch)
 		wg.Add(1)
 		go func(cols []uint32) {
 			defer wg.Done()
-			out := roaring.ParallelBSIScanHelper(cols, b.bA, bitCount, vals)
+			out := roaring.NewBitmap()
+			for _, col := range cols {
+				if v, ok := b.GetValue(uint64(col)); ok {
+					if _, hit := want[uint64(v)]; hit {
+						out.Add(col)
+					}
+				}
+			}
 			resultsChan <- out
 		}(batch)
 	}
-
 	wg.Wait()
 	close(resultsChan)
 
@@ -889,7 +886,6 @@ func (b *BSI) parallelBatchEqualScan(parallelism int, vals []uint64) *roaring.Bi
 	for bm := range resultsChan {
 		ba = append(ba, bm)
 	}
-
 	return roaring.ParOr(0, ba...)
 }
 
