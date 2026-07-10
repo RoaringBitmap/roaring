@@ -502,3 +502,50 @@ func TestTransposeWithCountsNil(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, int64(2), a)
 }
+
+// TestBatchEqualLargeQueryValues drives the scattered-query scan path: a large
+// existence bitmap and a 128+ value query push BatchEqual past the crossover, and
+// the result is pinned to the GetValue ground truth across parallelism levels, so
+// the linear scan and its partitioning stay authoritative (subset of eBM) and exact.
+func TestBatchEqualLargeQueryValues(t *testing.T) {
+	rg := rand.New(rand.NewSource(12345))
+	for run := 0; run < 10; run++ {
+		// Large values (>= 2^20) and a big column set push past the scan crossover.
+		bsi := NewDefaultBSI()
+		numCols := rg.Intn(50000) + 120000
+		for col := 0; col < numCols; col++ {
+			if rg.Float64() < 0.8 {
+				val := rg.Int63n(100000) + 1048500
+				bsi.SetValue(uint64(col), val)
+			}
+		}
+
+		querySize := rg.Intn(100) + 128
+		query := make([]int64, querySize)
+		for i := range query {
+			query[i] = rg.Int63n(100100) + 1048500
+		}
+
+		// Ground truth: GetValue per existing column.
+		expected := roaring.NewBitmap()
+		valMap := make(map[int64]bool)
+		for _, q := range query {
+			valMap[q] = true
+		}
+		iter := bsi.GetExistenceBitmap().Iterator()
+		for iter.HasNext() {
+			col := iter.Next()
+			val, ok := bsi.GetValue(uint64(col))
+			if ok && valMap[val] {
+				expected.Add(col)
+			}
+		}
+
+		for _, parallelism := range []int{0, 1, 2, 4} {
+			actual := bsi.BatchEqual(parallelism, query)
+			if !actual.Equals(expected) {
+				t.Fatalf("mismatch in run %d parallelism %d: expected %v, got %v", run, parallelism, expected.ToArray(), actual.ToArray())
+			}
+		}
+	}
+}

@@ -744,8 +744,9 @@ func (b *BSI) MarshalBinary() ([][]byte, error) {
 }
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained
-// within the list of values provided. The parallelism parameter is accepted for API
-// compatibility; work is shared across values, so the query runs on the calling goroutine.
+// within the list of values provided. The trie path shares work across values and runs
+// on the calling goroutine; on scattered queries that would fan the trie out it falls
+// back to a linear existence-bitmap scan, which parallelism splits across goroutines.
 func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	if b.eBM.IsEmpty() || len(values) == 0 {
 		return roaring.NewBitmap()
@@ -773,11 +774,119 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	}
 	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
 
+	if len(vals) >= 128 && b.shouldUseParallelScan(vals, bitCount) {
+		result := b.parallelBatchEqualScan(parallelism, vals)
+		if b.runOptimized {
+			result.RunOptimize()
+		}
+		return result
+	}
+
 	result := b.matchTrie(vals, bitCount-1, b.eBM, false)
 	if b.runOptimized {
 		result.RunOptimize()
 	}
 	return result
+}
+
+// shouldUseParallelScan reports whether BatchEqual should skip the match trie in
+// favor of a linear existence-bitmap scan. estimateBranchCount caps the trie's
+// branch fan-out; past the crossover the trie degenerates into an intermediate-
+// bitmap blowup, and only then is the scan's goroutine cost worth paying. The
+// scan also needs a large existence bitmap for the parallelism to earn its keep.
+func (b *BSI) shouldUseParallelScan(vals []uint64, bitCount int) bool {
+	return estimateBranchCount(vals, bitCount-1, 64) >= 64 && b.eBM.GetCardinality() >= 100000
+}
+
+// estimateBranchCount bounds the branches the match trie would take on vals over
+// planes [0, p], stopping once the count reaches limit. Perfectly contiguous
+// ranges collapse to zero. It reads sorted query values only, so the estimate
+// costs nothing against the data.
+func estimateBranchCount(vals []uint64, p int, limit int) int {
+	if len(vals) <= 1 || limit <= 0 {
+		return 0
+	}
+	if vals[len(vals)-1]-vals[0] == uint64(len(vals)-1) {
+		return 0
+	}
+	if p >= 64 {
+		p = 63
+	}
+	if p < 0 || (p < 63 && uint64(len(vals)) == uint64(1)<<uint(p+1)) {
+		return 0
+	}
+	mask := uint64(1) << uint(p)
+	cut := sort.Search(len(vals), func(i int) bool {
+		return vals[i]&mask != 0
+	})
+	if cut == 0 || cut == len(vals) {
+		return estimateBranchCount(vals, p-1, limit)
+	}
+	leftLimit := limit - 1
+	leftBranch := estimateBranchCount(vals[:cut], p-1, leftLimit)
+	rightLimit := leftLimit - leftBranch
+	rightBranch := estimateBranchCount(vals[cut:], p-1, rightLimit)
+	return 1 + leftBranch + rightBranch
+}
+
+// parallelBatchEqualScan computes BatchEqual by a flat membership scan: it reads
+// each existing column's value with GetValue and keeps the ones present in vals.
+// The existence bitmap is authoritative, so the result is always a subset of it.
+// This trades the trie's intermediate-bitmap allocations for one pass over the
+// data, which wins when the query fans the trie out (see shouldUseParallelScan).
+func (b *BSI) parallelBatchEqualScan(parallelism int, vals []uint64) *roaring.Bitmap {
+	want := make(map[uint64]struct{}, len(vals))
+	for _, v := range vals {
+		want[v] = struct{}{}
+	}
+
+	n := parallelism
+	if n <= 0 {
+		n = runtime.NumCPU()
+	}
+	card := b.eBM.GetCardinality()
+	if card == 0 {
+		return roaring.NewBitmap()
+	}
+	if uint64(n) > card {
+		n = int(card)
+	}
+
+	x := card / uint64(n)
+	remainder := card - (x * uint64(n))
+	iter := b.eBM.ManyIterator()
+	resultsChan := make(chan *roaring.Bitmap, n)
+
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		size := x
+		if i == n-1 {
+			size += remainder
+		}
+		batch := make([]uint32, size)
+		iter.NextMany(batch)
+		wg.Add(1)
+		go func(cols []uint32) {
+			defer wg.Done()
+			out := roaring.NewBitmap()
+			for _, col := range cols {
+				if v, ok := b.GetValue(uint64(col)); ok {
+					if _, hit := want[uint64(v)]; hit {
+						out.Add(col)
+					}
+				}
+			}
+			resultsChan <- out
+		}(batch)
+	}
+	wg.Wait()
+	close(resultsChan)
+
+	ba := make([]*roaring.Bitmap, 0, n)
+	for bm := range resultsChan {
+		ba = append(ba, bm)
+	}
+	return roaring.ParOr(0, ba...)
 }
 
 // matchTrie returns the columns in prefix whose bits on planes [0, p] equal the low
