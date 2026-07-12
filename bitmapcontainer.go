@@ -295,16 +295,16 @@ func bitmapEquals(a, b []uint64) bool {
 }
 
 func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) int {
-	// TODO: should be written as optimized assembly
+	// On amd64 this loop compiles to TZCNT/BLSR; the remaining headroom is
+	// vectorized decode (cf. CRoaring bitset_extract_setbits_avx2/avx512).
 	pos := i
 	base := mask
 	for k := 0; k < len(bc.bitmap); k++ {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
-			t := bitset & -bitset
-			x[pos] = base + uint32(popcount(t-1))
+			x[pos] = base + uint32(bits.TrailingZeros64(bitset))
 			pos++
-			bitset ^= t
+			bitset &= bitset - 1
 		}
 		base += 64
 	}
