@@ -532,3 +532,110 @@ func TestBitmapcontainerOrArrayCardinality(t *testing.T) {
 		assert.Equal(t, 1024, result)
 	})
 }
+
+func TestBitmapContainerFillLeastSignificant16bitsProperties(t *testing.T) {
+	runTest := func(t *testing.T, vals []uint16, mask uint32) {
+		bc := newBitmapContainer()
+		for _, val := range vals {
+			bc.iadd(val)
+		}
+
+		cardinality := len(vals)
+		assert.Equal(t, cardinality, bc.getCardinality())
+
+		for _, startIdx := range []int{0, 13} {
+			x := make([]uint32, startIdx+cardinality+10)
+			// Fill x with a sentinel value to detect out-of-bound writes
+			const sentinel = 0xDEADC0DE
+			for j := range x {
+				x[j] = sentinel
+			}
+
+			pos := bc.fillLeastSignificant16bits(x, startIdx, mask)
+
+			// Assert return value matches container cardinality contract
+			assert.Equal(t, startIdx+cardinality, pos)
+
+			// Assert prefix before startIdx is untouched
+			for j := 0; j < startIdx; j++ {
+				assert.Equal(t, uint32(sentinel), x[j])
+			}
+
+			// Assert suffix after pos is untouched
+			for j := pos; j < len(x); j++ {
+				assert.Equal(t, uint32(sentinel), x[j])
+			}
+
+			// Assert output contents and order
+			for j, val := range vals {
+				expected := mask + uint32(val)
+				assert.Equal(t, expected, x[startIdx+j], "Mismatch at index %d for val %d", startIdx+j, val)
+			}
+		}
+	}
+
+	t.Run("words >= 2 boundary and bits 63", func(t *testing.T) {
+		// covers: words >= 2, bit 63 within words, word boundaries 0/63/64/127
+		vals := []uint16{
+			0,   // boundary 0
+			63,  // word 0 bit 63
+			64,  // boundary 64
+			127, // word 1 bit 63
+			128, // word 2 boundary 0 (words >= 2)
+			191, // word 2 bit 63
+			255, // word 3 bit 63
+			1024,
+			1024 + 63,
+		}
+		runTest(t, vals, 0xFFFF0000)
+		runTest(t, vals, 0x12340000)
+	})
+
+	t.Run("full container 65536 bits at max mask 0xFFFF0000", func(t *testing.T) {
+		vals := make([]uint16, 65536)
+		for i := 0; i < 65536; i++ {
+			vals[i] = uint16(i)
+		}
+		runTest(t, vals, 0xFFFF0000)
+	})
+
+	t.Run("dense regime p0.95", func(t *testing.T) {
+		r := rand.New(rand.NewSource(12345))
+		vals := []uint16{}
+		for i := 0; i < 65536; i++ {
+			if r.Float64() < 0.95 {
+				vals = append(vals, uint16(i))
+			}
+		}
+		runTest(t, vals, 0xABCDE000)
+	})
+
+	t.Run("sparse regime", func(t *testing.T) {
+		r := rand.New(rand.NewSource(54321))
+		vals := []uint16{}
+		for i := 0; i < 65536; i++ {
+			if r.Float64() < 0.01 {
+				vals = append(vals, uint16(i))
+			}
+		}
+		runTest(t, vals, 0x10000000)
+	})
+
+	t.Run("random-word regimes", func(t *testing.T) {
+		r := rand.New(rand.NewSource(999))
+		vals := []uint16{}
+		for word := 0; word < 1024; word++ {
+			// 30% chance to populate this 64-bit word
+			if r.Float64() < 0.3 {
+				// Random word content
+				w := r.Uint64()
+				for bit := 0; bit < 64; bit++ {
+					if (w & (1 << bit)) != 0 {
+						vals = append(vals, uint16(word*64+bit))
+					}
+				}
+			}
+		}
+		runTest(t, vals, 0x55550000)
+	})
+}
