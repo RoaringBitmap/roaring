@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"math/bits"
 	"strconv"
 
 	"github.com/RoaringBitmap/roaring/v2/internal"
@@ -166,7 +167,7 @@ func (rb *Bitmap) FromDense(bitmap []uint64, doCopy bool) {
 			for _, w := range words {
 				for w != 0 {
 					t := w & -w
-					c.content[pos] = uint16(base + int(popcount(t-1)))
+					c.content[pos] = uint16(base + bits.OnesCount64(t-1))
 					pos++
 					w ^= t
 				}

@@ -1604,21 +1604,6 @@ func TestRoaringArrayCOW(t *testing.T) {
 		assert.Equal(t, 0, a.size())
 	})
 
-	t.Run("Test popcount Full", func(t *testing.T) {
-		res := popcount(uint64(0xffffffffffffffff))
-		assert.EqualValues(t, 64, res)
-	})
-
-	t.Run("Test popcount Empty", func(t *testing.T) {
-		res := popcount(0)
-		assert.EqualValues(t, 0, res)
-	})
-
-	t.Run("Test popcount 16", func(t *testing.T) {
-		res := popcount(0xff00ff)
-		assert.EqualValues(t, 16, res)
-	})
-
 	t.Run("Test ArrayContainer Add", func(t *testing.T) {
 		ar := newArrayContainer()
 		ar.iadd(1)

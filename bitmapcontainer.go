@@ -51,7 +51,7 @@ func (bc *bitmapContainer) minimum() uint16 {
 	for i := 0; i < len(bc.bitmap); i++ {
 		w := bc.bitmap[i]
 		if w != 0 {
-			r := countTrailingZeros(w)
+			r := bits.TrailingZeros64(w)
 			return uint16(r + i*64)
 		}
 	}
@@ -73,7 +73,7 @@ func (bc *bitmapContainer) maximum() uint16 {
 	for i := len(bc.bitmap); i > 0; i-- {
 		w := bc.bitmap[i-1]
 		if w != 0 {
-			return uint16((i-1)*64 + 63 - countLeadingZeros(w))
+			return uint16((i-1)*64 + 63 - bits.LeadingZeros64(w))
 		}
 	}
 	return uint16(0)
@@ -188,7 +188,7 @@ func (bcmi *bitmapContainerManyIterator) nextMany(hs uint32, buf []uint32) int {
 			continue
 		}
 		t := bitset & -bitset
-		buf[n] = uint32(((base * 64) + int(popcount(t-1)))) | hs
+		buf[n] = uint32(((base * 64) + bits.OnesCount64(t-1))) | hs
 		n = n + 1
 		bitset ^= t
 	}
@@ -216,7 +216,7 @@ func (bcmi *bitmapContainerManyIterator) nextMany64(hs uint64, buf []uint64) int
 			continue
 		}
 		t := bitset & -bitset
-		buf[n] = uint64(((base * 64) + int(popcount(t-1)))) | hs
+		buf[n] = uint64(((base * 64) + bits.OnesCount64(t-1))) | hs
 		n = n + 1
 		bitset ^= t
 	}
@@ -698,13 +698,13 @@ func (bc *bitmapContainer) rank(x uint16) int {
 	if leftover == 0 {
 		return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64]))
 	}
-	return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64]) + popcount(bc.bitmap[(uint(x)+1)/64]<<(64-leftover)))
+	return int(popcntSlice(bc.bitmap[:(uint(x)+1)/64])) + bits.OnesCount64(bc.bitmap[(uint(x)+1)/64]<<(64-leftover))
 }
 
 func (bc *bitmapContainer) selectInt(x uint16) int {
 	remaining := x
 	for k := 0; k < len(bc.bitmap); k++ {
-		w := popcount(bc.bitmap[k])
+		w := bits.OnesCount64(bc.bitmap[k])
 		if uint16(w) > remaining {
 			return k*64 + selectBitPosition(bc.bitmap[k], int(remaining))
 		}
@@ -830,11 +830,11 @@ func (bc *bitmapContainer) getCardinalityInRange(start, end uint) int {
 	endword := (end - 1) / 64
 	const allones = ^uint64(0)
 	if firstword == endword {
-		return int(popcount(bc.bitmap[firstword] & ((allones << (start % 64)) & (allones >> ((64 - end) & 63)))))
+		return bits.OnesCount64(bc.bitmap[firstword] & ((allones << (start % 64)) & (allones >> ((64 - end) & 63))))
 	}
-	answer := popcount(bc.bitmap[firstword] & (allones << (start % 64)))
+	answer := uint64(bits.OnesCount64(bc.bitmap[firstword] & (allones << (start % 64))))
 	answer += popcntSlice(bc.bitmap[firstword+1 : endword])
-	answer += popcount(bc.bitmap[endword] & (allones >> ((64 - end) & 63)))
+	answer += uint64(bits.OnesCount64(bc.bitmap[endword] & (allones >> ((64 - end) & 63))))
 	return int(answer)
 }
 
@@ -972,7 +972,7 @@ func (bc *bitmapContainer) iandNotArray(ac *arrayContainer) container {
 				// are set in the mask and in the current word.
 				mask &= bc.bitmap[wordIdx]
 				bc.bitmap[wordIdx] &= ^mask
-				bc.cardinality -= int(popcount(mask))
+				bc.cardinality -= bits.OnesCount64(mask)
 			}
 
 			wordIdx = v / 64
@@ -984,7 +984,7 @@ func (bc *bitmapContainer) iandNotArray(ac *arrayContainer) container {
 	// Flush the last word.
 	mask &= bc.bitmap[wordIdx]
 	bc.bitmap[wordIdx] &= ^mask
-	bc.cardinality -= int(popcount(mask))
+	bc.cardinality -= bits.OnesCount64(mask)
 
 	if bc.getCardinality() <= arrayDefaultMaxSize {
 		return bc.toArrayContainer()
@@ -1124,7 +1124,7 @@ func (bc *bitmapContainer) fillArray(container []uint16) {
 		bitset := bc.bitmap[k]
 		for bitset != 0 {
 			t := bitset & -bitset
-			container[pos] = uint16((base + int(popcount(t-1))))
+			container[pos] = uint16((base + bits.OnesCount64(t-1)))
 			pos = pos + 1
 			bitset ^= t
 		}
@@ -1144,12 +1144,12 @@ func (bc *bitmapContainer) NextSetBit(i uint) int {
 	w := bc.bitmap[x]
 	w = w >> (i % 64)
 	if w != 0 {
-		return int(i) + countTrailingZeros(w)
+		return int(i) + bits.TrailingZeros64(w)
 	}
 	x++
 	for ; x < length; x++ {
 		if bc.bitmap[x] != 0 {
-			return int(x*64) + countTrailingZeros(bc.bitmap[x])
+			return int(x*64) + bits.TrailingZeros64(bc.bitmap[x])
 		}
 	}
 	return -1
@@ -1167,12 +1167,12 @@ func (bc *bitmapContainer) NextUnsetBit(i uint) int {
 	w = w >> (i % 64)
 	w = ^w
 	if w != 0 {
-		return int(i) + countTrailingZeros(w)
+		return int(i) + bits.TrailingZeros64(w)
 	}
 	x++
 	for ; x < length; x++ {
 		if bc.bitmap[x] != 0xFFFFFFFFFFFFFFFF {
-			return int(x*64) + countTrailingZeros(^bc.bitmap[x])
+			return int(x*64) + bits.TrailingZeros64(^bc.bitmap[x])
 		}
 	}
 	return int(length * 64)
@@ -1203,7 +1203,7 @@ func (bc *bitmapContainer) uPrevSetBit(i uint) int {
 
 	w = w << (63 - b)
 	if w != 0 {
-		return int(i) - countLeadingZeros(w)
+		return int(i) - bits.LeadingZeros64(w)
 	}
 	orig := x
 	x--
@@ -1212,7 +1212,7 @@ func (bc *bitmapContainer) uPrevSetBit(i uint) int {
 	}
 	for ; x < orig; x-- {
 		if bc.bitmap[x] != 0 {
-			return int((x*64)+63) - countLeadingZeros(bc.bitmap[x])
+			return int((x*64)+63) - bits.LeadingZeros64(bc.bitmap[x])
 		}
 	}
 	return -1
@@ -1231,11 +1231,11 @@ func (bc *bitmapContainer) numberOfRuns() int {
 	for i := 0; i < len(bc.bitmap)-1; i++ {
 		word := nextWord
 		nextWord = bc.bitmap[i+1]
-		numRuns += popcount((^word)&(word<<1)) + ((word >> 63) &^ nextWord)
+		numRuns += uint64(bits.OnesCount64((^word)&(word<<1))) + ((word >> 63) &^ nextWord)
 	}
 
 	word := nextWord
-	numRuns += popcount((^word) & (word << 1))
+	numRuns += uint64(bits.OnesCount64((^word) & (word << 1)))
 	if (word & 0x8000000000000000) != 0 {
 		numRuns++
 	}
@@ -1379,14 +1379,14 @@ func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 	// if statement - we skip the if we have all ones [1,1,1,1...1]
 	if ^w != 0 {
 
-		if countTrailingZeros(w) > 0 {
+		if bits.TrailingZeros64(w) > 0 {
 			// we have something like [X,Y,Z, 0,0,0]. This means the target bit is zero
 			return int(target)
 		}
 
 		// other wise something like [X,Y,0,1,1,1..1], where x and y can be either 1 or 0.
 
-		trailing := countTrailingOnes(w)
+		trailing := bits.TrailingZeros64(^w)
 		return int(target) + trailing
 
 	}
@@ -1396,7 +1396,7 @@ func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 			return int(x * 64)
 		}
 		if ^bc.bitmap[x] != 0 {
-			trailing := countTrailingOnes(bc.bitmap[x])
+			trailing := bits.TrailingZeros64(^bc.bitmap[x])
 			return int(x*64) + trailing
 		}
 
@@ -1446,25 +1446,25 @@ func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
 	// if statement - we skip if we have all ones [1,1,1,1...1] as no value is absent
 	if ^shifted != 0 {
 
-		if countTrailingZeros(shifted) > 0 {
+		if bits.TrailingZeros64(shifted) > 0 {
 			// we have something like shifted=[X,Y,Z,..., 0,0,0]. This means the target bit is zero
 			return int(target)
 		}
 
 		// The rotate will rotate the target bit into the leading position.
-		// We know the target bit is not zero because of the countTrailingZero check above
+		// We know the target bit is not zero because of the TrailingZeros64 check above
 		// We then shift the target bit out of the way.
 		// Assume a structure like an original structure like [X,Y,Z,..., Target, A, B,C...]
 		// shifted will be [X,Y,Z...Target]
 		// shiftedRotated will be [A,B,C....]
-		// If countLeadingZeros > 0 then A is zero, if not at least A is 1 return
+		// If LeadingZeros64 > 0 then A is zero, if not at least A is 1 return
 		// Else count the number of ones's until a 0
 		shiftedRotated := bits.RotateLeft64(w, int(64-uint(target%64))-1) << 1
-		leadingZeros := countLeadingZeros(shiftedRotated)
+		leadingZeros := bits.LeadingZeros64(shiftedRotated)
 		if leadingZeros > 0 {
 			return int(target) - 1
 		}
-		leadingOnes := countLeadingOnes(shiftedRotated)
+		leadingOnes := bits.LeadingZeros64(^shiftedRotated)
 		if leadingOnes > 0 {
 			return int(target) - leadingOnes - 1
 		}
@@ -1476,7 +1476,7 @@ func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
 			return int(x * 64)
 		}
 		if ^bc.bitmap[x] != 0 {
-			trailing := countTrailingOnes(bc.bitmap[x])
+			trailing := bits.TrailingZeros64(^bc.bitmap[x])
 			return int(x*64) + trailing
 		}
 
