@@ -1,6 +1,9 @@
 package roaring
 
-import "iter"
+import (
+	"iter"
+	"math/bits"
+)
 
 // Values returns an iterator that yields the elements of the bitmap in
 // increasing order. Starting with Go 1.23, users can use a for loop to iterate
@@ -99,10 +102,10 @@ func (b *Bitmap) Ranges() iter.Seq2[uint32, uint64] {
 					}
 
 					for w != 0 {
-						lo := uint(countTrailingZeros(w))
+						lo := uint(bits.TrailingZeros64(w))
 						bitStart := pos*64 + lo
 
-						ones := uint(countTrailingOnes(w >> lo))
+						ones := uint(bits.TrailingZeros64(^(w >> lo)))
 						if lo+ones < 64 {
 							if !emit(hs+uint64(bitStart), hs+uint64(bitStart+ones)) {
 								return
@@ -115,7 +118,7 @@ func (b *Bitmap) Ranges() iter.Seq2[uint32, uint64] {
 							}
 							var bitEnd uint
 							if pos < length {
-								trailing := uint(countTrailingOnes(bm[pos]))
+								trailing := uint(bits.TrailingZeros64(^bm[pos]))
 								bitEnd = pos*64 + trailing
 								w = bm[pos] & ^((uint64(1) << trailing) - 1)
 							} else {
