@@ -1632,6 +1632,7 @@ func (rb *Bitmap) Or(x2 *Bitmap) {
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
 	length2 := x2.highlowcontainer.size()
+	bulkMergeAvailable := true
 main:
 	for (pos1 < length1) && (pos2 < length2) {
 		s1 := rb.highlowcontainer.getKeyAtIndex(pos1)
@@ -1645,6 +1646,12 @@ main:
 				}
 				s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
 			} else if s1 > s2 {
+				if bulkMergeAvailable {
+					if rb.highlowcontainer.orBulk(&x2.highlowcontainer, pos1, pos2) {
+						return
+					}
+					bulkMergeAvailable = false
+				}
 				rb.highlowcontainer.insertNewKeyValueAt(pos1, s2, x2.highlowcontainer.getContainerAtIndex(pos2).clone())
 				pos1++
 				length1++

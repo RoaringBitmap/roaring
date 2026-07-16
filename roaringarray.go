@@ -384,6 +384,110 @@ func (ra *roaringArray) insertNewKeyValueAt(i int, key uint16, value container) 
 	ra.needCopyOnWrite[i] = false
 }
 
+func (ra *roaringArray) growTo(newsize int) {
+	if cap(ra.keys) < newsize {
+		keys := make([]uint16, newsize)
+		copy(keys, ra.keys)
+		ra.keys = keys
+	} else {
+		ra.keys = ra.keys[:newsize]
+	}
+	if cap(ra.containers) < newsize {
+		containers := make([]container, newsize)
+		copy(containers, ra.containers)
+		ra.containers = containers
+	} else {
+		ra.containers = ra.containers[:newsize]
+	}
+	if cap(ra.needCopyOnWrite) < newsize {
+		needCopyOnWrite := make([]bool, newsize)
+		copy(needCopyOnWrite, ra.needCopyOnWrite)
+		ra.needCopyOnWrite = needCopyOnWrite
+	} else {
+		ra.needCopyOnWrite = ra.needCopyOnWrite[:newsize]
+	}
+}
+
+func (ra *roaringArray) copyOrSourceContainerAt(other *roaringArray, index int, receiverLastKey uint16) (container, bool) {
+	if other.keys[index] > receiverLastKey {
+		copyOnWrite := (ra.copyOnWrite && other.copyOnWrite) || other.needsCopyOnWrite(index)
+		if copyOnWrite {
+			if !other.needsCopyOnWrite(index) {
+				other.setNeedsCopyOnWrite(index)
+			}
+			return other.containers[index], true
+		}
+	}
+	return other.containers[index].clone(), false
+}
+
+func (ra *roaringArray) orBulk(other *roaringArray, pos1, pos2 int) bool {
+	if !ra.checkKeysSorted() || !other.checkKeysSorted() {
+		return false
+	}
+
+	length1 := ra.size()
+	length2 := other.size()
+	receiverLastKey := ra.getKeyAtIndex(length1 - 1)
+	sourceOnly := 0
+	left, right := pos1, pos2
+	for left < length1 && right < length2 {
+		leftKey := ra.getKeyAtIndex(left)
+		rightKey := other.getKeyAtIndex(right)
+		if leftKey < rightKey {
+			left++
+		} else if leftKey > rightKey {
+			sourceOnly++
+			right++
+		} else {
+			left++
+			right++
+		}
+	}
+	sourceOnly += length2 - right
+
+	ra.growTo(length1 + sourceOnly)
+	destination := length1 + sourceOnly - 1
+	left = length1 - 1
+	right = length2 - 1
+	for left >= pos1 && right >= pos2 {
+		leftKey := ra.getKeyAtIndex(left)
+		rightKey := other.getKeyAtIndex(right)
+		if leftKey > rightKey {
+			leftContainer := ra.getContainerAtIndex(left)
+			leftNeedsCopyOnWrite := ra.needsCopyOnWrite(left)
+			ra.replaceKeyAndContainerAtIndex(destination, leftKey, leftContainer, leftNeedsCopyOnWrite)
+			left--
+		} else if leftKey < rightKey {
+			rightContainer, rightNeedsCopyOnWrite := ra.copyOrSourceContainerAt(other, right, receiverLastKey)
+			ra.replaceKeyAndContainerAtIndex(destination, rightKey, rightContainer, rightNeedsCopyOnWrite)
+			right--
+		} else {
+			union := ra.getUnionedWritableContainer(left, other.getContainerAtIndex(right))
+			ra.replaceKeyAndContainerAtIndex(destination, leftKey, union, false)
+			left--
+			right--
+		}
+		destination--
+	}
+	for left >= pos1 {
+		leftKey := ra.getKeyAtIndex(left)
+		leftContainer := ra.getContainerAtIndex(left)
+		leftNeedsCopyOnWrite := ra.needsCopyOnWrite(left)
+		ra.replaceKeyAndContainerAtIndex(destination, leftKey, leftContainer, leftNeedsCopyOnWrite)
+		left--
+		destination--
+	}
+	for right >= pos2 {
+		rightKey := other.getKeyAtIndex(right)
+		rightContainer, rightNeedsCopyOnWrite := ra.copyOrSourceContainerAt(other, right, receiverLastKey)
+		ra.replaceKeyAndContainerAtIndex(destination, rightKey, rightContainer, rightNeedsCopyOnWrite)
+		right--
+		destination--
+	}
+	return true
+}
+
 func (ra *roaringArray) remove(key uint16) bool {
 	i := ra.binarySearch(0, int64(len(ra.keys)), key)
 	if i >= 0 { // if a new key
