@@ -349,7 +349,94 @@ type task struct {
 func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int64,
 	foundSet *Bitmap) *Bitmap {
 
+	if op == EQ {
+		result := b.BatchEqual(parallelism, []int64{valueOrStart})
+		if foundSet != nil {
+			result.And(foundSet)
+		}
+		return result
+	}
+	if result, ok := b.compareInt64Value(op, valueOrStart, end, foundSet); ok {
+		return result
+	}
 	return b.CompareBigValue(parallelism, op, big.NewInt(valueOrStart), big.NewInt(end), foundSet)
+}
+
+func (b *BSI) compareInt64Value(op Operation, valueOrStart, end int64, foundSet *Bitmap) (*Bitmap, bool) {
+	bitCount := b.BitCount()
+	if bitCount > 63 || !bsi64ValueFitsBitCount(valueOrStart, bitCount) {
+		return nil, false
+	}
+	if op == RANGE && !bsi64ValueFitsBitCount(end, bitCount) {
+		return nil, false
+	}
+
+	universe := b.eBM.Clone()
+	if foundSet != nil {
+		universe.And(foundSet)
+	}
+	if universe.IsEmpty() {
+		return universe, true
+	}
+
+	start := transformBSI64SignedEncoding(encodeBSI64Value(valueOrStart, bitCount), bitCount)
+	less, equal := b.compareInt64LessAndEqual(start, universe)
+
+	switch op {
+	case LT:
+		return less, true
+	case LE:
+		less.Or(equal)
+		return less, true
+	case GE:
+		universe.AndNot(less)
+		return universe, true
+	case GT:
+		less.Or(equal)
+		universe.AndNot(less)
+		return universe, true
+	case RANGE:
+		if valueOrStart > end {
+			return NewBitmap(), true
+		}
+		universe.AndNot(less)
+		finish := transformBSI64SignedEncoding(encodeBSI64Value(end, bitCount), bitCount)
+		rangeLess, rangeEqual := b.compareInt64LessAndEqual(finish, universe)
+		rangeLess.Or(rangeEqual)
+		return rangeLess, true
+	default:
+		return nil, false
+	}
+}
+
+func transformBSI64SignedEncoding(encoded uint64, bitCount int) uint64 {
+	return encoded ^ (uint64(1) << uint(bitCount))
+}
+
+func (b *BSI) compareInt64LessAndEqual(target uint64, universe *Bitmap) (*Bitmap, *Bitmap) {
+	less := NewBitmap()
+	equalPrefix := universe.Clone()
+	for i := b.BitCount(); i >= 0; i-- {
+		targetBitSet := target&(uint64(1)<<uint(i)) != 0
+		if targetBitSet {
+			less.Or(b.bsi64TransformedPlaneChild(equalPrefix, i, false, false))
+			equalPrefix = b.bsi64TransformedPlaneChild(equalPrefix, i, true, true)
+		} else {
+			equalPrefix = b.bsi64TransformedPlaneChild(equalPrefix, i, false, true)
+		}
+		if equalPrefix.IsEmpty() {
+			break
+		}
+	}
+	return less, equalPrefix
+}
+
+func (b *BSI) bsi64TransformedPlaneChild(prefix *Bitmap, planeIndex int, set, owned bool) *Bitmap {
+	planeSet := set
+	if planeIndex == b.BitCount() {
+		planeSet = !planeSet
+	}
+	return bsi64PlaneChild(prefix, &b.bA[planeIndex], planeSet, owned)
 }
 
 // CompareBigValue compares value.
