@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/big"
 	"runtime"
+	"sort"
 	"sync"
 )
 
@@ -970,23 +971,134 @@ func (b *BSI) WriteTo(w io.Writer) (n int64, err error) {
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
 func (b *BSI) BatchEqual(parallelism int, values []int64) *Bitmap {
-	//convert list of int64 values to big.Int(s)
-	bigValues := make([]*big.Int, len(values))
-	for i, v := range values {
-		bigValues[i] = big.NewInt(v)
+	if b.eBM.IsEmpty() || len(values) == 0 {
+		return NewBitmap()
 	}
-	return b.BatchEqualBig(parallelism, bigValues)
+
+	bitCount := b.BitCount()
+	if bitCount >= 64 {
+		// Fall back to the arbitrary-precision path when the BSI has more than
+		// int64's finite bit width. This preserves correctness for big-value BSIs.
+		bigValues := make([]*big.Int, len(values))
+		for i, v := range values {
+			bigValues[i] = big.NewInt(v)
+		}
+		return b.BatchEqualBig(parallelism, bigValues)
+	}
+
+	seen := make(map[uint64]struct{}, len(values))
+	vals := make([]uint64, 0, len(values))
+	for _, v := range values {
+		if !bsi64ValueFitsBitCount(v, bitCount) {
+			continue
+		}
+		encoded := encodeBSI64Value(v, bitCount)
+		if _, ok := seen[encoded]; ok {
+			continue
+		}
+		seen[encoded] = struct{}{}
+		vals = append(vals, encoded)
+	}
+	if len(vals) == 0 {
+		return NewBitmap()
+	}
+
+	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+	result := b.matchInt64Trie(vals, bitCount, &b.eBM, false)
+	if b.runOptimized {
+		result.RunOptimize()
+	}
+	return result
+}
+
+func bsi64ValueFitsBitCount(value int64, bitCount int) bool {
+	if bitCount >= 63 {
+		return true
+	}
+	min := -(int64(1) << uint(bitCount))
+	max := (int64(1) << uint(bitCount)) - 1
+	return value >= min && value <= max
+}
+
+func encodeBSI64Value(value int64, bitCount int) uint64 {
+	if bitCount >= 63 {
+		return uint64(value)
+	}
+	mask := (uint64(1) << uint(bitCount+1)) - 1
+	return uint64(value) & mask
+}
+
+func (b *BSI) matchInt64Trie(vals []uint64, p int, prefix *Bitmap, owned bool) *Bitmap {
+	if prefix.IsEmpty() {
+		if owned {
+			return prefix
+		}
+		return NewBitmap()
+	}
+	if p < 0 || (p < 63 && uint64(len(vals)) == uint64(1)<<uint(p+1)) {
+		if owned {
+			return prefix
+		}
+		return prefix.Clone()
+	}
+
+	mask := uint64(1) << uint(p)
+	cut := sort.Search(len(vals), func(i int) bool { return vals[i]&mask != 0 })
+	lo, hi := vals[:cut], vals[cut:]
+	switch {
+	case len(hi) == 0:
+		return b.matchInt64Trie(lo, p-1, bsi64PlaneChild(prefix, &b.bA[p], false, owned), true)
+	case len(lo) == 0:
+		return b.matchInt64Trie(hi, p-1, bsi64PlaneChild(prefix, &b.bA[p], true, owned), true)
+	default:
+		hiBM := And(prefix, &b.bA[p])
+		result := b.matchInt64Trie(lo, p-1, bsi64PlaneChild(prefix, &b.bA[p], false, owned), true)
+		result.Or(b.matchInt64Trie(hi, p-1, hiBM, true))
+		return result
+	}
+}
+
+func bsi64PlaneChild(prefix, plane *Bitmap, set, owned bool) *Bitmap {
+	if owned {
+		if set {
+			prefix.And(plane)
+		} else {
+			prefix.AndNot(plane)
+		}
+		return prefix
+	}
+	if set {
+		return And(prefix, plane)
+	}
+	return AndNot(prefix, plane)
 }
 
 // BatchEqualBig returns a bitmap containing the column IDs where the values are contained within the list of values provided.
 func (b *BSI) BatchEqualBig(parallelism int, values []*big.Int) *Bitmap {
+	if b.eBM.IsEmpty() || len(values) == 0 {
+		return NewBitmap()
+	}
 
 	valMap := make(map[string]struct{}, len(values))
 	for i := 0; i < len(values); i++ {
-		valMap[string(values[i].Bytes())] = struct{}{}
+		if values[i] == nil {
+			continue
+		}
+		valMap[batchEqualBigKey(values[i])] = struct{}{}
+	}
+	if len(valMap) == 0 {
+		return NewBitmap()
 	}
 	comp := &task{bsi: b, values: valMap}
 	return parallelExecutor(parallelism, comp, batchEqual, &b.eBM)
+}
+
+func batchEqualBigKey(value *big.Int) string {
+	bytes := value.Bytes()
+	key := make([]byte, len(bytes)+1)
+	key[0] = byte(value.Sign() + 1)
+	copy(key[1:], bytes)
+	return string(key)
 }
 
 func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,
@@ -1002,7 +1114,7 @@ func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
 		if value, ok := e.bsi.GetBigValue(cID); ok {
-			if _, yes := e.values[string(value.Bytes())]; yes {
+			if _, yes := e.values[batchEqualBigKey(value)]; yes {
 				results.Add(cID)
 			}
 		}
