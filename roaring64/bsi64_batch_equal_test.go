@@ -135,6 +135,22 @@ func TestBSI64BatchEqualConsistentWithGetValue(t *testing.T) {
 	}
 }
 
+func TestBSI64BatchEqualBitCubePattern(t *testing.T) {
+	bsi := NewDefaultBSI()
+	for col := uint64(0); col < 512; col++ {
+		bsi.SetValue(col, int64(col%256))
+	}
+
+	odds := make([]int64, 0, 128)
+	for v := int64(1); v < 256; v += 2 {
+		odds = append(odds, v)
+	}
+
+	expected := expectedBSI64BatchEqual(bsi, odds)
+	actual := bsi.BatchEqual(0, odds)
+	assert.True(t, actual.Equals(expected), "expected %v got %v", expected.ToArray(), actual.ToArray())
+}
+
 func TestBSI64BatchEqualExistenceAuthority(t *testing.T) {
 	ebm := BitmapOf(1)
 	plane := BitmapOf(1, 2)

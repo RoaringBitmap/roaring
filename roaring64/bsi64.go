@@ -1004,6 +1004,12 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *Bitmap {
 	}
 
 	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+	if result, ok := b.matchInt64Cube(vals, bitCount); ok {
+		if b.runOptimized {
+			result.RunOptimize()
+		}
+		return result
+	}
 	result := b.matchInt64Trie(vals, bitCount, &b.eBM, false)
 	if b.runOptimized {
 		result.RunOptimize()
@@ -1026,6 +1032,56 @@ func encodeBSI64Value(value int64, bitCount int) uint64 {
 	}
 	mask := (uint64(1) << uint(bitCount+1)) - 1
 	return uint64(value) & mask
+}
+
+func (b *BSI) matchInt64Cube(vals []uint64, bitCount int) (*Bitmap, bool) {
+	if bitCount >= 63 {
+		return nil, false
+	}
+	widthMask := (uint64(1) << uint(bitCount+1)) - 1
+	fixedOnes := vals[0] & widthMask
+	fixedZeros := ^vals[0] & widthMask
+	for _, v := range vals[1:] {
+		fixedOnes &= v
+		fixedZeros &= ^v & widthMask
+	}
+
+	variableMask := ^(fixedOnes | fixedZeros) & widthMask
+	combinations := uint64(1) << uint(countBSI64Bits(variableMask))
+	if uint64(len(vals)) != combinations {
+		return nil, false
+	}
+	for _, v := range vals {
+		if v&fixedOnes != fixedOnes || (^v)&fixedZeros != fixedZeros {
+			return nil, false
+		}
+	}
+
+	result := b.eBM.Clone()
+	for i := 0; i <= bitCount; i++ {
+		bit := uint64(1) << uint(i)
+		if variableMask&bit != 0 {
+			continue
+		}
+		if fixedOnes&bit != 0 {
+			result.And(&b.bA[i])
+		} else {
+			result.AndNot(&b.bA[i])
+		}
+		if result.IsEmpty() {
+			break
+		}
+	}
+	return result, true
+}
+
+func countBSI64Bits(value uint64) int {
+	count := 0
+	for value != 0 {
+		value &= value - 1
+		count++
+	}
+	return count
 }
 
 func (b *BSI) matchInt64Trie(vals []uint64, p int, prefix *Bitmap, owned bool) *Bitmap {
