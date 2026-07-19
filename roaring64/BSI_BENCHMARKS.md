@@ -36,3 +36,9 @@ Compatibility:
 - True wider-than-64-bit values continue to use the existing generic paths.
 - `BatchEqualBig` now keys values by sign and magnitude so positive and negative
   values with the same magnitude do not collide.
+
+Follow-up:
+
+- This change is scoped to `roaring64`. The 32-bit `BitSliceIndexing` package
+  already has separate `BatchEqual` coverage, and `CompareValue` parity can be
+  addressed in a follow-up PR with its own benchmarks and signed-value tests.
