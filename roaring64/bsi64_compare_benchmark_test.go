@@ -96,6 +96,110 @@ func TestBSI64CompareValueConsistentWithGetValue(t *testing.T) {
 	}
 }
 
+func TestBSI64CompareBigValueConsistentWithGetBigValue(t *testing.T) {
+	rg := rand.New(rand.NewSource(85))
+	for run := 0; run < 15; run++ {
+		bsi := NewDefaultBSI()
+		numCols := rg.Intn(1000) + 10
+		for col := 0; col < numCols; col++ {
+			if rg.Float64() < 0.8 {
+				bsi.SetValue(uint64(col), rg.Int63n(500)-250)
+			}
+		}
+
+		foundSet := NewBitmap()
+		iter := bsi.GetExistenceBitmap().Iterator()
+		for iter.HasNext() {
+			col := iter.Next()
+			if col%3 != 0 {
+				foundSet.Add(col)
+			}
+		}
+
+		cases := []struct {
+			op    Operation
+			start int64
+			end   int64
+		}{
+			{LT, -17, 0},
+			{LE, -17, 0},
+			{EQ, -17, 0},
+			{GE, -17, 0},
+			{GT, -17, 0},
+			{RANGE, -25, 25},
+		}
+		for _, tc := range cases {
+			for _, fs := range []*Bitmap{nil, foundSet} {
+				expected := expectedBSI64CompareBigValue(bsi, tc.op, big.NewInt(tc.start), big.NewInt(tc.end), fs)
+				actual := bsi.CompareBigValue(0, tc.op, big.NewInt(tc.start), big.NewInt(tc.end), fs)
+				assert.True(t, actual.Equals(expected), "run=%d op=%d foundSet=%v expected=%v actual=%v",
+					run, tc.op, fs != nil, expected.ToArray(), actual.ToArray())
+			}
+		}
+	}
+}
+
+func expectedBSI64CompareBigValue(bsi *BSI, op Operation, valueOrStart, end *big.Int, foundSet *Bitmap) *Bitmap {
+	expected := NewBitmap()
+	source := bsi.GetExistenceBitmap()
+	if foundSet != nil {
+		source = And(source, foundSet)
+	}
+	iter := source.Iterator()
+	for iter.HasNext() {
+		col := iter.Next()
+		val, ok := bsi.GetBigValue(col)
+		if !ok {
+			continue
+		}
+		switch op {
+		case LT:
+			if val.Cmp(valueOrStart) < 0 {
+				expected.Add(col)
+			}
+		case LE:
+			if val.Cmp(valueOrStart) <= 0 {
+				expected.Add(col)
+			}
+		case EQ:
+			if val.Cmp(valueOrStart) == 0 {
+				expected.Add(col)
+			}
+		case GE:
+			if val.Cmp(valueOrStart) >= 0 {
+				expected.Add(col)
+			}
+		case GT:
+			if val.Cmp(valueOrStart) > 0 {
+				expected.Add(col)
+			}
+		case RANGE:
+			if val.Cmp(valueOrStart) >= 0 && val.Cmp(end) <= 0 {
+				expected.Add(col)
+			}
+		default:
+			panic("unsupported test operation")
+		}
+	}
+	return expected
+}
+
+func TestBSI64CompareBigValueFallsBackForBigWidth(t *testing.T) {
+	bsi := NewDefaultBSI()
+	base := new(big.Int).Lsh(big.NewInt(1), 80)
+	below := new(big.Int).Sub(base, big.NewInt(1))
+	above := new(big.Int).Add(base, big.NewInt(1))
+	bsi.SetBigValue(1, below)
+	bsi.SetBigValue(2, base)
+	bsi.SetBigValue(3, above)
+
+	eq := bsi.CompareBigValue(0, EQ, base, nil, nil)
+	assert.True(t, eq.Equals(BitmapOf(2)))
+
+	rng := bsi.CompareBigValue(0, RANGE, base, above, nil)
+	assert.True(t, rng.Equals(BitmapOf(2, 3)))
+}
+
 func BenchmarkBSI64CompareValueEQLargeAgeFixture(b *testing.B) {
 	bsi := setupLargeBSI(b)
 	if bsi == nil {
