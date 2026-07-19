@@ -128,6 +128,7 @@ func (b *BSI) SetBigValue(columnID uint64, value *big.Int) {
 	b.eBM.Add(columnID)
 }
 
+// SetBigMany sets value for all columns in foundSet.
 func (b *BSI) SetBigMany(foundSet *Bitmap, value *big.Int) {
 	// If max/min values are set to zero then automatically determine bit array size
 	if b.MaxValue == 0 && b.MinValue == 0 {
