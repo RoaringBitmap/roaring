@@ -349,23 +349,23 @@ type task struct {
 func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int64,
 	foundSet *Bitmap) *Bitmap {
 
-	if op == EQ {
-		result := b.BatchEqual(parallelism, []int64{valueOrStart})
-		if foundSet != nil {
-			result.And(foundSet)
-		}
-		return result
-	}
-	if result, ok := b.compareInt64Value(op, valueOrStart, end, foundSet); ok {
+	if result, ok := b.compareInt64Value(parallelism, op, valueOrStart, end, foundSet); ok {
 		return result
 	}
 	return b.CompareBigValue(parallelism, op, big.NewInt(valueOrStart), big.NewInt(end), foundSet)
 }
 
-func (b *BSI) compareInt64Value(op Operation, valueOrStart, end int64, foundSet *Bitmap) (*Bitmap, bool) {
+func (b *BSI) compareInt64Value(parallelism int, op Operation, valueOrStart, end int64, foundSet *Bitmap) (*Bitmap, bool) {
 	bitCount := b.BitCount()
 	if bitCount > 63 || !bsi64ValueFitsBitCount(valueOrStart, bitCount) {
 		return nil, false
+	}
+	if op == EQ {
+		result := b.BatchEqual(parallelism, []int64{valueOrStart})
+		if foundSet != nil {
+			result.And(foundSet)
+		}
+		return result, true
 	}
 	if op == RANGE && !bsi64ValueFitsBitCount(end, bitCount) {
 		return nil, false
@@ -456,11 +456,29 @@ func (b *BSI) CompareBigValue(parallelism int, op Operation, valueOrStart, end *
 		end = b.MinMaxBig(parallelism, MAX, &b.eBM)
 	}
 
+	if result, ok := b.compareBigValueAsInt64(parallelism, op, valueOrStart, end, foundSet); ok {
+		return result
+	}
+
 	comp := &task{bsi: b, op: op, valueOrStart: valueOrStart, end: end}
 	if foundSet == nil {
 		return parallelExecutor(parallelism, comp, compareValue, &b.eBM)
 	}
 	return parallelExecutor(parallelism, comp, compareValue, foundSet)
+}
+
+func (b *BSI) compareBigValueAsInt64(parallelism int, op Operation, valueOrStart, end *big.Int, foundSet *Bitmap) (*Bitmap, bool) {
+	if valueOrStart == nil || !valueOrStart.IsInt64() {
+		return nil, false
+	}
+	endValue := int64(0)
+	if op == RANGE {
+		if end == nil || !end.IsInt64() {
+			return nil, false
+		}
+		endValue = end.Int64()
+	}
+	return b.compareInt64Value(parallelism, op, valueOrStart.Int64(), endValue, foundSet)
 }
 
 // Returns a twos complement value given a value, the return will be bit extended to 'bits' length
@@ -1222,6 +1240,10 @@ func (b *BSI) BatchEqualBig(parallelism int, values []*big.Int) *Bitmap {
 		return NewBitmap()
 	}
 
+	if intValues, ok := b.batchEqualBigValuesAsInt64(values); ok {
+		return b.BatchEqual(parallelism, intValues)
+	}
+
 	valMap := make(map[string]struct{}, len(values))
 	for i := 0; i < len(values); i++ {
 		if values[i] == nil {
@@ -1242,6 +1264,26 @@ func batchEqualBigKey(value *big.Int) string {
 	key[0] = byte(value.Sign() + 1)
 	copy(key[1:], bytes)
 	return string(key)
+}
+
+func (b *BSI) batchEqualBigValuesAsInt64(values []*big.Int) ([]int64, bool) {
+	if b.BitCount() > 63 {
+		return nil, false
+	}
+	intValues := make([]int64, 0, len(values))
+	for _, value := range values {
+		if value == nil {
+			continue
+		}
+		if !value.IsInt64() {
+			return nil, false
+		}
+		intValues = append(intValues, value.Int64())
+	}
+	if len(intValues) == 0 {
+		return nil, false
+	}
+	return intValues, true
 }
 
 func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,

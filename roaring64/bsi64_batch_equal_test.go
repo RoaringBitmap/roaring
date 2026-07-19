@@ -1,6 +1,7 @@
 package roaring64
 
 import (
+	"math/big"
 	"math/rand"
 	"testing"
 
@@ -189,6 +190,19 @@ func BenchmarkBSI64BatchEqualLargeAgeFixture(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		res := bsi.BatchEqual(0, []int64{55, 57})
+		_ = res
+	}
+}
+
+func BenchmarkBSI64BatchEqualBigLargeAgeFixture(b *testing.B) {
+	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("skipping, large BSI setup failed")
+	}
+	values := []*big.Int{big.NewInt(55), big.NewInt(57)}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res := bsi.BatchEqualBig(0, values)
 		_ = res
 	}
 }

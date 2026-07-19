@@ -1,6 +1,7 @@
 package roaring64
 
 import (
+	"math/big"
 	"math/rand"
 	"testing"
 
@@ -107,6 +108,19 @@ func BenchmarkBSI64CompareValueEQLargeAgeFixture(b *testing.B) {
 	}
 }
 
+func BenchmarkBSI64CompareBigValueEQLargeAgeFixture(b *testing.B) {
+	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("skipping, large BSI setup failed")
+	}
+	value := big.NewInt(55)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res := bsi.CompareBigValue(0, EQ, value, nil, nil)
+		_ = res
+	}
+}
+
 func BenchmarkBSI64CompareValueEQFoundSetLargeAgeFixture(b *testing.B) {
 	bsi := setupLargeBSI(b)
 	if bsi == nil {
@@ -116,6 +130,20 @@ func BenchmarkBSI64CompareValueEQFoundSetLargeAgeFixture(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		res := bsi.CompareValue(0, EQ, 55, 0, foundSet)
+		_ = res
+	}
+}
+
+func BenchmarkBSI64CompareBigValueEQFoundSetLargeAgeFixture(b *testing.B) {
+	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("skipping, large BSI setup failed")
+	}
+	foundSet := bsi.CompareBigValue(0, RANGE, big.NewInt(40), big.NewInt(70), nil)
+	value := big.NewInt(55)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res := bsi.CompareBigValue(0, EQ, value, nil, foundSet)
 		_ = res
 	}
 }
@@ -132,6 +160,20 @@ func BenchmarkBSI64CompareValueRangeLargeAgeFixture(b *testing.B) {
 	}
 }
 
+func BenchmarkBSI64CompareBigValueRangeLargeAgeFixture(b *testing.B) {
+	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("skipping, large BSI setup failed")
+	}
+	start := big.NewInt(40)
+	end := big.NewInt(70)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res := bsi.CompareBigValue(0, RANGE, start, end, nil)
+		_ = res
+	}
+}
+
 func BenchmarkBSI64CompareValueGELargeAgeFixture(b *testing.B) {
 	bsi := setupLargeBSI(b)
 	if bsi == nil {
@@ -140,6 +182,19 @@ func BenchmarkBSI64CompareValueGELargeAgeFixture(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		res := bsi.CompareValue(0, GE, 55, 0, nil)
+		_ = res
+	}
+}
+
+func BenchmarkBSI64CompareBigValueGELargeAgeFixture(b *testing.B) {
+	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("skipping, large BSI setup failed")
+	}
+	value := big.NewInt(55)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		res := bsi.CompareBigValue(0, GE, value, nil, nil)
 		_ = res
 	}
 }
