@@ -16,6 +16,7 @@ Commands:
 go test ./roaring64 -count=1
 go test ./roaring64 -run '^$' -bench 'BenchmarkBSI64BatchEqual' -benchmem -count 3
 go test ./roaring64 -run '^$' -bench 'BenchmarkBSI64Compare(Big)?Value|BenchmarkBSI64BatchEqual(Big)?LargeAgeFixture' -benchmem -count 1
+go test ./roaring64 -run '^$' -bench 'BenchmarkBSI64CompareBSISameRow' -benchmem -count=5
 ```
 
 Representative results:
@@ -27,6 +28,7 @@ Representative results:
 | `BenchmarkBSI64CompareValueEQLargeAgeFixture` | ~4.44s/op, ~461MB/op | ~100-118ms/op, ~19.7MB/op | `EQ` delegates to optimized `BatchEqual`. |
 | `BenchmarkBSI64CompareValueRangeLargeAgeFixture` | ~7.49s/op, ~501MB/op | ~204-224ms/op, ~122.6MB/op | Uses bitmap-native signed int64 comparison. |
 | `BenchmarkBSI64CompareValueGELargeAgeFixture` | ~3.45s/op, ~500MB/op | ~168-184ms/op, ~82.3MB/op | Uses bitmap-native signed int64 comparison. |
+| `BenchmarkBSI64CompareBSISameRowBitwise` | ~127-168ms/op, ~69.7MB/op | ~568-795us/op, ~619KB/op | Compares two BSI values per column ID through bitplane algebra instead of row-by-row `GetBigValue`. |
 
 Compatibility:
 

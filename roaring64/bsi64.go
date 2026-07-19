@@ -356,6 +356,83 @@ func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int6
 	return b.CompareBigValue(parallelism, op, big.NewInt(valueOrStart), big.NewInt(end), foundSet)
 }
 
+// CompareBSI compares values from two BSIs by column ID and returns the column
+// IDs where b[columnID] op other[columnID] is true. Only column IDs present in
+// both existence bitmaps are considered. When foundSet is not nil, it further
+// restricts the comparison universe.
+func (b *BSI) CompareBSI(op Operation, other *BSI, foundSet *Bitmap) *Bitmap {
+	if b == nil || other == nil || b.eBM.IsEmpty() || other.eBM.IsEmpty() {
+		return NewBitmap()
+	}
+	universe := b.eBM.Clone()
+	universe.And(&other.eBM)
+	if foundSet != nil {
+		universe.And(foundSet)
+	}
+	if universe.IsEmpty() {
+		return universe
+	}
+
+	commonSign := b.BitCount()
+	if other.BitCount() > commonSign {
+		commonSign = other.BitCount()
+	}
+	less, equal := b.compareBSILessAndEqual(other, commonSign, universe)
+
+	switch op {
+	case LT:
+		return less
+	case LE:
+		less.Or(equal)
+		return less
+	case EQ:
+		return equal
+	case GE:
+		universe.AndNot(less)
+		return universe
+	case GT:
+		less.Or(equal)
+		universe.AndNot(less)
+		return universe
+	default:
+		panic(fmt.Sprintf("Operation [%v] not supported for BSI comparison", op))
+	}
+}
+
+func (b *BSI) compareBSILessAndEqual(other *BSI, commonSign int, universe *Bitmap) (*Bitmap, *Bitmap) {
+	less := NewBitmap()
+	equalPrefix := universe.Clone()
+	for i := commonSign; i >= 0; i-- {
+		leftOnes := b.compareBSIPlaneChild(equalPrefix, i, commonSign, true, false)
+		rightOnes := other.compareBSIPlaneChild(equalPrefix, i, commonSign, true, false)
+
+		rightOnly := rightOnes.Clone()
+		rightOnly.AndNot(leftOnes)
+		less.Or(rightOnly)
+
+		leftOnly := leftOnes
+		leftOnly.AndNot(rightOnes)
+		rightOnly.Or(leftOnly)
+		equalPrefix.AndNot(rightOnly)
+		if equalPrefix.IsEmpty() {
+			break
+		}
+	}
+	return less, equalPrefix
+}
+
+func (b *BSI) compareBSIPlaneChild(prefix *Bitmap, planeIndex, commonSign int, set, owned bool) *Bitmap {
+	sourcePlane := planeIndex
+	if sourcePlane > b.BitCount() {
+		sourcePlane = b.BitCount()
+	}
+	rawSet := set
+	if planeIndex == commonSign {
+		rawSet = !rawSet
+	}
+	return bsi64PlaneChild(prefix, &b.bA[sourcePlane], rawSet, owned)
+}
+
 func (b *BSI) compareInt64Value(parallelism int, op Operation, valueOrStart, end int64, foundSet *Bitmap) (*Bitmap, bool) {
 	bitCount := b.BitCount()
 	if bitCount > 63 || !bsi64ValueFitsBitCount(valueOrStart, bitCount) {
