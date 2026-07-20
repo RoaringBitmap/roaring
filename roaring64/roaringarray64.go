@@ -14,7 +14,9 @@ type roaringArray64 struct {
 }
 
 var (
-	ErrKeySortOrder          = errors.New("keys were out of order")
+	// ErrKeySortOrder reports that container keys are out of order.
+	ErrKeySortOrder = errors.New("keys were out of order")
+	// ErrCardinalityConstraint reports inconsistent array cardinality metadata.
 	ErrCardinalityConstraint = errors.New("size of arrays was not coherent")
 )
 

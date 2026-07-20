@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/big"
 	"runtime"
+	"sort"
 	"sync"
 )
 
@@ -127,6 +128,7 @@ func (b *BSI) SetBigValue(columnID uint64, value *big.Int) {
 	b.eBM.Add(columnID)
 }
 
+// SetBigMany sets value for all columns in foundSet.
 func (b *BSI) SetBigMany(foundSet *Bitmap, value *big.Int) {
 	// If max/min values are set to zero then automatically determine bit array size
 	if b.MaxValue == 0 && b.MinValue == 0 {
@@ -348,7 +350,94 @@ type task struct {
 func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int64,
 	foundSet *Bitmap) *Bitmap {
 
+	if result, ok := b.compareInt64Value(parallelism, op, valueOrStart, end, foundSet); ok {
+		return result
+	}
 	return b.CompareBigValue(parallelism, op, big.NewInt(valueOrStart), big.NewInt(end), foundSet)
+}
+
+func (b *BSI) compareInt64Value(parallelism int, op Operation, valueOrStart, end int64, foundSet *Bitmap) (*Bitmap, bool) {
+	bitCount := b.BitCount()
+	if bitCount > 63 || !bsi64ValueFitsBitCount(valueOrStart, bitCount) {
+		return nil, false
+	}
+	if op == EQ {
+		result := b.BatchEqual(parallelism, []int64{valueOrStart})
+		if foundSet != nil {
+			result.And(foundSet)
+		}
+		return result, true
+	}
+	if op == RANGE && !bsi64ValueFitsBitCount(end, bitCount) {
+		return nil, false
+	}
+
+	universe := b.eBM.Clone()
+	if foundSet != nil {
+		universe.And(foundSet)
+	}
+	if universe.IsEmpty() {
+		return universe, true
+	}
+
+	start := transformBSI64SignedEncoding(encodeBSI64Value(valueOrStart, bitCount), bitCount)
+	less, equal := b.compareInt64LessAndEqual(start, universe)
+
+	switch op {
+	case LT:
+		return less, true
+	case LE:
+		less.Or(equal)
+		return less, true
+	case GE:
+		universe.AndNot(less)
+		return universe, true
+	case GT:
+		less.Or(equal)
+		universe.AndNot(less)
+		return universe, true
+	case RANGE:
+		if valueOrStart > end {
+			return NewBitmap(), true
+		}
+		universe.AndNot(less)
+		finish := transformBSI64SignedEncoding(encodeBSI64Value(end, bitCount), bitCount)
+		rangeLess, rangeEqual := b.compareInt64LessAndEqual(finish, universe)
+		rangeLess.Or(rangeEqual)
+		return rangeLess, true
+	default:
+		return nil, false
+	}
+}
+
+func transformBSI64SignedEncoding(encoded uint64, bitCount int) uint64 {
+	return encoded ^ (uint64(1) << uint(bitCount))
+}
+
+func (b *BSI) compareInt64LessAndEqual(target uint64, universe *Bitmap) (*Bitmap, *Bitmap) {
+	less := NewBitmap()
+	equalPrefix := universe.Clone()
+	for i := b.BitCount(); i >= 0; i-- {
+		targetBitSet := target&(uint64(1)<<uint(i)) != 0
+		if targetBitSet {
+			less.Or(b.bsi64TransformedPlaneChild(equalPrefix, i, false, false))
+			equalPrefix = b.bsi64TransformedPlaneChild(equalPrefix, i, true, true)
+		} else {
+			equalPrefix = b.bsi64TransformedPlaneChild(equalPrefix, i, false, true)
+		}
+		if equalPrefix.IsEmpty() {
+			break
+		}
+	}
+	return less, equalPrefix
+}
+
+func (b *BSI) bsi64TransformedPlaneChild(prefix *Bitmap, planeIndex int, set, owned bool) *Bitmap {
+	planeSet := set
+	if planeIndex == b.BitCount() {
+		planeSet = !planeSet
+	}
+	return bsi64PlaneChild(prefix, &b.bA[planeIndex], planeSet, owned)
 }
 
 // CompareBigValue compares value.
@@ -368,11 +457,29 @@ func (b *BSI) CompareBigValue(parallelism int, op Operation, valueOrStart, end *
 		end = b.MinMaxBig(parallelism, MAX, &b.eBM)
 	}
 
+	if result, ok := b.compareBigValueAsInt64(parallelism, op, valueOrStart, end, foundSet); ok {
+		return result
+	}
+
 	comp := &task{bsi: b, op: op, valueOrStart: valueOrStart, end: end}
 	if foundSet == nil {
 		return parallelExecutor(parallelism, comp, compareValue, &b.eBM)
 	}
 	return parallelExecutor(parallelism, comp, compareValue, foundSet)
+}
+
+func (b *BSI) compareBigValueAsInt64(parallelism int, op Operation, valueOrStart, end *big.Int, foundSet *Bitmap) (*Bitmap, bool) {
+	if valueOrStart == nil || !valueOrStart.IsInt64() {
+		return nil, false
+	}
+	endValue := int64(0)
+	if op == RANGE {
+		if end == nil || !end.IsInt64() {
+			return nil, false
+		}
+		endValue = end.Int64()
+	}
+	return b.compareInt64Value(parallelism, op, valueOrStart.Int64(), endValue, foundSet)
 }
 
 // Returns a twos complement value given a value, the return will be bit extended to 'bits' length
@@ -970,23 +1077,214 @@ func (b *BSI) WriteTo(w io.Writer) (n int64, err error) {
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained within the list of values provided.
 func (b *BSI) BatchEqual(parallelism int, values []int64) *Bitmap {
-	//convert list of int64 values to big.Int(s)
-	bigValues := make([]*big.Int, len(values))
-	for i, v := range values {
-		bigValues[i] = big.NewInt(v)
+	if b.eBM.IsEmpty() || len(values) == 0 {
+		return NewBitmap()
 	}
-	return b.BatchEqualBig(parallelism, bigValues)
+
+	bitCount := b.BitCount()
+	if bitCount >= 64 {
+		// Fall back to the arbitrary-precision path when the BSI has more than
+		// int64's finite bit width. This preserves correctness for big-value BSIs.
+		bigValues := make([]*big.Int, len(values))
+		for i, v := range values {
+			bigValues[i] = big.NewInt(v)
+		}
+		return b.BatchEqualBig(parallelism, bigValues)
+	}
+
+	seen := make(map[uint64]struct{}, len(values))
+	vals := make([]uint64, 0, len(values))
+	for _, v := range values {
+		if !bsi64ValueFitsBitCount(v, bitCount) {
+			continue
+		}
+		encoded := encodeBSI64Value(v, bitCount)
+		if _, ok := seen[encoded]; ok {
+			continue
+		}
+		seen[encoded] = struct{}{}
+		vals = append(vals, encoded)
+	}
+	if len(vals) == 0 {
+		return NewBitmap()
+	}
+
+	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+	if result, ok := b.matchInt64Cube(vals, bitCount); ok {
+		if b.runOptimized {
+			result.RunOptimize()
+		}
+		return result
+	}
+	result := b.matchInt64Trie(vals, bitCount, &b.eBM, false)
+	if b.runOptimized {
+		result.RunOptimize()
+	}
+	return result
+}
+
+func bsi64ValueFitsBitCount(value int64, bitCount int) bool {
+	if bitCount >= 63 {
+		return true
+	}
+	min := -(int64(1) << uint(bitCount))
+	max := (int64(1) << uint(bitCount)) - 1
+	return value >= min && value <= max
+}
+
+func encodeBSI64Value(value int64, bitCount int) uint64 {
+	if bitCount >= 63 {
+		return uint64(value)
+	}
+	mask := (uint64(1) << uint(bitCount+1)) - 1
+	return uint64(value) & mask
+}
+
+func (b *BSI) matchInt64Cube(vals []uint64, bitCount int) (*Bitmap, bool) {
+	if bitCount >= 63 {
+		return nil, false
+	}
+	widthMask := (uint64(1) << uint(bitCount+1)) - 1
+	fixedOnes := vals[0] & widthMask
+	fixedZeros := ^vals[0] & widthMask
+	for _, v := range vals[1:] {
+		fixedOnes &= v
+		fixedZeros &= ^v & widthMask
+	}
+
+	variableMask := ^(fixedOnes | fixedZeros) & widthMask
+	combinations := uint64(1) << uint(countBSI64Bits(variableMask))
+	if uint64(len(vals)) != combinations {
+		return nil, false
+	}
+	for _, v := range vals {
+		if v&fixedOnes != fixedOnes || (^v)&fixedZeros != fixedZeros {
+			return nil, false
+		}
+	}
+
+	result := b.eBM.Clone()
+	for i := 0; i <= bitCount; i++ {
+		bit := uint64(1) << uint(i)
+		if variableMask&bit != 0 {
+			continue
+		}
+		if fixedOnes&bit != 0 {
+			result.And(&b.bA[i])
+		} else {
+			result.AndNot(&b.bA[i])
+		}
+		if result.IsEmpty() {
+			break
+		}
+	}
+	return result, true
+}
+
+func countBSI64Bits(value uint64) int {
+	count := 0
+	for value != 0 {
+		value &= value - 1
+		count++
+	}
+	return count
+}
+
+func (b *BSI) matchInt64Trie(vals []uint64, p int, prefix *Bitmap, owned bool) *Bitmap {
+	if prefix.IsEmpty() {
+		if owned {
+			return prefix
+		}
+		return NewBitmap()
+	}
+	if p < 0 || (p < 63 && uint64(len(vals)) == uint64(1)<<uint(p+1)) {
+		if owned {
+			return prefix
+		}
+		return prefix.Clone()
+	}
+
+	mask := uint64(1) << uint(p)
+	cut := sort.Search(len(vals), func(i int) bool { return vals[i]&mask != 0 })
+	lo, hi := vals[:cut], vals[cut:]
+	switch {
+	case len(hi) == 0:
+		return b.matchInt64Trie(lo, p-1, bsi64PlaneChild(prefix, &b.bA[p], false, owned), true)
+	case len(lo) == 0:
+		return b.matchInt64Trie(hi, p-1, bsi64PlaneChild(prefix, &b.bA[p], true, owned), true)
+	default:
+		hiBM := And(prefix, &b.bA[p])
+		result := b.matchInt64Trie(lo, p-1, bsi64PlaneChild(prefix, &b.bA[p], false, owned), true)
+		result.Or(b.matchInt64Trie(hi, p-1, hiBM, true))
+		return result
+	}
+}
+
+func bsi64PlaneChild(prefix, plane *Bitmap, set, owned bool) *Bitmap {
+	if owned {
+		if set {
+			prefix.And(plane)
+		} else {
+			prefix.AndNot(plane)
+		}
+		return prefix
+	}
+	if set {
+		return And(prefix, plane)
+	}
+	return AndNot(prefix, plane)
 }
 
 // BatchEqualBig returns a bitmap containing the column IDs where the values are contained within the list of values provided.
 func (b *BSI) BatchEqualBig(parallelism int, values []*big.Int) *Bitmap {
+	if b.eBM.IsEmpty() || len(values) == 0 {
+		return NewBitmap()
+	}
+
+	if intValues, ok := b.batchEqualBigValuesAsInt64(values); ok {
+		return b.BatchEqual(parallelism, intValues)
+	}
 
 	valMap := make(map[string]struct{}, len(values))
 	for i := 0; i < len(values); i++ {
-		valMap[string(values[i].Bytes())] = struct{}{}
+		if values[i] == nil {
+			continue
+		}
+		valMap[batchEqualBigKey(values[i])] = struct{}{}
+	}
+	if len(valMap) == 0 {
+		return NewBitmap()
 	}
 	comp := &task{bsi: b, values: valMap}
 	return parallelExecutor(parallelism, comp, batchEqual, &b.eBM)
+}
+
+func batchEqualBigKey(value *big.Int) string {
+	bytes := value.Bytes()
+	key := make([]byte, len(bytes)+1)
+	key[0] = byte(value.Sign() + 1)
+	copy(key[1:], bytes)
+	return string(key)
+}
+
+func (b *BSI) batchEqualBigValuesAsInt64(values []*big.Int) ([]int64, bool) {
+	if b.BitCount() > 63 {
+		return nil, false
+	}
+	intValues := make([]int64, 0, len(values))
+	for _, value := range values {
+		if value == nil {
+			continue
+		}
+		if !value.IsInt64() {
+			return nil, false
+		}
+		intValues = append(intValues, value.Int64())
+	}
+	if len(intValues) == 0 {
+		return nil, false
+	}
+	return intValues, true
 }
 
 func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,
@@ -1002,7 +1300,7 @@ func batchEqual(e *task, batch []uint64, resultsChan chan *Bitmap,
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
 		if value, ok := e.bsi.GetBigValue(cID); ok {
-			if _, yes := e.values[string(value.Bytes())]; yes {
+			if _, yes := e.values[batchEqualBigKey(value)]; yes {
 				results.Add(cID)
 			}
 		}
