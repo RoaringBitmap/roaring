@@ -208,6 +208,131 @@ func (b *BSI) GetBigValue(columnID uint64) (value *big.Int, exists bool) {
 	return val, exists
 }
 
+// GetBigValues gets values for the column IDs. Returned values are aligned with
+// columnIDs, and a nil entry means the corresponding column ID has no value.
+func (b *BSI) GetBigValues(columnIDs []uint64) []*big.Int {
+	values := make([]*big.Int, len(columnIDs))
+	if len(columnIDs) == 0 {
+		return values
+	}
+	if len(columnIDs) == 1 {
+		if value, ok := b.GetBigValue(columnIDs[0]); ok {
+			values[0] = value
+		}
+		return values
+	}
+	request := newBSIGetBigValuesRequest(columnIDs)
+	if !b.isBig() {
+		return b.getBigValuesInt64(request, values)
+	}
+	return b.getBigValuesGeneric(request, values)
+}
+
+type bsiGetBigValuesRequest struct {
+	foundSet           *Bitmap
+	positions          map[uint64]int
+	duplicatePositions map[uint64][]int
+}
+
+func newBSIGetBigValuesRequest(columnIDs []uint64) bsiGetBigValuesRequest {
+	foundSet := NewBitmap()
+	positions := make(map[uint64]int, len(columnIDs))
+	var duplicatePositions map[uint64][]int
+	for position, columnID := range columnIDs {
+		if _, ok := positions[columnID]; ok {
+			if duplicatePositions == nil {
+				duplicatePositions = make(map[uint64][]int)
+			}
+			duplicatePositions[columnID] = append(duplicatePositions[columnID], position)
+			continue
+		}
+		positions[columnID] = position
+		foundSet.Add(columnID)
+	}
+	return bsiGetBigValuesRequest{
+		foundSet:           foundSet,
+		positions:          positions,
+		duplicatePositions: duplicatePositions,
+	}
+}
+
+func (b *BSI) getBigValuesInt64(request bsiGetBigValuesRequest, values []*big.Int) []*big.Int {
+	existing := And(&b.eBM, request.foundSet)
+	if existing.IsEmpty() {
+		return values
+	}
+
+	rawValues := make([]uint64, len(values))
+	signBit := b.BitCount()
+	for bit := 0; bit <= signBit; bit++ {
+		bitSet := And(&b.bA[bit], existing)
+		iter := bitSet.Iterator()
+		for iter.HasNext() {
+			columnID := iter.Next()
+			rawValues[request.positions[columnID]] |= uint64(1) << uint(bit)
+		}
+	}
+
+	width := uint(signBit + 1)
+	signMask := uint64(1) << uint(signBit)
+	iter := existing.Iterator()
+	for iter.HasNext() {
+		columnID := iter.Next()
+		position := request.positions[columnID]
+		rawValue := rawValues[position]
+		if rawValue&signMask != 0 && width < 64 {
+			rawValue |= ^uint64(0) << width
+		}
+		values[position] = big.NewInt(int64(rawValue))
+	}
+	fillDuplicateBigValues(values, request)
+	return values
+}
+
+func (b *BSI) getBigValuesGeneric(request bsiGetBigValuesRequest, values []*big.Int) []*big.Int {
+	existing := And(&b.eBM, request.foundSet)
+	if existing.IsEmpty() {
+		return values
+	}
+
+	iter := existing.Iterator()
+	for iter.HasNext() {
+		values[request.positions[iter.Next()]] = big.NewInt(0)
+	}
+	for bit := b.BitCount(); bit >= 0; bit-- {
+		bitSet := And(&b.bA[bit], existing)
+		iter := bitSet.Iterator()
+		for iter.HasNext() {
+			columnID := iter.Next()
+			position := request.positions[columnID]
+			values[position].SetBit(values[position], bit, 1)
+		}
+	}
+
+	signBit := b.BitCount()
+	negativeSet := And(&b.bA[signBit], existing)
+	iter = negativeSet.Iterator()
+	for iter.HasNext() {
+		position := request.positions[iter.Next()]
+		values[position] = negativeTwosComplementToInt(values[position])
+	}
+
+	fillDuplicateBigValues(values, request)
+	return values
+}
+
+func fillDuplicateBigValues(values []*big.Int, request bsiGetBigValuesRequest) {
+	for columnID, extraPositions := range request.duplicatePositions {
+		value := values[request.positions[columnID]]
+		if value == nil {
+			continue
+		}
+		for _, position := range extraPositions {
+			values[position] = new(big.Int).Set(value)
+		}
+	}
+}
+
 func negativeTwosComplementToInt(val *big.Int) *big.Int {
 	inverted := new(big.Int).Not(val)
 	mask := new(big.Int).Lsh(big.NewInt(1), uint(val.BitLen()))
