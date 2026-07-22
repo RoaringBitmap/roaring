@@ -421,11 +421,12 @@ func (ra *roaringArray) copyOrSourceContainerAt(other *roaringArray, index int, 
 	return other.containers[index].clone(), false
 }
 
-func (ra *roaringArray) orBulk(other *roaringArray, pos1, pos2 int) bool {
-	if !ra.checkKeysSorted() || !other.checkKeysSorted() {
-		return false
-	}
-
+// orBulk merges the source suffix into the receiver in a single backward pass,
+// growing the aligned key/container/copy-on-write slices once. Like every other
+// roaringArray operation it assumes both arrays already hold their keys in
+// sorted order; that invariant is enforced at the load boundary (Validate), not
+// re-checked here.
+func (ra *roaringArray) orBulk(other *roaringArray, pos1, pos2 int) {
 	length1 := ra.size()
 	length2 := other.size()
 	receiverLastKey := ra.getKeyAtIndex(length1 - 1)
@@ -485,7 +486,6 @@ func (ra *roaringArray) orBulk(other *roaringArray, pos1, pos2 int) bool {
 		right--
 		destination--
 	}
-	return true
 }
 
 func (ra *roaringArray) remove(key uint16) bool {
