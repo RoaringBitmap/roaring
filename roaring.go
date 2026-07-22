@@ -1645,14 +1645,12 @@ main:
 				}
 				s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
 			} else if s1 > s2 {
-				rb.highlowcontainer.insertNewKeyValueAt(pos1, s2, x2.highlowcontainer.getContainerAtIndex(pos2).clone())
-				pos1++
-				length1++
-				pos2++
-				if pos2 == length2 {
-					break main
-				}
-				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				// The receiver has run ahead of the source, so every
+				// remaining source-only key is inserted here. Do the whole
+				// suffix in one backward pass instead of shifting the aligned
+				// slices once per inserted key.
+				rb.highlowcontainer.orBulk(&x2.highlowcontainer, pos1, pos2)
+				return
 			} else {
 				newcont := rb.highlowcontainer.getUnionedWritableContainer(pos1, x2.highlowcontainer.getContainerAtIndex(pos2))
 				rb.highlowcontainer.replaceKeyAndContainerAtIndex(pos1, s1, newcont, false)
