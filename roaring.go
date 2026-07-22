@@ -1602,20 +1602,26 @@ func (rb *Bitmap) Xor(x2 *Bitmap) {
 					break
 				}
 			} else if s1 > s2 {
-				rb.highlowcontainer.insertNewKeyValueAt(pos1, x2.highlowcontainer.getKeyAtIndex(pos2), x2.highlowcontainer.getContainerAtIndex(pos2).clone())
-				length1++
-				pos1++
-				pos2++
+				// A source-only key must be inserted at pos1. Inserting in
+				// place shifts the aligned suffix once per inserted key, which
+				// is quadratic when many keys are interleaved. Finish the merge
+				// into fresh slices in a single linear pass instead.
+				rb.highlowcontainer.mergeBulk(&x2.highlowcontainer, pos1, pos1, pos2, true)
+				return
 			} else {
 				c := rb.highlowcontainer.getWritableContainerAtIndex(pos1).ixor(x2.highlowcontainer.getContainerAtIndex(pos2))
 				if !c.isEmpty() {
 					rb.highlowcontainer.setContainerAtIndex(pos1, c)
 					pos1++
+					pos2++
 				} else {
-					rb.highlowcontainer.removeAtIndex(pos1)
-					length1--
+					// The aligned containers cancelled out. Removing pos1 in
+					// place would shift the suffix once per removed key (also
+					// quadratic), so finish the merge into fresh slices,
+					// dropping this now-empty container.
+					rb.highlowcontainer.mergeBulk(&x2.highlowcontainer, pos1, pos1+1, pos2+1, true)
+					return
 				}
-				pos2++
 			}
 		} else {
 			break
@@ -1645,11 +1651,12 @@ main:
 				}
 				s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
 			} else if s1 > s2 {
-				// The receiver has run ahead of the source, so every
-				// remaining source-only key is inserted here. Do the whole
-				// suffix in one backward pass instead of shifting the aligned
-				// slices once per inserted key.
-				rb.highlowcontainer.orBulk(&x2.highlowcontainer, pos1, pos2)
+				// The receiver has run ahead of the source: a source-only key
+				// must be inserted at pos1. Inserting in place shifts the
+				// aligned suffix once per inserted key, which is quadratic when
+				// many source-only keys are interleaved. Finish the merge into
+				// fresh slices in a single linear pass instead.
+				rb.highlowcontainer.mergeBulk(&x2.highlowcontainer, pos1, pos1, pos2, false)
 				return
 			} else {
 				newcont := rb.highlowcontainer.getUnionedWritableContainer(pos1, x2.highlowcontainer.getContainerAtIndex(pos2))
