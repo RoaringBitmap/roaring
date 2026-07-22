@@ -18,6 +18,7 @@ go test ./roaring64 -run '^$' -bench 'BenchmarkBSI64BatchEqual' -benchmem -count
 go test ./roaring64 -run '^$' -bench 'BenchmarkBSI64Compare(Big)?Value|BenchmarkBSI64BatchEqual(Big)?LargeAgeFixture' -benchmem -count 1
 go test ./roaring64 -run '^$' -bench 'BenchmarkBSI64CompareBSISameRow' -benchmem -count=5
 go test ./roaring64 -run '^$' -bench 'BenchmarkBSI64GetBigValue' -benchmem -count=3
+go test ./roaring64 -run '^$' -bench 'BenchmarkBSI64BatchEqual.*LargeFixture' -benchmem -benchtime=2s -count=5
 ```
 
 Representative results:
@@ -31,6 +32,7 @@ Representative results:
 | `BenchmarkBSI64CompareValueGELargeAgeFixture` | ~3.45s/op, ~500MB/op | ~168-184ms/op, ~82.3MB/op | Uses bitmap-native signed int64 comparison. |
 | `BenchmarkBSI64CompareBSISameRowBitwise` | ~127-168ms/op, ~69.7MB/op | ~568-795us/op, ~619KB/op | Compares two BSI values per column ID through bitplane algebra instead of row-by-row `GetBigValue`. |
 | `BenchmarkBSI64GetBigValuesLargeFixture` | ~69-92ms/op, ~35.6MB/op, ~1.3M allocs/op for a row-by-row `GetBigValue` loop | ~23-34ms/op, ~8.2MB/op, ~200k allocs/op | Extracts aligned BSI values for a column batch by walking bit-slices once. |
+| `BenchmarkBSI64BatchEqualValuesLargeFixture` | ~5.4-7.1ms/op for `BatchEqual` plus `GetBigValues`; ~10.9-13.0ms/op for `BatchEqual` plus row-by-row `GetValue` | ~1.6-2.3ms/op, ~2.0MB/op, ~432 allocs/op | Emits matched column IDs and int64 values directly from trie leaves, avoiding a second value lookup pass. |
 
 Compatibility:
 
@@ -42,6 +44,9 @@ Compatibility:
   values with the same magnitude do not collide.
 - `GetBigValues` returns values aligned to the requested column IDs, with nil
   entries for missing values, while preserving `GetBigValue` semantics.
+- `BatchEqualValues` returns matched column IDs and int64 values for `BatchEqual`
+  shapes, optionally restricted by a found set. Result order is intentionally
+  unspecified.
 
 Follow-up:
 
