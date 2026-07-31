@@ -37,13 +37,13 @@
 	VZIP1  V5.H8, V4.H8, V2.H8         \
 	VZIP2  V5.H8, V4.H8, V0.H8
 
-// Store the lanes of V2 that differ from their predecessor (previous lane,
+// Store the lanes of Vin that differ from their predecessor (previous lane,
 // or last lane of V1 for lane 0) at (Rout), advancing Rout by 2 bytes per
 // lane kept. Writes a full 16 bytes; the caller guarantees slack.
 // Rcnt receives the number of lanes kept. Clobbers V3-V5, R14, R15, R16.
-#define STOREUNIQ(Rout, Rcnt) \
-	VEXT   $14, V2.B16, V1.B16, V3.B16 \
-	VCMEQ  V3.H8, V2.H8, V4.H8         \
+#define STOREUNIQ(Vin, Rout, Rcnt) \
+	VEXT   $14, Vin.B16, V1.B16, V3.B16 \
+	VCMEQ  V3.H8, Vin.H8, V4.H8         \
 	VUZP1  V4.B16, V4.B16, V4.B16      \
 	VMOV   V4.D[0], R14                \
 	AND    R12, R14, R14               \
@@ -54,7 +54,7 @@
 	SUB    R14, R19, Rcnt              \
 	ADD    R15<<4, R6, R16             \
 	VLD1   (R16), [V5.B16]             \
-	VTBL   V5.B16, [V2.B16], V3.B16    \
+	VTBL   V5.B16, [Vin.B16], V3.B16   \
 	VST1   [V3.B16], (Rout)            \
 	ADD    Rcnt<<1, Rout, Rout
 
@@ -86,7 +86,7 @@ TEXT ·unionKernelNEON(SB), NOSPLIT, $0-120
 	MERGE
 	// laststore = all ones (never equal to a first stored lane)
 	VCMEQ V0.H8, V0.H8, V1.H8
-	STOREUNIQ(R2, R17)
+	STOREUNIQ(V2, R2, R17)
 	VORR V2.B16, V2.B16, V1.B16
 
 loop:
@@ -111,22 +111,52 @@ loop:
 	CMP  R21, R20
 	BHS  disjoint
 	MERGE
-	STOREUNIQ(R2, R17)
+	STOREUNIQ(V2, R2, R17)
 	VORR V2.B16, V2.B16, V1.B16
 	B loop
 
+// Fast-forward loop for consecutive disjoint blocks. The head select is a
+// plain branch: on run-structured data it predicts, keeping the untaken
+// cursor off the loop-carried chain that the main loop's CSEL select
+// serializes. Interleaving input rejoins the main loop after one merge.
 disjoint:
-	VORR V2.B16, V2.B16, V22.B16   // stash fresh
-	VORR V0.B16, V0.B16, V2.B16    // emit old carry as this round's minimum
-	STOREUNIQ(R2, R17)
-	VORR V2.B16, V2.B16, V1.B16    // laststore = old carry
-	VORR V22.B16, V22.B16, V0.B16  // carry = fresh
+	STOREUNIQ(V0, R2, R17)
+	VORR V0.B16, V0.B16, V1.B16    // laststore = old carry
+	VORR V2.B16, V2.B16, V0.B16    // carry = fresh
+
+ffloop:
+	CMP R3, R0
+	BHS done
+	CMP R4, R1
+	BHS done
+	MOVHU (R0), R8
+	MOVHU (R1), R9
+	CMP  R9, R8
+	BHI  fftake2
+	VLD1.P 16(R0), [V2.H8]         // take set1's block on tie/less
+	MOVD R8, R20
+	B    ffcheck
+fftake2:
+	VLD1.P 16(R1), [V2.H8]
+	MOVD R9, R20
+ffcheck:
+	VMOV V0.H[7], R21
+	CMP  R21, R20
+	BLO  ffmerge
+	STOREUNIQ(V0, R2, R17)
+	VORR V0.B16, V0.B16, V1.B16    // laststore = old carry
+	VORR V2.B16, V2.B16, V0.B16    // carry = fresh
+	B ffloop
+
+ffmerge:
+	MERGE
+	STOREUNIQ(V2, R2, R17)
+	VORR V2.B16, V2.B16, V1.B16
 	B loop
 
 done:
 	// flush carry through the dedup into the leftover buffer
-	VORR V0.B16, V0.B16, V2.B16
-	STOREUNIQ(R7, R17)
+	STOREUNIQ(V0, R7, R17)
 	MOVD R17, leftoverLen+112(FP)
 
 	// outLen = (out - outBase) / 2
