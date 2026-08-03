@@ -9,9 +9,10 @@ import (
 	"testing"
 )
 
+// The oracle is the pre-existing scalar asm, sharing no code with unionNEON.
 func refUnion(a, b []uint16) []uint16 {
 	out := make([]uint16, len(a)+len(b))
-	n := scalarMergeUnion(a, b, out)
+	n := union2by2scalar(a, b, out)
 	return out[:n]
 }
 
@@ -122,6 +123,42 @@ func TestUnion2By2NEONLaneStraddleAndHighEnd(t *testing.T) {
 		low[i] = uint16(65520 + i)
 	}
 	checkKernel(t, low, high, "adjacent-high")
+}
+
+// 20 lands in both the kernel leftovers and set1's tail; the wrapper dedups.
+func TestUnion2By2NEONLeftoverTailDedup(t *testing.T) {
+	a := []uint16{0, 1, 2, 3, 4, 5, 6, 7, 20}
+	b := []uint16{15, 16, 17, 18, 19, 20, 21, 22}
+	checkKernel(t, a, b, "leftover-tail")
+	checkKernel(t, b, a, "leftover-tail-swap")
+}
+
+// laststore initializes to all ones and the random generators cannot
+// emit 0xFFFF. These shapes run it through the merge loop, the disjoint
+// carry, and the wrapper dedup, not just prime-and-flush.
+func TestUnion2By2NEONHighEndMultiBlock(t *testing.T) {
+	span := func(lo, hi, step int) []uint16 {
+		var s []uint16
+		for v := lo; v <= hi; v += step {
+			s = append(s, uint16(v))
+		}
+		return s
+	}
+
+	a := span(65520, 65535, 1)
+	b := append(span(0, 7, 1), span(65528, 65535, 1)...)
+	checkKernel(t, a, b, "high-two-blocks")
+	checkKernel(t, b, a, "high-two-blocks-swap")
+
+	// 0xFFFF shared between the kernel leftovers and set1's tail.
+	c := append(span(0, 7, 1), span(65529, 65535, 1)...)
+	d := span(65528, 65535, 1)
+	checkKernel(t, c, d, "high-leftover-tail")
+	checkKernel(t, d, c, "high-leftover-tail-swap")
+
+	// Identical blocks to 0xFFFF: equality, disjoint, and ffmerge transitions.
+	g := span(65472, 65535, 1)
+	checkKernel(t, g, g, "high-identical-multiblock")
 }
 
 // Every block seam shares its boundary value, pinning the fast path's
