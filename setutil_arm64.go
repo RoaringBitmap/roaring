@@ -46,6 +46,13 @@ func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 func unionNEON(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	// Callers such as lazyorArray pass a zero-length buffer with capacity.
 	buffer = buffer[:cap(buffer)]
+	// iorArray's in-place self-union passes set2 and buffer sharing a
+	// backing array from offset 0, with set1 a copy of set2. The kernel's
+	// block stores would clobber unread set2; on identical inputs the
+	// scalar merge never writes a position it has not already read.
+	if &buffer[0] == &set2[0] {
+		return union2by2scalar(set1, set2, buffer)
+	}
 	var leftover [16]uint16
 	outLen, pos1, pos2, ll := unionKernelNEON(set1, set2, buffer, &uniqshuf[0], &leftover)
 	// The leftovers and the exhausted input's tail are two sorted runs.

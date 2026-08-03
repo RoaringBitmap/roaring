@@ -229,3 +229,21 @@ func TestUnion2By2NEONAliasedBuffer(t *testing.T) {
 		}
 	}
 }
+
+// iorArray's self-union geometry: set2 and the output share a backing array.
+func TestUnion2By2NEONSelfAliasedBuffer(t *testing.T) {
+	r := rand.New(rand.NewSource(11))
+	for iter := 0; iter < 200; iter++ {
+		valRange := 256 + r.Intn(65280)
+		set := genSortedUnique(r, 8+r.Intn(2000), valRange)
+
+		n := len(set)
+		shared := make([]uint16, 2*n)
+		copy(shared, set)
+		copy(shared[n:], set)
+		got := shared[:union2by2(shared[n:], shared[:n], shared)]
+		if !reflect.DeepEqual(set, got) {
+			t.Fatalf("self-aliased: n=%d: mismatch (got %d elems)", n, len(got))
+		}
+	}
+}
