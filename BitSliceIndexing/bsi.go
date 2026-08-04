@@ -97,9 +97,6 @@ func (b *BSI) SetValue(columnID uint64, value int64) {
 	if b.MaxValue == 0 && b.MinValue == 0 {
 		for i := bits.Len64(uint64(value)) - b.BitCount(); i > 0; i-- {
 			b.bA = append(b.bA, roaring.NewBitmap())
-			if b.runOptimized {
-				b.bA[i].RunOptimize()
-			}
 		}
 	}
 
@@ -121,9 +118,6 @@ func (b *BSI) SetMany(foundSet *roaring.Bitmap, value int64) {
 	if b.MaxValue == 0 && b.MinValue == 0 {
 		for i := bits.Len64(uint64(value)) - b.BitCount(); i > 0; i-- {
 			b.bA = append(b.bA, roaring.NewBitmap())
-			if b.runOptimized {
-				b.bA[i].RunOptimize()
-			}
 		}
 	}
 
@@ -191,7 +185,12 @@ func parallelExecutor(parallelism int, t *task, e action,
 		ba = append(ba, bm)
 	}
 
-	return roaring.ParOr(0, ba...)
+	results := roaring.ParOr(0, ba...)
+	// Optimize the aggregate returned to the caller after it has been populated.
+	if t.bsi.runOptimized && !results.IsEmpty() {
+		results.RunOptimize()
+	}
+	return results
 
 }
 
@@ -240,6 +239,10 @@ func parallelExecutorBSIResults(parallelism int, input *BSI, e bsiAction, foundS
 		}
 	} else {
 		results.ParOr(0, ba...)
+	}
+	// Optimize the aggregate returned to the caller after it has been populated.
+	if input.runOptimized && !results.eBM.IsEmpty() {
+		results.RunOptimize()
 	}
 	return results
 
@@ -297,9 +300,6 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 	defer wg.Done()
 
 	results := roaring.NewBitmap()
-	if e.bsi.runOptimized {
-		results.RunOptimize()
-	}
 	if len(batch) == 0 {
 		resultsChan <- results
 		return
@@ -610,9 +610,6 @@ func transpose(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg *sy
 	defer wg.Done()
 
 	results := roaring.NewBitmap()
-	if e.bsi.runOptimized {
-		results.RunOptimize()
-	}
 	for _, cID := range batch {
 		if value, ok := e.bsi.GetValue(uint64(cID)); ok {
 			results.Add(uint32(value))
@@ -1031,9 +1028,6 @@ func transposeWithCounts(input *BSI, batch []uint32, resultsChan chan *BSI, wg *
 	defer wg.Done()
 
 	results := NewDefaultBSI()
-	if input.runOptimized {
-		results.RunOptimize()
-	}
 	for _, cID := range batch {
 		if value, ok := input.GetValue(uint64(cID)); ok {
 			if val, ok2 := results.GetValue(uint64(value)); !ok2 {
