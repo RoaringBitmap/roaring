@@ -201,6 +201,131 @@ func TestRange(t *testing.T) {
 	}
 }
 
+func TestCompareValueMatchesGetValue(t *testing.T) {
+	type query struct {
+		op    Operation
+		start int64
+		end   int64
+	}
+	tests := []struct {
+		name    string
+		newBSI  func() *BSI
+		values  []int64
+		queries []query
+	}{
+		{
+			name:   "unsigned",
+			newBSI: func() *BSI { return NewBSI(127, 0) },
+			values: []int64{0, 1, 2, 3, 7, 31, 63, 126, 127},
+			queries: []query{
+				{EQ, -1, 0}, {EQ, 0, 0}, {EQ, 127, 0}, {EQ, 128, 0},
+				{LT, 0, 0}, {LE, 0, 0}, {GT, 127, 0}, {GE, 128, 0},
+				{RANGE, -1, 1}, {RANGE, 31, 126}, {RANGE, 127, 126},
+			},
+		},
+		{
+			name:   "signed",
+			newBSI: NewDefaultBSI,
+			values: []int64{Min64BitSigned, -100, -2, -1, 0, 1, 2, 100, Max64BitSigned},
+			queries: []query{
+				{EQ, Min64BitSigned, 0}, {EQ, -1, 0}, {EQ, 1, 0}, {EQ, Max64BitSigned, 0},
+				{LT, Min64BitSigned, 0}, {LT, 1, 0}, {LE, -100, 0}, {LE, 1, 0},
+				{GT, -1, 0}, {GT, Max64BitSigned, 0}, {GE, -1, 0}, {GE, 0, 0},
+				{RANGE, Min64BitSigned, -1}, {RANGE, -2, 2}, {RANGE, 1, -1}, {RANGE, Max64BitSigned, Max64BitSigned},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		for _, optimized := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/run_optimized=%t", tc.name, optimized), func(t *testing.T) {
+				bsi := tc.newBSI()
+				for columnID, value := range tc.values {
+					bsi.SetValue(uint64(columnID), value)
+				}
+				if optimized {
+					bsi.RunOptimize()
+				}
+
+				foundSet := roaring.NewBitmap()
+				for columnID := range tc.values {
+					if columnID%2 == 0 {
+						foundSet.Add(uint32(columnID))
+					}
+				}
+				for _, selection := range []struct {
+					name  string
+					input *roaring.Bitmap
+				}{
+					{name: "existence", input: nil},
+					{name: "subset", input: foundSet},
+				} {
+					for _, parallelism := range []int{0, 1, 3} {
+						for _, q := range tc.queries {
+							got := bsi.CompareValue(parallelism, q.op, q.start, q.end, selection.input)
+							want := compareValueGroundTruth(bsi, q.op, q.start, q.end, selection.input)
+							if !got.Equals(want) {
+								t.Errorf("%s parallelism=%d op=%d start=%d end=%d: got %v, want %v", selection.name, parallelism, q.op, q.start, q.end, got.ToArray(), want.ToArray())
+							}
+						}
+					}
+				}
+
+				before := foundSet.Clone()
+				result := bsi.CompareValue(0, EQ, tc.values[0], 0, foundSet)
+				result.Remove(0)
+				result.Add(1000)
+				assert.True(t, foundSet.Equals(before), "CompareValue must not mutate or share foundSet")
+
+				existenceBefore := bsi.GetExistenceBitmap().Clone()
+				result = bsi.CompareValue(0, EQ, tc.values[0], 0, nil)
+				result.Remove(0)
+				result.Add(1000)
+				assert.True(t, bsi.GetExistenceBitmap().Equals(existenceBefore), "CompareValue must not mutate or share the existence bitmap")
+			})
+		}
+	}
+}
+
+func compareValueGroundTruth(bsi *BSI, op Operation, start, end int64, foundSet *roaring.Bitmap) *roaring.Bitmap {
+	if foundSet == nil {
+		foundSet = bsi.GetExistenceBitmap()
+	}
+
+	result := roaring.NewBitmap()
+	iter := foundSet.Iterator()
+	for iter.HasNext() {
+		columnID := iter.Next()
+		value, exists := bsi.GetValue(uint64(columnID))
+		if !exists {
+			continue
+		}
+
+		matches := false
+		switch op {
+		case LT:
+			matches = value < start
+		case LE:
+			matches = value <= start
+		case EQ:
+			matches = value == start
+		case GE:
+			matches = value >= start
+		case GT:
+			matches = value > start
+		case RANGE:
+			matches = value >= start && value <= end
+		default:
+			panic(fmt.Sprintf("Unknown operation [%v]", op))
+		}
+		if matches {
+			result.Add(columnID)
+		}
+	}
+	return result
+}
+
 func TestExists(t *testing.T) {
 
 	bsi := NewBSI(10, 0)
