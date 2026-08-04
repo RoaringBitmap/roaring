@@ -8,6 +8,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func BenchmarkCompareValue(b *testing.B) {
+	bsi := setupLargeBSI(b)
+	if bsi == nil {
+		b.Skip("skipping, large BSI setup failed")
+		return
+	}
+	if result := bsi.CompareValue(0, EQ, 55, 0, nil); result.GetCardinality() != 520157 {
+		b.Fatalf("unexpected result cardinality: got %d, want %d", result.GetCardinality(), 520157)
+	}
+
+	b.ResetTimer()
+	for b.Loop() {
+		bsi.CompareValue(0, EQ, 55, 0, nil)
+	}
+}
+
 func BenchmarkBatchEqual(b *testing.B) {
 	bsi := setupLargeBSI(b)
 	if bsi == nil {
