@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import (
 	"errors"
 	"fmt"
+	"math/bits"
 	"slices"
 )
 
@@ -220,7 +221,7 @@ func newRunContainer16FromBitmapContainer(bc *bitmapContainer) *runContainer16 {
 			// wrap up, no more runs
 			return rc
 		}
-		localRunStart := countTrailingZeros(curWord)
+		localRunStart := bits.TrailingZeros64(curWord)
 		runStart := localRunStart + 64*longCtr
 		// stuff 1s into number's LSBs
 		curWordWith1s := curWord | (curWord - 1)
@@ -239,7 +240,7 @@ func newRunContainer16FromBitmapContainer(bc *bitmapContainer) *runContainer16 {
 			rc.iv[runCount].length = uint16(runEnd) - uint16(runStart) - 1
 			return rc
 		}
-		localRunEnd := countTrailingZeros(^curWordWith1s)
+		localRunEnd := bits.TrailingZeros64(^curWordWith1s)
 		runEnd = localRunEnd + longCtr*64
 		rc.iv[runCount].start = uint16(runStart)
 		rc.iv[runCount].length = uint16(runEnd) - 1 - uint16(runStart)

@@ -1418,3 +1418,130 @@ func BenchmarkFastOrRunContainers(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkBitmapOrBulkMerge exercises the in-place Bitmap.Or bulk merge path
+// with a variety of key shapes. The fixtures live in roaring_test.go.
+func BenchmarkBitmapOrBulkMerge(b *testing.B) {
+	fixtures := []struct {
+		name    string
+		fixture bitmapOrBulkMergeFixture
+	}{
+		{"fresh-interleaved-64", bitmapOrBulkMergeInterleavedFixture(64, false)},
+		{"fresh-interleaved-65", bitmapOrBulkMergeInterleavedFixture(65, false)},
+		{"fresh-interleaved-1024", bitmapOrBulkMergeInterleavedFixture(1024, false)},
+		{"fresh-interleaved-4096", bitmapOrBulkMergeInterleavedFixture(4096, false)},
+		{"fresh-append-only-4096", bitmapOrBulkMergeAppendFixture(4096)},
+		{"fresh-overlap-4096", bitmapOrBulkMergeOverlapFixture(4096)},
+		{"fresh-copy-on-write-interleaved-4096", bitmapOrBulkMergeInterleavedFixture(4096, true)},
+		{"fresh-single-interior-4096", bitmapOrBulkMergeSingleInteriorFixture(4096)},
+	}
+	for _, benchmark := range fixtures {
+		b.Run(benchmark.name, func(b *testing.B) {
+			b.ReportAllocs()
+			var cardinality uint64
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				fixtureIndex := i & 1
+				receiver := benchmark.fixture.lefts[fixtureIndex].Clone()
+				receiver.Or(benchmark.fixture.rights[fixtureIndex])
+				cardinality += receiver.GetCardinality()
+			}
+			b.StopTimer()
+			if cardinality != benchmark.fixture.cardinality*uint64(b.N) {
+				b.Fatalf("unexpected total cardinality: got %d, want %d", cardinality, benchmark.fixture.cardinality*uint64(b.N))
+			}
+		})
+	}
+}
+
+// bitmapOrBulkMergeTailAdjacentFixture builds a receiver holding keys
+// [0, 4093] plus 4095, unioned with the single source-only key 4094. The lone
+// insert lands just before the receiver's tail.
+func bitmapOrBulkMergeTailAdjacentFixture() bitmapOrBulkMergeFixture {
+	const containers = 4096
+
+	leftKeys := make([]uint16, 0, containers-1)
+	for key := 0; key < containers-2; key++ {
+		leftKeys = append(leftKeys, uint16(key))
+	}
+	leftKeys = append(leftKeys, containers-1)
+
+	return newBitmapOrBulkMergeFixture(leftKeys, []uint16{containers - 2}, false)
+}
+
+func BenchmarkBitmapOrBulkMergeTailAdjacent(b *testing.B) {
+	fixture := bitmapOrBulkMergeTailAdjacentFixture()
+
+	b.ReportAllocs()
+	var cardinality uint64
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		fixtureIndex := i & 1
+		receiver := fixture.lefts[fixtureIndex].Clone()
+		receiver.Or(fixture.rights[fixtureIndex])
+		cardinality += receiver.GetCardinality()
+	}
+	b.StopTimer()
+	if cardinality != fixture.cardinality*uint64(b.N) {
+		b.Fatalf("unexpected total cardinality: got %d, want %d", cardinality, fixture.cardinality*uint64(b.N))
+	}
+}
+
+// bitmapXorBulkMergeFixture builds two variants of a left/right bitmap pair for
+// the in-place Bitmap.Xor bulk merge path. shift controls how many low bits the
+// right side is offset from the left: shift==0 makes every aligned container
+// cancel to empty (stressing the removal path), while a non-zero shift keeps
+// them disjoint so aligned pairs survive.
+type bitmapXorBulkMergeFixture struct {
+	lefts  [2]*Bitmap
+	rights [2]*Bitmap
+}
+
+func newBitmapXorBulkMergeFixture(leftKeys, rightKeys []uint16, shift uint16) bitmapXorBulkMergeFixture {
+	fixture := bitmapXorBulkMergeFixture{}
+	for variant := range fixture.lefts {
+		left := NewBitmap()
+		right := NewBitmap()
+		base := uint16(variant * 100)
+		for _, key := range leftKeys {
+			left.Add(uint32(key)<<16 | uint32(base))
+		}
+		for _, key := range rightKeys {
+			right.Add(uint32(key)<<16 | uint32(base+shift))
+		}
+		fixture.lefts[variant] = left
+		fixture.rights[variant] = right
+	}
+	return fixture
+}
+
+func BenchmarkBitmapXorBulkMerge(b *testing.B) {
+	keysAll := bitmapOrBulkMergeKeys(0, 4096, 1)
+	fixtures := []struct {
+		name    string
+		fixture bitmapXorBulkMergeFixture
+	}{
+		// disjoint even/odd keys: every source key is an interior insert.
+		{"interleaved-insert-4096", newBitmapXorBulkMergeFixture(
+			bitmapOrBulkMergeKeys(0, 4096, 2), bitmapOrBulkMergeKeys(1, 4096, 2), 1)},
+		// same keys, same low bits: every aligned container cancels to empty.
+		{"overlap-cancel-4096", newBitmapXorBulkMergeFixture(keysAll, keysAll, 0)},
+		// same keys, disjoint low bits: every aligned pair survives (no shift).
+		{"overlap-survive-4096", newBitmapXorBulkMergeFixture(keysAll, keysAll, 1)},
+		// receiver holds all keys, single interior source-only insert.
+		{"single-interior-4096", newBitmapXorBulkMergeFixture(
+			append(append([]uint16{}, bitmapOrBulkMergeKeys(0, 2048, 1)...),
+				bitmapOrBulkMergeKeys(2049, 2047, 1)...), []uint16{2048}, 1)},
+	}
+	for _, benchmark := range fixtures {
+		b.Run(benchmark.name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				fixtureIndex := i & 1
+				receiver := benchmark.fixture.lefts[fixtureIndex].Clone()
+				receiver.Xor(benchmark.fixture.rights[fixtureIndex])
+			}
+		})
+	}
+}

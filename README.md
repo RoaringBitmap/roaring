@@ -1,6 +1,6 @@
 # roaring 
 
-[![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring) [![Go Report Card](https://goreportcard.com/badge/RoaringBitmap/roaring)](https://goreportcard.com/report/github.com/RoaringBitmap/roaring)
+[![GoDoc](https://godoc.org/github.com/RoaringBitmap/roaring?status.svg)](https://godoc.org/github.com/RoaringBitmap/roaring)
 
 ![Go-CI](https://github.com/RoaringBitmap/roaring/workflows/Go-CI/badge.svg)
 ![Go-ARM-CI](https://github.com/RoaringBitmap/roaring/workflows/Go-ARM-CI/badge.svg)
@@ -421,10 +421,6 @@ The two versions were written independently.
 
 https://groups.google.com/g/roaring-bitmaps
 
-## Stars
-
-
-[![Star History Chart](https://api.star-history.com/svg?repos=RoaringBitmap/roaring&type=Date)](https://www.star-history.com/#RoaringBitmap/roaring&Date)
 
 ### Further reading
 

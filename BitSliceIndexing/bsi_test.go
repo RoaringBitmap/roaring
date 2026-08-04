@@ -127,6 +127,19 @@ func setupRandom() *BSI {
 	return bsi
 }
 
+const runOptimizedQueryResultCardinality = 10_000
+
+func setupRunOptimizedQueryBSI(t testing.TB, cardinality int, valueForColumn func(int) int64) *BSI {
+	t.Helper()
+
+	bsi := NewDefaultBSI()
+	for columnID := 0; columnID < cardinality; columnID++ {
+		bsi.SetValue(uint64(columnID), valueForColumn(columnID))
+	}
+	bsi.RunOptimize()
+	return bsi
+}
+
 func TestEQ(t *testing.T) {
 	bsi := setup()
 	eq := bsi.CompareValue(0, EQ, 50, 0, nil)
@@ -365,6 +378,91 @@ func TestTransposeWithCounts(t *testing.T) {
 	assert.Equal(t, int64(2), a)
 }
 
+func TestRunOptimizedBitmapQueryResults(t *testing.T) {
+	expected := roaring.NewBitmap()
+	expected.AddRange(0, runOptimizedQueryResultCardinality)
+
+	constantValues := setupRunOptimizedQueryBSI(t, runOptimizedQueryResultCardinality, func(int) int64 { return 1 })
+	sequentialValues := setupRunOptimizedQueryBSI(t, runOptimizedQueryResultCardinality, func(columnID int) int64 { return int64(columnID) })
+	results := []struct {
+		name   string
+		result *roaring.Bitmap
+	}{
+		{"BatchEqual", constantValues.BatchEqual(4, []int64{1})},
+		{"CompareValue", constantValues.CompareValue(4, EQ, 1, 0, nil)},
+		{"Transpose", sequentialValues.IntersectAndTranspose(4, nil)},
+	}
+
+	for _, test := range results {
+		t.Run(test.name, func(t *testing.T) {
+			assert.True(t, test.result.Equals(expected))
+			assert.True(t, test.result.HasRunCompression())
+		})
+	}
+}
+
+func TestRunOptimizedTransposeWithCountsResult(t *testing.T) {
+	input := setupRunOptimizedQueryBSI(t, runOptimizedQueryResultCardinality, func(columnID int) int64 { return int64(columnID) })
+	result := input.TransposeWithCounts(4, nil)
+
+	assert.Equal(t, uint64(runOptimizedQueryResultCardinality), result.GetCardinality())
+	assert.True(t, result.HasRunCompression())
+	assert.True(t, result.GetExistenceBitmap().HasRunCompression())
+	require.Len(t, result.bA, 1)
+	assert.True(t, result.bA[0].HasRunCompression())
+	for _, columnID := range []uint64{0, 1, runOptimizedQueryResultCardinality - 1} {
+		value, exists := result.GetValue(columnID)
+		assert.True(t, exists)
+		assert.Equal(t, int64(1), value)
+	}
+}
+
+func TestRunOptimizedTransposeWithCountsEmptyResultIsMutable(t *testing.T) {
+	input := NewDefaultBSI()
+	input.SetValue(0, 1)
+	input.RunOptimize()
+
+	result := input.TransposeWithCounts(4, roaring.NewBitmap())
+	assert.Zero(t, result.GetCardinality())
+	assert.False(t, result.HasRunCompression())
+
+	result.SetValue(0, 1)
+	value, exists := result.GetValue(0)
+	assert.True(t, exists)
+	assert.Equal(t, int64(1), value)
+}
+
+func TestRunOptimizedBSISettersCanGrowBitSlices(t *testing.T) {
+	const expandedValue int64 = 1 << 10
+
+	t.Run("SetValue", func(t *testing.T) {
+		bsi := NewDefaultBSI()
+		bsi.SetValue(0, 1)
+		bsi.RunOptimize()
+		bsi.SetValue(1, expandedValue)
+
+		value, exists := bsi.GetValue(1)
+		assert.True(t, exists)
+		assert.Equal(t, expandedValue, value)
+		assert.Equal(t, 11, bsi.BitCount())
+	})
+
+	t.Run("SetMany", func(t *testing.T) {
+		bsi := NewDefaultBSI()
+		bsi.SetValue(0, 1)
+		bsi.RunOptimize()
+		foundSet := roaring.BitmapOf(1, 2)
+		bsi.SetMany(foundSet, expandedValue)
+
+		for _, columnID := range []uint64{1, 2} {
+			value, exists := bsi.GetValue(columnID)
+			assert.True(t, exists)
+			assert.Equal(t, expandedValue, value)
+		}
+		assert.Equal(t, 11, bsi.BitCount())
+	})
+}
+
 func TestRangeAllNegative(t *testing.T) {
 	bsi := setupAllNegative()
 	assert.Equal(t, uint64(100), bsi.GetCardinality())
@@ -501,4 +599,51 @@ func TestTransposeWithCountsNil(t *testing.T) {
 	a, ok := transposed.GetValue(uint64(50))
 	assert.True(t, ok)
 	assert.Equal(t, int64(2), a)
+}
+
+// TestBatchEqualLargeQueryValues drives the scattered-query scan path: a large
+// existence bitmap and a 128+ value query push BatchEqual past the crossover, and
+// the result is pinned to the GetValue ground truth across parallelism levels, so
+// the linear scan and its partitioning stay authoritative (subset of eBM) and exact.
+func TestBatchEqualLargeQueryValues(t *testing.T) {
+	rg := rand.New(rand.NewSource(12345))
+	for run := 0; run < 10; run++ {
+		// Large values (>= 2^20) and a big column set push past the scan crossover.
+		bsi := NewDefaultBSI()
+		numCols := rg.Intn(50000) + 120000
+		for col := 0; col < numCols; col++ {
+			if rg.Float64() < 0.8 {
+				val := rg.Int63n(100000) + 1048500
+				bsi.SetValue(uint64(col), val)
+			}
+		}
+
+		querySize := rg.Intn(100) + 128
+		query := make([]int64, querySize)
+		for i := range query {
+			query[i] = rg.Int63n(100100) + 1048500
+		}
+
+		// Ground truth: GetValue per existing column.
+		expected := roaring.NewBitmap()
+		valMap := make(map[int64]bool)
+		for _, q := range query {
+			valMap[q] = true
+		}
+		iter := bsi.GetExistenceBitmap().Iterator()
+		for iter.HasNext() {
+			col := iter.Next()
+			val, ok := bsi.GetValue(uint64(col))
+			if ok && valMap[val] {
+				expected.Add(col)
+			}
+		}
+
+		for _, parallelism := range []int{0, 1, 2, 4} {
+			actual := bsi.BatchEqual(parallelism, query)
+			if !actual.Equals(expected) {
+				t.Fatalf("mismatch in run %d parallelism %d: expected %v, got %v", run, parallelism, expected.ToArray(), actual.ToArray())
+			}
+		}
+	}
 }

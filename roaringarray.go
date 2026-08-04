@@ -384,6 +384,122 @@ func (ra *roaringArray) insertNewKeyValueAt(i int, key uint16, value container) 
 	ra.needCopyOnWrite[i] = false
 }
 
+// copyOrSourceContainerAt returns the container (and its copy-on-write flag) to
+// store for a source-only key. Keys beyond the receiver's last key are the
+// trailing suffix: they may be shared under copy-on-write, matching appendCopy.
+// Interior source-only keys are always cloned so that later receiver mutations
+// cannot leak into the source.
+func (ra *roaringArray) copyOrSourceContainerAt(other *roaringArray, index int, receiverLastKey uint16) (container, bool) {
+	if other.keys[index] > receiverLastKey {
+		copyOnWrite := (ra.copyOnWrite && other.copyOnWrite) || other.needsCopyOnWrite(index)
+		if copyOnWrite {
+			if !other.needsCopyOnWrite(index) {
+				other.setNeedsCopyOnWrite(index)
+			}
+			return other.containers[index], true
+		}
+	}
+	return other.containers[index].clone(), false
+}
+
+// mergeBulk finishes an in-place union (xor == false) or symmetric difference
+// (xor == true) once the receiver's structure must change and continuing in
+// place would shift the aligned suffix once per changed key -- quadratic when
+// many keys are interleaved. It merges the two suffixes forward into fresh
+// slices in a single pass instead.
+//
+// The change that triggers it is a source-only key that must be inserted, or
+// (xor only) an aligned pair that cancelled to an empty container. dst is the
+// write cursor: the prefix [0, dst) is already final and copied over unchanged.
+// left/right are the receiver/source scan positions; the caller advances them
+// past an already-consumed aligned-empty pair. For a union a source-only key is
+// always inserted, so dst == left; the xor caller may pass dst < left to drop
+// the emptied container.
+//
+// Like every other roaringArray operation it assumes both arrays already hold
+// their keys in sorted order; that invariant is enforced at the load boundary
+// (Validate), not re-checked here.
+func (ra *roaringArray) mergeBulk(other *roaringArray, dst, left, right int, xor bool) {
+	length1 := ra.size()
+	length2 := other.size()
+	receiverLastKey := ra.keys[length1-1]
+
+	// First pass over the keys only (cheap, no container work): count the
+	// distinct keys of the two suffixes. That is the exact result size for a
+	// union and, for a xor, a tight upper bound (aligned pairs may cancel). So
+	// the appends below never reallocate, without grossly over-allocating when
+	// many aligned containers cancel to empty.
+	distinct := 0
+	l, r := left, right
+	for l < length1 && r < length2 {
+		if ra.keys[l] < other.keys[r] {
+			l++
+		} else if ra.keys[l] > other.keys[r] {
+			r++
+		} else {
+			l++
+			r++
+		}
+		distinct++
+	}
+	distinct += (length1 - l) + (length2 - r)
+	total := dst + distinct
+	keys := make([]uint16, dst, total)
+	containers := make([]container, dst, total)
+	needCopyOnWrite := make([]bool, dst, total)
+	copy(keys, ra.keys[:dst])
+	copy(containers, ra.containers[:dst])
+	copy(needCopyOnWrite, ra.needCopyOnWrite[:dst])
+
+	for left < length1 && right < length2 {
+		s1 := ra.keys[left]
+		s2 := other.keys[right]
+		if s1 < s2 {
+			keys = append(keys, s1)
+			containers = append(containers, ra.containers[left])
+			needCopyOnWrite = append(needCopyOnWrite, ra.needCopyOnWrite[left])
+			left++
+		} else if s1 > s2 {
+			c, cow := ra.copyOrSourceContainerAt(other, right, receiverLastKey)
+			keys = append(keys, s2)
+			containers = append(containers, c)
+			needCopyOnWrite = append(needCopyOnWrite, cow)
+			right++
+		} else {
+			// Union of two non-empty containers is never empty, so the
+			// isEmpty check only ever drops a container for xor.
+			var c container
+			if xor {
+				c = ra.getWritableContainerAtIndex(left).ixor(other.containers[right])
+			} else {
+				c = ra.getUnionedWritableContainer(left, other.containers[right])
+			}
+			if !c.isEmpty() {
+				keys = append(keys, s1)
+				containers = append(containers, c)
+				needCopyOnWrite = append(needCopyOnWrite, false)
+			}
+			left++
+			right++
+		}
+	}
+	for ; left < length1; left++ {
+		keys = append(keys, ra.keys[left])
+		containers = append(containers, ra.containers[left])
+		needCopyOnWrite = append(needCopyOnWrite, ra.needCopyOnWrite[left])
+	}
+	for ; right < length2; right++ {
+		c, cow := ra.copyOrSourceContainerAt(other, right, receiverLastKey)
+		keys = append(keys, other.keys[right])
+		containers = append(containers, c)
+		needCopyOnWrite = append(needCopyOnWrite, cow)
+	}
+
+	ra.keys = keys
+	ra.containers = containers
+	ra.needCopyOnWrite = needCopyOnWrite
+}
+
 func (ra *roaringArray) remove(key uint16) bool {
 	i := ra.binarySearch(0, int64(len(ra.keys)), key)
 	if i >= 0 { // if a new key

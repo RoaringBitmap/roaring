@@ -1241,6 +1241,7 @@ func (rb *Bitmap) GetSerializedSizeInBytes() uint64 {
 	return rb.highlowcontainer.serializedSizeInBytes()
 }
 
+// Validate checks whether the bitmap's internal containers are coherent.
 func (rb *Bitmap) Validate() error {
 	return rb.highlowcontainer.validate()
 }

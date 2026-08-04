@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"math/bits"
 	"strconv"
 
 	"github.com/RoaringBitmap/roaring/v2/internal"
@@ -166,7 +167,7 @@ func (rb *Bitmap) FromDense(bitmap []uint64, doCopy bool) {
 			for _, w := range words {
 				for w != 0 {
 					t := w & -w
-					c.content[pos] = uint16(base + int(popcount(t-1)))
+					c.content[pos] = uint16(base + bits.OnesCount64(t-1))
 					pos++
 					w ^= t
 				}
@@ -1601,20 +1602,26 @@ func (rb *Bitmap) Xor(x2 *Bitmap) {
 					break
 				}
 			} else if s1 > s2 {
-				rb.highlowcontainer.insertNewKeyValueAt(pos1, x2.highlowcontainer.getKeyAtIndex(pos2), x2.highlowcontainer.getContainerAtIndex(pos2).clone())
-				length1++
-				pos1++
-				pos2++
+				// A source-only key must be inserted at pos1. Inserting in
+				// place shifts the aligned suffix once per inserted key, which
+				// is quadratic when many keys are interleaved. Finish the merge
+				// into fresh slices in a single linear pass instead.
+				rb.highlowcontainer.mergeBulk(&x2.highlowcontainer, pos1, pos1, pos2, true)
+				return
 			} else {
 				c := rb.highlowcontainer.getWritableContainerAtIndex(pos1).ixor(x2.highlowcontainer.getContainerAtIndex(pos2))
 				if !c.isEmpty() {
 					rb.highlowcontainer.setContainerAtIndex(pos1, c)
 					pos1++
+					pos2++
 				} else {
-					rb.highlowcontainer.removeAtIndex(pos1)
-					length1--
+					// The aligned containers cancelled out. Removing pos1 in
+					// place would shift the suffix once per removed key (also
+					// quadratic), so finish the merge into fresh slices,
+					// dropping this now-empty container.
+					rb.highlowcontainer.mergeBulk(&x2.highlowcontainer, pos1, pos1+1, pos2+1, true)
+					return
 				}
-				pos2++
 			}
 		} else {
 			break
@@ -1644,14 +1651,13 @@ main:
 				}
 				s1 = rb.highlowcontainer.getKeyAtIndex(pos1)
 			} else if s1 > s2 {
-				rb.highlowcontainer.insertNewKeyValueAt(pos1, s2, x2.highlowcontainer.getContainerAtIndex(pos2).clone())
-				pos1++
-				length1++
-				pos2++
-				if pos2 == length2 {
-					break main
-				}
-				s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
+				// The receiver has run ahead of the source: a source-only key
+				// must be inserted at pos1. Inserting in place shifts the
+				// aligned suffix once per inserted key, which is quadratic when
+				// many source-only keys are interleaved. Finish the merge into
+				// fresh slices in a single linear pass instead.
+				rb.highlowcontainer.mergeBulk(&x2.highlowcontainer, pos1, pos1, pos2, false)
+				return
 			} else {
 				newcont := rb.highlowcontainer.getUnionedWritableContainer(pos1, x2.highlowcontainer.getContainerAtIndex(pos2))
 				rb.highlowcontainer.replaceKeyAndContainerAtIndex(pos1, s1, newcont, false)

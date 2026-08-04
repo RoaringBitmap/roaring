@@ -213,16 +213,6 @@ func TestContainerReverseIterator(t *testing.T) {
 }
 
 func TestRoaringContainer(t *testing.T) {
-	t.Run("countTrailingZeros", func(t *testing.T) {
-		x := uint64(0)
-		o := countTrailingZeros(x)
-		assert.Equal(t, 64, o)
-
-		x = 1 << 3
-		o = countTrailingZeros(x)
-		assert.Equal(t, 3, o)
-	})
-
 	t.Run("ArrayShortIterator", func(t *testing.T) {
 		content := []uint16{1, 3, 5, 7, 9}
 		c := makeContainer(content)
