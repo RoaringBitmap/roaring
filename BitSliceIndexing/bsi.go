@@ -268,184 +268,189 @@ const (
 )
 
 type task struct {
-	bsi          *BSI
-	op           Operation
-	valueOrStart int64
-	end          int64
-	bits         *roaring.Bitmap
+	bsi *BSI
 }
 
 // CompareValue compares value.
 // Values should be in the range of the BSI (max, min).  If the value is outside the range, the result
-// might erroneous. The operation parameter indicates the type of comparison to be made.
+// might be erroneous. The operation parameter indicates the type of comparison to be made.
 // For all operations with the exception of RANGE, the value to be compared is specified by valueOrStart.
 // For the RANGE parameter the comparison criteria is >= valueOrStart and <= end.
-// The parallelism parameter indicates the number of CPU threads to be applied for processing.  A value
-// of zero indicates that all available CPU resources will be potentially utilized.
+// The parallelism parameter is retained for compatibility. Comparisons operate directly on bit slices
+// instead of partitioning column IDs into worker batches.
 func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int64,
 	foundSet *roaring.Bitmap) *roaring.Bitmap {
 
-	comp := &task{bsi: b, op: op, valueOrStart: valueOrStart, end: end}
 	if foundSet == nil {
-		return parallelExecutor(parallelism, comp, compareValue, b.eBM)
+		foundSet = b.eBM
 	}
-	return parallelExecutor(parallelism, comp, compareValue, foundSet)
-}
 
-func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg *sync.WaitGroup) {
+	var results *roaring.Bitmap
+	switch op {
+	case LT, LE, EQ, GE, GT:
+		results = b.compareValueBitmap(valueOrStart, foundSet, op)
+	case RANGE:
+		results = b.compareValueBitmap(valueOrStart, foundSet, GE)
+		results.And(b.compareValueBitmap(end, results, LE))
+	default:
+		panic(fmt.Sprintf("Unknown operation [%v]", op))
+	}
 
-	defer wg.Done()
-
-	results := roaring.NewBitmap()
-	if e.bsi.runOptimized {
+	if b.runOptimized {
 		results.RunOptimize()
 	}
-	if len(batch) == 0 {
-		resultsChan <- results
-		return
+	return results
+}
+
+// compareValueBitmap compares every value represented by foundSet to value.
+// It leaves foundSet unchanged and returns a new bitmap.
+func (b *BSI) compareValueBitmap(value int64, foundSet *roaring.Bitmap, op Operation) *roaring.Bitmap {
+	width := b.BitCount()
+	if valueWidth := bits.Len64(uint64(value)); valueWidth > width {
+		width = valueWidth
 	}
-	//The following code solves the problem of inaccurate results returned by the function when bsi is not set to max or the value of compare exceeds max
-	var x int
-	if e.op == RANGE {
-		//If the operation is range and the number of bits in end is greater than the length of ba, then x is set to the number of bits in end
-		if bits.Len64(uint64(e.end)) > e.bsi.BitCount() {
-			x = bits.Len64(uint64(e.end))
-		} else {
-			x = e.bsi.BitCount()
+
+	if width == 64 {
+		return b.compareSigned(value, foundSet, op)
+	}
+	if op == EQ {
+		return b.equalUnsigned(uint64(value), width, foundSet)
+	}
+	return b.compareUnsigned(uint64(value), width, foundSet.Clone(), op)
+}
+
+// equalUnsigned intersects the bit constraints in an order that shrinks the
+// candidate set early. Equality does not depend on plane order, so it starts
+// with the least-populated set plane before applying the remaining set and
+// clear planes.
+func (b *BSI) equalUnsigned(value uint64, width int, foundSet *roaring.Bitmap) *roaring.Bitmap {
+	bitCount := b.BitCount()
+	firstSetBit := -1
+	for bit := 0; bit < width; bit++ {
+		if !bitIsSet(value, bit) {
+			continue
 		}
+		if bit >= bitCount {
+			return roaring.NewBitmap()
+		}
+		if firstSetBit < 0 || b.bA[bit].GetCardinality() < b.bA[firstSetBit].GetCardinality() {
+			firstSetBit = bit
+		}
+	}
+
+	var equal *roaring.Bitmap
+	if firstSetBit < 0 {
+		equal = foundSet.Clone()
 	} else {
-		//If the operation is not range and the number of value bits is greater than the length of ba, then x is set to the number of value bits
-		if bits.Len64(uint64(e.valueOrStart)) > e.bsi.BitCount() {
-			x = bits.Len64(uint64(e.valueOrStart))
+		equal = roaring.And(foundSet, b.bA[firstSetBit])
+	}
+	for bit := width - 1; bit >= 0 && !equal.IsEmpty(); bit-- {
+		if bit != firstSetBit && bitIsSet(value, bit) {
+			equal.And(b.bA[bit])
+		}
+	}
+	for bit := width - 1; bit >= 0 && !equal.IsEmpty(); bit-- {
+		if !bitIsSet(value, bit) && bit < bitCount {
+			equal.AndNot(b.bA[bit])
+		}
+	}
+	return equal
+}
+
+// compareSigned separates the candidates by sign, then compares the remaining
+// 63 planes as unsigned values. Within a sign, two's-complement order is the
+// same as unsigned order; candidates with the other sign either all match or
+// all miss depending on the operation.
+func (b *BSI) compareSigned(value int64, foundSet *roaring.Bitmap, op Operation) *roaring.Bitmap {
+	equal := foundSet.Clone()
+	targetNegative := value < 0
+	if targetNegative {
+		if b.BitCount() <= 63 {
+			equal.Clear()
 		} else {
-			x = e.bsi.BitCount()
+			equal.And(b.bA[63])
 		}
-	}
-	startIsNegative := x == 64 && uint64(e.valueOrStart)&(1<<uint64(x-1)) > 0
-	endIsNegative := x == 64 && uint64(e.end)&(1<<uint64(x-1)) > 0
-
-	for i := 0; i < len(batch); i++ {
-		cID := batch[i]
-		eq1, eq2 := true, true
-		lt1, lt2, gt1 := false, false, false
-		j := x - 1
-		isNegative := false
-		if x == 64 {
-			if j < e.bsi.BitCount() {
-				isNegative = e.bsi.bA[j].Contains(cID)
-			}
-			j--
-		}
-		compStartValue := e.valueOrStart
-		compEndValue := e.end
-		if isNegative != startIsNegative {
-			compStartValue = ^e.valueOrStart + 1
-		}
-		if isNegative != endIsNegative {
-			compEndValue = ^e.end + 1
-		}
-		for ; j >= 0; j-- {
-			var sliceContainsBit bool
-			//The value of j may be larger than the length of ba, so the following judgment has been added
-			if e.bsi.BitCount() <= j {
-				sliceContainsBit = false
-			} else {
-				sliceContainsBit = e.bsi.bA[j].Contains(cID)
-			}
-			if uint64(compStartValue)&(1<<uint64(j)) > 0 {
-				// BIT in value is SET
-				if !sliceContainsBit {
-					if eq1 {
-						if (e.op == GT || e.op == GE || e.op == RANGE) && startIsNegative && !isNegative {
-							gt1 = true
-						}
-						if e.op == LT || e.op == LE {
-							if !startIsNegative || (startIsNegative == isNegative) {
-								lt1 = true
-							}
-						}
-						eq1 = false
-						break
-					}
-				}
-			} else {
-				// BIT in value is CLEAR
-				if sliceContainsBit {
-					if eq1 {
-						if (e.op == LT || e.op == LE) && isNegative && !startIsNegative {
-							lt1 = true
-						}
-						if e.op == GT || e.op == GE || e.op == RANGE {
-							if startIsNegative || (startIsNegative == isNegative) {
-								gt1 = true
-							}
-						}
-						eq1 = false
-						if e.op != RANGE {
-							break
-						}
-					}
-				}
-			}
-
-			if e.op == RANGE && uint64(compEndValue)&(1<<uint64(j)) > 0 {
-				// BIT in value is SET
-				if !sliceContainsBit {
-					if eq2 {
-						if !endIsNegative || (endIsNegative == isNegative) {
-							lt2 = true
-						}
-						eq2 = false
-						if startIsNegative && !endIsNegative {
-							break
-						}
-					}
-				}
-			} else if e.op == RANGE {
-				// BIT in value is CLEAR
-				if sliceContainsBit {
-					if eq2 {
-						if isNegative && !endIsNegative {
-							lt2 = true
-						}
-						eq2 = false
-						break
-					}
-				}
-			}
-		}
-
-		switch e.op {
-		case LT:
-			if lt1 {
-				results.Add(cID)
-			}
-		case LE:
-			if lt1 || (eq1 && (!startIsNegative || (startIsNegative && isNegative))) {
-				results.Add(cID)
-			}
-		case EQ:
-			if eq1 {
-				results.Add(cID)
-			}
-		case GE:
-			if gt1 || (eq1 && (startIsNegative || (!startIsNegative && !isNegative))) {
-				results.Add(cID)
-			}
-		case GT:
-			if gt1 {
-				results.Add(cID)
-			}
-		case RANGE:
-			if (eq1 || gt1) && (eq2 || lt2) {
-				results.Add(cID)
-			}
-		default:
-			panic(fmt.Sprintf("Unknown operation [%v]", e.op))
-		}
+	} else if b.BitCount() > 63 {
+		equal.AndNot(b.bA[63])
 	}
 
-	resultsChan <- results
+	results := b.compareUnsigned(uint64(value), 63, equal, op)
+	if targetNegative && (op == GT || op == GE) {
+		if b.BitCount() <= 63 {
+			results.Or(foundSet)
+		} else {
+			results.Or(roaring.AndNot(foundSet, b.bA[63]))
+		}
+	} else if !targetNegative && (op == LT || op == LE) && b.BitCount() > 63 {
+		results.Or(roaring.And(foundSet, b.bA[63]))
+	}
+	return results
+}
+
+// compareUnsigned consumes equal, which initially contains the candidates
+// sharing no processed prefix with value. It walks from the most significant
+// bit down, preserving equal and collecting candidates at the first differing
+// bit. Missing planes are zero, which also handles comparisons beyond the BSI's
+// configured width.
+func (b *BSI) compareUnsigned(value uint64, width int, equal *roaring.Bitmap, op Operation) *roaring.Bitmap {
+	bitCount := b.BitCount()
+	switch op {
+	case EQ:
+		for bit := width - 1; bit >= 0 && !equal.IsEmpty(); bit-- {
+			if bitIsSet(value, bit) {
+				if bit >= bitCount {
+					equal.Clear()
+					break
+				}
+				equal.And(b.bA[bit])
+			} else if bit < bitCount {
+				equal.AndNot(b.bA[bit])
+			}
+		}
+		return equal
+	case LT, LE:
+		less := roaring.NewBitmap()
+		for bit := width - 1; bit >= 0 && !equal.IsEmpty(); bit-- {
+			if bitIsSet(value, bit) {
+				if bit >= bitCount {
+					less.Or(equal)
+					return less
+				}
+				less.Or(roaring.AndNot(equal, b.bA[bit]))
+				equal.And(b.bA[bit])
+			} else if bit < bitCount {
+				equal.AndNot(b.bA[bit])
+			}
+		}
+		if op == LE {
+			less.Or(equal)
+		}
+		return less
+	case GT, GE:
+		greater := roaring.NewBitmap()
+		for bit := width - 1; bit >= 0 && !equal.IsEmpty(); bit-- {
+			if bitIsSet(value, bit) {
+				if bit >= bitCount {
+					equal.Clear()
+					break
+				}
+				equal.And(b.bA[bit])
+			} else if bit < bitCount {
+				greater.Or(roaring.And(equal, b.bA[bit]))
+				equal.AndNot(b.bA[bit])
+			}
+		}
+		if op == GE {
+			greater.Or(equal)
+		}
+		return greater
+	default:
+		panic(fmt.Sprintf("Unknown operation [%v]", op))
+	}
+}
+
+func bitIsSet(value uint64, bit int) bool {
+	return bit < 64 && value&(uint64(1)<<uint(bit)) != 0
 }
 
 // MinMax - Find minimum or maximum value.
