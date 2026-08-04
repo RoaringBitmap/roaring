@@ -26,9 +26,10 @@
 //     "VPAND Ymask, Ydata, Ylo" means Ylo = Ydata AND Ymask.
 //   - Yn are the 256-bit AVX registers; Xn aliases the low 128 bits of Yn.
 //   - Arguments/results are read from the frame pointer (FP). A Go slice is a
-//     3-word header {ptr,len,cap}: s_base+0(FP), s_len+8(FP); a second slice
-//     argument starts at +24(FP). The uint64 result slot follows the args
-//     (e.g. ret+24(FP) for one slice arg, ret+48(FP) for two).
+//     3-word header {ptr,len,cap}: s_base+0(FP), s_len+8(FP); subsequent slice
+//     arguments start at +24-byte intervals. The uint64 result slot follows the
+//     args (e.g. ret+24(FP) for one slice arg, ret+48(FP) for two, and
+//     ret+72(FP) for three).
 //   - Every routine is a leaf (makes no calls): NOSPLIT with a $0 local frame.
 //   - Loads/stores use VMOVDQU (unaligned): container slices are only 8-byte
 //     aligned, not 32. VZEROUPPER precedes every RET to avoid the AVX<->SSE
@@ -188,6 +189,53 @@ andtailloop:
 anddone:
 	VZEROUPPER
 	MOVQ AX, ret+48(FP)      // +48: result follows two 24-byte slice headers
+	RET
+
+// func _andPopcntSliceAVX2(dst, s, m []uint64) uint64
+// Writes dst[i] = s[i] & m[i] and returns the resulting cardinality. The three
+// slices are assumed to have equal length. Combining the store and popcount
+// avoids rescanning dst after the non-inplace intersection is materialized.
+TEXT ·_andPopcntSliceAVX2(SB), NOSPLIT, $0-80
+	MOVQ dst_base+0(FP), BX  // BX = &dst[0]
+	MOVQ s_base+24(FP), SI   // SI = &s[0]
+	MOVQ m_base+48(FP), DI   // DI = &m[0]
+	MOVQ dst_len+8(FP), CX   // CX = len(dst)
+	XORQ AX, AX
+	SETUP
+	MOVQ CX, R8
+	SHRQ $2, R8
+	TESTQ R8, R8
+	JZ andstoretail
+andstoreloop:
+	VMOVDQU (SI), Ydata
+	VMOVDQU (DI), Yb
+	VPAND Yb, Ydata, Ydata
+	VMOVDQU Ydata, (BX)
+	COUNTBLOCK
+	ADDQ $32, BX
+	ADDQ $32, SI
+	ADDQ $32, DI
+	DECQ R8
+	JNZ andstoreloop
+	HSUM
+andstoretail:
+	ANDQ $3, CX
+	TESTQ CX, CX
+	JZ andstoredone
+andstoretailloop:
+	MOVQ (SI), DX
+	ANDQ (DI), DX
+	MOVQ DX, (BX)
+	POPCNTQ DX, DX
+	ADDQ DX, AX
+	ADDQ $8, BX
+	ADDQ $8, SI
+	ADDQ $8, DI
+	DECQ CX
+	JNZ andstoretailloop
+andstoredone:
+	VZEROUPPER
+	MOVQ AX, ret+72(FP)      // +72: result follows three 24-byte slice headers
 	RET
 
 // func _popcntOrSliceAVX2(s, m []uint64) uint64

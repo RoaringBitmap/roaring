@@ -97,6 +97,11 @@ func TestAVX2PopcntDispatch(t *testing.T) {
 			m := randomUint64Slice(r, n)
 			assert.Equalf(t, popcntSliceGo(s), popcntSlice(s), "popcntSlice avx2=%v len=%d", on, n)
 			assert.Equalf(t, popcntAndSliceGo(s, m), popcntAndSlice(s, m), "popcntAndSlice avx2=%v len=%d", on, n)
+			dst := make([]uint64, n)
+			assert.Equalf(t, popcntAndSliceGo(s, m), andPopcntSlice(dst, s, m), "andPopcntSlice avx2=%v len=%d", on, n)
+			for i := range dst {
+				assert.Equalf(t, s[i]&m[i], dst[i], "andPopcntSlice avx2=%v len=%d index=%d", on, n, i)
+			}
 			assert.Equalf(t, popcntOrSliceGo(s, m), popcntOrSlice(s, m), "popcntOrSlice avx2=%v len=%d", on, n)
 			assert.Equalf(t, popcntXorSliceGo(s, m), popcntXorSlice(s, m), "popcntXorSlice avx2=%v len=%d", on, n)
 			assert.Equalf(t, popcntMaskSliceGo(s, m), popcntMaskSlice(s, m), "popcntMaskSlice avx2=%v len=%d", on, n)
@@ -118,6 +123,12 @@ func TestAVX2PopcntDifferential(t *testing.T) {
 				"popcntSlice len=%d", n)
 			assert.Equalf(t, popcntAndSliceGo(s, m), _popcntAndSliceAVX2(s, m),
 				"popcntAndSlice len=%d", n)
+			dst := make([]uint64, n)
+			assert.Equalf(t, popcntAndSliceGo(s, m), _andPopcntSliceAVX2(dst, s, m),
+				"andPopcntSlice len=%d", n)
+			for i := range dst {
+				assert.Equalf(t, s[i]&m[i], dst[i], "andPopcntSlice len=%d index=%d", n, i)
+			}
 			assert.Equalf(t, popcntOrSliceGo(s, m), _popcntOrSliceAVX2(s, m),
 				"popcntOrSlice len=%d", n)
 			assert.Equalf(t, popcntXorSliceGo(s, m), _popcntXorSliceAVX2(s, m),
