@@ -32,8 +32,8 @@ func buildUniqshuf() (t [256 * 16]byte) {
 	return t
 }
 
-// Below this size the scalar path wins (BenchmarkUnion2By2).
-const neonUnionThreshold = 384
+// Below this the kernel's setup cost usually loses to the scalar merge.
+const neonUnionThreshold = 256
 
 func union2by2(set1 []uint16, set2 []uint16, buffer []uint16) int {
 	if len(set1) < neonUnionThreshold || len(set2) < neonUnionThreshold {
