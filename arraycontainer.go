@@ -1339,7 +1339,6 @@ func (ac *arrayContainer) addOffset(x uint16) (container, container) {
 }
 
 // validate checks cardinality and that content is strictly increasing
-// (sorted with no adjacent duplicates), matching CRoaring, Java, and Rust.
 func (ac *arrayContainer) validate() error {
 	cardinality := ac.getCardinality()
 
