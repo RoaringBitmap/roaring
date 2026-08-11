@@ -3427,6 +3427,24 @@ func TestBitMapValidationFromDeserialization(t *testing.T) {
 			},
 			err: ErrArrayIncorrectSort,
 		},
+		{
+			name: "Array Adjacent Duplicates",
+			loader: func(bm *Bitmap) {
+				arrayEntries := make([]uint32, 0, 10)
+				for i := 0; i < 10; i++ {
+					arrayEntries = append(arrayEntries, uint32(i))
+				}
+				bm.AddMany(arrayEntries)
+			},
+			corruptor: func(s []byte) {
+				// Portable single-container array layout: values start at offset 16
+				// as little-endian uint16s: content[i] at 16+2*i.
+				// Set content[5] equal to content[4] (adjacent duplicate).
+				s[26] = 4
+				s[27] = 0
+			},
+			err: ErrArrayIncorrectSort,
+		},
 	}
 
 	for _, tt := range deserializationTests {
