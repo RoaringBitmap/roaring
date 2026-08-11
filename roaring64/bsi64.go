@@ -875,39 +875,11 @@ func (b *BSI) MinMax(parallelism int, op Operation, foundSet *Bitmap) int64 {
 
 // MinMaxBig - Find minimum or maximum value.
 func (b *BSI) MinMaxBig(parallelism int, op Operation, foundSet *Bitmap) *big.Int {
-
-	var n int = parallelism
-	if n == 0 {
-		n = runtime.NumCPU()
-	}
-
-	resultsChan := make(chan *big.Int, n)
-
 	if foundSet == nil {
 		foundSet = &b.eBM
 	}
 
-	card := foundSet.GetCardinality()
-	x := card / uint64(n)
-
-	remainder := card - (x * uint64(n))
-	var batch []uint64
-	var wg sync.WaitGroup
-	iter := foundSet.ManyIterator()
-	for i := 0; i < n; i++ {
-		if i == n-1 {
-			batch = make([]uint64, x+remainder)
-		} else {
-			batch = make([]uint64, x)
-		}
-		iter.NextMany(batch)
-		wg.Add(1)
-		go b.minOrMax(op, batch, resultsChan, &wg)
-	}
-
-	wg.Wait()
-
-	close(resultsChan)
+	candidates := And(foundSet, &b.eBM)
 	var minMax *big.Int
 	minSigned, maxSigned := minMaxSignedInt(b.BitCount() + 1)
 	if op == MAX {
@@ -915,13 +887,47 @@ func (b *BSI) MinMaxBig(parallelism int, op Operation, foundSet *Bitmap) *big.In
 	} else {
 		minMax = maxSigned
 	}
-
-	for val := range resultsChan {
-		if (op == MAX && val.Cmp(minMax) > 0) || (op == MIN && val.Cmp(minMax) <= 0) {
-			minMax = val
-		}
+	if candidates.IsEmpty() {
+		return minMax
 	}
-	return minMax
+
+	return b.minMaxBigByPlanes(op, candidates)
+}
+
+func (b *BSI) minMaxBigByPlanes(op Operation, candidates *Bitmap) *big.Int {
+	signPlane := &b.bA[b.BitCount()]
+	switch op {
+	case MIN:
+		negative := And(candidates, signPlane)
+		if !negative.IsEmpty() {
+			candidates = negative
+		}
+		for bit := b.BitCount() - 1; bit >= 0; bit-- {
+			unset := AndNot(candidates, &b.bA[bit])
+			if !unset.IsEmpty() {
+				candidates = unset
+				continue
+			}
+			candidates = And(candidates, &b.bA[bit])
+		}
+	case MAX:
+		nonNegative := AndNot(candidates, signPlane)
+		if !nonNegative.IsEmpty() {
+			candidates = nonNegative
+		}
+		for bit := b.BitCount() - 1; bit >= 0; bit-- {
+			set := And(candidates, &b.bA[bit])
+			if !set.IsEmpty() {
+				candidates = set
+				continue
+			}
+			candidates = AndNot(candidates, &b.bA[bit])
+		}
+	default:
+		panic(fmt.Sprintf("Operation [%v] not supported here", op))
+	}
+	value, _ := b.GetBigValue(candidates.Minimum())
+	return value
 }
 
 func minMaxSignedInt(bits int) (*big.Int, *big.Int) {
