@@ -651,16 +651,42 @@ func (bc *bitmapContainer) lazyORArray(value2 *arrayContainer) container {
 
 func (bc *bitmapContainer) lazyIORBitmap(value2 *bitmapContainer) container {
 	answer := bc
-	for k := 0; k < len(answer.bitmap); k++ {
-		answer.bitmap[k] = bc.bitmap[k] | value2.bitmap[k]
+	bitmap := answer.bitmap
+	other := value2.bitmap
+
+	// Bitmap containers always span bitmapContainerSize words. Prove the
+	// bounds once so the compiler can eliminate the checks in the unrolled loop.
+	_ = bitmap[bitmapContainerSize-1]
+	_ = other[bitmapContainerSize-1]
+	for k := 0; k < bitmapContainerSize; k += 4 {
+		bitmap[k] |= other[k]
+		bitmap[k+1] |= other[k+1]
+		bitmap[k+2] |= other[k+2]
+		bitmap[k+3] |= other[k+3]
 	}
-	bc.cardinality = invalidCardinality
+	answer.cardinality = invalidCardinality
 	return answer
 }
 
 func (bc *bitmapContainer) lazyORBitmap(value2 *bitmapContainer) container {
-	answer := bc.clone().(*bitmapContainer)
-	return answer.lazyIORBitmap(value2)
+	answer := newBitmapContainer()
+	bitmap := answer.bitmap
+	left := bc.bitmap
+	right := value2.bitmap
+
+	// Bitmap containers always span bitmapContainerSize words. Prove the
+	// bounds once so the compiler can eliminate the checks in the unrolled loop.
+	_ = bitmap[bitmapContainerSize-1]
+	_ = left[bitmapContainerSize-1]
+	_ = right[bitmapContainerSize-1]
+	for k := 0; k < bitmapContainerSize; k += 4 {
+		bitmap[k] = left[k] | right[k]
+		bitmap[k+1] = left[k+1] | right[k+1]
+		bitmap[k+2] = left[k+2] | right[k+2]
+		bitmap[k+3] = left[k+3] | right[k+3]
+	}
+	answer.cardinality = invalidCardinality
+	return answer
 }
 
 func (bc *bitmapContainer) xor(a container) container {
