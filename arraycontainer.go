@@ -1338,7 +1338,7 @@ func (ac *arrayContainer) addOffset(x uint16) (container, container) {
 	return low, high
 }
 
-// validate checks cardinality and sort order of the array container
+// validate checks cardinality and that content is strictly increasing
 func (ac *arrayContainer) validate() error {
 	cardinality := ac.getCardinality()
 
@@ -1353,7 +1353,7 @@ func (ac *arrayContainer) validate() error {
 	previous := ac.content[0]
 	for i := 1; i < len(ac.content); i++ {
 		next := ac.content[i]
-		if previous > next {
+		if previous >= next {
 			return ErrArrayIncorrectSort
 		}
 		previous = next

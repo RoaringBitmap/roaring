@@ -628,11 +628,20 @@ func TestArrayContainerValidation(t *testing.T) {
 	array.content[500] = uint16(upperBound + upperBound)
 
 	err = array.validate()
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrArrayIncorrectSort)
 
+	// Adjacent duplicates must be rejected (strictly increasing), matching
+	// CRoaring, Java, and Rust validators (previous >= next).
 	array = newArrayContainer()
+	for i := 0; i < 10; i++ {
+		array.iadd(uint16(i))
+	}
+	array.content[5] = array.content[4]
+	err = array.validate()
+	assert.ErrorIs(t, err, ErrArrayIncorrectSort)
 
-	// Technically a run, but make sure the incorrect sort detection handles equal elements
+	// Repeated iadd of the same value is a no-op; container stays valid.
+	array = newArrayContainer()
 	for i := 0; i < upperBound; i++ {
 		array.iadd(uint16(1))
 	}
