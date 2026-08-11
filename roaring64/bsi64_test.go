@@ -674,6 +674,33 @@ func TestMinMaxWithNilFoundSet(t *testing.T) {
 	assert.Equal(t, max, bsi.MinMax(0, MAX, nil))
 }
 
+func TestMinMaxWithSubset(t *testing.T) {
+	bsi := NewDefaultBSI()
+	bsi.SetValue(1, -40)
+	bsi.SetValue(2, -10)
+	bsi.SetValue(3, 5)
+	bsi.SetValue(4, 20)
+	bsi.SetValue(5, 100)
+
+	foundSet := BitmapOf(2, 3, 4)
+	assert.Equal(t, int64(-10), bsi.MinMax(0, MIN, foundSet))
+	assert.Equal(t, int64(20), bsi.MinMax(0, MAX, foundSet))
+}
+
+func TestMinMaxBigWithLargeValues(t *testing.T) {
+	bsi := NewDefaultBSI()
+	minValue := new(big.Int).Lsh(big.NewInt(1), 90)
+	midValue := new(big.Int).Lsh(big.NewInt(1), 95)
+	maxValue := new(big.Int).Lsh(big.NewInt(1), 100)
+	bsi.SetBigValue(10, minValue)
+	bsi.SetBigValue(11, midValue)
+	bsi.SetBigValue(12, maxValue)
+
+	foundSet := BitmapOf(10, 12)
+	assert.Equal(t, 0, bsi.MinMaxBig(0, MIN, foundSet).Cmp(minValue))
+	assert.Equal(t, 0, bsi.MinMaxBig(0, MAX, foundSet).Cmp(maxValue))
+}
+
 func TestBSIWriteToReadFrom(t *testing.T) {
 	file, err := os.CreateTemp(t.TempDir(), "bsi-test")
 	if err != nil {

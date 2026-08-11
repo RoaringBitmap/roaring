@@ -234,6 +234,49 @@ func (b *BSI) GetBigValues(columnIDs []uint64) []*big.Int {
 	return b.getBigValuesGeneric(request, values)
 }
 
+// GetValues gets int64 values for the column IDs. Returned values are aligned
+// with columnIDs, and a false exists entry means the corresponding column ID
+// has no value. This fast path is available only for BSIs whose values fit in
+// int64; it panics with the same representability semantics as GetValue when
+// a value cannot be represented as int64.
+func (b *BSI) GetValues(columnIDs []uint64) ([]int64, []bool) {
+	values := make([]int64, len(columnIDs))
+	exists := make([]bool, len(columnIDs))
+	if len(columnIDs) == 0 {
+		return values, exists
+	}
+	if len(columnIDs) == 1 {
+		if value, ok := b.GetValue(columnIDs[0]); ok {
+			values[0] = value
+			exists[0] = true
+		}
+		return values, exists
+	}
+	request := newBSIGetBigValuesRequest(columnIDs)
+	if b.isBig() {
+		bigValues := b.getBigValuesGeneric(request, make([]*big.Int, len(columnIDs)))
+		for i, value := range bigValues {
+			if value == nil {
+				continue
+			}
+			if !value.IsInt64() {
+				if value.Sign() == -1 {
+					msg := fmt.Errorf("can't represent a negative %d bit value as an int64", b.BitCount())
+					panic(msg)
+				}
+				if value.Sign() == 1 {
+					msg := fmt.Errorf("can't represent a positive %d bit value as an int64", b.BitCount())
+					panic(msg)
+				}
+			}
+			values[i] = value.Int64()
+			exists[i] = true
+		}
+		return values, exists
+	}
+	return b.getValuesInt64(request, values, exists)
+}
+
 type bsiGetBigValuesRequest struct {
 	foundSet           *Bitmap
 	positions          map[uint64]int
@@ -295,6 +338,40 @@ func (b *BSI) getBigValuesInt64(request bsiGetBigValuesRequest, values []*big.In
 	return values
 }
 
+func (b *BSI) getValuesInt64(request bsiGetBigValuesRequest, values []int64, exists []bool) ([]int64, []bool) {
+	existing := And(&b.eBM, request.foundSet)
+	if existing.IsEmpty() {
+		return values, exists
+	}
+
+	rawValues := make([]uint64, len(values))
+	signBit := b.BitCount()
+	for bit := 0; bit <= signBit; bit++ {
+		bitSet := And(&b.bA[bit], existing)
+		iter := bitSet.Iterator()
+		for iter.HasNext() {
+			columnID := iter.Next()
+			rawValues[request.positions[columnID]] |= uint64(1) << uint(bit)
+		}
+	}
+
+	width := uint(signBit + 1)
+	signMask := uint64(1) << uint(signBit)
+	iter := existing.Iterator()
+	for iter.HasNext() {
+		columnID := iter.Next()
+		position := request.positions[columnID]
+		rawValue := rawValues[position]
+		if rawValue&signMask != 0 && width < 64 {
+			rawValue |= ^uint64(0) << width
+		}
+		values[position] = int64(rawValue)
+		exists[position] = true
+	}
+	fillDuplicateValues(values, exists, request)
+	return values, exists
+}
+
 func (b *BSI) getBigValuesGeneric(request bsiGetBigValuesRequest, values []*big.Int) []*big.Int {
 	existing := And(&b.eBM, request.foundSet)
 	if existing.IsEmpty() {
@@ -335,6 +412,19 @@ func fillDuplicateBigValues(values []*big.Int, request bsiGetBigValuesRequest) {
 		}
 		for _, position := range extraPositions {
 			values[position] = new(big.Int).Set(value)
+		}
+	}
+}
+
+func fillDuplicateValues(values []int64, exists []bool, request bsiGetBigValuesRequest) {
+	for columnID, extraPositions := range request.duplicatePositions {
+		position := request.positions[columnID]
+		if !exists[position] {
+			continue
+		}
+		for _, extraPosition := range extraPositions {
+			values[extraPosition] = values[position]
+			exists[extraPosition] = true
 		}
 	}
 }
@@ -875,39 +965,11 @@ func (b *BSI) MinMax(parallelism int, op Operation, foundSet *Bitmap) int64 {
 
 // MinMaxBig - Find minimum or maximum value.
 func (b *BSI) MinMaxBig(parallelism int, op Operation, foundSet *Bitmap) *big.Int {
-
-	var n int = parallelism
-	if n == 0 {
-		n = runtime.NumCPU()
-	}
-
-	resultsChan := make(chan *big.Int, n)
-
 	if foundSet == nil {
 		foundSet = &b.eBM
 	}
 
-	card := foundSet.GetCardinality()
-	x := card / uint64(n)
-
-	remainder := card - (x * uint64(n))
-	var batch []uint64
-	var wg sync.WaitGroup
-	iter := foundSet.ManyIterator()
-	for i := 0; i < n; i++ {
-		if i == n-1 {
-			batch = make([]uint64, x+remainder)
-		} else {
-			batch = make([]uint64, x)
-		}
-		iter.NextMany(batch)
-		wg.Add(1)
-		go b.minOrMax(op, batch, resultsChan, &wg)
-	}
-
-	wg.Wait()
-
-	close(resultsChan)
+	candidates := And(foundSet, &b.eBM)
 	var minMax *big.Int
 	minSigned, maxSigned := minMaxSignedInt(b.BitCount() + 1)
 	if op == MAX {
@@ -915,13 +977,47 @@ func (b *BSI) MinMaxBig(parallelism int, op Operation, foundSet *Bitmap) *big.In
 	} else {
 		minMax = maxSigned
 	}
-
-	for val := range resultsChan {
-		if (op == MAX && val.Cmp(minMax) > 0) || (op == MIN && val.Cmp(minMax) <= 0) {
-			minMax = val
-		}
+	if candidates.IsEmpty() {
+		return minMax
 	}
-	return minMax
+
+	return b.minMaxBigByPlanes(op, candidates)
+}
+
+func (b *BSI) minMaxBigByPlanes(op Operation, candidates *Bitmap) *big.Int {
+	signPlane := &b.bA[b.BitCount()]
+	switch op {
+	case MIN:
+		negative := And(candidates, signPlane)
+		if !negative.IsEmpty() {
+			candidates = negative
+		}
+		for bit := b.BitCount() - 1; bit >= 0; bit-- {
+			unset := AndNot(candidates, &b.bA[bit])
+			if !unset.IsEmpty() {
+				candidates = unset
+				continue
+			}
+			candidates = And(candidates, &b.bA[bit])
+		}
+	case MAX:
+		nonNegative := AndNot(candidates, signPlane)
+		if !nonNegative.IsEmpty() {
+			candidates = nonNegative
+		}
+		for bit := b.BitCount() - 1; bit >= 0; bit-- {
+			set := And(candidates, &b.bA[bit])
+			if !set.IsEmpty() {
+				candidates = set
+				continue
+			}
+			candidates = AndNot(candidates, &b.bA[bit])
+		}
+	default:
+		panic(fmt.Sprintf("Operation [%v] not supported here", op))
+	}
+	value, _ := b.GetBigValue(candidates.Minimum())
+	return value
 }
 
 func minMaxSignedInt(bits int) (*big.Int, *big.Int) {

@@ -70,6 +70,54 @@ func TestBSI64GetBigValuesHandlesBigWidthAndDuplicates(t *testing.T) {
 	assert.Equal(t, 0, stored.Cmp(negativeHuge), "mutating returned values must not alter the BSI")
 }
 
+func TestBSI64GetValuesConsistentWithGetValue(t *testing.T) {
+	rg := rand.New(rand.NewSource(1864))
+	for run := 0; run < 25; run++ {
+		bsi := NewDefaultBSI()
+		numCols := rg.Intn(1000) + 50
+		for col := 0; col < numCols; col++ {
+			if rg.Float64() < 0.85 {
+				bsi.SetValue(uint64(col), rg.Int63n(4000)-2000)
+			}
+		}
+
+		columnIDs := make([]uint64, 0, numCols+8)
+		for col := numCols - 1; col >= 0; col-- {
+			if col%3 != 0 {
+				columnIDs = append(columnIDs, uint64(col))
+			}
+		}
+		columnIDs = append(columnIDs, uint64(numCols+10), 7, 7, 11)
+
+		values, exists := bsi.GetValues(columnIDs)
+		if len(values) != len(columnIDs) {
+			t.Fatalf("run=%d values length = %d, want %d", run, len(values), len(columnIDs))
+		}
+		if len(exists) != len(columnIDs) {
+			t.Fatalf("run=%d exists length = %d, want %d", run, len(exists), len(columnIDs))
+		}
+		for i, columnID := range columnIDs {
+			expectedValue, expectedOK := bsi.GetValue(columnID)
+			assert.Equal(t, expectedOK, exists[i], "run=%d column=%d", run, columnID)
+			if !expectedOK {
+				continue
+			}
+			assert.Equal(t, expectedValue, values[i], "run=%d column=%d", run, columnID)
+		}
+	}
+}
+
+func TestBSI64GetValuesHandlesDuplicatesAndMissingValues(t *testing.T) {
+	bsi := NewDefaultBSI()
+	bsi.SetValue(1, -17)
+	bsi.SetValue(2, 44)
+	bsi.SetValue(4, 0)
+
+	values, exists := bsi.GetValues([]uint64{2, 3, 1, 2, 4})
+	assert.Equal(t, []int64{44, 0, -17, 44, 0}, values)
+	assert.Equal(t, []bool{true, false, true, true, true}, exists)
+}
+
 func BenchmarkBSI64GetBigValuesLargeFixture(b *testing.B) {
 	bsi, _ := setupBSI64CompareBSIFixture(b, 100000)
 	columnIDs := bsi64SequentialColumns(100000)
@@ -77,6 +125,16 @@ func BenchmarkBSI64GetBigValuesLargeFixture(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		values := bsi.GetBigValues(columnIDs)
 		_ = values
+	}
+}
+
+func BenchmarkBSI64GetValuesLargeFixture(b *testing.B) {
+	bsi, _ := setupBSI64CompareBSIFixture(b, 100000)
+	columnIDs := bsi64SequentialColumns(100000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		values, exists := bsi.GetValues(columnIDs)
+		_, _ = values, exists
 	}
 }
 
