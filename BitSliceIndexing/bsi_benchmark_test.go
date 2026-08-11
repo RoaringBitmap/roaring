@@ -21,6 +21,64 @@ func BenchmarkBatchEqual(b *testing.B) {
 	}
 }
 
+const runOptimizedBenchmarkResultCardinality = 50_000
+
+func setupRunOptimizedBenchmark(b testing.TB) *BSI {
+	return setupRunOptimizedQueryBSI(b, runOptimizedBenchmarkResultCardinality, func(int) int64 { return 1 })
+}
+
+func BenchmarkBatchEqualRunOptimizedEndToEnd(b *testing.B) {
+	bsi := setupRunOptimizedBenchmark(b)
+	values := []int64{1}
+	var result *roaring.Bitmap
+
+	b.ResetTimer()
+	for b.Loop() {
+		result = bsi.BatchEqual(0, values)
+	}
+
+	if result.GetCardinality() != runOptimizedBenchmarkResultCardinality {
+		b.Fatalf("BatchEqual cardinality = %d, want %d", result.GetCardinality(), runOptimizedBenchmarkResultCardinality)
+	}
+}
+
+func BenchmarkCompareValueRunOptimizedEndToEnd(b *testing.B) {
+	bsi := setupRunOptimizedBenchmark(b)
+	var result *roaring.Bitmap
+
+	b.ResetTimer()
+	for b.Loop() {
+		result = bsi.CompareValue(4, EQ, 1, 0, nil)
+	}
+
+	if result.GetCardinality() != runOptimizedBenchmarkResultCardinality {
+		b.Fatalf("CompareValue cardinality = %d, want %d", result.GetCardinality(), runOptimizedBenchmarkResultCardinality)
+	}
+}
+
+func BenchmarkCompareValueRunOptimizedResultSerialization(b *testing.B) {
+	bsi := setupRunOptimizedBenchmark(b)
+	result := bsi.CompareValue(4, EQ, 1, 0, nil)
+	if result.GetCardinality() != runOptimizedBenchmarkResultCardinality {
+		b.Fatalf("CompareValue cardinality = %d, want %d", result.GetCardinality(), runOptimizedBenchmarkResultCardinality)
+	}
+
+	var encoded []byte
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		var err error
+		encoded, err = result.MarshalBinary()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	if len(encoded) == 0 {
+		b.Fatal("MarshalBinary returned an empty result")
+	}
+}
+
 func TestBatchEqualEdgeCases(t *testing.T) {
 	// 1. Empty or Nil inputs
 	bsi := NewDefaultBSI()
