@@ -1,3 +1,6 @@
+//go:build gofuzz
+// +build gofuzz
+
 /*
 # Instructions for smat testing for roaring
 
