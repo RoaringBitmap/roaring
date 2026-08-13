@@ -51,6 +51,23 @@
 // 1024*32 = 32768 stays well under the 65535 lane limit.
 #define INNERMAX $1024
 
+// SPLITBLOCKS carves the next batch off the outstanding block count. On entry R3
+// is the number of 64-byte blocks still to process (always >= 1); on exit R4 is
+// min(R3, INNERMAX), the length of the batch the inner loop is about to run, and
+// R3 is what is left over, max(R3-INNERMAX, 0). R6 is scratch.
+//
+// The SUBS both computes the leftover and sets the flags that choose between the
+// two cases: carry-set means the subtraction did not borrow, i.e. R3 >= INNERMAX
+// unsigned, so CS selects the capped batch and the non-zero remainder while the
+// other case takes R3 whole and leaves nothing behind. Doing it with CSEL keeps
+// the sequence branch-free; the immediate form of SUBS also keeps it off the
+// dependency chain of the MOVD that materializes INNERMAX.
+#define SPLITBLOCKS \
+	SUBS INNERMAX, R3, R6 \
+	MOVD INNERMAX, R4 \
+	CSEL CS, R4, R3, R4 \
+	CSEL CS, R6, ZR, R3
+
 // FOLD4 assumes 64 bytes of input (post-combine) sit in V0..V3 and folds their
 // popcount into the partial accumulators V16/V18. VADD sums the four VCNT
 // results byte-wise (each lane 0..32); VUADDW/VUADDW2 then widen the low/high
@@ -108,12 +125,7 @@ TEXT ·_popcntSliceNEON(SB), NOSPLIT, $0-32
 	LSR $3, R1, R3                 // R3 = len/8 = number of 64-byte blocks
 	CBZ R3, sltail                 // fewer than 8 words: skip the vector loop
 slblock:
-	MOVD INNERMAX, R4              // R4 = min(remaining blocks, INNERMAX)
-	CMP R4, R3
-	BHS slinner
-	MOVD R3, R4
-slinner:
-	SUB R4, R3, R3                 // R3 -= this batch's block count
+	SPLITBLOCKS                    // R4 = this batch, R3 = blocks left after it
 	ZEROPART
 slloop:
 	VLD1.P 64(R0), [V0.B16, V1.B16, V2.B16, V3.B16] // load 8 words (64 bytes)
@@ -148,12 +160,7 @@ TEXT ·_popcntAndSliceNEON(SB), NOSPLIT, $0-56
 	LSR $3, R5, R3
 	CBZ R3, andtail
 andblock:
-	MOVD INNERMAX, R4
-	CMP R4, R3
-	BHS andinner
-	MOVD R3, R4
-andinner:
-	SUB R4, R3, R3
+	SPLITBLOCKS
 	ZEROPART
 andloop:
 	VLD1.P 64(R0), [V0.B16, V1.B16, V2.B16, V3.B16]
@@ -194,12 +201,7 @@ TEXT ·_popcntOrSliceNEON(SB), NOSPLIT, $0-56
 	LSR $3, R5, R3
 	CBZ R3, ortail
 orblock:
-	MOVD INNERMAX, R4
-	CMP R4, R3
-	BHS orinner
-	MOVD R3, R4
-orinner:
-	SUB R4, R3, R3
+	SPLITBLOCKS
 	ZEROPART
 orloop:
 	VLD1.P 64(R0), [V0.B16, V1.B16, V2.B16, V3.B16]
@@ -240,12 +242,7 @@ TEXT ·_popcntXorSliceNEON(SB), NOSPLIT, $0-56
 	LSR $3, R5, R3
 	CBZ R3, xortail
 xorblock:
-	MOVD INNERMAX, R4
-	CMP R4, R3
-	BHS xorinner
-	MOVD R3, R4
-xorinner:
-	SUB R4, R3, R3
+	SPLITBLOCKS
 	ZEROPART
 xorloop:
 	VLD1.P 64(R0), [V0.B16, V1.B16, V2.B16, V3.B16]
@@ -289,12 +286,7 @@ TEXT ·_popcntMaskSliceNEON(SB), NOSPLIT, $0-56
 	LSR $3, R5, R3
 	CBZ R3, masktail
 maskblock:
-	MOVD INNERMAX, R4
-	CMP R4, R3
-	BHS maskinner
-	MOVD R3, R4
-maskinner:
-	SUB R4, R3, R3
+	SPLITBLOCKS
 	ZEROPART
 maskloop:
 	VLD1.P 64(R0), [V0.B16, V1.B16, V2.B16, V3.B16]
