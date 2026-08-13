@@ -15,8 +15,7 @@
 // a byte is split into its low and high nibble, each nibble is looked up (one
 // VPSHUFB performs all 32 lookups in a 256-bit register at once), and VPSADBW
 // then combines the two results and sums each group of 8 byte-counts into a
-// 64-bit lane total that is accumulated (see COUNTBLOCK for how the two
-// nibble counts are added by VPSADBW itself rather than a separate VPADDB).
+// 64-bit lane total that is accumulated (COUNTBLOCK).
 // After the loop the four lane totals are summed (HSUM) into a scalar register.
 // Each iteration handles 256 bits (4 uint64); a scalar POPCNTQ tail handles
 // the trailing len%4 words, so any slice length is counted correctly.
@@ -39,8 +38,8 @@
 //     VZEROUPPER precedes every RET to avoid the AVX<->SSE transition penalty
 //     in any non-VEX SSE code that runs afterwards.
 
-// lutmask is a 24-byte read-only blob holding the two constants used by every
-// routine:
+// lutmask is a 17-byte read-only blob (the linker pads it out to whatever its
+// alignment requires) holding the two constants used by every routine:
 //   bytes  0..15 - the nibble popcount table, i.e. table[i] = number of set
 //                  bits in the 4-bit value i. Read low-byte-first, the first
 //                  qword 0x0302020102010100 is the bytes {0,1,1,2,1,2,2,3} for
@@ -50,29 +49,25 @@
 //                  VBROADCASTI128 duplicates the 16 bytes at load time; only
 //                  one copy has to be stored.
 //   byte     16  - 0x0F, the mask that isolates the low nibble of each byte,
-//                  splatted to all 32 bytes by VPBROADCASTB. (It is written as
-//                  a full qword below purely for readability; only the first
-//                  byte is ever read.)
+//                  splatted to all 32 bytes by VPBROADCASTB.
 // RODATA|NOPTR marks it read-only and pointer-free (so the GC ignores it).
 DATA lutmask<>+0(SB)/8, $0x0302020102010100
 DATA lutmask<>+8(SB)/8, $0x0403030203020201
-DATA lutmask<>+16(SB)/8, $0x0f0f0f0f0f0f0f0f
-GLOBL lutmask<>(SB), RODATA|NOPTR, $24
+DATA lutmask<>+16(SB)/1, $0x0f
+GLOBL lutmask<>(SB), RODATA|NOPTR, $17
 
 // Register aliases. Ylut1/Ylut2/Ymask are constants set up once per call (see
 // SETUP); Yacc is the running accumulator of lane totals; Ydata holds the
-// current input vector; Ylo/Yhi/Yc1/Yc2 are scratch used by COUNTBLOCK. The
-// scratch values have disjoint live ranges, so Yhi/Yc2 reuse Ydata's register
-// and Yc1 reuses Ylo's: only six architectural registers are needed.
+// current input vector; Ylo/Yhi are scratch used by COUNTBLOCK. Ydata is dead
+// once its nibbles have been extracted, so Yhi shares its register: only five
+// architectural registers are needed.
 #define Ylut1 Y0
 #define Ylut2 Y1
 #define Ymask Y2
 #define Yacc Y3
 #define Ydata Y4
 #define Yhi Y4
-#define Yc2 Y4
 #define Ylo Y5
-#define Yc1 Y5
 
 // Low 128-bit halves of Yacc and Ylo, used as scratch by HSUM.
 #define Xacc X3
@@ -83,10 +78,10 @@ GLOBL lutmask<>(SB), RODATA|NOPTR, $24
 //   VPAND  Ymask,Ydata,Ylo   : Ylo = low nibble of every byte
 //   VPSRLW $4,Ydata,Yhi      : shift each 16-bit lane right by 4...
 //   VPAND  Ymask,Yhi,Yhi     : ...then mask, leaving the high nibble of each byte
-//   VPSHUFB Ylo,Ylut1,Yc1    : Yc1[b] = B + popcount(low nibble of byte b)
-//   VPSHUFB Yhi,Ylut2,Yc2    : Yc2[b] = B - popcount(high nibble of byte b)
-//   VPSADBW Yc1,Yc2,Yc1      : sum each group of 8 bytes -> 4 lane totals
-//   VPADDQ  Yc1,Yacc,Yacc    : add the 4 lane totals into the accumulator
+//   VPSHUFB Ylo,Ylut1,Ylo    : Ylo[b] = B + popcount(low nibble of byte b)
+//   VPSHUFB Yhi,Ylut2,Yhi    : Yhi[b] = B - popcount(high nibble of byte b)
+//   VPSADBW Ylo,Yhi,Ylo      : sum each group of 8 bytes -> 4 lane totals
+//   VPADDQ  Ylo,Yacc,Yacc    : add the 4 lane totals into the accumulator
 //
 // VPSADBW computes |a-b| per byte and sums each group of 8, so it can do the
 // work of the per-byte add as well: feeding it the two nibble counts directly
@@ -104,10 +99,10 @@ GLOBL lutmask<>(SB), RODATA|NOPTR, $24
 	VPAND Ymask, Ydata, Ylo \
 	VPSRLW $4, Ydata, Yhi \
 	VPAND Ymask, Yhi, Yhi \
-	VPSHUFB Ylo, Ylut1, Yc1 \
-	VPSHUFB Yhi, Ylut2, Yc2 \
-	VPSADBW Yc1, Yc2, Yc1 \
-	VPADDQ Yc1, Yacc, Yacc
+	VPSHUFB Ylo, Ylut1, Ylo \
+	VPSHUFB Yhi, Ylut2, Yhi \
+	VPSADBW Ylo, Yhi, Ylo \
+	VPADDQ Ylo, Yacc, Yacc
 
 // SETUP builds the two biased lookup tables and the nibble mask, and zeroes
 // Yacc (the accumulator). Run once per routine, after the check that the
@@ -121,14 +116,17 @@ GLOBL lutmask<>(SB), RODATA|NOPTR, $24
 	VPADDB Ylut1, Ymask, Ylut1
 
 // HSUM reduces Yacc's four 64-bit lane totals to a single sum in AX.
-// VEXTRACTI128 pulls Yacc's high 128 bits into Xtmp, the two halves are added
-// (giving two qwords in Xacc), and those two qwords are then added into AX.
+// VEXTRACTI128 pulls Yacc's high 128 bits into Xtmp and the two halves are
+// added, leaving two qwords in Xacc; VPSHUFD $0x4e then swaps those two qwords
+// so a second VPADDQ puts their total in the low qword, which one MOVQ moves
+// out. Finishing the reduction in SIMD avoids VPEXTRQ, which is 2 uops on both
+// AMD Zen and Intel, against 1 each for VPSHUFD and VPADDQ.
 #define HSUM \
 	VEXTRACTI128 $1, Yacc, Xtmp \
 	VPADDQ Xtmp, Xacc, Xacc \
-	VPEXTRQ $1, Xacc, DX \
-	MOVQ Xacc, R9 \
-	ADDQ R9, AX \
+	VPSHUFD $0x4e, Xacc, Xtmp \
+	VPADDQ Xtmp, Xacc, Xacc \
+	MOVQ Xacc, DX \
 	ADDQ DX, AX
 
 // func _popcntSliceAVX2(s []uint64) uint64
