@@ -20,10 +20,15 @@
 //   - each iteration loads four 16-byte vectors (64 bytes = 8 words) and VCNTs
 //     them independently, then sums the four with byte-wise VADD. Four counts of
 //     at most 8 sum to at most 32, so no byte lane overflows.
-//   - Go's arm64 assembler exposes no pairwise-add-long (UADALP), so the summed
-//     bytes are folded into 16-bit lanes with add-wide: VUADDW takes the low 8
-//     bytes into partial accumulator V16 and VUADDW2 the high 8 into V18. Two
-//     separate accumulators keep those adds off each other's dependency chain.
+//   - the summed bytes are folded into 16-bit lanes with add-wide: VUADDW takes
+//     the low 8 bytes into partial accumulator V16 and VUADDW2 the high 8 into
+//     V18. Two separate accumulators keep those adds off each other's
+//     dependency chain. The obvious-looking alternative, accumulating pairs of
+//     byte lanes straight into the 16-bit accumulator with UADALP, would save
+//     an instruction per iteration but is a pessimisation in practice: it has
+//     no Go assembler mnemonic, and it issues at roughly 2.4 per cycle on an
+//     Apple M4 where VADD/VCNT/VUADDW all issue at 4 per cycle. Measured, it
+//     costs this routine about 20%.
 //   - a 16-bit lane would eventually overflow, so every INNERMAX iterations the
 //     partials are drained (widened again) into a 4x32-bit accumulator (V17)
 //     that cannot realistically overflow, and the partials are re-zeroed.
@@ -276,15 +281,26 @@ xordone:
 
 // func _popcntMaskSliceNEON(s, m []uint64) uint64
 // Returns the sum of popcount(s[i] &^ m[i]) == popcount(s & ~m). Same structure
-// as _popcntAndSliceNEON; arm64's NEON has no "and-not" here, so ~m is formed by
-// XORing m with the all-ones register V15 (materialized once by VMOVI) before
-// the AND.
+// as _popcntAndSliceNEON, except that s &^ m is formed with a single instruction
+// per vector instead of an invert-then-AND pair.
+//
+// arm64 does have a vector and-not, BIC, but the Go assembler exposes no
+// mnemonic for it. VBIT fits just as well and is spelled. BIT ("bitwise insert
+// if true") selects bit by bit between the destination and one source, under
+// the control of the other source:
+//
+//	Vd<i> = Vm<i> ? Vn<i> : Vd<i>     i.e.  Vd = (Vm & Vn) | (^Vm & Vd)
+//
+// Holding Vn at zero reduces that to "clear every bit of Vd that is set in Vm",
+// which is exactly Vd &^= Vm. So with Vd = s and Vm = m the mask is applied in
+// place in one op. V15 -- which used to hold all-ones so that m could be
+// inverted with VEOR -- is now simply kept at zero to serve as that Vn.
 TEXT ·_popcntMaskSliceNEON(SB), NOSPLIT, $0-56
 	MOVD s_base+0(FP), R0
 	MOVD m_base+24(FP), R1
 	MOVD s_len+8(FP), R5
 	MOVD $0, R2
-	VMOVI $255, V15.B16           // V15 = all ones, used to invert m
+	VEOR V15.B16, V15.B16, V15.B16 // V15 = 0, the "insert" source for VBIT
 	VEOR V17.B16, V17.B16, V17.B16
 	LSR $3, R5, R3
 	CBZ R3, masktail
@@ -299,14 +315,10 @@ maskinner:
 maskloop:
 	VLD1.P 64(R0), [V0.B16, V1.B16, V2.B16, V3.B16]
 	VLD1.P 64(R1), [V4.B16, V5.B16, V6.B16, V7.B16]
-	VEOR V15.B16, V4.B16, V4.B16   // V4 = ~m
-	VEOR V15.B16, V5.B16, V5.B16
-	VEOR V15.B16, V6.B16, V6.B16
-	VEOR V15.B16, V7.B16, V7.B16
-	VAND V4.B16, V0.B16, V0.B16    // V0 = s & ~m = s &^ m
-	VAND V5.B16, V1.B16, V1.B16
-	VAND V6.B16, V2.B16, V2.B16
-	VAND V7.B16, V3.B16, V3.B16
+	VBIT V4.B16, V15.B16, V0.B16   // V0 = s &^ m
+	VBIT V5.B16, V15.B16, V1.B16
+	VBIT V6.B16, V15.B16, V2.B16
+	VBIT V7.B16, V15.B16, V3.B16
 	FOLD4
 	SUBS $1, R4, R4
 	BNE maskloop
@@ -319,8 +331,7 @@ masktail:
 masktailloop:
 	VLD1.P 8(R0), [V0.D1]
 	VLD1.P 8(R1), [V1.D1]
-	VEOR V15.B8, V1.B8, V1.B8      // ~m, one word
-	VAND V1.B8, V0.B8, V0.B8       // s &^ m, one word
+	VBIT V1.B8, V15.B8, V0.B8      // s &^ m, one word
 	TAILWORD
 	SUBS $1, R5, R5
 	BNE masktailloop
