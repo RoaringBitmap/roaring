@@ -41,3 +41,9 @@ func popcntXorSliceGo(s, m []uint64) uint64 {
 	}
 	return cnt
 }
+
+func xorSliceInPlaceGo(s, m []uint64) {
+	for i := range s {
+		s[i] ^= m[i]
+	}
+}

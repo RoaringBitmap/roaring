@@ -27,6 +27,9 @@ func _popcntOrSliceAVX2(s, m []uint64) uint64
 //go:noescape
 func _popcntXorSliceAVX2(s, m []uint64) uint64
 
+//go:noescape
+func _xorSliceInPlaceAVX2(s, m []uint64)
+
 // useAVX2 selects the AVX2 assembly implementations when the running CPU
 // supports AVX2. It is evaluated once at package initialization.
 var useAVX2 = _hasAVX2()
@@ -64,4 +67,12 @@ func popcntXorSlice(s, m []uint64) uint64 {
 		return _popcntXorSliceAVX2(s, m)
 	}
 	return popcntXorSliceGo(s, m)
+}
+
+func xorSliceInPlace(s, m []uint64) {
+	if useAVX2 {
+		_xorSliceInPlaceAVX2(s, m)
+		return
+	}
+	xorSliceInPlaceGo(s, m)
 }

@@ -316,6 +316,70 @@ maskdone:
 	MOVQ AX, ret+48(FP)
 	RET
 
+// func _xorSliceInPlaceAVX2(s, m []uint64)
+// XORs m into s. Bitmap containers contain 1024 words, so the main loop handles
+// four 256-bit vectors (128 bytes, 16 words) per iteration. A vector tail and
+// scalar tail keep the helper correct for the shorter slices used by tests.
+TEXT ·_xorSliceInPlaceAVX2(SB), NOSPLIT, $0-48
+	MOVQ s_base+0(FP), SI
+	MOVQ m_base+24(FP), DI
+	MOVQ s_len+8(FP), CX
+	MOVQ CX, R8
+	SHRQ $4, R8 // 16 words per unrolled iteration
+	TESTQ R8, R8
+	JZ xorstoretail
+xorstoreloop:
+	VMOVDQU 0(SI), Y0
+	VMOVDQU 32(SI), Y1
+	VMOVDQU 64(SI), Y2
+	VMOVDQU 96(SI), Y3
+	VMOVDQU 0(DI), Y4
+	VMOVDQU 32(DI), Y5
+	VMOVDQU 64(DI), Y6
+	VMOVDQU 96(DI), Y7
+	VPXOR Y4, Y0, Y0
+	VPXOR Y5, Y1, Y1
+	VPXOR Y6, Y2, Y2
+	VPXOR Y7, Y3, Y3
+	VMOVDQU Y0, 0(SI)
+	VMOVDQU Y1, 32(SI)
+	VMOVDQU Y2, 64(SI)
+	VMOVDQU Y3, 96(SI)
+	ADDQ $128, SI
+	ADDQ $128, DI
+	DECQ R8
+	JNZ xorstoreloop
+xorstoretail:
+	ANDQ $15, CX
+	MOVQ CX, R8
+	SHRQ $2, R8 // 4 words per vector tail iteration
+	TESTQ R8, R8
+	JZ xorstorescalartail
+xorstorevectorloop:
+	VMOVDQU (SI), Y0
+	VMOVDQU (DI), Y1
+	VPXOR Y1, Y0, Y0
+	VMOVDQU Y0, (SI)
+	ADDQ $32, SI
+	ADDQ $32, DI
+	DECQ R8
+	JNZ xorstorevectorloop
+xorstorescalartail:
+	ANDQ $3, CX
+	TESTQ CX, CX
+	JZ xorstoredone
+xorstorescalarloop:
+	MOVQ (SI), AX
+	XORQ (DI), AX
+	MOVQ AX, (SI)
+	ADDQ $8, SI
+	ADDQ $8, DI
+	DECQ CX
+	JNZ xorstorescalarloop
+xorstoredone:
+	VZEROUPPER
+	RET
+
 // func _hasAVX2() bool
 // Reports whether the CPU supports AVX2 and the OS has enabled the wide (YMM)
 // register state. All three checks must pass; otherwise the Go wrappers fall

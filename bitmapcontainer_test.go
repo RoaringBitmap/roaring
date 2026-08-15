@@ -639,3 +639,64 @@ func TestBitmapContainerFillLeastSignificant16bitsProperties(t *testing.T) {
 		runTest(t, vals, 0x55550000)
 	})
 }
+
+func TestBitmapContainerIXorBitmapDense(t *testing.T) {
+	left, right := newBitmapContainerXorFixture(maxCapacity)
+
+	result := left.ixorBitmap(right)
+	actual, ok := result.(*bitmapContainer)
+	require.True(t, ok)
+	assert.Equal(t, maxCapacity, actual.cardinality)
+	for _, word := range actual.bitmap {
+		assert.Equal(t, ^uint64(0), word)
+	}
+	assert.NoError(t, actual.validate())
+}
+
+func TestBitmapContainerIXorBitmapThreshold(t *testing.T) {
+	left, right := newBitmapContainerXorFixture(arrayDefaultMaxSize)
+	original := left.clone().(*bitmapContainer)
+
+	result := left.ixorBitmap(right)
+	actual, ok := result.(*arrayContainer)
+	require.True(t, ok)
+	require.Len(t, actual.content, arrayDefaultMaxSize)
+	for i, value := range actual.content {
+		assert.Equal(t, uint16(i), value)
+	}
+	assert.True(t, original.equals(left))
+	assert.NoError(t, actual.validate())
+}
+
+func TestBitmapXorDenseThreshold(t *testing.T) {
+	left, right := newDenseXorThresholdFixture()
+
+	left.Xor(right)
+	actual, ok := left.highlowcontainer.getContainerAtIndex(0).(*arrayContainer)
+	require.True(t, ok)
+	require.Len(t, actual.content, arrayDefaultMaxSize)
+	for i, value := range actual.content {
+		assert.Equal(t, uint16(i), value)
+	}
+	assert.NoError(t, left.Validate())
+}
+
+func TestBitmapXorDenseCopyOnWrite(t *testing.T) {
+	const containers = 2
+	left, right := newDenseXorBitmapFixture(containers)
+	original := left.Clone()
+	expectedWords := make([]uint64, containers*bitmapContainerSize)
+	for i := range expectedWords {
+		expectedWords[i] = ^uint64(0)
+	}
+	expected := FromDense(expectedWords, true)
+
+	left.SetCopyOnWrite(true)
+	alias := left.Clone()
+	alias.Xor(right)
+
+	assert.True(t, original.Equals(left))
+	assert.True(t, expected.Equals(alias))
+	assert.NoError(t, left.Validate())
+	assert.NoError(t, alias.Validate())
+}
