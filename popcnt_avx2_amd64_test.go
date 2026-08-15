@@ -80,6 +80,30 @@ func BenchmarkPopcntSlice1024Go(b *testing.B) {
 	_ = sink
 }
 
+// BenchmarkBitmapXorDenseScalarFallback measures the ordinary dense Xor path
+// with AVX2 disabled, including the portable count and store fallbacks.
+func BenchmarkBitmapXorDenseScalarFallback(b *testing.B) {
+	saved := useAVX2
+	useAVX2 = false
+	defer func() { useAVX2 = saved }()
+
+	left, right := newDenseXorBitmapFixture(50)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		left.Xor(right)
+	}
+	b.StopTimer()
+
+	want := uint64(50 * maxCapacity / 2)
+	if b.N%2 != 0 {
+		want *= 2
+	}
+	if got := left.GetCardinality(); got != want {
+		b.Fatalf("unexpected cardinality: got %d, want %d", got, want)
+	}
+}
+
 func TestAVX2PopcntDispatch(t *testing.T) {
 	// Verify the runtime dispatch wrappers agree with the Go reference both
 	// when AVX2 is selected and when the scalar fallback is forced.
