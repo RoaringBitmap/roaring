@@ -80,6 +80,30 @@ func BenchmarkPopcntSlice1024Go(b *testing.B) {
 	_ = sink
 }
 
+// BenchmarkBitmapXorDenseScalarFallback measures the ordinary dense Xor path
+// with AVX2 disabled, including the portable count and store fallbacks.
+func BenchmarkBitmapXorDenseScalarFallback(b *testing.B) {
+	saved := useAVX2
+	useAVX2 = false
+	defer func() { useAVX2 = saved }()
+
+	left, right := newDenseXorBitmapFixture(50)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		left.Xor(right)
+	}
+	b.StopTimer()
+
+	want := uint64(50 * maxCapacity / 2)
+	if b.N%2 != 0 {
+		want *= 2
+	}
+	if got := left.GetCardinality(); got != want {
+		b.Fatalf("unexpected cardinality: got %d, want %d", got, want)
+	}
+}
+
 func TestAVX2PopcntDispatch(t *testing.T) {
 	// Verify the runtime dispatch wrappers agree with the Go reference both
 	// when AVX2 is selected and when the scalar fallback is forced.
@@ -126,4 +150,62 @@ func TestAVX2PopcntDifferential(t *testing.T) {
 				"popcntMaskSlice len=%d", n)
 		}
 	}
+}
+
+func TestAVX2XorSliceDispatch(t *testing.T) {
+	saved := useAVX2
+	defer func() { useAVX2 = saved }()
+
+	r := rand.New(rand.NewSource(99))
+	for _, on := range []bool{false, true} {
+		if on && !saved {
+			continue
+		}
+		useAVX2 = on
+		for _, n := range avx2TestLengths {
+			input := randomUint64Slice(r, n)
+			mask := randomUint64Slice(r, n)
+			want := make([]uint64, len(input))
+			copy(want, input)
+			xorSliceInPlaceGo(want, mask)
+
+			xorSliceInPlace(input, mask)
+			assert.Equalf(t, want, input, "xorSliceInPlace avx2=%v len=%d", on, n)
+
+			alias := randomUint64Slice(r, n)
+			xorSliceInPlace(alias, alias)
+			assert.Equalf(t, make([]uint64, n), alias, "xorSliceInPlace alias avx2=%v len=%d", on, n)
+		}
+	}
+}
+
+func TestAVX2XorSliceDifferential(t *testing.T) {
+	if !useAVX2 {
+		t.Skip("AVX2 not available on this CPU")
+	}
+	r := rand.New(rand.NewSource(100))
+	for _, n := range avx2TestLengths {
+		for iter := 0; iter < 64; iter++ {
+			input := randomUint64Slice(r, n)
+			mask := randomUint64Slice(r, n)
+			want := make([]uint64, len(input))
+			copy(want, input)
+			xorSliceInPlaceGo(want, mask)
+
+			_xorSliceInPlaceAVX2(input, mask)
+			assert.Equalf(t, want, input, "_xorSliceInPlaceAVX2 len=%d", n)
+		}
+	}
+}
+
+func TestBitmapXorDenseScalarFallback(t *testing.T) {
+	saved := useAVX2
+	useAVX2 = false
+	defer func() { useAVX2 = saved }()
+
+	left, right := newDenseXorBitmapFixture(2)
+	left.Xor(right)
+
+	assert.Equal(t, uint64(2*maxCapacity), left.GetCardinality())
+	assert.NoError(t, left.Validate())
 }

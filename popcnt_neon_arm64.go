@@ -63,3 +63,7 @@ func popcntXorSlice(s, m []uint64) uint64 {
 	}
 	return popcntXorSliceGo(s, m)
 }
+
+func xorSliceInPlace(s, m []uint64) {
+	xorSliceInPlaceGo(s, m)
+}
