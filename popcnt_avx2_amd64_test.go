@@ -127,3 +127,120 @@ func TestAVX2PopcntDifferential(t *testing.T) {
 		}
 	}
 }
+
+func TestAVX2AndStoreSliceDispatch(t *testing.T) {
+	saved := useAVX2
+	defer func() { useAVX2 = saved }()
+
+	r := rand.New(rand.NewSource(11))
+	for _, on := range []bool{false, true} {
+		if on && !saved {
+			continue // CPU has no AVX2; only the fallback exists
+		}
+		useAVX2 = on
+		for _, n := range avx2TestLengths {
+			s := randomUint64Slice(r, n)
+			m := randomUint64Slice(r, n)
+			expected := append([]uint64(nil), s...)
+			andStoreSliceGo(expected, s, m)
+
+			dst := append([]uint64(nil), s...)
+			andStoreSlice(dst, s, m)
+			assert.Equalf(t, expected, dst, "separate destination avx2=%v len=%d", on, n)
+
+			inPlaceLeft := append([]uint64(nil), s...)
+			andStoreSlice(inPlaceLeft, inPlaceLeft, m)
+			assert.Equalf(t, expected, inPlaceLeft, "left alias avx2=%v len=%d", on, n)
+
+			inPlaceRight := append([]uint64(nil), m...)
+			andStoreSlice(inPlaceRight, s, inPlaceRight)
+			assert.Equalf(t, expected, inPlaceRight, "right alias avx2=%v len=%d", on, n)
+		}
+	}
+}
+
+func TestAVX2AndStoreSliceDifferential(t *testing.T) {
+	if !useAVX2 {
+		t.Skip("AVX2 not available on this CPU")
+	}
+	r := rand.New(rand.NewSource(13))
+	for _, n := range avx2TestLengths {
+		for iter := 0; iter < 64; iter++ {
+			s := randomUint64Slice(r, n)
+			m := randomUint64Slice(r, n)
+			expected := append([]uint64(nil), s...)
+			andStoreSliceGo(expected, s, m)
+
+			dst := append([]uint64(nil), s...)
+			_andStoreSliceAVX2(dst, s, m)
+			assert.Equalf(t, expected, dst, "separate destination len=%d", n)
+
+			inPlaceLeft := append([]uint64(nil), s...)
+			_andStoreSliceAVX2(inPlaceLeft, inPlaceLeft, m)
+			assert.Equalf(t, expected, inPlaceLeft, "left alias len=%d", n)
+
+			inPlaceRight := append([]uint64(nil), m...)
+			_andStoreSliceAVX2(inPlaceRight, s, inPlaceRight)
+			assert.Equalf(t, expected, inPlaceRight, "right alias len=%d", n)
+		}
+	}
+}
+
+func TestAVX2BitmapAndStoreDispatch(t *testing.T) {
+	saved := useAVX2
+	defer func() { useAVX2 = saved }()
+
+	newFull := func() *bitmapContainer {
+		bc := newBitmapContainer()
+		for i := range bc.bitmap {
+			bc.bitmap[i] = ^uint64(0)
+		}
+		bc.cardinality = maxCapacity
+		return bc
+	}
+
+	right := newBitmapContainer()
+	for i := range right.bitmap {
+		right.bitmap[i] = 0xaaaaaaaaaaaaaaaa
+	}
+	right.cardinality = maxCapacity / 2
+
+	small := newBitmapContainer()
+	small.bitmap[0] = 1
+	small.cardinality = 1
+
+	for _, on := range []bool{false, true} {
+		if on && !saved {
+			continue // CPU has no AVX2; only the fallback exists
+		}
+		useAVX2 = on
+
+		answer, ok := newFull().andBitmap(right).(*bitmapContainer)
+		if !ok {
+			t.Fatalf("expected bitmap result with avx2=%v", on)
+		}
+		assert.Equalf(t, right.bitmap, answer.bitmap, "bitmap result avx2=%v", on)
+		assert.Equalf(t, right.cardinality, answer.cardinality, "bitmap cardinality avx2=%v", on)
+
+		inPlace := newFull()
+		answer, ok = inPlace.iandBitmap(right).(*bitmapContainer)
+		if !ok {
+			t.Fatalf("expected in-place bitmap result with avx2=%v", on)
+		}
+		assert.Samef(t, inPlace, answer, "in-place bitmap result avx2=%v", on)
+		assert.Equalf(t, right.bitmap, inPlace.bitmap, "in-place bitmap contents avx2=%v", on)
+
+		arrayResult, ok := newFull().andBitmap(small).(*arrayContainer)
+		if !ok {
+			t.Fatalf("expected array result with avx2=%v", on)
+		}
+		assert.Equalf(t, []uint16{0}, arrayResult.content, "array result avx2=%v", on)
+
+		inPlace = newFull()
+		arrayResult, ok = inPlace.iandBitmap(small).(*arrayContainer)
+		if !ok {
+			t.Fatalf("expected in-place array result with avx2=%v", on)
+		}
+		assert.Equalf(t, []uint16{0}, arrayResult.content, "in-place array result avx2=%v", on)
+	}
+}

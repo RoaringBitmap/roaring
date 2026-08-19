@@ -867,17 +867,19 @@ func (bc *bitmapContainer) getCardinalityInRange(start, end uint) int {
 func (bc *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
 	newcardinality := int(popcntAndSlice(bc.bitmap, value2.bitmap))
 	if newcardinality > arrayDefaultMaxSize {
-		answer := newBitmapContainer()
-		for k := 0; k < len(answer.bitmap); k++ {
-			answer.bitmap[k] = bc.bitmap[k] & value2.bitmap[k]
-		}
-		answer.cardinality = newcardinality
-		return answer
+		return andBitmapStore(bc, value2, newcardinality)
 	}
 	ac := newArrayContainerSize(newcardinality)
 	fillArrayAND(ac.content, bc.bitmap, value2.bitmap)
 	ac.content = ac.content[:newcardinality]
 	return ac
+}
+
+func andBitmapStore(left, right *bitmapContainer, cardinality int) *bitmapContainer {
+	answer := newBitmapContainer()
+	andStoreSlice(answer.bitmap, left.bitmap, right.bitmap)
+	answer.cardinality = cardinality
+	return answer
 }
 
 func (bc *bitmapContainer) intersectsArray(value2 *arrayContainer) bool {
@@ -902,9 +904,7 @@ func (bc *bitmapContainer) intersectsBitmap(value2 *bitmapContainer) bool {
 
 func (bc *bitmapContainer) iandBitmap(value2 *bitmapContainer) container {
 	newcardinality := int(popcntAndSlice(bc.bitmap, value2.bitmap))
-	for k := 0; k < len(bc.bitmap); k++ {
-		bc.bitmap[k] = bc.bitmap[k] & value2.bitmap[k]
-	}
+	andStoreSlice(bc.bitmap, bc.bitmap, value2.bitmap)
 	bc.cardinality = newcardinality
 
 	if newcardinality <= arrayDefaultMaxSize {
