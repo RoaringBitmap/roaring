@@ -390,3 +390,42 @@ func TestSetUtilUnionBy2Cardinality(t *testing.T) {
 		})
 	}
 }
+
+func arrayIntersectionBenchmarkBitmaps() (*Bitmap, *Bitmap) {
+	left := New()
+	right := New()
+	for high := uint32(0); high < 4; high++ {
+		base := high << 16
+		for low := uint32(0); low < 2*arrayDefaultMaxSize; low += 4 {
+			left.Add(base + low)
+			left.Add(base + low + 2)
+			right.Add(base + low)
+			right.Add(base + low + 1)
+		}
+	}
+	return left, right
+}
+
+func BenchmarkArrayIntersection(b *testing.B) {
+	left, right := arrayIntersectionBenchmarkBitmaps()
+	var result *Bitmap
+	b.ReportAllocs()
+	for b.Loop() {
+		result = And(left, right)
+	}
+	if got, want := result.GetCardinality(), uint64(4*arrayDefaultMaxSize/2); got != want {
+		b.Fatalf("unexpected intersection cardinality: got %d, want %d", got, want)
+	}
+}
+
+func BenchmarkArrayIntersectionCardinality(b *testing.B) {
+	left, right := arrayIntersectionBenchmarkBitmaps()
+	var result uint64
+	b.ReportAllocs()
+	for b.Loop() {
+		result = left.AndCardinality(right)
+	}
+	if want := uint64(4 * arrayDefaultMaxSize / 2); result != want {
+		b.Fatalf("unexpected intersection cardinality: got %d, want %d", result, want)
+	}
+}

@@ -296,21 +296,19 @@ func localintersect2by2(
 	if (len(set1) == 0) || (len(set2) == 0) {
 		return 0
 	}
-	k1 := 0
-	k2 := 0
 	pos := 0
 	buffer = buffer[:cap(buffer)]
-	s1 := set1[k1]
-	s2 := set2[k2]
+	s1 := set1[0]
+	s2 := set2[0]
 mainwhile:
 	for {
 		if s2 < s1 {
 			for {
-				k2++
-				if k2 == len(set2) {
+				if len(set2) <= 1 {
 					break mainwhile
 				}
-				s2 = set2[k2]
+				set2 = set2[1:]
+				s2 = set2[0]
 				if s2 >= s1 {
 					break
 				}
@@ -318,29 +316,28 @@ mainwhile:
 		}
 		if s1 < s2 {
 			for {
-				k1++
-				if k1 == len(set1) {
+				if len(set1) <= 1 {
 					break mainwhile
 				}
-				s1 = set1[k1]
+				set1 = set1[1:]
+				s1 = set1[0]
 				if s1 >= s2 {
 					break
 				}
 			}
 		} else {
-			// (set2[k2] == set1[k1])
 			buffer[pos] = s1
 			pos++
-			k1++
-			if k1 == len(set1) {
+			if len(set1) <= 1 {
 				break
 			}
-			s1 = set1[k1]
-			k2++
-			if k2 == len(set2) {
+			set1 = set1[1:]
+			s1 = set1[0]
+			if len(set2) <= 1 {
 				break
 			}
-			s2 = set2[k2]
+			set2 = set2[1:]
+			s2 = set2[0]
 		}
 	}
 	return pos
@@ -354,20 +351,18 @@ func localintersect2by2Cardinality(
 	if (len(set1) == 0) || (len(set2) == 0) {
 		return 0
 	}
-	index1 := 0
-	index2 := 0
 	pos := 0
-	value1 := set1[index1]
-	value2 := set2[index2]
+	value1 := set1[0]
+	value2 := set2[0]
 mainwhile:
 	for {
 		if value2 < value1 {
 			for {
-				index2++
-				if index2 == len(set2) {
+				if len(set2) <= 1 {
 					break mainwhile
 				}
-				value2 = set2[index2]
+				set2 = set2[1:]
+				value2 = set2[0]
 				if value2 >= value1 {
 					break
 				}
@@ -375,28 +370,27 @@ mainwhile:
 		}
 		if value1 < value2 {
 			for {
-				index1++
-				if index1 == len(set1) {
+				if len(set1) <= 1 {
 					break mainwhile
 				}
-				value1 = set1[index1]
+				set1 = set1[1:]
+				value1 = set1[0]
 				if value1 >= value2 {
 					break
 				}
 			}
 		} else {
-			// (set2[k2] == set1[k1])
 			pos++
-			index1++
-			if index1 == len(set1) {
+			if len(set1) <= 1 {
 				break
 			}
-			value1 = set1[index1]
-			index2++
-			if index2 == len(set2) {
+			set1 = set1[1:]
+			value1 = set1[0]
+			if len(set2) <= 1 {
 				break
 			}
-			value2 = set2[index2]
+			set2 = set2[1:]
+			value2 = set2[0]
 		}
 	}
 	return pos
