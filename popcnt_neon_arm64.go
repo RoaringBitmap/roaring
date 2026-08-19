@@ -50,6 +50,10 @@ func popcntAndSlice(s, m []uint64) uint64 {
 	return popcntAndSliceGo(s, m)
 }
 
+func andPopcntSlice(dst, s, m []uint64) uint64 {
+	return andPopcntSliceGo(dst, s, m)
+}
+
 func popcntOrSlice(s, m []uint64) uint64 {
 	if useNEON {
 		return _popcntOrSliceNEON(s, m)

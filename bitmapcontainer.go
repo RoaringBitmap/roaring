@@ -865,10 +865,19 @@ func (bc *bitmapContainer) getCardinalityInRange(start, end uint) int {
 }
 
 func (bc *bitmapContainer) andBitmap(value2 *bitmapContainer) container {
+	// The intersection is necessarily a bitmap when the two cardinalities
+	// exceed the universe by more than the array threshold. Build and count it
+	// together so the operand bitmaps are traversed only once.
+	if bc.cardinality+value2.cardinality > maxCapacity+arrayDefaultMaxSize {
+		answer := newBitmapContainer()
+		answer.cardinality = int(andPopcntSlice(answer.bitmap, bc.bitmap, value2.bitmap))
+		return answer
+	}
+
 	newcardinality := int(popcntAndSlice(bc.bitmap, value2.bitmap))
 	if newcardinality > arrayDefaultMaxSize {
 		answer := newBitmapContainer()
-		for k := 0; k < len(answer.bitmap); k++ {
+		for k := range answer.bitmap {
 			answer.bitmap[k] = bc.bitmap[k] & value2.bitmap[k]
 		}
 		answer.cardinality = newcardinality
