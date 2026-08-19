@@ -822,6 +822,47 @@ func TestSumWithNil(t *testing.T) {
 	assert.Equal(t, int64(0), sum)
 }
 
+func TestSumBigValues(t *testing.T) {
+	positive := new(big.Int).Lsh(big.NewInt(1), 149)
+	positive.Add(positive, big.NewInt(7))
+	negative := new(big.Int).Lsh(big.NewInt(1), 120)
+	negative.Neg(negative)
+	negative.Sub(negative, big.NewInt(11))
+	values := []struct {
+		columnID uint64
+		value    *big.Int
+	}{
+		{1, big.NewInt(-9)},
+		{2, positive},
+		{3, negative},
+		{4, big.NewInt(7)},
+	}
+
+	bsi := NewDefaultBSI()
+	want := new(big.Int)
+	for _, value := range values {
+		bsi.SetBigValue(value.columnID, value.value)
+		want.Add(want, value.value)
+	}
+
+	filteredWant := new(big.Int).Add(values[0].value, values[2].value)
+	for _, test := range []struct {
+		name     string
+		foundSet *Bitmap
+		want     *big.Int
+		count    uint64
+	}{
+		{"all", nil, want, uint64(len(values))},
+		{"filtered", BitmapOf(1, 3), filteredWant, 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sum, count := bsi.SumBigValues(test.foundSet)
+			assert.Equal(t, test.count, count)
+			assert.Zero(t, sum.Cmp(test.want))
+		})
+	}
+}
+
 func BenchmarkBSI64SumBigValues(b *testing.B) {
 	const valueCount = 128
 
