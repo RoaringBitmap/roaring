@@ -822,6 +822,31 @@ func TestSumWithNil(t *testing.T) {
 	assert.Equal(t, int64(0), sum)
 }
 
+func BenchmarkBSI64SumBigValues(b *testing.B) {
+	const valueCount = 128
+
+	bsi := NewBSI(Max64BitSigned, 0)
+	foundSet := bsi.GetExistenceBitmap()
+	want := new(big.Int)
+	for columnID := uint64(0); columnID < valueCount; columnID++ {
+		value := int64(columnID)
+		bsi.SetValue(columnID, value)
+		want.Add(want, big.NewInt(value))
+	}
+	if bsi.BitCount() != 63 {
+		b.Fatalf("BitCount() = %d, want 63", bsi.BitCount())
+	}
+
+	var sum *big.Int
+	var count uint64
+	for b.Loop() {
+		sum, count = bsi.SumBigValues(foundSet)
+	}
+	if count != valueCount || sum.Cmp(want) != 0 {
+		b.Fatalf("SumBigValues() = (%v, %d), want (%v, %d)", sum, count, want, valueCount)
+	}
+}
+
 func TestTransposeWithCountsNil(t *testing.T) {
 	bsi := setup()
 	bsi.SetValue(101, 50)
