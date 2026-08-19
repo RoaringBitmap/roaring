@@ -68,3 +68,53 @@ func BenchmarkParOrBitmapContainers(b *testing.B) {
 		}
 	}
 }
+
+func roaringAndBitmapFixture(ranges ...[2]int) *Bitmap {
+	words := make([]uint64, bitmapContainerSize)
+	for _, r := range ranges {
+		for value := r[0]; value < r[1]; value++ {
+			words[value/64] |= uint64(1) << uint(value&63)
+		}
+	}
+	return FromDense(words, false)
+}
+
+func benchmarkRoaringAndBitmap(b *testing.B, left, right *Bitmap, expected uint64) {
+	b.Helper()
+	for _, bitmap := range []*Bitmap{left, right} {
+		if bitmap.highlowcontainer.size() != 1 {
+			b.Fatal("workload did not produce one container")
+		}
+		if _, ok := bitmap.highlowcontainer.getContainerAtIndex(0).(*bitmapContainer); !ok {
+			b.Fatal("workload did not produce bitmap containers")
+		}
+	}
+
+	if result := And(left, right); result.GetCardinality() != expected {
+		b.Fatalf("unexpected cardinality: got %d, want %d", result.GetCardinality(), expected)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		And(left, right)
+	}
+}
+
+func BenchmarkRoaringAndBitmapDense(b *testing.B) {
+	left := roaringAndBitmapFixture([2]int{0, maxCapacity})
+	right := roaringAndBitmapFixture([2]int{0, 59000})
+	benchmarkRoaringAndBitmap(b, left, right, 59000)
+}
+
+func BenchmarkRoaringAndBitmapSparse(b *testing.B) {
+	left := roaringAndBitmapFixture([2]int{0, 5000}, [2]int{10000, 15000})
+	right := roaringAndBitmapFixture([2]int{0, 5000}, [2]int{20000, 25000})
+	benchmarkRoaringAndBitmap(b, left, right, 5000)
+}
+
+func BenchmarkRoaringAndBitmapDisjoint(b *testing.B) {
+	left := roaringAndBitmapFixture([2]int{0, 5000})
+	right := roaringAndBitmapFixture([2]int{10000, 15000})
+	benchmarkRoaringAndBitmap(b, left, right, 0)
+}
