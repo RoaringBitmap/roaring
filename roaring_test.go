@@ -4184,3 +4184,60 @@ func TestBitmapOrBulkMergeCopyOnWriteTailOwnership(t *testing.T) {
 		t.Fatalf("source became invalid after tail mutations: %v", err)
 	}
 }
+
+// Self-union must leave the bitmap unchanged. Spare capacity sends iorArray
+// through its reuse branch, where set2 and the output share a backing array.
+func TestOrSelfInPlace(t *testing.T) {
+	buildRange := func(n int) *Bitmap {
+		rb := New()
+		for v := 0; v < n; v++ {
+			rb.Add(uint32(v))
+		}
+		return rb
+	}
+	cases := []struct {
+		name  string
+		build func() *Bitmap
+	}{
+		{"small", func() *Bitmap {
+			rb := buildRange(1024)
+			rb.RemoveRange(383, 1024)
+			return rb
+		}},
+		{"neon-sized", func() *Bitmap {
+			rb := buildRange(1024)
+			rb.RemoveRange(384, 1024)
+			return rb
+		}},
+		{"strided-exact-cap", func() *Bitmap {
+			rb := buildRange(1024)
+			for v := 1; v < 1024; v += 2 {
+				rb.Remove(uint32(v))
+			}
+			return rb
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rb := tc.build()
+			ac, ok := rb.highlowcontainer.getContainerAtIndex(0).(*arrayContainer)
+			if !ok || cap(ac.content) < 2*len(ac.content) {
+				t.Fatal("container no longer hits iorArray's capacity-reuse branch")
+			}
+			want := rb.ToArray()
+			rb.Or(rb)
+			if err := rb.Validate(); err != nil {
+				t.Fatalf("invalid after self-Or: %v", err)
+			}
+			got := rb.ToArray()
+			if len(got) != len(want) {
+				t.Fatalf("self-Or changed cardinality: got %d want %d", len(got), len(want))
+			}
+			for i := range want {
+				if got[i] != want[i] {
+					t.Fatalf("self-Or corrupted index %d: got %d want %d", i, got[i], want[i])
+				}
+			}
+		})
+	}
+}
