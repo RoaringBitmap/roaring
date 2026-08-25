@@ -938,9 +938,7 @@ func (bc *bitmapContainer) ixorRun16(value2 *runContainer16) container {
 func (bc *bitmapContainer) ixorBitmap(value2 *bitmapContainer) container {
 	newCardinality := int(popcntXorSlice(bc.bitmap, value2.bitmap))
 	if newCardinality > arrayDefaultMaxSize {
-		for k := 0; k < len(bc.bitmap); k++ {
-			bc.bitmap[k] = bc.bitmap[k] ^ value2.bitmap[k]
-		}
+		xorSliceInPlace(bc.bitmap, value2.bitmap)
 		bc.cardinality = newCardinality
 		return bc
 	}
