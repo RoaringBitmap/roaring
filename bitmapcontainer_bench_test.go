@@ -1,6 +1,7 @@
 package roaring
 
 import (
+	"math/bits"
 	"math/rand"
 	"testing"
 )
@@ -22,6 +23,56 @@ func BenchmarkBitmapContainerFillLeastSignificant16bits(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		pos := bc.fillLeastSignificant16bits(x, 0, mask)
 		sink += x[pos-1]
+	}
+}
+
+// BenchmarkBitmapToArrayDenseContainers measures ToArray across four dense
+// bitmap containers and validates its complete ordered output before timing.
+func BenchmarkBitmapToArrayDenseContainers(b *testing.B) {
+	const containerCount = 4
+	words := make([]uint64, bitmapContainerSize*containerCount)
+	state := uint64(1)
+	for i := range words {
+		state += 0x9e3779b97f4a7c15
+		word := state
+		word = (word ^ (word >> 30)) * 0xbf58476d1ce4e5b9
+		word = (word ^ (word >> 27)) * 0x94d049bb133111eb
+		words[i] = word ^ (word >> 31)
+	}
+
+	bitmap := FromDense(words, false)
+	if len(bitmap.highlowcontainer.containers) != containerCount {
+		b.Fatalf("workload has %d containers, want %d", len(bitmap.highlowcontainer.containers), containerCount)
+	}
+	for _, c := range bitmap.highlowcontainer.containers {
+		if _, ok := c.(*bitmapContainer); !ok {
+			b.Fatal("workload did not produce bitmap containers")
+		}
+	}
+
+	expected := make([]uint32, 0, len(words)*32)
+	for i, word := range words {
+		base := uint32(i/bitmapContainerSize)<<16 + uint32(i%bitmapContainerSize*64)
+		for word != 0 {
+			expected = append(expected, base+uint32(bits.TrailingZeros64(word)))
+			word &= word - 1
+		}
+	}
+	actual := bitmap.ToArray()
+	if len(actual) != len(expected) {
+		b.Fatalf("validation returned %d values, want %d", len(actual), len(expected))
+	}
+	for i := range expected {
+		if actual[i] != expected[i] {
+			b.Fatalf("validation mismatch at %d: got %d, want %d", i, actual[i], expected[i])
+		}
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		result := bitmap.ToArray()
+		sink += result[len(result)-1]
 	}
 }
 
