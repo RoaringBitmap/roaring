@@ -294,13 +294,22 @@ func bitmapEquals(a, b []uint64) bool {
 	return true
 }
 
+// The vector path's fixed per-word setup is worthwhile above this density;
+// sparser bitmap containers keep the scalar decoder.
+const bitmapContainerAVX512MinCardinality = 1 << 14
+
 func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) int {
-	// On amd64 this loop compiles to TZCNT/BLSR; the remaining headroom is
-	// vectorized decode (cf. CRoaring bitset_extract_setbits_avx2/avx512).
+	if useAVX512 && bc.cardinality >= bitmapContainerAVX512MinCardinality {
+		return fillLeastSignificant16bitsAVX512(bc.bitmap, x, i, mask)
+	}
+	return fillLeastSignificant16bitsScalar(bc.bitmap, x, i, mask)
+}
+
+func fillLeastSignificant16bitsScalar(bitmap []uint64, x []uint32, i int, mask uint32) int {
 	pos := i
 	base := mask
-	for k := 0; k < len(bc.bitmap); k++ {
-		bitset := bc.bitmap[k]
+	for k := 0; k < len(bitmap); k++ {
+		bitset := bitmap[k]
 		for bitset != 0 {
 			x[pos] = base + uint32(bits.TrailingZeros64(bitset))
 			pos++
