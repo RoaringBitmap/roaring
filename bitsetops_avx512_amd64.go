@@ -55,6 +55,10 @@ func xorSlice(dst, a, b []uint64) {
 		xorSliceAVX512(dst, a, b)
 		return
 	}
+	if useAVX2 {
+		xorSliceAVX2(dst, a, b)
+		return
+	}
 	xorSliceGo(dst, a, b)
 }
 
