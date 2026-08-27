@@ -175,16 +175,35 @@ func (bcmi *bitmapContainerManyIterator) nextMany(hs uint32, buf []uint32) int {
 	n := 0
 	base := bcmi.base
 	bitset := bcmi.bitset
+	bitmap := bcmi.ptr.bitmap
 
 	for n < len(buf) {
 		if bitset == 0 {
+			// The current word is exhausted, so whole words follow. Decode them
+			// in bulk while the buffer still has room for the 64 values a single
+			// word could produce; anything left over falls through to the loop
+			// below. bitset stays zero, which keeps the iterator's invariant
+			// that word `base` has been fully consumed.
+			for useVectorFill {
+				words := (len(buf) - n) / 64
+				if remaining := len(bitmap) - base - 1; words > remaining {
+					words = remaining
+				}
+				if words <= 0 {
+					break
+				}
+				start := base + 1
+				n = fillLeastSignificant16bitsVector(bitmap[start:start+words], buf, n, hs|uint32(start)*64)
+				base += words
+			}
+
 			base++
-			if base >= len(bcmi.ptr.bitmap) {
+			if base >= len(bitmap) {
 				bcmi.base = base
 				bcmi.bitset = bitset
 				return n
 			}
-			bitset = bcmi.ptr.bitmap[base]
+			bitset = bitmap[base]
 			continue
 		}
 		t := bitset & -bitset
