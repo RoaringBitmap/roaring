@@ -26,6 +26,15 @@ func popcntAndSliceGo(s, m []uint64) uint64 {
 	return cnt
 }
 
+// andPopcntSliceGo writes s & m to dst and returns its cardinality. All slices
+// must have the same length.
+func andPopcntSliceGo(dst, s, m []uint64) uint64 {
+	for i := range dst {
+		dst[i] = s[i] & m[i]
+	}
+	return popcntSlice(dst)
+}
+
 func popcntOrSliceGo(s, m []uint64) uint64 {
 	cnt := uint64(0)
 	for i := range s {

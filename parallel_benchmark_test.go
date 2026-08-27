@@ -5,6 +5,30 @@ import (
 	"testing"
 )
 
+func bitmapIntersectionBenchmarkFixture(containerCount int, word uint64) *Bitmap {
+	bitmap := make([]uint64, containerCount*(maxCapacity/64))
+	for i := range bitmap {
+		bitmap[i] = word
+	}
+	return FromDense(bitmap, false)
+}
+
+// BenchmarkIntersectionBitmapParallel exercises ParAnd with bitmap containers
+// whose intersection stays above the array-container threshold.
+func BenchmarkIntersectionBitmapParallel(b *testing.B) {
+	const containerCount = 128
+	left := bitmapIntersectionBenchmarkFixture(containerCount, ^uint64(0))
+	right := bitmapIntersectionBenchmarkFixture(containerCount, 0x5555555555555555)
+	want := left.AndCardinality(right)
+
+	for b.Loop() {
+		result := ParAnd(0, left, right)
+		if result.GetCardinality() != want {
+			b.Fatalf("got %d values, want %d", result.GetCardinality(), want)
+		}
+	}
+}
+
 func BenchmarkIntersectionLargeParallel(b *testing.B) {
 	b.StopTimer()
 

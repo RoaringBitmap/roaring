@@ -58,6 +58,42 @@ func TestBitmapcontainerAndCardinality(t *testing.T) {
 	}
 }
 
+func TestBitmapContainerAndBitmapRepresentation(t *testing.T) {
+	full := newBitmapContainer()
+	fill(full.bitmap, ^uint64(0))
+	full.cardinality = maxCapacity
+
+	t.Run("bitmap result", func(t *testing.T) {
+		other := newBitmapContainer()
+		for i := range other.bitmap {
+			other.bitmap[i] = 0x5555555555555555
+		}
+		other.cardinality = int(popcntSlice(other.bitmap))
+
+		result, ok := full.andBitmap(other).(*bitmapContainer)
+		require.True(t, ok)
+		assert.Equal(t, other.cardinality, result.cardinality)
+		assert.Equal(t, other.bitmap, result.bitmap)
+		assert.NoError(t, result.validate())
+	})
+
+	t.Run("array threshold", func(t *testing.T) {
+		other := newBitmapContainer()
+		for i := 0; i < arrayDefaultMaxSize/64; i++ {
+			other.bitmap[i] = ^uint64(0)
+		}
+		other.cardinality = arrayDefaultMaxSize
+
+		result, ok := full.andBitmap(other).(*arrayContainer)
+		require.True(t, ok)
+		require.Len(t, result.content, arrayDefaultMaxSize)
+		for i, value := range result.content {
+			assert.Equal(t, uint16(i), value)
+		}
+		assert.NoError(t, result.validate())
+	})
+}
+
 func TestIssue181(t *testing.T) {
 	t.Run("Initial issue 181", func(t *testing.T) {
 		a := New()

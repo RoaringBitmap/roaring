@@ -22,6 +22,9 @@ func _popcntMaskSliceAVX2(s, m []uint64) uint64
 func _popcntAndSliceAVX2(s, m []uint64) uint64
 
 //go:noescape
+func _andPopcntSliceAVX2(dst, s, m []uint64) uint64
+
+//go:noescape
 func _popcntOrSliceAVX2(s, m []uint64) uint64
 
 //go:noescape
@@ -50,6 +53,13 @@ func popcntAndSlice(s, m []uint64) uint64 {
 		return _popcntAndSliceAVX2(s, m)
 	}
 	return popcntAndSliceGo(s, m)
+}
+
+func andPopcntSlice(dst, s, m []uint64) uint64 {
+	if useAVX2 {
+		return _andPopcntSliceAVX2(dst, s, m)
+	}
+	return andPopcntSliceGo(dst, s, m)
 }
 
 func popcntOrSlice(s, m []uint64) uint64 {
