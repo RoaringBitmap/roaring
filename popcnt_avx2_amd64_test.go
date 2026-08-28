@@ -127,3 +127,80 @@ func TestAVX2PopcntDifferential(t *testing.T) {
 		}
 	}
 }
+
+func TestAVX2AndStoreDifferential(t *testing.T) {
+	if !useAVX2 {
+		t.Skip("AVX2 not available on this CPU")
+	}
+	r := rand.New(rand.NewSource(43))
+	for _, n := range avx2TestLengths {
+		for iter := 0; iter < 64; iter++ {
+			a := randomUint64Slice(r, n)
+			b := randomUint64Slice(r, n)
+			want := make([]uint64, n)
+			andSliceGo(want, a, b)
+
+			got := make([]uint64, n)
+			_andStoreSliceAVX2(got, a, b)
+			assert.Equalf(t, want, got, "separate destination len=%d", n)
+
+			aliasA := append(make([]uint64, 0, n), a...)
+			_andStoreSliceAVX2(aliasA, aliasA, b)
+			assert.Equalf(t, want, aliasA, "destination aliases a len=%d", n)
+
+			aliasB := append(make([]uint64, 0, n), b...)
+			_andStoreSliceAVX2(aliasB, a, aliasB)
+			assert.Equalf(t, want, aliasB, "destination aliases b len=%d", n)
+
+			wantCard := andCardSliceGo(want, a, b)
+			gotCard := make([]uint64, n)
+			card := _andCardStoreSliceAVX2(gotCard, a, b)
+			assert.Equalf(t, want, gotCard, "fused destination len=%d", n)
+			assert.Equalf(t, wantCard, card, "fused cardinality len=%d", n)
+
+			aliasA = append(make([]uint64, 0, n), a...)
+			card = _andCardStoreSliceAVX2(aliasA, aliasA, b)
+			assert.Equalf(t, want, aliasA, "fused destination aliases a len=%d", n)
+			assert.Equalf(t, wantCard, card, "fused aliases a cardinality len=%d", n)
+
+			aliasB = append(make([]uint64, 0, n), b...)
+			card = _andCardStoreSliceAVX2(aliasB, a, aliasB)
+			assert.Equalf(t, want, aliasB, "fused destination aliases b len=%d", n)
+			assert.Equalf(t, wantCard, card, "fused aliases b cardinality len=%d", n)
+		}
+	}
+}
+
+func TestAVX2AndStoreDispatch(t *testing.T) {
+	if !useAVX2 {
+		t.Skip("AVX2 not available on this CPU")
+	}
+	savedAVX512 := useAVX512BitsetOps
+	savedAVX512Popcnt := useAVX512Popcnt
+	savedAVX2 := useAVX2
+	defer func() {
+		useAVX512BitsetOps = savedAVX512
+		useAVX512Popcnt = savedAVX512Popcnt
+		useAVX2 = savedAVX2
+	}()
+	useAVX512BitsetOps = false
+	useAVX512Popcnt = false
+	useAVX2 = true
+
+	r := rand.New(rand.NewSource(44))
+	for _, n := range avx2TestLengths {
+		a := randomUint64Slice(r, n)
+		b := randomUint64Slice(r, n)
+		want := make([]uint64, n)
+		andSliceGo(want, a, b)
+		got := make([]uint64, n)
+		andSlice(got, a, b)
+		assert.Equalf(t, want, got, "andSlice AVX2 dispatch len=%d", n)
+
+		gotCard := make([]uint64, n)
+		wantCard := andCardSliceGo(want, a, b)
+		card := andCardSlice(gotCard, a, b)
+		assert.Equalf(t, want, gotCard, "andCardSlice AVX2 dispatch len=%d", n)
+		assert.Equalf(t, wantCard, card, "andCardSlice AVX2 cardinality len=%d", n)
+	}
+}
