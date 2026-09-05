@@ -11,32 +11,30 @@
 // Register use:
 //   R0/R1 cursors into set1/set2, R3/R4 their full-block end addresses,
 //   R8/R9 set1 block's first/last value, R10/R11 same for set2.
-//   V0/V1 current set1/set2 blocks, V2 the match accumulator, V3-V7 temps.
+//   V0/V1 current set1/set2 blocks, V2 the match accumulator, V3-V10 temps.
 
 // Match mask of V0's lanes against all rotations of V1, result in V3.
 #define MATCH8 \
-	VCMEQ V1.H8, V0.H8, V3.H8          \
+	VEXT  $8, V0.B16, V0.B16, V7.B16   \
 	VEXT  $2, V1.B16, V1.B16, V4.B16   \
-	VCMEQ V4.H8, V0.H8, V4.H8          \
 	VEXT  $4, V1.B16, V1.B16, V5.B16   \
-	VCMEQ V5.H8, V0.H8, V5.H8          \
 	VEXT  $6, V1.B16, V1.B16, V6.B16   \
-	VCMEQ V6.H8, V0.H8, V6.H8          \
-	VORR  V4.B16, V3.B16, V3.B16       \
-	VORR  V6.B16, V5.B16, V5.B16       \
-	VEXT  $8, V1.B16, V1.B16, V4.B16   \
-	VCMEQ V4.H8, V0.H8, V4.H8          \
-	VEXT  $10, V1.B16, V1.B16, V6.B16  \
-	VCMEQ V6.H8, V0.H8, V6.H8          \
-	VORR  V6.B16, V4.B16, V4.B16       \
-	VEXT  $12, V1.B16, V1.B16, V6.B16  \
-	VCMEQ V6.H8, V0.H8, V6.H8          \
-	VEXT  $14, V1.B16, V1.B16, V7.B16  \
-	VCMEQ V7.H8, V0.H8, V7.H8          \
-	VORR  V7.B16, V6.B16, V6.B16       \
-	VORR  V5.B16, V3.B16, V3.B16       \
-	VORR  V6.B16, V4.B16, V4.B16       \
-	VORR  V4.B16, V3.B16, V3.B16
+	VCMEQ V1.H8, V0.H8, V3.H8         \
+	VCMEQ V4.H8, V0.H8, V8.H8         \
+	VCMEQ V5.H8, V0.H8, V9.H8         \
+	VCMEQ V6.H8, V0.H8, V10.H8        \
+	VORR  V8.B16, V3.B16, V3.B16      \
+	VORR  V10.B16, V9.B16, V9.B16     \
+	VORR  V9.B16, V3.B16, V3.B16      \
+	VCMEQ V1.H8, V7.H8, V8.H8         \
+	VCMEQ V4.H8, V7.H8, V4.H8         \
+	VCMEQ V5.H8, V7.H8, V5.H8         \
+	VCMEQ V6.H8, V7.H8, V6.H8         \
+	VORR  V4.B16, V8.B16, V8.B16      \
+	VORR  V6.B16, V5.B16, V5.B16      \
+	VORR  V5.B16, V8.B16, V8.B16      \
+	VEXT  $8, V8.B16, V8.B16, V8.B16  \
+	VORR  V8.B16, V3.B16, V3.B16
 
 // func intersectCardKernelNEON(set1, set2 []uint16) (card, pos1, pos2 int)
 TEXT ·intersectCardKernelNEON(SB), NOSPLIT, $0-72
@@ -194,12 +192,12 @@ mloop:
 
 	VUZP1 V3.B16, V3.B16, V4.B16
 	VMOV  V4.D[0], R14
+	CBZ   R14, madv
 	AND   R12, R14, R14
 	MUL   R13, R14, R15
 	LSR   $56, R15, R15      // mask
 	MUL   R12, R14, R14
 	LSR   $56, R14, R14      // count
-	CBZ   R15, madv
 
 	SUB  R15<<4, R6, R16
 	VLD1 (R16), [V4.B16]

@@ -107,10 +107,10 @@ func TestIntersectNEONRangeDisjoint(t *testing.T) {
 }
 
 func TestIntersectNEONGallopingBoundary(t *testing.T) {
-	// 32x2048 stays on the kernel; 32x2049 crosses into galloping.
+	// 32x1024 stays on the kernel; 32x1025 crosses into galloping.
 	rng := rand.New(rand.NewSource(5))
 	small := intersectSortedUnique(rng, 32, 65536)
-	for _, large := range []int{2048, 2049} {
+	for _, large := range []int{1024, 1025, 2048, 2049} {
 		big := intersectSortedUnique(rng, large, 65536)
 		checkIntersectPair(t, "gallop-boundary", small, big)
 	}
