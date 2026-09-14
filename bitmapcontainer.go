@@ -827,15 +827,13 @@ func (bc *bitmapContainer) iandArray(ac *arrayContainer) container {
 
 func (bc *bitmapContainer) andArray(value2 *arrayContainer) *arrayContainer {
 	answer := newArrayContainerCapacity(len(value2.content))
-	answer.content = answer.content[:cap(answer.content)]
-	c := value2.getCardinality()
+	out, bitmap := answer.content[:cap(answer.content)], bc.bitmap
 	pos := 0
-	for k := 0; k < c; k++ {
-		v := value2.content[k]
-		answer.content[pos] = v
-		pos += int(bc.bitValue(v))
+	for _, v := range value2.content {
+		out[pos] = v
+		pos += int((bitmap[v>>6] >> (v & 63)) & 1)
 	}
-	answer.content = answer.content[:pos]
+	answer.content = out[:pos]
 	return answer
 }
 
