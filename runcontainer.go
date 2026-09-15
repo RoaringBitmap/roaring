@@ -2452,7 +2452,7 @@ func (rc *runContainer16) ixorArray(value2 *arrayContainer) container {
 }
 
 func (rc *runContainer16) ixorBitmap(value2 *bitmapContainer) container {
-	return value2.ixor(rc)
+	return rc.toBitmapContainer().ixorBitmap(value2)
 }
 
 func (rc *runContainer16) ixorRunContainer16(value2 *runContainer16) container {
