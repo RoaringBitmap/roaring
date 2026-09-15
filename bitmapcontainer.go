@@ -187,10 +187,17 @@ func (bcmi *bitmapContainerManyIterator) nextMany(hs uint32, buf []uint32) int {
 			bitset = bcmi.ptr.bitmap[base]
 			continue
 		}
-		t := bitset & -bitset
-		buf[n] = uint32(((base * 64) + bits.OnesCount64(t-1))) | hs
-		n = n + 1
-		bitset ^= t
+		if len(buf)-n >= 64 {
+			for bitset != 0 {
+				buf[n] = uint32((base*64)+bits.TrailingZeros64(bitset)) | hs
+				n++
+				bitset &= bitset - 1
+			}
+			continue
+		}
+		buf[n] = uint32((base*64)+bits.TrailingZeros64(bitset)) | hs
+		n++
+		bitset &= bitset - 1
 	}
 
 	bcmi.base = base
@@ -215,10 +222,17 @@ func (bcmi *bitmapContainerManyIterator) nextMany64(hs uint64, buf []uint64) int
 			bitset = bcmi.ptr.bitmap[base]
 			continue
 		}
-		t := bitset & -bitset
-		buf[n] = uint64(((base * 64) + bits.OnesCount64(t-1))) | hs
-		n = n + 1
-		bitset ^= t
+		if len(buf)-n >= 64 {
+			for bitset != 0 {
+				buf[n] = uint64((base*64)+bits.TrailingZeros64(bitset)) | hs
+				n++
+				bitset &= bitset - 1
+			}
+			continue
+		}
+		buf[n] = uint64((base*64)+bits.TrailingZeros64(bitset)) | hs
+		n++
+		bitset &= bitset - 1
 	}
 
 	bcmi.base = base
