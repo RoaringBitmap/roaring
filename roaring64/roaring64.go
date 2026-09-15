@@ -632,6 +632,10 @@ main:
 
 // Xor computes the symmetric difference between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) Xor(x2 *Bitmap) {
+	if rb == x2 {
+		rb.Clear()
+		return
+	}
 	pos1 := 0
 	pos2 := 0
 	length1 := rb.highlowcontainer.size()
@@ -646,7 +650,7 @@ func (rb *Bitmap) Xor(x2 *Bitmap) {
 					break
 				}
 			} else if s1 > s2 {
-				c := x2.highlowcontainer.getWritableContainerAtIndex(pos2)
+				c := x2.highlowcontainer.getContainerAtIndex(pos2).Clone()
 				rb.highlowcontainer.insertNewKeyValueAt(pos1, x2.highlowcontainer.getKeyAtIndex(pos2), c)
 				length1++
 				pos1++
