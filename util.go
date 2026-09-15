@@ -16,6 +16,7 @@ const (
 	invalidCardinality         = -1
 	serialCookie               = 12347 // runs, arrays, and bitmaps
 	noOffsetThreshold          = 4
+	maxContainerGroupSize      = 64 * 1024 // maximum payload size for a batched no-run read
 
 	// MaxUint32 is the largest uint32 value.
 	MaxUint32 = math.MaxUint32

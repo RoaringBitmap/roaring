@@ -689,6 +689,22 @@ func (ra *roaringArray) toBytes() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
+func (ra *roaringArray) setNoRunContainer(i uint32, card int, buf []byte) {
+	if card > arrayDefaultMaxSize {
+		nb := bitmapContainer{
+			cardinality: card,
+			bitmap:      byteSliceAsUint64Slice(buf),
+		}
+		ra.containers[i] = &nb
+		return
+	}
+
+	nb := arrayContainer{
+		byteSliceAsUint16Slice(buf),
+	}
+	ra.containers[i] = &nb
+}
+
 // Reads a serialized roaringArray from a byte slice.
 func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte) (int64, error) {
 	var cookie uint32
@@ -764,54 +780,75 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 		ra.needCopyOnWrite = make([]bool, size)
 	}
 
-	for i := uint32(0); i < size; i++ {
-		key := keycard[2*i]
-		card := int(keycard[2*i+1]) + 1
-		ra.keys[i] = key
-		ra.needCopyOnWrite[i] = willNeedCopyOnWrite
+	_, isByteInputAdapter := stream.(*internal.ByteInputAdapter)
+	if isRunBitmap == nil && isByteInputAdapter {
+		for i := uint32(0); i < size; {
+			groupStart := i
+			groupSize := 0
+			for i < size {
+				card := int(keycard[2*i+1]) + 1
+				containerSize := getSizeInBytesFromCardinality(card)
+				if groupSize > 0 && (groupSize+containerSize > maxContainerGroupSize ||
+					(card > arrayDefaultMaxSize && groupSize%8 != 0)) {
+					break
+				}
+				groupSize += containerSize
+				i++
+			}
 
-		if isRunBitmap != nil && isRunBitmap[i/8]&(1<<(i%8)) != 0 {
-			// run container
-			nr, err := stream.ReadUInt16()
+			buf, err := stream.Next(groupSize)
 			if err != nil {
-				return 0, fmt.Errorf("failed to read runtime container size: %s", err)
+				return stream.GetReadBytes(), fmt.Errorf("failed to read no-run container group: %s", err)
 			}
+			groupOffset := 0
+			for j := groupStart; j < i; j++ {
+				card := int(keycard[2*j+1]) + 1
+				containerSize := getSizeInBytesFromCardinality(card)
+				key := keycard[2*j]
+				ra.keys[j] = key
+				ra.needCopyOnWrite[j] = willNeedCopyOnWrite
 
-			buf, err := stream.Next(int(nr) * 4)
-			if err != nil {
-				return stream.GetReadBytes(), fmt.Errorf("failed to read runtime container content: %s", err)
+				containerBuf := buf[groupOffset : groupOffset+containerSize : groupOffset+containerSize]
+				ra.setNoRunContainer(j, card, containerBuf)
+				groupOffset += containerSize
 			}
+		}
+	} else {
+		for i := uint32(0); i < size; i++ {
+			key := keycard[2*i]
+			card := int(keycard[2*i+1]) + 1
+			ra.keys[i] = key
+			ra.needCopyOnWrite[i] = willNeedCopyOnWrite
 
-			nb := runContainer16{
-				iv: byteSliceAsInterval16Slice(buf),
+			if isRunBitmap != nil && isRunBitmap[i/8]&(1<<(i%8)) != 0 {
+				// run container
+				nr, err := stream.ReadUInt16()
+				if err != nil {
+					return 0, fmt.Errorf("failed to read runtime container size: %s", err)
+				}
+
+				buf, err := stream.Next(int(nr) * 4)
+				if err != nil {
+					return stream.GetReadBytes(), fmt.Errorf("failed to read runtime container content: %s", err)
+				}
+
+				nb := runContainer16{
+					iv: byteSliceAsInterval16Slice(buf),
+				}
+
+				ra.containers[i] = &nb
+			} else {
+				containerSize := getSizeInBytesFromCardinality(card)
+				buf, err := stream.Next(containerSize)
+				if err != nil {
+					if card > arrayDefaultMaxSize {
+						return stream.GetReadBytes(), fmt.Errorf("failed to read bitmap container: %s", err)
+					}
+					return stream.GetReadBytes(), fmt.Errorf("failed to read array container: %s", err)
+				}
+
+				ra.setNoRunContainer(i, card, buf)
 			}
-
-			ra.containers[i] = &nb
-		} else if card > arrayDefaultMaxSize {
-			// bitmap container
-			buf, err := stream.Next(arrayDefaultMaxSize * 2)
-			if err != nil {
-				return stream.GetReadBytes(), fmt.Errorf("failed to read bitmap container: %s", err)
-			}
-
-			nb := bitmapContainer{
-				cardinality: card,
-				bitmap:      byteSliceAsUint64Slice(buf),
-			}
-
-			ra.containers[i] = &nb
-		} else {
-			// array container
-			buf, err := stream.Next(card * 2)
-			if err != nil {
-				return stream.GetReadBytes(), fmt.Errorf("failed to read array container: %s", err)
-			}
-
-			nb := arrayContainer{
-				byteSliceAsUint16Slice(buf),
-			}
-
-			ra.containers[i] = &nb
 		}
 	}
 
