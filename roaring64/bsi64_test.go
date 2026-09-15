@@ -822,6 +822,72 @@ func TestSumWithNil(t *testing.T) {
 	assert.Equal(t, int64(0), sum)
 }
 
+func TestSumBigValues(t *testing.T) {
+	positive := new(big.Int).Lsh(big.NewInt(1), 149)
+	positive.Add(positive, big.NewInt(7))
+	negative := new(big.Int).Lsh(big.NewInt(1), 120)
+	negative.Neg(negative)
+	negative.Sub(negative, big.NewInt(11))
+	values := []struct {
+		columnID uint64
+		value    *big.Int
+	}{
+		{1, big.NewInt(-9)},
+		{2, positive},
+		{3, negative},
+		{4, big.NewInt(7)},
+	}
+
+	bsi := NewDefaultBSI()
+	want := new(big.Int)
+	for _, value := range values {
+		bsi.SetBigValue(value.columnID, value.value)
+		want.Add(want, value.value)
+	}
+
+	filteredWant := new(big.Int).Add(values[0].value, values[2].value)
+	for _, test := range []struct {
+		name     string
+		foundSet *Bitmap
+		want     *big.Int
+		count    uint64
+	}{
+		{"all", nil, want, uint64(len(values))},
+		{"filtered", BitmapOf(1, 3), filteredWant, 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sum, count := bsi.SumBigValues(test.foundSet)
+			assert.Equal(t, test.count, count)
+			assert.Zero(t, sum.Cmp(test.want))
+		})
+	}
+}
+
+func BenchmarkBSI64SumBigValues(b *testing.B) {
+	const valueCount = 128
+
+	bsi := NewBSI(Max64BitSigned, 0)
+	foundSet := bsi.GetExistenceBitmap()
+	want := new(big.Int)
+	for columnID := uint64(0); columnID < valueCount; columnID++ {
+		value := int64(columnID)
+		bsi.SetValue(columnID, value)
+		want.Add(want, big.NewInt(value))
+	}
+	if bsi.BitCount() != 63 {
+		b.Fatalf("BitCount() = %d, want 63", bsi.BitCount())
+	}
+
+	var sum *big.Int
+	var count uint64
+	for b.Loop() {
+		sum, count = bsi.SumBigValues(foundSet)
+	}
+	if count != valueCount || sum.Cmp(want) != 0 {
+		b.Fatalf("SumBigValues() = (%v, %d), want (%v, %d)", sum, count, want, valueCount)
+	}
+}
+
 func TestTransposeWithCountsNil(t *testing.T) {
 	bsi := setup()
 	bsi.SetValue(101, 50)
