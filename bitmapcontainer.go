@@ -798,8 +798,26 @@ func (bc *bitmapContainer) iand(a container) container {
 }
 
 func (bc *bitmapContainer) iandRun16(rc *runContainer16) container {
-	rcb := newBitmapContainerFromRun(rc)
-	return bc.iandBitmap(rcb)
+	if len(rc.iv) > runAndScratchIntervals {
+		// Clearing gap by gap costs a call per interval; past this many the
+		// run is built in scratch and ANDed in one flat pass instead.
+		var scratch [bitmapContainerSize]uint64
+		for i := range rc.iv {
+			setBitmapRange(scratch[:], int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		}
+		return bc.iandBitmap(&bitmapContainer{bitmap: scratch[:]})
+	}
+	card := rc.andBitmapContainerCardinality(bc)
+	if card <= arrayDefaultMaxSize {
+		answer := newArrayContainerCapacity(card)
+		for i := range rc.iv {
+			answer.content = appendBitmapRange(answer.content, bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		}
+		return answer
+	}
+	clearBitmapGaps(bc.bitmap, rc.iv, 0, maxCapacity)
+	bc.cardinality = card
+	return bc
 }
 
 func (bc *bitmapContainer) iandArray(ac *arrayContainer) container {
@@ -829,6 +847,26 @@ func (bc *bitmapContainer) andArrayCardinality(value2 *arrayContainer) int {
 		pos += int(bc.bitValue(v))
 	}
 	return pos
+}
+
+func (bc *bitmapContainer) intersectsRange(start, end uint) bool {
+	if start >= end {
+		return false
+	}
+	firstword, endword := start/64, (end-1)/64
+	lo, hi := ^uint64(0)<<(start%64), ^uint64(0)>>((64-end)&63)
+	if firstword == endword {
+		return bc.bitmap[firstword]&lo&hi != 0
+	}
+	if bc.bitmap[firstword]&lo != 0 || bc.bitmap[endword]&hi != 0 {
+		return true
+	}
+	for _, w := range bc.bitmap[firstword+1 : endword] {
+		if w != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func (bc *bitmapContainer) getCardinalityInRange(start, end uint) int {
