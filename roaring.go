@@ -1443,8 +1443,7 @@ main:
 					}
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 				} else {
-					// TODO: could be faster if we did not have to materialize the container
-					answer += uint64(rb.highlowcontainer.getContainerAtIndex(pos1).or(x2.highlowcontainer.getContainerAtIndex(pos2)).getCardinality())
+					answer += uint64(rb.highlowcontainer.getContainerAtIndex(pos1).orCardinality(x2.highlowcontainer.getContainerAtIndex(pos2)))
 					pos1++
 					pos2++
 					if (pos1 == length1) || (pos2 == length2) {

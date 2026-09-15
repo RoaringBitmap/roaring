@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -185,4 +186,42 @@ func BenchmarkRealDataFastOr(b *testing.B) {
 	benchmarkRealDataAggregate(b, func(bitmaps []*Bitmap) uint64 {
 		return FastOr(bitmaps...).GetCardinality()
 	})
+}
+
+func BenchmarkRealDataOrCardinality(b *testing.B) {
+	if !benchRealData {
+		b.SkipNow()
+	}
+	for _, dataset := range realDatasets {
+		for _, optimize := range []bool{false, true} {
+			mode := "raw"
+			if optimize {
+				mode = "run"
+			}
+			b.Run(dataset+"/"+mode, func(b *testing.B) {
+				bitmaps, err := retrieveRealDataBitmaps(dataset, optimize)
+				if err != nil {
+					b.Fatal(err)
+				}
+				var want uint64
+				for j := 1; j < len(bitmaps); j++ {
+					x, y := bitmaps[j-1], bitmaps[j]
+					want += x.GetCardinality() + y.GetCardinality() - x.AndCardinality(y)
+				}
+				runtime.GC()
+				var got uint64
+				b.ReportAllocs()
+				for b.Loop() {
+					got = 0
+					for j := 1; j < len(bitmaps); j++ {
+						got += bitmaps[j-1].OrCardinality(bitmaps[j])
+					}
+				}
+				if got != want {
+					b.Fatalf("got %d, want %d", got, want)
+				}
+				b.ReportMetric(float64(len(bitmaps)-1), "pairs/op")
+			})
+		}
+	}
 }

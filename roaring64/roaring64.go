@@ -513,8 +513,7 @@ main:
 					}
 					s2 = x2.highlowcontainer.getKeyAtIndex(pos2)
 				} else {
-					// TODO: could be faster if we did not have to materialize the container
-					answer += roaring.Or(rb.highlowcontainer.getContainerAtIndex(pos1), x2.highlowcontainer.getContainerAtIndex(pos2)).GetCardinality()
+					answer += rb.highlowcontainer.getContainerAtIndex(pos1).OrCardinality(x2.highlowcontainer.getContainerAtIndex(pos2))
 					pos1++
 					pos2++
 					if (pos1 == length1) || (pos2 == length2) {
