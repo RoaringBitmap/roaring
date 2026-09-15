@@ -448,125 +448,60 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 	resultsChan <- results
 }
 
-// MinMax - Find minimum or maximum value.
+// MinMax - Find minimum or maximum value. The parallelism argument is
+// accepted for compatibility and no longer used; the search is driven by
+// the bit planes rather than by the rows, so there is nothing to divide.
 func (b *BSI) MinMax(parallelism int, op Operation, foundSet *roaring.Bitmap) int64 {
-
-	var n int = parallelism
-	if n == 0 {
-		n = runtime.NumCPU()
-	}
-
-	resultsChan := make(chan int64, n)
-
 	if foundSet == nil {
 		foundSet = b.eBM
 	}
-
-	card := foundSet.GetCardinality()
-	x := card / uint64(n)
-
-	remainder := card - (x * uint64(n))
-	var batch []uint32
-	var wg sync.WaitGroup
-	iter := foundSet.ManyIterator()
-	for i := 0; i < n; i++ {
-		if i == n-1 {
-			batch = make([]uint32, x+remainder)
-		} else {
-			batch = make([]uint32, x)
+	candidates := roaring.And(foundSet, b.eBM)
+	if candidates.IsEmpty() {
+		if op == MAX {
+			return Min64BitSigned
 		}
-		iter.NextMany(batch)
-		wg.Add(1)
-		go b.minOrMax(op, batch, resultsChan, &wg)
+		return Max64BitSigned
 	}
-
-	wg.Wait()
-
-	close(resultsChan)
-	var minMax int64
-	if op == MAX {
-		minMax = Min64BitSigned
-	} else {
-		minMax = Max64BitSigned
-	}
-
-	for val := range resultsChan {
-		if (op == MAX && val > minMax) || (op == MIN && val < minMax) {
-			minMax = val
-		}
-	}
-	return minMax
+	return b.minMaxByPlanes(op, candidates)
 }
 
-func (b *BSI) minOrMax(op Operation, batch []uint32, resultsChan chan int64, wg *sync.WaitGroup) {
-
-	defer wg.Done()
-
-	x := b.BitCount()
-	var value int64 = Max64BitSigned
-	if op == MAX {
-		value = Min64BitSigned
+// minMaxByPlanes narrows the candidate columns one bit plane at a time,
+// highest plane first, keeping only those that can still hold the answer.
+// A plane that would leave nothing is skipped, since every candidate then
+// agrees on that bit. One column survives, and only that one is decoded.
+func (b *BSI) minMaxByPlanes(op Operation, candidates *roaring.Bitmap) int64 {
+	j := b.BitCount() - 1
+	// The top plane is the sign bit only in a 64 bit wide BSI. A narrower
+	// one cannot represent a negative value, so every column is positive
+	// and the plain descent below is already correct.
+	if b.BitCount() == 64 {
+		var signed *roaring.Bitmap
+		if op == MIN {
+			signed = roaring.And(candidates, b.bA[j])
+		} else {
+			signed = roaring.AndNot(candidates, b.bA[j])
+		}
+		if !signed.IsEmpty() {
+			candidates = signed
+		}
+		j--
 	}
-
-	for i := 0; i < len(batch); i++ {
-		cID := batch[i]
-		eq := true
-		lt, gt := false, false
-		j := b.BitCount() - 1
-		var cVal int64
-		valueIsNegative := uint64(value)&(1<<uint64(x-1)) > 0 && bits.Len64(uint64(value)) == 64
-		isNegative := false
-		if x == 64 {
-			isNegative = b.bA[j].Contains(cID)
-			if isNegative {
-				cVal |= 1 << uint64(j)
-			}
-			j--
+	// Below the sign, two's complement orders the same way as unsigned, so
+	// the maximum keeps the columns with the bit set and the minimum keeps
+	// those without it.
+	for ; j >= 0; j-- {
+		var next *roaring.Bitmap
+		if op == MAX {
+			next = roaring.And(candidates, b.bA[j])
+		} else {
+			next = roaring.AndNot(candidates, b.bA[j])
 		}
-		compValue := value
-		if isNegative != valueIsNegative {
-			compValue = ^value + 1
-		}
-		for ; j >= 0; j-- {
-			sliceContainsBit := b.bA[j].Contains(cID)
-			if sliceContainsBit {
-				cVal |= 1 << uint64(j)
-			}
-			if uint64(compValue)&(1<<uint64(j)) > 0 {
-				// BIT in value is SET
-				if !sliceContainsBit {
-					if eq {
-						eq = false
-						if op == MAX && valueIsNegative && !isNegative {
-							gt = true
-							break
-						}
-						if op == MIN && (!valueIsNegative || (valueIsNegative == isNegative)) {
-							lt = true
-						}
-					}
-				}
-			} else {
-				// BIT in value is CLEAR
-				if sliceContainsBit {
-					if eq {
-						eq = false
-						if op == MIN && isNegative && !valueIsNegative {
-							lt = true
-						}
-						if op == MAX && (valueIsNegative || (valueIsNegative == isNegative)) {
-							gt = true
-						}
-					}
-				}
-			}
-		}
-		if lt || gt {
-			value = cVal
+		if !next.IsEmpty() {
+			candidates = next
 		}
 	}
-
-	resultsChan <- value
+	value, _ := b.GetValue(uint64(candidates.Minimum()))
+	return value
 }
 
 // Sum all values contained within the foundSet.   As a convenience, the cardinality of the foundSet
