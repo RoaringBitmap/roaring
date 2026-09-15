@@ -647,3 +647,25 @@ func TestBatchEqualLargeQueryValues(t *testing.T) {
 		}
 	}
 }
+
+func TestMinMaxMixedSign(t *testing.T) {
+	// One negative and one positive value. The maximum is the positive one,
+	// and the minimum the negative one, whatever the parallelism argument.
+	bsi := NewBSI(99, -1)
+	bsi.SetValue(0, -45)
+	bsi.SetValue(1, 1)
+	for _, parallelism := range []int{0, 1, 3} {
+		assert.Equal(t, int64(1), bsi.MinMax(parallelism, MAX, nil))
+		assert.Equal(t, int64(-45), bsi.MinMax(parallelism, MIN, nil))
+	}
+
+	// Zero alongside negatives: zero is the maximum.
+	zeroAndNegatives := NewBSI(99, -1)
+	for column, value := range []int64{0, -46, -29} {
+		zeroAndNegatives.SetValue(uint64(column), value)
+	}
+	for _, parallelism := range []int{0, 1, 3} {
+		assert.Equal(t, int64(0), zeroAndNegatives.MinMax(parallelism, MAX, nil))
+		assert.Equal(t, int64(-46), zeroAndNegatives.MinMax(parallelism, MIN, nil))
+	}
+}
