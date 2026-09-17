@@ -125,24 +125,189 @@ func (x1 *Bitmap) repairAfterLazy() {
 	}
 }
 
-// FastAnd computes the intersection between many bitmaps quickly
-// Compared to the And function, it can take many bitmaps as input, thus saving the trouble
-// of manually calling "And" many times.
+// FastAnd computes the intersection between many bitmaps quickly.
+// Compared to the And function, it can take many bitmaps as input.
 //
-// Performance hints: if you have very large and tiny bitmaps,
-// it may be beneficial performance-wise to put a tiny bitmap
-// in first position.
+// With three or more inputs, the keys of the smallest input are walked
+// against every other input and probed with a container-level intersects
+// test; only a key every input shares a value on is intersected, and a key
+// of bitmaps is counted before its result is allocated.
 func FastAnd(bitmaps ...*Bitmap) *Bitmap {
-	if len(bitmaps) == 0 {
+	switch len(bitmaps) {
+	case 0:
 		return NewBitmap()
-	} else if len(bitmaps) == 1 {
+	case 1:
 		return bitmaps[0].Clone()
+	case 2:
+		return And(bitmaps[0], bitmaps[1])
 	}
-	answer := And(bitmaps[0], bitmaps[1])
-	for _, bm := range bitmaps[2:] {
-		answer.And(bm)
+	driver := 0
+	for i := 1; i < len(bitmaps); i++ {
+		if bitmaps[i].highlowcontainer.size() < bitmaps[driver].highlowcontainer.size() {
+			driver = i
+		}
+	}
+	dra := &bitmaps[driver].highlowcontainer
+	// A cursor per input and the containers of one key, on the stack for up
+	// to eight inputs; the containers are only made once a key needs them.
+	var posBuf [8]int
+	var csBuf [8]container
+	var pos []int
+	var cs []container
+	if len(bitmaps) <= len(posBuf) {
+		pos, cs = posBuf[:len(bitmaps)], csBuf[:len(bitmaps)]
+	} else {
+		pos = make([]int, len(bitmaps))
+	}
+	answer := NewBitmap()
+	// Keys come in order, so every input is walked, not searched, and a key
+	// is probed for a shared value with each input before its containers are
+	// intersected: a key with nothing in common allocates nothing.
+keys:
+	for j := 0; j < dra.size(); j++ {
+		key := dra.getKeyAtIndex(j)
+		dc := dra.getContainerAtIndex(j)
+		pos[driver] = j
+		for i, bm := range bitmaps {
+			if i == driver {
+				continue
+			}
+			ra := &bm.highlowcontainer
+			if pos[i] < ra.size() && ra.getKeyAtIndex(pos[i]) < key {
+				pos[i] = ra.advanceUntil(key, pos[i]) // searches from pos+1
+			}
+			if pos[i] >= ra.size() {
+				break keys
+			}
+			if ra.getKeyAtIndex(pos[i]) != key || !dc.intersects(ra.getContainerAtIndex(pos[i])) {
+				continue keys
+			}
+		}
+		if cs == nil {
+			cs = make([]container, len(bitmaps))
+		}
+		for i, bm := range bitmaps {
+			cs[i] = bm.highlowcontainer.getContainerAtIndex(pos[i])
+			pos[i]++
+		}
+		if c := andK(cs); c != nil {
+			answer.highlowcontainer.appendContainer(key, c, false)
+		}
 	}
 	return answer
+}
+
+// andK intersects the containers of one key, three or more, and returns nil
+// when the intersection is empty. cs is scratch and is reordered in place.
+func andK(cs []container) container {
+	// A full run is the identity and drops out; the smallest array leads
+	// and the rest keep the caller's order.
+	n, smallest := 0, -1
+	for _, c := range cs {
+		switch x := c.(type) {
+		case *runContainer16:
+			if x.isFull() {
+				continue
+			}
+		case *arrayContainer:
+			if smallest < 0 || x.getCardinality() < cs[smallest].getCardinality() {
+				smallest = n
+			}
+		}
+		cs[n] = c
+		n++
+	}
+	switch cs = cs[:n]; len(cs) {
+	case 0:
+		return newRunContainer16Range(0, maxCapacity-1)
+	case 1:
+		return cs[0].clone()
+	}
+	if smallest >= 0 {
+		a := cs[smallest]
+		copy(cs[1:smallest+1], cs[:smallest])
+		cs[0] = a
+		return andKChain(cs)
+	}
+	n = 0
+	for i, c := range cs {
+		if _, ok := c.(*runContainer16); ok {
+			cs[n], cs[i] = cs[i], cs[n]
+			n++
+		}
+	}
+	if n == len(cs) {
+		return andKChain(cs)
+	}
+	return andKBitmaps(cs[n:], cs[:n])
+}
+
+// andKChain intersects cs in order with the library's own kernels, the first
+// pair into a fresh container and the rest in place, so nothing bigger than
+// that first result is built.
+func andKChain(cs []container) container {
+	c := cs[0].and(cs[1])
+	for i := 2; i < len(cs) && !c.isEmpty(); i++ {
+		c = c.iand(cs[i])
+	}
+	if c.isEmpty() {
+		return nil
+	}
+	return c
+}
+
+// andKBitmaps ANDs the bitmaps into stack scratch, stopping at the first
+// empty prefix, over the words the runs leave: every run narrows the span to
+// its extent, and only a run with gaps is folded into a mask afterwards, so
+// a range built with AddRange costs no intersection at all.
+func andKBitmaps(bms, runs []container) container {
+	lo, hi := 0, maxCapacity-1
+	n := 0
+	for _, c := range runs {
+		rc := c.(*runContainer16)
+		lo, hi = max(lo, int(rc.minimum())), min(hi, int(rc.maximum()))
+		if len(rc.iv) > 1 {
+			runs[n] = c
+			n++
+		}
+	}
+	if lo > hi {
+		return nil
+	}
+	runs = runs[:n]
+	first, last := lo/64, hi/64
+	var scratch [bitmapContainerSize]uint64
+	w := scratch[first : last+1]
+	src := bms[0].(*bitmapContainer).bitmap[first : last+1]
+	card := uint64(0)
+	if len(bms) == 1 {
+		if card = andCardSlice(w, src, src); card == 0 {
+			return nil
+		}
+	}
+	for _, c := range bms[1:] {
+		if card = andCardSlice(w, src, c.(*bitmapContainer).bitmap[first:last+1]); card == 0 {
+			return nil
+		}
+		src = w
+	}
+	if len(runs) > 0 || lo%64 != 0 || (hi+1)%64 != 0 {
+		resetBitmapRange(scratch[:], first*64, lo)
+		resetBitmapRange(scratch[:], hi+1, (last+1)*64)
+		if len(runs) > 0 {
+			mask := runs[0].(*runContainer16)
+			for _, c := range runs[1:] {
+				if mask = mask.intersect(c.(*runContainer16)); len(mask.iv) == 0 {
+					return nil
+				}
+			}
+			clearBitmapGaps(scratch[:], mask.iv, lo, hi+1)
+		}
+		if card = popcntSlice(w); card == 0 {
+			return nil
+		}
+	}
+	return containerFromWords(scratch[:], first, last, int(card))
 }
 
 // FastOr computes the union between many bitmaps quickly, as opposed to having to call Or repeatedly.
