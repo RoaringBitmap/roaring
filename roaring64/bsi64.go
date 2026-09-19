@@ -1774,7 +1774,7 @@ func (b *BSI) NewBSIRetainSet(foundSet *Bitmap) *BSI {
 		newBSI.eBM = *b.eBM.Clone()
 		newBSI.eBM.And(foundSet)
 	}()
-	for i := 0; i < b.BitCount(); i++ {
+	for i := 0; i <= b.BitCount(); i++ {
 		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
