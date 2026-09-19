@@ -489,6 +489,60 @@ func TestLargeFile(t *testing.T) {
 
 }
 
+func TestBSICopySignedValues(t *testing.T) {
+	values := map[uint64]*big.Int{
+		1: big.NewInt(-1),
+		2: big.NewInt(-42),
+		3: big.NewInt(Min64BitSigned),
+		4: new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 100)),
+		5: big.NewInt(0),
+		6: big.NewInt(42),
+	}
+	for _, retain := range []bool{false, true} {
+		t.Run(fmt.Sprintf("retain=%v", retain), func(t *testing.T) {
+			bsi := NewDefaultBSI()
+			for columnID, value := range values {
+				bsi.SetBigValue(columnID, value)
+			}
+			var copied *BSI
+			if retain {
+				copied = bsi.NewBSIRetainSet(BitmapOf(1, 3, 4, 5, 6))
+				assert.Equal(t, uint64(5), copied.GetCardinality())
+				assert.False(t, copied.IsNegative(2))
+			} else {
+				copied = bsi.Clone()
+				assert.Equal(t, uint64(6), copied.GetCardinality())
+			}
+			for columnID, value := range values {
+				got, exists := copied.GetBigValue(columnID)
+				if retain && columnID == 2 {
+					assert.False(t, exists)
+					continue
+				}
+				require.True(t, exists)
+				assert.Equal(t, value, got, "column %d", columnID)
+				assert.Equal(t, value.Sign() < 0, copied.IsNegative(columnID), "column %d", columnID)
+			}
+			copied.SetValue(1, 7)
+			original, exists := bsi.GetBigValue(1)
+			require.True(t, exists)
+			assert.Equal(t, big.NewInt(-1), original)
+			assert.True(t, bsi.IsNegative(1))
+		})
+	}
+}
+
+func BenchmarkBSIClone(b *testing.B) {
+	bsi := NewDefaultBSI()
+	for i := uint64(0); i < 1000; i++ {
+		bsi.SetValue(i, int64(i)-500)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bsi.Clone()
+	}
+}
+
 func TestClone(t *testing.T) {
 	bsi := NewDefaultBSI()
 	// Setup values
