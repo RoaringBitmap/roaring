@@ -645,7 +645,7 @@ func (ac *arrayContainer) ixorArray(value2 *arrayContainer) container {
 }
 
 func (ac *arrayContainer) ixorBitmap(value2 *bitmapContainer) container {
-	return value2.ixor(ac)
+	return value2.xorArray(ac)
 }
 
 func (ac *arrayContainer) ixorRun16(value2 *runContainer16) container {
