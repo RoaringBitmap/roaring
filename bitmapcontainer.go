@@ -318,6 +318,11 @@ func bitmapEquals(a, b []uint64) bool {
 // is the array-to-bitmap conversion point and leaves a comfortable margin.
 const bitmapContainerVectorFillMinCardinality = 4096
 
+// arrayVectorFillMinCardinality is where decoding a whole key with the vector
+// fill beats decoding only the words that hold the values. Measured crossover
+// is near 1000 values.
+const arrayVectorFillMinCardinality = 1024
+
 func (bc *bitmapContainer) fillLeastSignificant16bits(x []uint32, i int, mask uint32) int {
 	if useVectorFill && bc.cardinality >= bitmapContainerVectorFillMinCardinality {
 		return fillLeastSignificant16bitsVector(bc.bitmap, x, i, mask)
@@ -809,7 +814,7 @@ func (bc *bitmapContainer) iand(a container) container {
 		return bc.iandBitmap(x)
 	case *runContainer16:
 		if x.isFull() {
-			return bc.clone()
+			return bc
 		}
 		return bc.iandRun16(x)
 	}
@@ -817,8 +822,20 @@ func (bc *bitmapContainer) iand(a container) container {
 }
 
 func (bc *bitmapContainer) iandRun16(rc *runContainer16) container {
-	rcb := newBitmapContainerFromRun(rc)
-	return bc.iandBitmap(rcb)
+	if rc.andInScratch() {
+		var scratch [bitmapContainerSize]uint64
+		for i := range rc.iv {
+			setBitmapRange(scratch[:], int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		}
+		return bc.iandBitmap(&bitmapContainer{bitmap: scratch[:]})
+	}
+	card := rc.andBitmapContainerCardinality(bc)
+	if card <= arrayDefaultMaxSize {
+		return rc.andBitmapArray(bc, card)
+	}
+	clearBitmapGaps(bc.bitmap, rc.iv, 0, maxCapacity)
+	bc.cardinality = card
+	return bc
 }
 
 func (bc *bitmapContainer) iandArray(ac *arrayContainer) container {
@@ -848,6 +865,26 @@ func (bc *bitmapContainer) andArrayCardinality(value2 *arrayContainer) int {
 		pos += int(bc.bitValue(v))
 	}
 	return pos
+}
+
+func (bc *bitmapContainer) intersectsRange(start, end uint) bool {
+	if start >= end {
+		return false
+	}
+	firstword, endword := start/64, (end-1)/64
+	lo, hi := ^uint64(0)<<(start%64), ^uint64(0)>>((64-end)&63)
+	if firstword == endword {
+		return bc.bitmap[firstword]&lo&hi != 0
+	}
+	if bc.bitmap[firstword]&lo != 0 || bc.bitmap[endword]&hi != 0 {
+		return true
+	}
+	for _, w := range bc.bitmap[firstword+1 : endword] {
+		if w != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func (bc *bitmapContainer) getCardinalityInRange(start, end uint) int {

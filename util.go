@@ -152,6 +152,76 @@ func flipBitmapRange(bitmap []uint64, start int, end int) {
 	bitmap[endword] ^= ^uint64(0) >> (uint(-end) % 64)
 }
 
+// copyBitmapRange copies the bits of src within [start, end) into dst, which
+// must be zero there.
+func copyBitmapRange(dst, src []uint64, start int, end int) {
+	if start >= end {
+		return
+	}
+	firstword := start / 64
+	endword := (end - 1) / 64
+	if firstword == endword {
+		dst[firstword] |= src[firstword] & (^uint64(0) << uint(start%64)) & (^uint64(0) >> (uint(-end) % 64))
+		return
+	}
+	dst[firstword] |= src[firstword] & (^uint64(0) << uint(start%64))
+	copy(dst[firstword+1:endword], src[firstword+1:endword])
+	dst[endword] |= src[endword] & (^uint64(0) >> (uint(-end) % 64))
+}
+
+// appendBitmapRange appends the positions of the bits set in [start, end).
+func appendBitmapRange(out []uint16, bitmap []uint64, start int, end int) []uint16 {
+	if start >= end {
+		return out
+	}
+	firstword := start / 64
+	endword := (end - 1) / 64
+	for i := firstword; i <= endword; i++ {
+		w := bitmap[i]
+		if i == firstword {
+			w &= ^uint64(0) << uint(start%64)
+		}
+		if i == endword {
+			w &= ^uint64(0) >> (uint(-end) % 64)
+		}
+		for w != 0 {
+			out = append(out, uint16(i*64+bits.TrailingZeros64(w)))
+			w &= w - 1
+		}
+	}
+	return out
+}
+
+// clearBitmapGaps clears the bits in [from, to) that no interval of iv covers.
+func clearBitmapGaps(bitmap []uint64, iv []interval16, from, to int) {
+	for _, x := range iv {
+		if int(x.start) >= to {
+			break
+		}
+		resetBitmapRange(bitmap, from, int(x.start))
+		from = max(from, int(x.last())+1)
+	}
+	resetBitmapRange(bitmap, from, to)
+}
+
+// containerFromWords builds an array or bitmap container from the card bits
+// set in words [first, last] of w, which spans a whole key and is zero
+// outside them.
+func containerFromWords(w []uint64, first, last, card int) container {
+	if card <= arrayDefaultMaxSize {
+		if useVectorFill && card >= arrayVectorFillMinCardinality {
+			return newArrayContainerFromBitmap(&bitmapContainer{cardinality: card, bitmap: w})
+		}
+		ac := newArrayContainerCapacity(card)
+		ac.content = appendBitmapRange(ac.content, w, first*64, (last+1)*64)
+		return ac
+	}
+	bc := newBitmapContainer()
+	copy(bc.bitmap[first:last+1], w[first:last+1])
+	bc.cardinality = card
+	return bc
+}
+
 func resetBitmapRange(bitmap []uint64, start int, end int) {
 	if start >= end {
 		return
@@ -163,9 +233,7 @@ func resetBitmapRange(bitmap []uint64, start int, end int) {
 		return
 	}
 	bitmap[firstword] &= ^(^uint64(0) << uint(start%64))
-	for i := firstword + 1; i < endword; i++ {
-		bitmap[i] = 0
-	}
+	clear(bitmap[firstword+1 : endword])
 	bitmap[endword] &= ^(^uint64(0) >> (uint(-end) % 64))
 }
 

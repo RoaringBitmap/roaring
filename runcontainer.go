@@ -1855,10 +1855,63 @@ func (rc *runContainer16) andCardinality(a container) int {
 	panic("unsupported container type")
 }
 
-// andBitmapContainer finds the intersection of rc and b.
+const runAndScratchIntervals = 64
+
+// andInScratch reports whether ANDing rc with a bitmap is cheaper in a
+// scratch bitmap than interval by interval: past runAndScratchIntervals
+// intervals, the measured crossover, if the run covers more than 4096 values
+// or the vector fill makes reading the scratch back cheap.
+func (rc *runContainer16) andInScratch() bool {
+	return len(rc.iv) > runAndScratchIntervals && (useVectorFill || rc.getCardinality() > arrayDefaultMaxSize)
+}
+
+// andBitmapContainer intersects rc with bc, counting before allocating.
 func (rc *runContainer16) andBitmapContainer(bc *bitmapContainer) container {
-	bc2 := newBitmapContainerFromRun(rc)
-	return bc2.andBitmap(bc)
+	if rc.andInScratch() {
+		return rc.andBitmapContainerScratch(bc)
+	}
+	card := rc.andBitmapContainerCardinality(bc)
+	if card > arrayDefaultMaxSize {
+		answer := newBitmapContainer()
+		for i := range rc.iv {
+			copyBitmapRange(answer.bitmap, bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		}
+		answer.cardinality = card
+		return answer
+	}
+	return rc.andBitmapArray(bc, card)
+}
+
+// andBitmapArray returns the card values of bc inside rc's intervals as an
+// array container.
+func (rc *runContainer16) andBitmapArray(bc *bitmapContainer, card int) *arrayContainer {
+	if useVectorFill && card >= arrayVectorFillMinCardinality {
+		var runBits [bitmapContainerSize]uint64
+		for i := range rc.iv {
+			setBitmapRange(runBits[:], int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		}
+		ac := newArrayContainerSize(card)
+		fillArrayAND(ac.content, runBits[:], bc.bitmap)
+		return ac
+	}
+	ac := newArrayContainerCapacity(card)
+	for i := range rc.iv {
+		ac.content = appendBitmapRange(ac.content, bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
+	}
+	return ac
+}
+
+func (rc *runContainer16) andBitmapContainerScratch(bc *bitmapContainer) container {
+	first, last := int(rc.iv[0].start)/64, int(rc.maximum())/64
+	var scratch [bitmapContainerSize]uint64
+	for i := range rc.iv {
+		copyBitmapRange(scratch[:], bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
+	}
+	card := int(popcntSlice(scratch[first : last+1]))
+	if card == 0 {
+		return newArrayContainerCapacity(0)
+	}
+	return containerFromWords(scratch[:], first, last, card)
 }
 
 func (rc *runContainer16) andArrayCardinality(ac *arrayContainer) int {
@@ -1893,6 +1946,9 @@ mainloop:
 func (rc *runContainer16) iand(a container) container {
 	if rc.isFull() {
 		return a.clone()
+	}
+	if a.isFull() {
+		return rc
 	}
 	switch c := a.(type) {
 	case *runContainer16:
@@ -2418,9 +2474,56 @@ func (rc *runContainer16) lazyOR(a container) container {
 }
 
 func (rc *runContainer16) intersects(a container) bool {
-	// TODO: optimize by doing inplace/less allocation
-	isect := rc.and(a)
-	return !isect.isEmpty()
+	switch c := a.(type) {
+	case *bitmapContainer:
+		for i := range rc.iv {
+			if c.intersectsRange(uint(rc.iv[i].start), uint(rc.iv[i].last())+1) {
+				return true
+			}
+		}
+		return false
+	case *arrayContainer:
+		if 2*len(c.content)*bits.Len(uint(len(rc.iv))) < len(rc.iv) {
+			// Few values against many intervals: a search each beats
+			// walking every interval.
+			for _, v := range c.content {
+				if rc.contains(v) {
+					return true
+				}
+			}
+			return false
+		}
+		// Otherwise andArray's merge, stopping at the first shared value.
+		for i, pos := 0, 0; i < len(rc.iv) && pos < len(c.content); {
+			v := c.content[pos]
+			for rc.iv[i].last() < v {
+				i++
+				if i == len(rc.iv) {
+					return false
+				}
+			}
+			if rc.iv[i].start <= v {
+				return true
+			}
+			pos = advanceUntil(c.content, pos, len(c.content), rc.iv[i].start)
+		}
+		return false
+	case *runContainer16:
+		i, j := 0, 0
+		for i < len(rc.iv) && j < len(c.iv) {
+			x, y := rc.iv[i], c.iv[j]
+			if haveOverlap16(x, y) {
+				return true
+			}
+			if x.last() < y.last() {
+				i++
+			} else {
+				j++
+			}
+		}
+		return false
+	}
+	panic("unsupported container type")
 }
 
 func (rc *runContainer16) xor(a container) container {
