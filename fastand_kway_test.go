@@ -248,6 +248,17 @@ func BenchmarkFastAndShapes(b *testing.B) {
 	for i := range same {
 		same[i] = base.Clone()
 	}
+	// 1,024 inputs of 256 keys that all survive: the widest walk.
+	keys256 := New()
+	for k := uint32(0); k < 256; k++ {
+		for v := uint32(0); v < 64; v += 2 {
+			keys256.Add(k<<16 | v)
+		}
+	}
+	surviving := make([]*Bitmap, 1024)
+	for i := range surviving {
+		surviving[i] = keys256.Clone()
+	}
 	for _, tc := range []struct {
 		name   string
 		inputs []*Bitmap
@@ -263,6 +274,7 @@ func BenchmarkFastAndShapes(b *testing.B) {
 		{"eight-keys", []*Bitmap{spread(30), spread(33000), wide}},
 		{"singletons-10000", singletons(10000)},
 		{"equal-x128", same},
+		{"surviving-1024x256", surviving},
 	} {
 		b.Run(tc.name+"/fastand", func(b *testing.B) {
 			b.ReportAllocs()
