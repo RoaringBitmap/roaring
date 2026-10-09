@@ -2174,6 +2174,9 @@ func Flip(bm *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 // (copy-on-write requires extra care in a threaded context).
 // Calling SetCopyOnWrite(true) on a bitmap created with FromBuffer is unsafe.
 func (rb *Bitmap) SetCopyOnWrite(val bool) {
+	if val {
+		rb.highlowcontainer.ensureCowMu()
+	}
 	rb.highlowcontainer.copyOnWrite = val
 }
 
