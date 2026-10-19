@@ -207,6 +207,38 @@ func TestFastAndEmptyAllocatesNoContainer(t *testing.T) {
 	inputs := singletons(1000)
 	require.True(t, FastAnd(inputs...).IsEmpty())
 	require.LessOrEqual(t, testing.AllocsPerRun(50, func() { FastAnd(inputs...) }), 1.0)
+
+	// Inputs that pairwise intersect but are jointly empty, including dense
+	// ones that only the fourth or fifth input empties, allocate nothing.
+	partial := intervalBitmap(t, [][2]uint64{{100, 40000}})
+	cycle := func(a, b uint32) *Bitmap {
+		bm := New()
+		for v := uint32(0); v < 65536; v += 32 {
+			bm.AddMany([]uint32{v + a, v + b})
+		}
+		return bm
+	}
+	band := func(lo, hi uint32) *Bitmap {
+		bm := New()
+		bm.AddRange(uint64(lo), uint64(hi))
+		return bm
+	}
+	a1 := band(0, 50000)
+	a2 := band(10000, 60000)
+	a3 := band(20000, 65536) // a1,a2,a3 overlap in [20000,50000)
+	a4 := band(0, 20000)     // meets each of a1..a3 but empties the four together
+	a5 := band(55000, 65536) // for a five-input version, empties at the fifth
+	for _, inputs := range [][]*Bitmap{
+		{mask, cycle(0, 1), cycle(1, 2), cycle(2, 0)},
+		{partial, cycle(0, 1), evens, cycle(1, 2)},
+		{mask, a1, a2, a3, a4},
+		{mask, a1, a2, a3, band(0, 60000), a5},
+		{partial, a1, a2, a3, a4},
+		{partial, band(50000, 65536)}, // a pair whose term lies past the range
+	} {
+		require.True(t, FastAnd(inputs...).IsEmpty())
+		require.LessOrEqual(t, testing.AllocsPerRun(50, func() { FastAnd(inputs...) }), 1.0)
+	}
 }
 
 // randomKey holds card random values on key.

@@ -1867,10 +1867,22 @@ func (rc *runContainer16) andInScratch() bool {
 
 // andBitmapContainer intersects rc with bc, counting before allocating.
 func (rc *runContainer16) andBitmapContainer(bc *bitmapContainer) container {
+	if c := rc.andBitmapCounted(bc); c != nil {
+		return c
+	}
+	return newArrayContainerCapacity(0)
+}
+
+// andBitmapCounted counts the intersection before building it, and returns
+// nil, allocating nothing, when it is empty.
+func (rc *runContainer16) andBitmapCounted(bc *bitmapContainer) container {
 	if rc.andInScratch() {
 		return rc.andBitmapContainerScratch(bc)
 	}
 	card := rc.andBitmapContainerCardinality(bc)
+	if card == 0 {
+		return nil
+	}
 	if card > arrayDefaultMaxSize {
 		answer := newBitmapContainer()
 		for i := range rc.iv {
@@ -1909,7 +1921,7 @@ func (rc *runContainer16) andBitmapContainerScratch(bc *bitmapContainer) contain
 	}
 	card := int(popcntSlice(scratch[first : last+1]))
 	if card == 0 {
-		return newArrayContainerCapacity(0)
+		return nil
 	}
 	return containerFromWords(scratch[:], first, last, card)
 }
@@ -1976,33 +1988,43 @@ func (rc *runContainer16) inplaceIntersect(rc2 *runContainer16) container {
 }
 
 func (rc *runContainer16) andArray(ac *arrayContainer) container {
-	if len(rc.iv) == 0 {
-		return newArrayContainer()
+	c := newArrayContainerCapacity(len(ac.content))
+	c.content = c.content[:andArrayInto(rc.iv, ac.content, c.content[:cap(c.content)])]
+	return c
+}
+
+// andArrayInto writes the values of vals inside the intervals to buf, which
+// may be vals itself, and returns how many there are.
+func andArrayInto(intervals []interval16, vals, buf []uint16) int {
+	if len(intervals) == 0 {
+		return 0
 	}
-
-	acCardinality := ac.getCardinality()
-	c := newArrayContainerCapacity(acCardinality)
-
-	for rlePos, arrayPos := 0, 0; arrayPos < acCardinality; {
-		iv := rc.iv[rlePos]
-		arrayVal := ac.content[arrayPos]
+	if len(intervals) == 1 {
+		lo, hi := sliceInInterval(vals, intervals[0])
+		return copy(buf, vals[lo:hi])
+	}
+	n := 0
+	for rlePos, arrayPos := 0, 0; arrayPos < len(vals); {
+		iv := intervals[rlePos]
+		arrayVal := vals[arrayPos]
 
 		for iv.last() < arrayVal {
 			rlePos++
-			if rlePos == len(rc.iv) {
-				return c
+			if rlePos == len(intervals) {
+				return n
 			}
-			iv = rc.iv[rlePos]
+			iv = intervals[rlePos]
 		}
 
 		if iv.start > arrayVal {
-			arrayPos = advanceUntil(ac.content, arrayPos, len(ac.content), iv.start)
+			arrayPos = advanceUntil(vals, arrayPos, len(vals), iv.start)
 		} else {
-			c.content = append(c.content, arrayVal)
+			buf[n] = arrayVal
+			n++
 			arrayPos++
 		}
 	}
-	return c
+	return n
 }
 
 func (rc *runContainer16) andNot(a container) container {
@@ -2473,6 +2495,50 @@ func (rc *runContainer16) lazyOR(a container) container {
 	return rc.or(a)
 }
 
+// sliceInInterval returns the bounds of the sorted vals inside iv, galloping
+// from the front (advanceUntil searches after -1), where the slice starts.
+func sliceInInterval(vals []uint16, iv interval16) (int, int) {
+	lo := advanceUntil(vals, -1, len(vals), iv.start)
+	if iv.last() == MaxUint16 {
+		return lo, len(vals)
+	}
+	return lo, advanceUntil(vals, lo-1, len(vals), iv.last()+1)
+}
+
+// firstInArray returns the position of the first of the sorted vals inside
+// rc, or -1.
+func (rc *runContainer16) firstInArray(vals []uint16) int {
+	if len(rc.iv) == 1 {
+		if lo, hi := sliceInInterval(vals, rc.iv[0]); lo < hi {
+			return lo
+		}
+		return -1
+	}
+	if 2*len(vals)*bits.Len(uint(len(rc.iv))) < len(rc.iv) {
+		// Few values against many intervals: a search each beats walking
+		// every interval.
+		for i, v := range vals {
+			if rc.contains(v) {
+				return i
+			}
+		}
+		return -1
+	}
+	for i, pos := 0, 0; i < len(rc.iv) && pos < len(vals); {
+		v := vals[pos]
+		for rc.iv[i].last() < v {
+			if i++; i == len(rc.iv) {
+				return -1
+			}
+		}
+		if rc.iv[i].start <= v {
+			return pos
+		}
+		pos = advanceUntil(vals, pos, len(vals), rc.iv[i].start)
+	}
+	return -1
+}
+
 func (rc *runContainer16) intersects(a container) bool {
 	switch c := a.(type) {
 	case *bitmapContainer:
@@ -2483,31 +2549,7 @@ func (rc *runContainer16) intersects(a container) bool {
 		}
 		return false
 	case *arrayContainer:
-		if 2*len(c.content)*bits.Len(uint(len(rc.iv))) < len(rc.iv) {
-			// Few values against many intervals: a search each beats
-			// walking every interval.
-			for _, v := range c.content {
-				if rc.contains(v) {
-					return true
-				}
-			}
-			return false
-		}
-		// Otherwise andArray's merge, stopping at the first shared value.
-		for i, pos := 0, 0; i < len(rc.iv) && pos < len(c.content); {
-			v := c.content[pos]
-			for rc.iv[i].last() < v {
-				i++
-				if i == len(rc.iv) {
-					return false
-				}
-			}
-			if rc.iv[i].start <= v {
-				return true
-			}
-			pos = advanceUntil(c.content, pos, len(c.content), rc.iv[i].start)
-		}
-		return false
+		return rc.firstInArray(c.content) >= 0
 	case *runContainer16:
 		i, j := 0, 0
 		for i < len(rc.iv) && j < len(c.iv) {

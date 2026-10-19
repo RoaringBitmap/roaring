@@ -197,95 +197,66 @@ func intersection2by2Cardinality(
 	}
 }
 
-// intersects2by2 computes whether the two sets intersect
-func intersects2by2(
-	set1 []uint16,
-	set2 []uint16,
-) bool {
-	if (len(set1) == 0) || (len(set2) == 0) {
-		return false
-	}
+// firstShared2by2 returns the positions of the first value the two sorted
+// sets share, or -1, -1.
+func firstShared2by2(set1, set2 []uint16) (int, int) {
 	if len(set1)*64 < len(set2) {
-		return onesidedgallopingintersect2by2Bool(set1, set2)
+		return firstSharedGalloping(set1, set2)
 	} else if len(set2)*64 < len(set1) {
-		return onesidedgallopingintersect2by2Bool(set2, set1)
-	} else {
-		return intersects2by2Bool(set1, set2)
+		j, i := firstSharedGalloping(set2, set1)
+		return i, j
 	}
-}
-
-func intersects2by2Bool(
-	set1 []uint16,
-	set2 []uint16,
-) bool {
-	index1 := 0
-	index2 := 0
-	value1 := set1[index1]
-	value2 := set2[index2]
-mainwhile:
-	for {
-
-		if value2 < value1 {
-			for {
-				index2++
-				if index2 == len(set2) {
-					break mainwhile
-				}
-				value2 = set2[index2]
-				if value2 >= value1 {
-					break
-				}
-			}
-		}
-		if value1 < value2 {
-			for {
-				index1++
-				if index1 == len(set1) {
-					break mainwhile
-				}
-				value1 = set1[index1]
-				if value1 >= value2 {
-					break
-				}
-			}
-		} else {
-			// (set2[k2] == set1[k1])
-			return true
-		}
+	if len(set1) == 0 || len(set2) == 0 {
+		return -1, -1
 	}
-	return false
-}
-
-func onesidedgallopingintersect2by2Bool(
-	smallset []uint16,
-	largeset []uint16,
-) bool {
-	k1 := 0
-	k2 := 0
-	s1 := largeset[k1]
-	s2 := smallset[k2]
-mainwhile:
+	n1, n2 := len(set1), len(set2)
+	s1, s2 := set1[0], set2[0]
 	for {
 		if s1 < s2 {
-			k1 = advanceUntil(largeset, k1, len(largeset), s2)
-			if k1 == len(largeset) {
-				break mainwhile
+			for {
+				if set1 = set1[1:]; len(set1) == 0 {
+					return -1, -1
+				}
+				if s1 = set1[0]; s1 >= s2 {
+					break
+				}
 			}
-			s1 = largeset[k1]
 		}
 		if s2 < s1 {
-			k2++
-			if k2 == len(smallset) {
-				break mainwhile
+			for {
+				if set2 = set2[1:]; len(set2) == 0 {
+					return -1, -1
+				}
+				if s2 = set2[0]; s2 >= s1 {
+					break
+				}
 			}
-			s2 = smallset[k2]
-		} else {
-			// (set2[k2] == set1[k1])
-			return true
 		}
-
+		if s1 == s2 {
+			return n1 - len(set1), n2 - len(set2)
+		}
 	}
-	return false
+}
+
+// firstSharedGalloping is firstShared2by2 for a small set against a far
+// larger one.
+func firstSharedGalloping(small, large []uint16) (int, int) {
+	k := 0
+	for i, v := range small {
+		if k = advanceUntil(large, k-1, len(large), v); k == len(large) {
+			return -1, -1
+		}
+		if large[k] == v {
+			return i, k
+		}
+	}
+	return -1, -1
+}
+
+// intersects2by2 computes whether the two sets intersect
+func intersects2by2(set1, set2 []uint16) bool {
+	i, _ := firstShared2by2(set1, set2)
+	return i >= 0
 }
 
 func localintersect2by2(
