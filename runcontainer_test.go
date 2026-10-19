@@ -2589,8 +2589,9 @@ func TestIntervalValidationFailing(t *testing.T) {
 		rc.iv = append(rc.iv, a)
 
 	}
-	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
-	// too many small runs, use array
+	// more runs than a bitmap container would need is still well formed
+	assert.NoError(t, rc.validate())
+	// more runs than an array container would need is still well formed
 	rc = &runContainer16{}
 	start = -3
 	for i := 0; i < 10; i++ {
@@ -2600,7 +2601,15 @@ func TestIntervalValidationFailing(t *testing.T) {
 		rc.iv = append(rc.iv, a)
 
 	}
-	assert.ErrorIs(t, rc.validate(), ErrRunIntervalSize)
+	assert.NoError(t, rc.validate())
+
+	// a run must end within the container
+	rc = &runContainer16{iv: []interval16{{start: 65000, length: 535}}}
+	assert.NoError(t, rc.validate())
+	rc = &runContainer16{iv: []interval16{{start: 65000, length: 536}}}
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOutOfRange)
+	rc = &runContainer16{iv: []interval16{{start: 10, length: 5}, {start: 65000, length: 2000}}}
+	assert.ErrorIs(t, rc.validate(), ErrRunIntervalOutOfRange)
 }
 
 func TestIntervalValidationsPassing(t *testing.T) {

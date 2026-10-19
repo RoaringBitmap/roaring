@@ -151,28 +151,34 @@ func TestBitMapValidationFromFrozen(t *testing.T) {
 		err       error
 	}{
 		{
-			name: "Corrupts Run Length vs Num Runs",
+			name: "Last Run Extends Past Container End",
 			loader: func(bm *Bitmap) {
 				bm.AddRange(0, 2)
 				bm.AddRange(4, 6)
 				bm.AddRange(8, 100)
+				bm.RunOptimize() // one run container
 			},
 			corruptor: func(s []byte) {
-				// 21 is the length of the run of the last run/range
-				// Shortening causes interval sum to be to short
-				s[10] = 1
+				// 10-11 is the length of the last run, which starts at 8:
+				// 65535 makes it end past 65535
+				s[10] = 0xFF
+				s[11] = 0xFF
 			},
-			err: ErrRunIntervalSize,
+			err: ErrRunIntervalOutOfRange,
 		},
 		{
-			name: "Corrupts Run Length",
+			name: "Run Extends Past Container End",
 			loader: func(bm *Bitmap) {
 				bm.AddRange(100, 110)
+				bm.RunOptimize() // one run container
 			},
 			corruptor: func(s []byte) {
-				s[2] = 0
+				// 2-3 is the length of the run, which starts at 100:
+				// 65535 makes it end past 65535
+				s[2] = 0xFF
+				s[3] = 0xFF
 			},
-			err: ErrRunIntervalSize,
+			err: ErrRunIntervalOutOfRange,
 		},
 		{
 			name: "Creates Interval Overlap",
@@ -219,7 +225,7 @@ func TestBitMapValidationFromFrozen(t *testing.T) {
 			if tt.err == nil {
 				assert.NoError(t, frozenViewErr, "expected MustFrozenView to succeed when tt.err is nil")
 			} else {
-				assert.Error(t, frozenViewErr, "expected MustFrozenView to fail when tt.err is not nil")
+				assert.ErrorIs(t, frozenViewErr, tt.err)
 			}
 		})
 	}
