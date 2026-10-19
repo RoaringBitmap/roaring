@@ -65,9 +65,12 @@ var (
 	ErrRunNonSorted       = errors.New("runs were not sorted")
 	ErrRunIntervalEqual   = errors.New("intervals were equal")
 	ErrRunIntervalOverlap = errors.New("intervals overlapped or were continguous")
-	ErrRunIntervalSize    = errors.New("too many intervals relative to data")
-	MaxNumIntervals       = 2048
-	MaxIntervalsSum       = 2048
+	// Deprecated: validate no longer requires a run container to be the smallest
+	// encoding of its values, so this error is not returned.
+	ErrRunIntervalSize       = errors.New("too many intervals relative to data")
+	ErrRunIntervalOutOfRange = errors.New("interval extends past the end of the container")
+	MaxNumIntervals          = 2048
+	MaxIntervalsSum          = 2048
 )
 
 func newInterval16Range(start, last uint16) interval16 {
@@ -2947,15 +2950,19 @@ func (rc *runContainer16) validate() error {
 		return ErrRunIntervalsEmpty
 	}
 
-	intervalsSum := 0
+	// check this first: interval16.last() wraps around past the end of the container
+	for _, iv := range rc.iv {
+		if int(iv.start)+int(iv.length) > int(MaxUint16) {
+			return ErrRunIntervalOutOfRange
+		}
+	}
+
 	for outeridx := range rc.iv {
 		// The length being stored is the actual length - 1.
 		// So we need to add 1 to get the actual length.
 		// It is not possible to have a run with length 0.
 
 		outerInterval := rc.iv[outeridx]
-
-		intervalsSum += outerInterval.runlen()
 		for inneridx := outeridx + 1; inneridx < len(rc.iv); inneridx++ {
 
 			innerInterval := rc.iv[inneridx]
@@ -2977,27 +2984,7 @@ func (rc *runContainer16) validate() error {
 		}
 
 	}
-	/*
-			if number of distinct values in the container >= 2048 then
-		    check that the number of runs is no more than 2047
-		    (otherwise you could use a bitset container)
-			else
-		    check that the number of runs < (number of distinct values) / 2
-		    (otherwise you could use an array container)
-	*/
-
-	sizeAsRunContainer := runContainer16SerializedSizeInBytes(len(rc.iv))
-	sizeAsBitmapContainer := bitmapContainerSizeInBytes()
-	sizeAsArrayContainer := arrayContainerSizeInBytes(intervalsSum)
-	// this is always ok:
-	if sizeAsRunContainer < minOfInt(sizeAsBitmapContainer, sizeAsArrayContainer) {
-		return nil
-	}
-	if sizeAsRunContainer >= sizeAsBitmapContainer {
-		return ErrRunIntervalSize
-	}
-	if sizeAsRunContainer >= sizeAsArrayContainer {
-		return ErrRunIntervalSize
-	}
+	// A run container need not be the smallest encoding of its values: operations such as
+	// AddOffset can produce run containers that runOptimize would convert.
 	return nil
 }

@@ -3376,28 +3376,34 @@ func TestBitMapValidationFromDeserialization(t *testing.T) {
 		err       error
 	}{
 		{
-			name: "Corrupts Run Length vs Num Runs",
+			name: "Last Run Extends Past Container End",
 			loader: func(bm *Bitmap) {
 				bm.AddRange(0, 2)
 				bm.AddRange(4, 6)
 				bm.AddRange(8, 100)
+				bm.RunOptimize() // one run container
 			},
 			corruptor: func(s []byte) {
-				// 21 is the length of the run of the last run/range
-				// Shortening causes interval sum to be to short
-				s[21] = 1
+				// 21-22 is the length of the last run, which starts at 8:
+				// 65535 makes it end past 65535
+				s[21] = 0xFF
+				s[22] = 0xFF
 			},
-			err: ErrRunIntervalSize,
+			err: ErrRunIntervalOutOfRange,
 		},
 		{
-			name: "Corrupts Run Length",
+			name: "Run Extends Past Container End",
 			loader: func(bm *Bitmap) {
 				bm.AddRange(100, 110)
+				bm.RunOptimize() // one run container
 			},
 			corruptor: func(s []byte) {
-				s[13] = 0
+				// 13-14 is the length of the run, which starts at 100:
+				// 65535 makes it end past 65535
+				s[13] = 0xFF
+				s[14] = 0xFF
 			},
-			err: ErrRunIntervalSize,
+			err: ErrRunIntervalOutOfRange,
 		},
 		{
 			name: "Creates Interval Overlap",
@@ -3467,7 +3473,7 @@ func TestBitMapValidationFromDeserialization(t *testing.T) {
 			if tt.err == nil {
 				assert.NoError(t, validateErr, "expected validation to succeed when tt.err is nil")
 			} else {
-				assert.Error(t, validateErr, "expected validation to fail when tt.err is not nil")
+				assert.ErrorIs(t, validateErr, tt.err)
 			}
 
 			corruptedDeserializedBitMap = NewBitmap()
@@ -4183,4 +4189,25 @@ func TestBitmapOrBulkMergeCopyOnWriteTailOwnership(t *testing.T) {
 	if err := right.Validate(); err != nil {
 		t.Fatalf("source became invalid after tail mutations: %v", err)
 	}
+}
+
+func TestValidateAcceptsRunContainersThatAreNotTheSmallestEncoding(t *testing.T) {
+	// AddOffset splits the run: the first container holds a run of two values,
+	// which takes more bytes than an array container would
+	bm := NewBitmap()
+	bm.AddRange(0, 10)
+	bm.RunOptimize()
+	shifted := AddOffset64(bm, 65534)
+	expected := NewBitmap()
+	expected.AddRange(65534, 65544)
+	assert.True(t, expected.Equals(shifted))
+	assert.NoError(t, shifted.Validate())
+
+	serialized, err := shifted.ToBytes()
+	assert.NoError(t, err)
+	deserialized := NewBitmap()
+	_, err = deserialized.ReadFrom(bytes.NewReader(serialized))
+	assert.NoError(t, err)
+	assert.NoError(t, deserialized.Validate())
+	assert.True(t, expected.Equals(deserialized))
 }

@@ -2476,6 +2476,8 @@ func (rb *Bitmap) Describe() {
 // Validate checks if the bitmap is internally consistent.
 // You may call it after deserialization to check that the bitmap is valid.
 // This function returns an error if the bitmap is invalid, nil otherwise.
+// It does not check that each container uses the most compact encoding:
+// call RunOptimize for that.
 func (rb *Bitmap) Validate() error {
 	return rb.highlowcontainer.validate()
 }
