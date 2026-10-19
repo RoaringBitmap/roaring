@@ -125,49 +125,63 @@ func (x1 *Bitmap) repairAfterLazy() {
 	}
 }
 
+// The walk covers every input, up to fastAndWide, when the driver has one
+// key, and fastAndNarrow of them otherwise.
+const (
+	fastAndWide   = 8
+	fastAndNarrow = 4
+)
+
 // FastAnd computes the intersection between many bitmaps quickly.
 // Compared to the And function, it can take many bitmaps as input.
 //
-// With three or more inputs, FastAnd walks the keys of the input with the
-// fewest keys and looks each one up in the first four inputs, also checking
-// an array container for a shared value, before allocating anything for it.
-// The remaining inputs are then intersected into the result one at a time.
+// FastAnd walks the keys of the input with the fewest keys and looks each
+// one up in the other inputs before allocating anything for it; inputs past
+// the walk are intersected into the result one at a time.
 func FastAnd(bitmaps ...*Bitmap) *Bitmap {
 	switch len(bitmaps) {
 	case 0:
 		return NewBitmap()
 	case 1:
 		return bitmaps[0].Clone()
-	case 2:
-		return And(bitmaps[0], bitmaps[1])
 	}
-	driver := 0
+	driver, fewest := 0, bitmaps[0].highlowcontainer.size()
 	for i := 1; i < len(bitmaps); i++ {
-		if bitmaps[i].highlowcontainer.size() < bitmaps[driver].highlowcontainer.size() {
-			driver = i
+		if n := bitmaps[i].highlowcontainer.size(); n < fewest {
+			driver, fewest = i, n
 		}
 	}
 	dra := &bitmaps[driver].highlowcontainer
-	// The walk covers the first width inputs, each with a cursor that resumes
-	// where the previous key stopped. Past those, intersecting an input into
-	// the result costs less per key than walking it.
-	const width = 4
-	n := min(len(bitmaps), width)
-	var pos [width]int
-	var cs [width + 1]container // the window and a driver past it
+	if len(bitmaps) == 2 {
+		// A pair over many keys is And's job; a pair on one key is walked.
+		if dra.size() > 1 {
+			return And(bitmaps[0], bitmaps[1])
+		}
+		if dra.size() == 0 || bitmaps[1-driver].highlowcontainer.getIndex(dra.getKeyAtIndex(0)) < 0 {
+			return NewBitmap()
+		}
+	}
+	n := len(bitmaps)
+	if n > fastAndWide || dra.size() > 1 {
+		n = min(n, fastAndNarrow)
+	}
+	var pos [fastAndWide]int
+	var cs [fastAndWide]container
 	answer := NewBitmap()
+	survived := false // the last key passed every input, so checks are skipped
 keys:
 	for j := 0; j < dra.size(); j++ {
 		key := dra.getKeyAtIndex(j)
 		dc := dra.getContainerAtIndex(j)
-		// Only an array is checked for a value it shares with each input: a
-		// lookup per value that usually stops at the first. For a run or a
-		// bitmap the check costs about as much as the intersection.
-		_, check := dc.(*arrayContainer)
-		m := 0
-		if !dc.isFull() { // a full container changes nothing
-			cs[0] = dc
-			m = 1
+		dx, isArray := dc.(*arrayContainer)
+		// An array driver is checked for a value it shares with each input.
+		check := isArray && !survived
+		// Full containers change nothing; the smallest array goes first.
+		m, small, smallLen := 0, -1, 0
+		if isArray {
+			cs[0], m, small, smallLen = dc, 1, 0, len(dx.content)
+		} else if !dc.isFull() {
+			cs[0], m = dc, 1
 		}
 		for i, bm := range bitmaps[:n] {
 			if i == driver {
@@ -187,16 +201,23 @@ keys:
 			}
 			pos[i]++
 			c := ra.getContainerAtIndex(p)
-			if c.isFull() {
+			if x, ok := c.(*arrayContainer); ok {
+				if small < 0 || len(x.content) < smallLen {
+					small, smallLen = m, len(x.content)
+				}
+			} else if c.isFull() {
 				continue
 			}
 			if check && !dc.intersects(c) {
+				survived = false
 				continue keys
 			}
 			cs[m] = c
 			m++
 		}
-		if c := andK(cs[:m]); c != nil {
+		c := andK(cs[:m], small)
+		survived = c != nil
+		if c != nil {
 			if answer.IsEmpty() {
 				// Room for up to 64 of the driver's remaining keys at once.
 				k := min(dra.size()-j, 64)
@@ -218,26 +239,19 @@ keys:
 }
 
 // andK intersects the containers of one key, none of them full, and returns
-// nil when the intersection is empty. It may reorder cs.
-func andK(cs []container) container {
+// nil when the result is empty. small is the index of the smallest array in
+// cs, or -1 if there is none.
+func andK(cs []container, small int) container {
 	switch len(cs) {
 	case 0:
 		return newRunContainer16Range(0, maxCapacity-1)
 	case 1:
 		return cs[0].clone()
 	}
-	// The smallest array goes first; the rest keep their order.
-	smallest := -1
-	for i, c := range cs {
-		if x, ok := c.(*arrayContainer); ok && (smallest < 0 || x.getCardinality() < cs[smallest].getCardinality()) {
-			smallest = i
-		}
-	}
-	if smallest >= 0 {
-		a := cs[smallest]
-		copy(cs[1:smallest+1], cs[:smallest])
-		cs[0] = a
-		return andKChain(cs)
+	if small >= 0 {
+		a := cs[small].(*arrayContainer)
+		copy(cs[1:small+1], cs[:small]) // the rest keep their order after it
+		return andKArray(a, cs[1:])
 	}
 	n := 0
 	for i, c := range cs {
@@ -247,9 +261,119 @@ func andK(cs []container) container {
 		}
 	}
 	if n == len(cs) {
-		return andKChain(cs)
+		return andKRuns(cs)
+	}
+	if n == 1 && len(cs) == 2 {
+		// A single interval against one bitmap is counted in place.
+		if rc := cs[0].(*runContainer16); len(rc.iv) == 1 {
+			return rc.andBitmapCounted(cs[1].(*bitmapContainer))
+		}
 	}
 	return andKBitmaps(cs[n:], cs[:n])
+}
+
+// andKArray narrows the array through rest in a buffer on the stack, sized
+// to the array, and allocates only once a value survives every container.
+func andKArray(ac *arrayContainer, rest []container) container {
+	if len(rest) == 1 {
+		return andArrayLast(ac.content, rest[0])
+	}
+	switch n := len(ac.content); {
+	case n <= 64:
+		var buf [64]uint16
+		return andKArrayInto(ac.content, rest, buf[:])
+	case n <= 512:
+		var buf [512]uint16
+		return andKArrayInto(ac.content, rest, buf[:])
+	default:
+		var buf [arrayDefaultMaxSize]uint16
+		return andKArrayInto(ac.content, rest, buf[:])
+	}
+}
+
+func andKArrayInto(vals []uint16, rest []container, buf []uint16) container {
+	last := len(rest) - 1
+	for _, c := range rest[:last] {
+		n := 0
+		switch c := c.(type) {
+		case *arrayContainer:
+			n = intersection2by2(vals, c.content, buf)
+		case *bitmapContainer:
+			for _, v := range vals {
+				buf[n] = v
+				n += int(c.bitValue(v))
+			}
+		case *runContainer16:
+			n = andArrayInto(c.iv, vals, buf)
+		}
+		if n == 0 {
+			return nil
+		}
+		vals = buf[:n]
+	}
+	return andArrayLast(vals, rest[last])
+}
+
+// andArrayLast intersects vals with c from the first value they share, so
+// nothing is allocated when there is none.
+func andArrayLast(vals []uint16, c container) container {
+	switch c := c.(type) {
+	case *arrayContainer:
+		i, j := firstShared2by2(vals, c.content)
+		if i < 0 {
+			return nil
+		}
+		ac := newArrayContainerCapacity(min(len(vals)-i, len(c.content)-j))
+		ac.content = ac.content[:intersection2by2(vals[i:], c.content[j:], ac.content[:cap(ac.content)])]
+		return ac
+	case *bitmapContainer:
+		for i, v := range vals {
+			if c.bitValue(v) != 0 {
+				return c.andArray(&arrayContainer{content: vals[i:]})
+			}
+		}
+	case *runContainer16:
+		if i := c.firstInArray(vals); i >= 0 {
+			return c.andArray(&arrayContainer{content: vals[i:]})
+		}
+	}
+	return nil
+}
+
+// andKRuns intersects runs interval by interval, allocating only where they
+// all overlap.
+func andKRuns(cs []container) container {
+	a := cs[0].(*runContainer16)
+	if !a.intersects(cs[1]) {
+		return nil
+	}
+	if len(cs) == 2 {
+		return a.intersect(cs[1].(*runContainer16)).toEfficientContainer()
+	}
+	var pos [fastAndWide]int
+	var iv []interval16
+	for {
+		lo, hi, end := 0, maxCapacity-1, maxCapacity-1
+		for i, c := range cs {
+			rc := c.(*runContainer16)
+			if pos[i] == len(rc.iv) {
+				if len(iv) == 0 {
+					return nil
+				}
+				return (&runContainer16{iv: iv}).toEfficientContainer()
+			}
+			r := rc.iv[pos[i]]
+			lo, hi, end = max(lo, int(r.start)), min(hi, int(r.last())), min(end, int(r.last()))
+		}
+		if lo <= hi {
+			iv = append(iv, newInterval16Range(uint16(lo), uint16(hi)))
+		}
+		for i, c := range cs { // step past every interval that ends first
+			if int(c.(*runContainer16).iv[pos[i]].last()) == end {
+				pos[i]++
+			}
+		}
+	}
 }
 
 // andKChain intersects cs in order: the first two into a new container, then
@@ -265,11 +389,27 @@ func andKChain(cs []container) container {
 	return c
 }
 
-// andKBitmaps ANDs the bitmaps in a scratch bitmap on the stack, stopping as
-// soon as the result is empty. Runs act as masks: only the words between
-// their common start and end are ANDed, and the gaps inside a run are cleared
-// afterwards.
+// andBitmapsMeetWords is how many leading words are scanned for a shared bit
+// before dense bitmaps are ANDed straight into the result, skipping scratch.
+const andBitmapsMeetWords = 8
+
+// andKBitmaps ANDs the bitmaps, masked by the runs, allocating only for a
+// non-empty result.
 func andKBitmaps(bms, runs []container) container {
+	if len(runs) == 0 && andWordsMeet(bms, andBitmapsMeetWords) {
+		answer := newBitmapContainer()
+		src := bms[0].(*bitmapContainer).bitmap
+		card := uint64(0)
+		for _, c := range bms[1:] {
+			card = andCardSlice(answer.bitmap, src, c.(*bitmapContainer).bitmap)
+			src = answer.bitmap
+		}
+		answer.cardinality = int(card)
+		if card <= arrayDefaultMaxSize {
+			return answer.toArrayContainer()
+		}
+		return answer
+	}
 	lo, hi := 0, maxCapacity-1
 	gaps := false
 	for _, c := range runs {
@@ -305,6 +445,20 @@ func andKBitmaps(bms, runs []container) container {
 		}
 	}
 	return containerFromWords(scratch[:], first, last, int(card))
+}
+
+// andWordsMeet reports whether the bitmaps share a bit in their first n words.
+func andWordsMeet(bms []container, n int) bool {
+	for i := 0; i < n; i++ {
+		w := bms[0].(*bitmapContainer).bitmap[i]
+		for _, c := range bms[1:] {
+			w &= c.(*bitmapContainer).bitmap[i]
+		}
+		if w != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // FastOr computes the union between many bitmaps quickly, as opposed to having to call Or repeatedly.
