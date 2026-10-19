@@ -1131,22 +1131,16 @@ func (b *BSI) SumBigValues(foundSet *Bitmap) (sum *big.Int, count uint64) {
 	}
 	sum = new(big.Int)
 	count = foundSet.GetCardinality()
-	resultsChan := make(chan int64, b.BitCount())
-	var wg sync.WaitGroup
-	for i := 0; i < b.BitCount(); i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			resultsChan <- int64(foundSet.AndCardinality(&b.bA[j]) << uint(j))
-		}(i)
+	bitCount := b.BitCount()
+	var temp big.Int
+	for i := 0; i < bitCount; i++ {
+		temp.SetUint64(foundSet.AndCardinality(&b.bA[i]))
+		temp.Lsh(&temp, uint(i))
+		sum.Add(sum, &temp)
 	}
-	wg.Wait()
-	close(resultsChan)
-
-	for val := range resultsChan {
-		sum.Add(sum, big.NewInt(val))
-	}
-	sum.Sub(sum, big.NewInt(int64(foundSet.AndCardinality(&b.bA[b.BitCount()])<<uint(b.BitCount()))))
+	temp.SetUint64(foundSet.AndCardinality(&b.bA[bitCount]))
+	temp.Lsh(&temp, uint(bitCount))
+	sum.Sub(sum, &temp)
 
 	return sum, count
 }
