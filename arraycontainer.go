@@ -428,12 +428,20 @@ func (ac *arrayContainer) iorBitmap(bc2 *bitmapContainer) container {
 	return bc1
 }
 
+// arrayRunInsertMaxRuns is the most runs iorRun16 inserts into the array one
+// at a time. Each insert moves the tail of the array, so past a few runs one
+// merge is usually cheaper.
+const arrayRunInsertMaxRuns = 4
+
 func (ac *arrayContainer) iorRun16(rc *runContainer16) container {
 	runCardinality := rc.getCardinality()
 	// heuristic for if the container should maybe be an
 	// array container.
 	if runCardinality < ac.getCardinality() &&
 		runCardinality+ac.getCardinality() < arrayDefaultMaxSize {
+		if len(rc.iv) > arrayRunInsertMaxRuns {
+			return ac.iorArray(rc.toArrayContainer())
+		}
 		var result container
 		result = ac
 		for _, run := range rc.iv {

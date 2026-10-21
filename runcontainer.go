@@ -420,12 +420,15 @@ func (rc *runContainer16) union(b *runContainer16) *runContainer16 {
 		} else {
 			// !mergedUsed
 			if !canMerge16(cura, curb) {
+				// copy every run that ends before the other side's next run
 				if cura.start < curb.start {
-					m = append(m, cura)
-					na++
+					next := rc.indexOfIntervalAtOrAfter(int(curb.start)-1, na+1)
+					m = append(m, rc.iv[na:next]...)
+					na = next
 				} else {
-					m = append(m, curb)
-					nb++
+					next := b.indexOfIntervalAtOrAfter(int(cura.start)-1, nb+1)
+					m = append(m, b.iv[nb:next]...)
+					nb = next
 				}
 			} else {
 				merged = mergeInterval16s(cura, curb)
@@ -598,6 +601,11 @@ func (rc *runContainer16) unionCardinality(b *runContainer16) uint {
 
 // indexOfIntervalAtOrAfter is a helper for union.
 func (rc *runContainer16) indexOfIntervalAtOrAfter(key int, startIndex int) int {
+	// union only asks for keys past rc.iv[startIndex-1], so a key at or
+	// before the end of rc.iv[startIndex] needs no search.
+	if startIndex < len(rc.iv) && int(rc.iv[startIndex].last()) >= key {
+		return startIndex
+	}
 	w, already, _ := rc.searchRange(key, startIndex, 0)
 	if already {
 		return w
@@ -1421,6 +1429,9 @@ func intersectWithLeftover16(astart, alast, bstart, blast int) (isOverlap, isLef
 }
 
 func (rc *runContainer16) findNextIntervalThatIntersectsStartingFrom(startIndex int, key int) (index int, done bool) {
+	if startIndex+1 < len(rc.iv) && int(rc.iv[startIndex+1].start) > key {
+		return startIndex, false
+	}
 	w, _, _ := rc.searchRange(key, startIndex, 0)
 	// rc.search always returns w < len(rc.iv)
 	if w < startIndex {
@@ -2270,14 +2281,51 @@ func (rc *runContainer16) ior(a container) container {
 	panic("unsupported container type")
 }
 
+// runInsertMaxRuns is the most runs inplaceUnion inserts one at a time. Each
+// insert shifts the runs after it, so past a few a merge is usually cheaper.
+const runInsertMaxRuns = 16
+
 func (rc *runContainer16) inplaceUnion(rc2 *runContainer16) container {
-	for _, p := range rc2.iv {
-		last := int(p.last())
-		for i := int(p.start); i <= last; i++ {
-			rc.Add(uint16(i))
+	if len(rc2.iv) <= runInsertMaxRuns {
+		for _, p := range rc2.iv {
+			rc.addInterval(p)
 		}
+	} else {
+		*rc = *rc.union(rc2)
 	}
 	return rc.toEfficientContainer()
+}
+
+// addInterval adds the values of iv in place, merging the runs it touches.
+func (rc *runContainer16) addInterval(iv interval16) {
+	start, last := int(iv.start), int(iv.last())
+	// runs i..j-1 overlap or touch iv
+	i, j := 0, len(rc.iv)
+	for i < j {
+		h := int(uint(i+j) >> 1)
+		if int(rc.iv[h].last())+1 < start {
+			i = h + 1
+		} else {
+			j = h
+		}
+	}
+	j = len(rc.iv)
+	for lo := i; lo < j; {
+		h := int(uint(lo+j) >> 1)
+		if int(rc.iv[h].start) <= last+1 {
+			lo = h + 1
+		} else {
+			j = h
+		}
+	}
+	if i == j {
+		rc.iv = slices.Insert(rc.iv, i, iv)
+		return
+	}
+	start = min(start, int(rc.iv[i].start))
+	last = max(last, int(rc.iv[j-1].last()))
+	rc.iv[i] = newInterval16Range(uint16(start), uint16(last))
+	rc.iv = append(rc.iv[:i+1], rc.iv[j:]...)
 }
 
 // Such code should not be used as it will not preserve the container invariants:
@@ -2720,9 +2768,13 @@ func (rc *runContainer16) toEfficientContainerFromCardinality(card int) containe
 }
 
 func (rc *runContainer16) toArrayContainer() *arrayContainer {
-	ac := newArrayContainer()
-	for i := range rc.iv {
-		ac.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last())+1)
+	ac := newArrayContainerSize(rc.getCardinality())
+	pos := 0
+	for _, iv := range rc.iv {
+		for v := int(iv.start); v <= int(iv.last()); v++ {
+			ac.content[pos] = uint16(v)
+			pos++
+		}
 	}
 	return ac
 }
