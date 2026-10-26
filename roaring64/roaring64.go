@@ -187,7 +187,16 @@ func (rb *Bitmap) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-// RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
+// RunOptimize converts each container to its most compact encoding: run-length encoding
+// where it is smaller, and an array or bitmap container where it is not.
+//
+// Some operations that modify a bitmap, such as AddRange and RemoveRange, do not always
+// convert a run container back to an array or bitmap container when the runs stop being
+// the most compact encoding. Such a container can then use more memory and serialized
+// space than needed: in the worst case, the runs of one 65536-value chunk can take about
+// 128 KiB where a bitmap container takes 8 KiB. Calling RunOptimize again after such
+// modifications recovers that space. Consider calling it before serializing a bitmap that
+// was modified since its last call.
 func (rb *Bitmap) RunOptimize() {
 	rb.highlowcontainer.runOptimize()
 }

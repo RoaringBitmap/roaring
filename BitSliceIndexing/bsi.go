@@ -54,7 +54,9 @@ func NewDefaultBSI() *BSI {
 	return NewBSI(int64(0), int64(0))
 }
 
-// RunOptimize attempts to further compress the runs of consecutive values found in the bitmap
+// RunOptimize converts the containers of the underlying bitmaps to their most compact
+// encoding. Calling it again after modifying the BSI can recover space: see
+// Bitmap.RunOptimize.
 func (b *BSI) RunOptimize() {
 	b.eBM.RunOptimize()
 	for i := 0; i < len(b.bA); i++ {
