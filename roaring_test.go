@@ -4211,3 +4211,18 @@ func TestValidateAcceptsRunContainersThatAreNotTheSmallestEncoding(t *testing.T)
 	assert.NoError(t, deserialized.Validate())
 	assert.True(t, expected.Equals(deserialized))
 }
+
+func TestRunOptimizeRecoversSpaceAfterRemoveRange(t *testing.T) {
+	bm := New()
+	bm.AddRange(0, 65536)
+	for i := uint64(0); i < 65536; i += 2 {
+		bm.RemoveRange(i, i+1) // each remaining value becomes a run of length one
+	}
+	expected := bm.Clone()
+	before := bm.GetSerializedSizeInBytes()
+	bm.RunOptimize()
+	assert.Less(t, bm.GetSerializedSizeInBytes(), before/10)
+	assert.False(t, bm.HasRunCompression())
+	assert.True(t, expected.Equals(bm))
+	require.NoError(t, bm.Validate())
+}

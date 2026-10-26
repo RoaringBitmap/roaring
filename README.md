@@ -280,6 +280,15 @@ That is, given a fixed overhead for the universe size (x), Roaring
 bitmaps never use more than 2 bytes per integer. You can call
 ``BoundSerializedSizeInBytes`` for a more precise estimate.
 
+Call ``RunOptimize`` to convert containers to their most compact encoding,
+including run-length encoding where it helps. Some operations that modify a
+bitmap, such as ``AddRange`` and ``RemoveRange``, do not always convert a run
+container back to an array or bitmap container when the runs stop being the
+most compact encoding. In the worst case, the runs of one 65536-value chunk can
+take about 128 KiB where a bitmap container takes 8 KiB. Calling ``RunOptimize``
+again after such modifications recovers that space, in memory and once
+serialized. This applies to 64-bit bitmaps (``roaring64``) as well.
+
 ### 64-bit Roaring
 
 By default, roaring is used to stored unsigned 32-bit integers. However, we also offer
