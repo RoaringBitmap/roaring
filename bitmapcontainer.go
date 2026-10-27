@@ -1390,53 +1390,28 @@ func (bc *bitmapContainer) nextValue(target uint16) int {
 	return bc.NextSetBit(uint(target))
 }
 
-// nextAbsentValue returns the next absent value.
-// if the target is out of bounds a -1 is returned
+// nextAbsentValue returns the smallest absent value >= target.
+// The result is in 0..65535, or 1<<16 when every such value is present.
 func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
-	if bc.cardinality == 0 {
-		return -1
+	x := uint(target >> 6)
+	length := uint(len(bc.bitmap))
+	if x >= length {
+		return 1 << 16
 	}
 
-	var (
-		x      = target >> 6
-		length = uint(len(bc.bitmap))
-	)
-	if uint(x) >= length {
-		return -1
-	}
-	w := bc.bitmap[x]
-	w = w >> uint(target%64)
-	if w == 0 {
-		return int(target)
+	w := (^bc.bitmap[x]) >> uint(target%64)
+	if w != 0 {
+		return int(target) + bits.TrailingZeros64(w)
 	}
 
-	// Check if all 1's
-	// if statement - we skip the if we have all ones [1,1,1,1...1]
-	if ^w != 0 {
-
-		if bits.TrailingZeros64(w) > 0 {
-			// we have something like [X,Y,Z, 0,0,0]. This means the target bit is zero
-			return int(target)
-		}
-
-		// other wise something like [X,Y,0,1,1,1..1], where x and y can be either 1 or 0.
-
-		trailing := bits.TrailingZeros64(^w)
-		return int(target) + trailing
-
-	}
 	x++
-	for ; uint(x) < length; x++ {
-		if bc.bitmap[x] == 0 {
-			return int(x * 64)
+	for ; x < length; x++ {
+		if inv := ^bc.bitmap[x]; inv != 0 {
+			return int(x*64) + bits.TrailingZeros64(inv)
 		}
-		if ^bc.bitmap[x] != 0 {
-			trailing := bits.TrailingZeros64(^bc.bitmap[x])
-			return int(x*64) + trailing
-		}
-
 	}
-	return -1
+
+	return 1 << 16
 }
 
 // previousValue returns either the `target` if found or the previous largest value.
@@ -1458,64 +1433,26 @@ func (bc *bitmapContainer) previousValue(target uint16) int {
 	return bc.uPrevSetBit(uint(target))
 }
 
-// previousAbsentValue returns the next absent value.
+// previousAbsentValue returns the largest absent value <= target,
+// or -1 when every such value is present.
 func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
-	if bc.cardinality == 0 {
+	x := int(target >> 6)
+	if x >= len(bc.bitmap) {
 		return -1
 	}
 
-	var (
-		x      = target >> 6
-		length = uint(len(bc.bitmap))
-	)
-	if uint(x) >= length {
-		return -1
-	}
-	w := bc.bitmap[x]
-	shifted := w >> uint(target%64)
-	if shifted == 0 {
-		return int(target)
+	// Shift left by 63-(target%64) so LeadingZeros ignores bits shifted in.
+	w := (^bc.bitmap[x]) << (63 - uint(target%64))
+	if w != 0 {
+		return int(target) - bits.LeadingZeros64(w)
 	}
 
-	// Check if all 1's
-	// if statement - we skip if we have all ones [1,1,1,1...1] as no value is absent
-	if ^shifted != 0 {
-
-		if bits.TrailingZeros64(shifted) > 0 {
-			// we have something like shifted=[X,Y,Z,..., 0,0,0]. This means the target bit is zero
-			return int(target)
+	for x--; x >= 0; x-- {
+		if inv := ^bc.bitmap[x]; inv != 0 {
+			return x*64 + 63 - bits.LeadingZeros64(inv)
 		}
-
-		// The rotate will rotate the target bit into the leading position.
-		// We know the target bit is not zero because of the TrailingZeros64 check above
-		// We then shift the target bit out of the way.
-		// Assume a structure like an original structure like [X,Y,Z,..., Target, A, B,C...]
-		// shifted will be [X,Y,Z...Target]
-		// shiftedRotated will be [A,B,C....]
-		// If LeadingZeros64 > 0 then A is zero, if not at least A is 1 return
-		// Else count the number of ones's until a 0
-		shiftedRotated := bits.RotateLeft64(w, int(64-uint(target%64))-1) << 1
-		leadingZeros := bits.LeadingZeros64(shiftedRotated)
-		if leadingZeros > 0 {
-			return int(target) - 1
-		}
-		leadingOnes := bits.LeadingZeros64(^shiftedRotated)
-		if leadingOnes > 0 {
-			return int(target) - leadingOnes - 1
-		}
-
 	}
-	x++
-	for ; uint(x) < length; x++ {
-		if bc.bitmap[x] == 0 {
-			return int(x * 64)
-		}
-		if ^bc.bitmap[x] != 0 {
-			trailing := bits.TrailingZeros64(^bc.bitmap[x])
-			return int(x*64) + trailing
-		}
 
-	}
 	return -1
 }
 

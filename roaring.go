@@ -2320,28 +2320,30 @@ func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 		return int64(target)
 	}
 
+	// keyspace is already key<<16. 1<<16 means the container is exhausted.
 	container := rb.highlowcontainer.getContainer(containerKey)
 	nextValue = int64(container.nextAbsentValue(query))
 	for {
 		if nextValue != (1 << 16) {
-			return int64(combineLoHi32(uint32(nextValue), keyspace))
+			return int64(uint32(nextValue) | keyspace)
 		}
 
 		if containerIndex == rb.highlowcontainer.size()-1 {
-			val, err := container.safeMaximum()
-			if err == nil {
+			if containerKey == 0xFFFF {
 				return -1
 			}
-			return int64(val) + 1
+			return int64(containerKey+1) << 16
 		}
 		containerIndex++
 		nextContainerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
-		if containerKey < nextContainerKey {
+		if containerKey+1 < nextContainerKey {
 			// There is a gap between keys
 			// Just increment the current key and shift to get HoB
 			return int64(containerKey+1) << 16
 		}
+
 		containerKey = nextContainerKey
+		keyspace = uint32(containerKey) << 16
 		container = rb.highlowcontainer.getContainer(containerKey)
 		nextValue = int64(container.nextAbsentValue(0))
 	}
@@ -2377,20 +2379,20 @@ func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
 		return int64(target)
 	}
 
+	// keyspace is already key<<16. -1 means the container is exhausted.
 	container := rb.highlowcontainer.getContainer(containerKey)
 	prevValue = int64(container.previousAbsentValue(query))
 	for {
 		if prevValue != -1 {
-			return int64(combineLoHi32(uint32(prevValue), keyspace))
+			return int64(uint32(prevValue) | keyspace)
 		}
 
 		if containerIndex == 0 {
-			val, err := container.safeMinimum()
-			if err == nil {
+			if containerKey == 0 {
 				// OR panic, Java panics
 				return -1
 			}
-			return int64(val) - 1
+			return (int64(containerKey) << 16) - 1
 		}
 		containerIndex--
 		nextContainerKey := rb.highlowcontainer.getKeyAtIndex(containerIndex)
@@ -2399,7 +2401,9 @@ func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
 			// Just decrement the current key and shift to get HoB of the missing container
 			return (int64(containerKey) << 16) - 1
 		}
+
 		containerKey = nextContainerKey
+		keyspace = uint32(containerKey) << 16
 		container = rb.highlowcontainer.getContainer(containerKey)
 		highestPossible16 := (1 << 16) - 1
 		prevValue = int64(container.previousAbsentValue(uint16(highestPossible16)))
