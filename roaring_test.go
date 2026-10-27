@@ -3708,6 +3708,48 @@ func TestNextAndPreviousValue(t *testing.T) {
 	})
 }
 
+// The bitmap containers are tested in bitmapcontainer_test.go, the array
+// containers in arraycontainer_test.go.
+func TestNextAndPreviousAbsentValueContainerKeys(t *testing.T) {
+	t.Run("High bits of the result for a key other than 0", func(t *testing.T) {
+		bmp := BitmapOf(65537)
+		assert.Equal(t, int64(65536), bmp.NextAbsentValue(65536))
+		assert.Equal(t, int64(65538), bmp.NextAbsentValue(65537))
+		assert.Equal(t, int64(65536), bmp.PreviousAbsentValue(65537))
+		assert.Equal(t, int64(65538), bmp.PreviousAbsentValue(65538))
+	})
+
+	t.Run("Key follows the search into the previous container", func(t *testing.T) {
+		// keys 1 and 2: with the keys 0 and 1 a wrong key is not visible
+		bmp := New()
+		bmp.Add(65536)
+		bmp.Add(131071)
+		bmp.AddRange(131072, 196608) // a full container follows
+		assert.Equal(t, int64(131070), bmp.PreviousAbsentValue(196607))
+	})
+
+	t.Run("Full last container", func(t *testing.T) {
+		bmp := New()
+		bmp.AddRange(0, 65536)
+		assert.Equal(t, int64(65536), bmp.NextAbsentValue(0))
+		assert.Equal(t, int64(65536), bmp.NextAbsentValue(65535))
+	})
+
+	t.Run("Full first container", func(t *testing.T) {
+		bmp := New()
+		bmp.AddRange(65536, 131072)
+		assert.Equal(t, int64(65535), bmp.PreviousAbsentValue(131071))
+		assert.Equal(t, int64(65535), bmp.PreviousAbsentValue(65536))
+	})
+
+	t.Run("Full containers next to each other", func(t *testing.T) {
+		bmp := New()
+		bmp.AddRange(0, 131072)
+		assert.Equal(t, int64(131072), bmp.NextAbsentValue(0))
+		assert.Equal(t, int64(131072), bmp.NextAbsentValue(65536))
+	})
+}
+
 func BenchmarkFromDense(b *testing.B) {
 	testDense(func(name string, rb *Bitmap) {
 		dense := make([]uint64, rb.DenseSize())
