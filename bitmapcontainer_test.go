@@ -412,8 +412,6 @@ func TestNextAbsent(t *testing.T) {
 	assert.Equal(t, v, 65536)
 }
 
-// The scans of the absent value must not stop at the border of a
-// 64 bit word.
 func TestBitmapContainerAbsentValueAcrossWords(t *testing.T) {
 	t.Run("Next absent value after a run of ones that reaches the end of a word", func(t *testing.T) {
 		bc := newBitmapContainer()

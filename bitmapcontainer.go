@@ -1390,8 +1390,8 @@ func (bc *bitmapContainer) nextValue(target uint16) int {
 	return bc.NextSetBit(uint(target))
 }
 
-// nextAbsentValue returns the next absent value.
-// if the target is out of bounds a -1 is returned
+// nextAbsentValue returns the smallest absent value >= target.
+// The result is in 0..65535, or 1<<16 when every such value is present.
 func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 	x := uint(target >> 6)
 	length := uint(len(bc.bitmap))
@@ -1399,7 +1399,6 @@ func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 		return 1 << 16
 	}
 
-	// the zeros of the word that are at or after the target
 	w := (^bc.bitmap[x]) >> uint(target%64)
 	if w != 0 {
 		return int(target) + bits.TrailingZeros64(w)
@@ -1412,7 +1411,6 @@ func (bc *bitmapContainer) nextAbsentValue(target uint16) int {
 		}
 	}
 
-	// All words up to the end are full.
 	return 1 << 16
 }
 
@@ -1435,32 +1433,26 @@ func (bc *bitmapContainer) previousValue(target uint16) int {
 	return bc.uPrevSetBit(uint(target))
 }
 
-// previousAbsentValue returns the next absent value.
+// previousAbsentValue returns the largest absent value <= target,
+// or -1 when every such value is present.
 func (bc *bitmapContainer) previousAbsentValue(target uint16) int {
 	x := int(target >> 6)
 	if x >= len(bc.bitmap) {
 		return -1
 	}
 
-	// Look at the target's word first: invert it, then shift the bits above
-	// the target out to the left, so that the target is bit 63 and the bits
-	// in front of it follow below. The zeros that the shift brings in at the
-	// bottom are zeros of the inverse, so they never count as absent values.
+	// Shift left by 63-(target%64) so LeadingZeros ignores bits shifted in.
 	w := (^bc.bitmap[x]) << (63 - uint(target%64))
 	if w != 0 {
 		return int(target) - bits.LeadingZeros64(w)
 	}
 
-	// Nothing absent at or in front of the target in this word. Go on with the
-	// words in front of it, downwards.
 	for x--; x >= 0; x-- {
 		if inv := ^bc.bitmap[x]; inv != 0 {
-			// the last 1 bit of the inverse is the highest absent value of the word
 			return x*64 + 63 - bits.LeadingZeros64(inv)
 		}
 	}
 
-	// All words down to the start are full.
 	return -1
 }
 

@@ -3708,8 +3708,6 @@ func TestNextAndPreviousValue(t *testing.T) {
 	})
 }
 
-// The bitmap containers are tested in bitmapcontainer_test.go, the array
-// containers in arraycontainer_test.go.
 func TestNextAndPreviousAbsentValueContainerKeys(t *testing.T) {
 	t.Run("High bits of the result for a key other than 0", func(t *testing.T) {
 		bmp := BitmapOf(65537)
@@ -3720,11 +3718,11 @@ func TestNextAndPreviousAbsentValueContainerKeys(t *testing.T) {
 	})
 
 	t.Run("Key follows the search into the previous container", func(t *testing.T) {
-		// keys 1 and 2: with the keys 0 and 1 a wrong key is not visible
+		// Keys 1 and 2: key 0 would hide a missing high-half update.
 		bmp := New()
 		bmp.Add(65536)
 		bmp.Add(131071)
-		bmp.AddRange(131072, 196608) // a full container follows
+		bmp.AddRange(131072, 196608)
 		assert.Equal(t, int64(131070), bmp.PreviousAbsentValue(196607))
 	})
 

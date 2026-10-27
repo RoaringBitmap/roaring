@@ -2320,24 +2320,15 @@ func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 		return int64(target)
 	}
 
-	// A value is made of the container key (the upper 16 bits) and the value in
-	// the container (the lower 16 bits). The container only knows the lower
-	// 16 bits; 1<<16 is its answer for "every value up to its end is present".
+	// keyspace is already key<<16. 1<<16 means the container is exhausted.
 	container := rb.highlowcontainer.getContainer(containerKey)
 	nextValue = int64(container.nextAbsentValue(query))
 	for {
 		if nextValue != (1 << 16) {
-			// Found. keyspace is the key already shifted into the upper 16 bits,
-			// so it is only OR-ed to the lower bits.
 			return int64(uint32(nextValue) | keyspace)
 		}
 
 		if containerIndex == rb.highlowcontainer.size()-1 {
-			// It is the last container. The next value is the first one of the
-			// next key, which is absent because there is no such container.
-			// Only the last key, 0xFFFF, has no next key: nothing is absent.
-			// (safeMaximum() returns err == nil when the container has values,
-			// so testing it for "empty" gave -1 for every full last container.)
 			if containerKey == 0xFFFF {
 				return -1
 			}
@@ -2351,8 +2342,6 @@ func (rb *Bitmap) NextAbsentValue(target uint32) int64 {
 			return int64(containerKey+1) << 16
 		}
 
-		// The next container follows directly: search it from its start. Its
-		// key is the upper part of the result, so keyspace has to follow.
 		containerKey = nextContainerKey
 		keyspace = uint32(containerKey) << 16
 		container = rb.highlowcontainer.getContainer(containerKey)
@@ -2390,21 +2379,15 @@ func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
 		return int64(target)
 	}
 
+	// keyspace is already key<<16. -1 means the container is exhausted.
 	container := rb.highlowcontainer.getContainer(containerKey)
 	prevValue = int64(container.previousAbsentValue(query))
 	for {
 		if prevValue != -1 {
-			// Found. keyspace is the key already shifted into the upper 16 bits,
-			// so it is only OR-ed to the lower bits.
 			return int64(uint32(prevValue) | keyspace)
 		}
 
 		if containerIndex == 0 {
-			// It is the first container. The value before it is the last one of
-			// the previous key, which is absent because there is no such
-			// container. Only key 0 has no previous key: nothing is absent.
-			// (safeMinimum() returns err == nil when the container has values,
-			// so testing it for "empty" gave -1 for every full first container.)
 			if containerKey == 0 {
 				// OR panic, Java panics
 				return -1
@@ -2419,8 +2402,6 @@ func (rb *Bitmap) PreviousAbsentValue(target uint32) int64 {
 			return (int64(containerKey) << 16) - 1
 		}
 
-		// The previous container follows directly: search it from its end. Its
-		// key is the upper part of the result, so keyspace has to follow.
 		containerKey = nextContainerKey
 		keyspace = uint32(containerKey) << 16
 		container = rb.highlowcontainer.getContainer(containerKey)

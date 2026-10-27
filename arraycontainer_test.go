@@ -642,9 +642,7 @@ func TestPreviousValueArray(t *testing.T) {
 	})
 }
 
-// The next absent value after the last value 65535 must not wrap
-// around to 0 (uint16 arithmetic).
-
+// uint16(65535)+1 wraps to 0.
 func TestArrayContainerNextAbsentValueAtEnd(t *testing.T) {
 	t.Run("One value at the end", func(t *testing.T) {
 		ac := newArrayContainer()
