@@ -642,6 +642,30 @@ func TestPreviousValueArray(t *testing.T) {
 	})
 }
 
+// The next absent value after the last value 65535 must not wrap
+// around to 0 (uint16 arithmetic).
+
+func TestArrayContainerNextAbsentValueAtEnd(t *testing.T) {
+	t.Run("One value at the end", func(t *testing.T) {
+		ac := newArrayContainer()
+		ac.iadd(65535)
+		assert.Equal(t, 1<<16, ac.nextAbsentValue(65535))
+	})
+
+	t.Run("Two values at the end", func(t *testing.T) {
+		ac := newArrayContainer()
+		ac.iadd(65534)
+		ac.iadd(65535)
+		assert.Equal(t, 1<<16, ac.nextAbsentValue(65534))
+		assert.Equal(t, 1<<16, ac.nextAbsentValue(65535))
+	})
+
+	t.Run("In a bitmap", func(t *testing.T) {
+		bmp := BitmapOf(1, 65535)
+		assert.Equal(t, int64(65536), bmp.NextAbsentValue(65535))
+	})
+}
+
 func TestPreviousAbsentValueArray(t *testing.T) {
 	t.Run("Java Port 1", func(t *testing.T) {
 		// [Example 1] https://github.com/RoaringBitmap/RoaringBitmap/blob/5235aa62c32fa3bf7fae40a562e3edc75f61be4e/RoaringBitmap/src/test/java/org/roaringbitmap/TestArrayContainer.java#L793

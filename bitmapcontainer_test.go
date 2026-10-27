@@ -412,6 +412,37 @@ func TestNextAbsent(t *testing.T) {
 	assert.Equal(t, v, 65536)
 }
 
+// The scans of the absent value must not stop at the border of a
+// 64 bit word.
+func TestBitmapContainerAbsentValueAcrossWords(t *testing.T) {
+	t.Run("Next absent value after a run of ones that reaches the end of a word", func(t *testing.T) {
+		bc := newBitmapContainer()
+		for i := 0; i < 5000; i++ {
+			bc.iadd(uint16(i))
+		}
+		assert.Equal(t, 5000, bc.nextAbsentValue(10))
+		assert.Equal(t, 5000, bc.nextAbsentValue(70))
+	})
+
+	t.Run("Next absent value of a full container", func(t *testing.T) {
+		bc := newBitmapContainer()
+		for i := 0; i < 1<<16; i++ {
+			bc.iadd(uint16(i))
+		}
+		assert.Equal(t, 1<<16, bc.nextAbsentValue(0))
+		assert.Equal(t, 1<<16, bc.nextAbsentValue(64))
+	})
+
+	t.Run("Previous absent value goes down through the earlier words", func(t *testing.T) {
+		bc := newBitmapContainer()
+		for i := 1; i <= 5000; i++ {
+			bc.iadd(uint16(i))
+		}
+		assert.Equal(t, 0, bc.previousAbsentValue(5000))
+		assert.Equal(t, 0, bc.previousAbsentValue(70))
+	})
+}
+
 func TestBitMapContainerValidate(t *testing.T) {
 	bc := newBitmapContainer()
 

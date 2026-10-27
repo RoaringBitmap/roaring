@@ -1193,7 +1193,7 @@ func (ac *arrayContainer) nextAbsentValue(target uint16) int {
 	}
 
 	if low == cardinality-1 {
-		return int(ac.content[cardinality-1] + 1)
+		return int(ac.content[cardinality-1]) + 1
 	}
 
 	return int(ac.content[low] + 1)
