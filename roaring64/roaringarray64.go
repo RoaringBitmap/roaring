@@ -2,6 +2,7 @@ package roaring64
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/RoaringBitmap/roaring/v2"
 )
@@ -11,6 +12,14 @@ type roaringArray64 struct {
 	containers      []*roaring.Bitmap
 	needCopyOnWrite []bool
 	copyOnWrite     bool
+	// cowMu guards writes to needCopyOnWrite during Clone.
+	cowMu *sync.Mutex
+}
+
+func (ra *roaringArray64) ensureCowMu() {
+	if ra.cowMu == nil {
+		ra.cowMu = &sync.Mutex{}
+	}
 }
 
 var (
@@ -160,7 +169,11 @@ func (ra *roaringArray64) clone() *roaringArray64 {
 		copy(sa.containers, ra.containers)
 		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
 
+		ra.ensureCowMu()
+		ra.cowMu.Lock()
 		ra.markAllAsNeedingCopyOnWrite()
+		ra.cowMu.Unlock()
+		sa.ensureCowMu()
 		sa.markAllAsNeedingCopyOnWrite()
 
 		// sa.needCopyOnWrite is shared

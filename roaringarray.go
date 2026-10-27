@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/RoaringBitmap/roaring/v2/internal"
 )
@@ -123,6 +124,15 @@ type roaringArray struct {
 	containers      []container `msg:"-"` // don't try to serialize directly.
 	needCopyOnWrite []bool
 	copyOnWrite     bool
+	// cowMu guards writes to needCopyOnWrite during Clone. Concurrent
+	// clones of one copy-on-write bitmap otherwise write that slice together.
+	cowMu *sync.Mutex `msg:"-"`
+}
+
+func (ra *roaringArray) ensureCowMu() {
+	if ra.cowMu == nil {
+		ra.cowMu = &sync.Mutex{}
+	}
 }
 
 func newRoaringArray() *roaringArray {
@@ -267,7 +277,11 @@ func (ra *roaringArray) clone() *roaringArray {
 		copy(sa.containers, ra.containers)
 		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
 
+		ra.ensureCowMu()
+		ra.cowMu.Lock()
 		ra.markAllAsNeedingCopyOnWrite()
+		ra.cowMu.Unlock()
+		sa.ensureCowMu()
 		sa.markAllAsNeedingCopyOnWrite()
 
 		// sa.needCopyOnWrite is shared
