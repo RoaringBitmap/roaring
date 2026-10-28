@@ -173,6 +173,13 @@ func BenchmarkDenseBitmapOps(b *testing.B) {
 			sinkU += And(x, y).GetCardinality()
 		}
 	})
+	b.Run("IAnd", func(b *testing.B) {
+		for b.Loop() {
+			z := x.Clone()
+			z.And(y)
+			sinkU += z.GetCardinality()
+		}
+	})
 	b.Run("Xor", func(b *testing.B) {
 		for b.Loop() {
 			sinkU += Xor(x, y).GetCardinality()
