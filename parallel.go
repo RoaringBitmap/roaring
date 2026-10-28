@@ -283,18 +283,8 @@ func ParAnd(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 	andFunc := func() {
 		// Assumes only structs with >=2 containers are passed
 		for input := range inputChan {
-			c := input.containers[0].and(input.containers[1])
-			for _, next := range input.containers[2:] {
-				if c.isEmpty() {
-					break
-				}
-				c = c.iand(next)
-			}
-
-			// Send a nil explicitly if the result of the intersection is an empty container
-			if c.isEmpty() {
-				c = nil
-			}
+			// A nil result tells the receiver the intersection is empty.
+			c := andKChain(input.containers)
 
 			kx := keyedContainer{
 				input.key,

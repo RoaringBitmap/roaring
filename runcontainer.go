@@ -1858,10 +1858,75 @@ func (rc *runContainer16) andCardinality(a container) int {
 	panic("unsupported container type")
 }
 
-// andBitmapContainer finds the intersection of rc and b.
+const runAndScratchIntervals = 64
+
+// andInScratch reports whether ANDing rc with a bitmap is cheaper in a
+// scratch bitmap than interval by interval: past runAndScratchIntervals
+// intervals, the measured crossover, if the run covers more than 4096 values
+// or the vector fill makes reading the scratch back cheap.
+func (rc *runContainer16) andInScratch() bool {
+	return len(rc.iv) > runAndScratchIntervals && (useVectorFill || rc.getCardinality() > arrayDefaultMaxSize)
+}
+
+// andBitmapContainer intersects rc with bc, counting before allocating.
 func (rc *runContainer16) andBitmapContainer(bc *bitmapContainer) container {
-	bc2 := newBitmapContainerFromRun(rc)
-	return bc2.andBitmap(bc)
+	if c := rc.andBitmapCounted(bc); c != nil {
+		return c
+	}
+	return newArrayContainerCapacity(0)
+}
+
+// andBitmapCounted counts the intersection before building it, and returns
+// nil, allocating nothing, when it is empty.
+func (rc *runContainer16) andBitmapCounted(bc *bitmapContainer) container {
+	if rc.andInScratch() {
+		return rc.andBitmapContainerScratch(bc)
+	}
+	card := rc.andBitmapContainerCardinality(bc)
+	if card == 0 {
+		return nil
+	}
+	if card > arrayDefaultMaxSize {
+		answer := newBitmapContainer()
+		for i := range rc.iv {
+			copyBitmapRange(answer.bitmap, bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		}
+		answer.cardinality = card
+		return answer
+	}
+	return rc.andBitmapArray(bc, card)
+}
+
+// andBitmapArray returns the card values of bc inside rc's intervals as an
+// array container.
+func (rc *runContainer16) andBitmapArray(bc *bitmapContainer, card int) *arrayContainer {
+	if useVectorFill && card >= arrayVectorFillMinCardinality {
+		var runBits [bitmapContainerSize]uint64
+		for i := range rc.iv {
+			setBitmapRange(runBits[:], int(rc.iv[i].start), int(rc.iv[i].last())+1)
+		}
+		ac := newArrayContainerSize(card)
+		fillArrayAND(ac.content, runBits[:], bc.bitmap)
+		return ac
+	}
+	ac := newArrayContainerCapacity(card)
+	for i := range rc.iv {
+		ac.content = appendBitmapRange(ac.content, bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
+	}
+	return ac
+}
+
+func (rc *runContainer16) andBitmapContainerScratch(bc *bitmapContainer) container {
+	first, last := int(rc.iv[0].start)/64, int(rc.maximum())/64
+	var scratch [bitmapContainerSize]uint64
+	for i := range rc.iv {
+		copyBitmapRange(scratch[:], bc.bitmap, int(rc.iv[i].start), int(rc.iv[i].last())+1)
+	}
+	card := int(popcntSlice(scratch[first : last+1]))
+	if card == 0 {
+		return nil
+	}
+	return containerFromWords(scratch[:], first, last, card)
 }
 
 func (rc *runContainer16) andArrayCardinality(ac *arrayContainer) int {
@@ -1897,6 +1962,9 @@ func (rc *runContainer16) iand(a container) container {
 	if rc.isFull() {
 		return a.clone()
 	}
+	if a.isFull() {
+		return rc
+	}
 	switch c := a.(type) {
 	case *runContainer16:
 		// Important: there is no reason to believe that the
@@ -1923,33 +1991,43 @@ func (rc *runContainer16) inplaceIntersect(rc2 *runContainer16) container {
 }
 
 func (rc *runContainer16) andArray(ac *arrayContainer) container {
-	if len(rc.iv) == 0 {
-		return newArrayContainer()
+	c := newArrayContainerCapacity(len(ac.content))
+	c.content = c.content[:andArrayInto(rc.iv, ac.content, c.content[:cap(c.content)])]
+	return c
+}
+
+// andArrayInto writes the values of vals inside the intervals to buf, which
+// may be vals itself, and returns how many there are.
+func andArrayInto(intervals []interval16, vals, buf []uint16) int {
+	if len(intervals) == 0 {
+		return 0
 	}
-
-	acCardinality := ac.getCardinality()
-	c := newArrayContainerCapacity(acCardinality)
-
-	for rlePos, arrayPos := 0, 0; arrayPos < acCardinality; {
-		iv := rc.iv[rlePos]
-		arrayVal := ac.content[arrayPos]
+	if len(intervals) == 1 {
+		lo, hi := sliceInInterval(vals, intervals[0])
+		return copy(buf, vals[lo:hi])
+	}
+	n := 0
+	for rlePos, arrayPos := 0, 0; arrayPos < len(vals); {
+		iv := intervals[rlePos]
+		arrayVal := vals[arrayPos]
 
 		for iv.last() < arrayVal {
 			rlePos++
-			if rlePos == len(rc.iv) {
-				return c
+			if rlePos == len(intervals) {
+				return n
 			}
-			iv = rc.iv[rlePos]
+			iv = intervals[rlePos]
 		}
 
 		if iv.start > arrayVal {
-			arrayPos = advanceUntil(ac.content, arrayPos, len(ac.content), iv.start)
+			arrayPos = advanceUntil(vals, arrayPos, len(vals), iv.start)
 		} else {
-			c.content = append(c.content, arrayVal)
+			buf[n] = arrayVal
+			n++
 			arrayPos++
 		}
 	}
-	return c
+	return n
 }
 
 func (rc *runContainer16) andNot(a container) container {
@@ -2420,10 +2498,77 @@ func (rc *runContainer16) lazyOR(a container) container {
 	return rc.or(a)
 }
 
+// sliceInInterval returns the bounds of the sorted vals inside iv, galloping
+// from the front (advanceUntil searches after -1), where the slice starts.
+func sliceInInterval(vals []uint16, iv interval16) (int, int) {
+	lo := advanceUntil(vals, -1, len(vals), iv.start)
+	if iv.last() == MaxUint16 {
+		return lo, len(vals)
+	}
+	return lo, advanceUntil(vals, lo-1, len(vals), iv.last()+1)
+}
+
+// firstInArray returns the position of the first of the sorted vals inside
+// rc, or -1.
+func (rc *runContainer16) firstInArray(vals []uint16) int {
+	if len(rc.iv) == 1 {
+		if lo, hi := sliceInInterval(vals, rc.iv[0]); lo < hi {
+			return lo
+		}
+		return -1
+	}
+	if 2*len(vals)*bits.Len(uint(len(rc.iv))) < len(rc.iv) {
+		// Few values against many intervals: a search each beats walking
+		// every interval.
+		for i, v := range vals {
+			if rc.contains(v) {
+				return i
+			}
+		}
+		return -1
+	}
+	for i, pos := 0, 0; i < len(rc.iv) && pos < len(vals); {
+		v := vals[pos]
+		for rc.iv[i].last() < v {
+			if i++; i == len(rc.iv) {
+				return -1
+			}
+		}
+		if rc.iv[i].start <= v {
+			return pos
+		}
+		pos = advanceUntil(vals, pos, len(vals), rc.iv[i].start)
+	}
+	return -1
+}
+
 func (rc *runContainer16) intersects(a container) bool {
-	// TODO: optimize by doing inplace/less allocation
-	isect := rc.and(a)
-	return !isect.isEmpty()
+	switch c := a.(type) {
+	case *bitmapContainer:
+		for i := range rc.iv {
+			if c.intersectsRange(uint(rc.iv[i].start), uint(rc.iv[i].last())+1) {
+				return true
+			}
+		}
+		return false
+	case *arrayContainer:
+		return rc.firstInArray(c.content) >= 0
+	case *runContainer16:
+		i, j := 0, 0
+		for i < len(rc.iv) && j < len(c.iv) {
+			x, y := rc.iv[i], c.iv[j]
+			if haveOverlap16(x, y) {
+				return true
+			}
+			if x.last() < y.last() {
+				i++
+			} else {
+				j++
+			}
+		}
+		return false
+	}
+	panic("unsupported container type")
 }
 
 func (rc *runContainer16) xor(a container) container {
