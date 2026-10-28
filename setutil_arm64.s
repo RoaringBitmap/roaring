@@ -34,7 +34,7 @@
  // Right now it moves the necessary shorts so that the remaining count
  // is a multiple of 4 and then copies 64 bits at a time.
 
-TEXT ·union2by2(SB), NOSPLIT, $0-80
+TEXT ·union2by2scalar(SB), NOSPLIT, $0-80
 	// R0, R1, and R2 for the pointers to the three slices
 	MOVD set1+0(FP), R0
 	MOVD set2+24(FP), R1
