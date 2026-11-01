@@ -230,3 +230,60 @@ func TestBitMapValidationFromFrozen(t *testing.T) {
 		})
 	}
 }
+
+func TestFrozenViewKindsMissing(t *testing.T) {
+	tests := []struct {
+		name  string
+		build func() *Bitmap
+	}{
+		{
+			// no container at all: the frozen buffer is only the 4 byte header
+			name: "empty bitmap",
+			build: func() *Bitmap {
+				return New()
+			},
+		},
+		{
+			// no array and no run container
+			name: "one bitmap container",
+			build: func() *Bitmap {
+				bm := New()
+				for i := uint32(0); i < 10000; i += 2 { // 5000 values
+					bm.Add(i)
+				}
+				return bm
+			},
+		},
+		{
+			// no bitmap and no run container
+			name: "one array container",
+			build: func() *Bitmap {
+				return BitmapOf(1, 5, 9)
+			},
+		},
+		{
+			// no run container
+			name: "bitmap and array containers",
+			build: func() *Bitmap {
+				bm := New()
+				for i := uint32(0); i < 10000; i += 2 {
+					bm.Add(i)
+				}
+				bm.Add(1 << 16)
+				return bm
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bm := tt.build()
+			buf, err := bm.Freeze()
+			assert.NoError(t, err)
+
+			view := New()
+			assert.NoError(t, view.FrozenView(buf))
+			assert.True(t, view.Equals(bm))
+		})
+	}
+}

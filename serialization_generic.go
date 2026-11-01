@@ -97,6 +97,9 @@ func interval16SliceAsByteSlice(slice []interval16) []byte {
 }
 
 func byteSliceAsUint16Slice(slice []byte) []uint16 {
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%2 != 0 {
 		panic("Slice size should be divisible by 2")
 	}
@@ -111,6 +114,9 @@ func byteSliceAsUint16Slice(slice []byte) []uint16 {
 }
 
 func byteSliceAsUint64Slice(slice []byte) []uint64 {
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%8 != 0 {
 		panic("Slice size should be divisible by 8")
 	}
@@ -128,6 +134,9 @@ func byteSliceAsUint64Slice(slice []byte) []uint64 {
 // The function assumes that the slice byte buffer is run container data
 // encoded according to Roaring Format Spec
 func byteSliceAsInterval16Slice(byteSlice []byte) []interval16 {
+	if len(byteSlice) == 0 {
+		return nil
+	}
 	if len(byteSlice)%4 != 0 {
 		panic("Slice size should be divisible by 4")
 	}

@@ -335,6 +335,13 @@ func TestByteSliceAsUint16Slice(t *testing.T) {
 		assert.Equal(t, 0, cap(uint16Slice))
 	})
 
+	t.Run("empty slice at the end of a buffer", func(t *testing.T) {
+		buf := make([]byte, 16)
+		uint16Slice := byteSliceAsUint16Slice(buf[len(buf):])
+
+		assert.Nil(t, uint16Slice)
+	})
+
 	t.Run("invalid slice size", func(t *testing.T) {
 		slice := make([]byte, 1, 1)
 
@@ -379,6 +386,13 @@ func TestByteSliceAsUint64Slice(t *testing.T) {
 		assert.Equal(t, 0, cap(uint64Slice))
 	})
 
+	t.Run("empty slice at the end of a buffer", func(t *testing.T) {
+		buf := make([]byte, 16)
+		uint64Slice := byteSliceAsUint64Slice(buf[len(buf):])
+
+		assert.Nil(t, uint64Slice)
+	})
+
 	t.Run("invalid slice size", func(t *testing.T) {
 		slice := make([]byte, 1, 1)
 
@@ -414,6 +428,13 @@ func TestByteSliceAsInterval16Slice(t *testing.T) {
 
 		assert.Equal(t, 0, len(intervalSlice))
 		assert.Equal(t, 0, cap(intervalSlice))
+	})
+
+	t.Run("empty slice at the end of a buffer", func(t *testing.T) {
+		buf := make([]byte, 16)
+		intervalSlice := byteSliceAsInterval16Slice(buf[len(buf):])
+
+		assert.Nil(t, intervalSlice)
 	})
 
 	t.Run("invalid slice length", func(t *testing.T) {

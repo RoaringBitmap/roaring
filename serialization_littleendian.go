@@ -65,99 +65,98 @@ func (bc *bitmapContainer) asLittleEndianByteSlice() []byte {
 // //
 func byteSliceAsUint16Slice(slice []byte) (result []uint16) { // here we create a new slice holder
 	const sz = int(unsafe.Sizeof(uint16(0)))
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%sz != 0 {
 		panic(fmt.Sprintf("Slice size should be divisible by %d", sz))
 	}
 	ptr := unsafe.SliceData(slice)
-	if ptr == nil {
-		return nil
-	}
 	return unsafe.Slice((*uint16)(unsafe.Pointer(ptr)), len(slice)/sz)
 }
 
 func byteSliceAsUint64Slice(slice []byte) (result []uint64) {
 	const sz = int(unsafe.Sizeof(uint64(0)))
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%sz != 0 {
 		panic(fmt.Sprintf("Slice size should be divisible by %d", sz))
 	}
 	ptr := unsafe.SliceData(slice)
-	if ptr == nil {
-		return nil
-	}
 	return unsafe.Slice((*uint64)(unsafe.Pointer(ptr)), len(slice)/sz)
 }
 
 func byteSliceAsInterval16Slice(slice []byte) (result []interval16) {
 	const sz = int(unsafe.Sizeof(interval16{}))
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%sz != 0 {
 		panic(fmt.Sprintf("Slice size should be divisible by %d", sz))
 	}
 	ptr := unsafe.SliceData(slice)
-	if ptr == nil {
-		return nil
-	}
 	return unsafe.Slice((*interval16)(unsafe.Pointer(ptr)), len(slice)/sz)
 }
 
 func byteSliceAsContainerSlice(slice []byte) (result []container) {
 	var c container
 	containerSize := int(unsafe.Sizeof(c))
-
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%containerSize != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(container)")
 	}
 	ptr := unsafe.SliceData(slice)
-	if ptr == nil {
-		return nil
-	}
 	return unsafe.Slice((*container)(unsafe.Pointer(ptr)), len(slice)/containerSize)
 }
 
 func byteSliceAsBitsetSlice(slice []byte) (result []bitmapContainer) {
 	const bitsetSize = int(unsafe.Sizeof(bitmapContainer{}))
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%bitsetSize != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(bitmapContainer)")
 	}
 	ptr := unsafe.SliceData(slice)
-	if ptr == nil {
-		return nil
-	}
 	return unsafe.Slice((*bitmapContainer)(unsafe.Pointer(ptr)), len(slice)/bitsetSize)
 }
 
 func byteSliceAsArraySlice(slice []byte) (result []arrayContainer) {
 	const arraySize = int(unsafe.Sizeof(arrayContainer{}))
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%arraySize != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(arrayContainer)")
 	}
 	ptr := unsafe.SliceData(slice)
-	if ptr == nil {
-		return nil
-	}
 	return unsafe.Slice((*arrayContainer)(unsafe.Pointer(ptr)), len(slice)/arraySize)
 }
 
 func byteSliceAsRun16Slice(slice []byte) (result []runContainer16) {
 	const run16Size = int(unsafe.Sizeof(runContainer16{}))
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%run16Size != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(runContainer16)")
 	}
 	ptr := unsafe.SliceData(slice)
-	if ptr == nil {
-		return nil
-	}
 	return unsafe.Slice((*runContainer16)(unsafe.Pointer(ptr)), len(slice)/run16Size)
 }
 
 func byteSliceAsBoolSlice(slice []byte) (result []bool) {
 	const boolSize = int(unsafe.Sizeof(true))
+	if len(slice) == 0 {
+		return nil
+	}
 	if len(slice)%boolSize != 0 {
 		panic("Slice size should be divisible by unsafe.Sizeof(bool)")
 	}
 	ptr := unsafe.SliceData(slice)
-	if ptr == nil {
-		return nil
-	}
 	return unsafe.Slice((*bool)(unsafe.Pointer(ptr)), len(slice)/boolSize)
 }
 
