@@ -774,11 +774,15 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 			// run container
 			nr, err := stream.ReadUInt16()
 			if err != nil {
+				// leave the bitmap empty (and valid) rather than with nil containers
+				ra.resize(0)
 				return 0, fmt.Errorf("failed to read runtime container size: %s", err)
 			}
 
 			buf, err := stream.Next(int(nr) * 4)
 			if err != nil {
+				// leave the bitmap empty (and valid) rather than with nil containers
+				ra.resize(0)
 				return stream.GetReadBytes(), fmt.Errorf("failed to read runtime container content: %s", err)
 			}
 
@@ -791,6 +795,8 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 			// bitmap container
 			buf, err := stream.Next(arrayDefaultMaxSize * 2)
 			if err != nil {
+				// leave the bitmap empty (and valid) rather than with nil containers
+				ra.resize(0)
 				return stream.GetReadBytes(), fmt.Errorf("failed to read bitmap container: %s", err)
 			}
 
@@ -804,6 +810,8 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 			// array container
 			buf, err := stream.Next(card * 2)
 			if err != nil {
+				// leave the bitmap empty (and valid) rather than with nil containers
+				ra.resize(0)
 				return stream.GetReadBytes(), fmt.Errorf("failed to read array container: %s", err)
 			}
 

@@ -290,6 +290,29 @@ type task struct {
 func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int64,
 	foundSet *roaring.Bitmap) *roaring.Bitmap {
 
+	// A BSI with fewer than 64 bit slices only holds non-negative values, so
+	// negative bounds can be clamped (or answered directly): the bitwise
+	// comparison below would otherwise compare a truncated two's complement.
+	if b.BitCount() < 64 {
+		switch op {
+		case RANGE:
+			if end < 0 {
+				return roaring.NewBitmap()
+			}
+			if valueOrStart < 0 {
+				valueOrStart = 0
+			}
+		case LT, LE, EQ:
+			if valueOrStart < 0 {
+				return roaring.NewBitmap()
+			}
+		case GT, GE:
+			if valueOrStart < 0 {
+				op, valueOrStart = GE, 0
+			}
+		}
+	}
+
 	comp := &task{bsi: b, op: op, valueOrStart: valueOrStart, end: end}
 	if foundSet == nil {
 		return parallelExecutor(parallelism, comp, compareValue, b.eBM)
