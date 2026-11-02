@@ -2,25 +2,13 @@ package roaring
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"unsafe"
 )
-
-type readCountingReader struct {
-	reader io.Reader
-	calls  int
-	max    int
-}
-
-func (r *readCountingReader) Read(p []byte) (int, error) {
-	r.calls++
-	if r.max > 0 && len(p) > r.max {
-		p = p[:r.max]
-	}
-	return r.reader.Read(p)
-}
 
 func noRunSparseBitmap(containers int) *Bitmap {
 	bitmap := New()
@@ -67,7 +55,7 @@ func TestReadFromNoRunBatchesPayloads(t *testing.T) {
 
 	for name, source := range map[string]io.Reader{"memory": bytes.NewReader(withSentinel), "file": file} {
 		t.Run(name, func(t *testing.T) {
-			reader := &readCountingReader{reader: source}
+			reader := &benchmarkCountingReader{reader: source}
 			got := New()
 			read, err := got.ReadFrom(reader)
 			if err != nil {
@@ -97,7 +85,7 @@ func TestReadFromNoRunSplitsOnlyBetweenContainers(t *testing.T) {
 	for _, tc := range []struct{ containers, calls int }{{32768, 5}, {32769, 6}, {65536, 6}} {
 		want := noRunSparseBitmap(tc.containers)
 		data := serializedBitmap(t, want)
-		reader := &readCountingReader{reader: bytes.NewReader(data)}
+		reader := &benchmarkCountingReader{reader: bytes.NewReader(data)}
 		got := New()
 
 		read, err := got.ReadFrom(reader)
@@ -121,7 +109,7 @@ func TestReadFromNoRunHandlesShortReads(t *testing.T) {
 	data := serializedBitmap(t, want)
 	withSentinel := append(append([]byte(nil), data...), []byte("sentinel")...)
 	source := bytes.NewReader(withSentinel)
-	reader := &readCountingReader{reader: source, max: 3}
+	reader := &benchmarkCountingReader{reader: source, max: 3}
 	got := New()
 
 	read, err := got.ReadFrom(reader)
@@ -226,6 +214,95 @@ func TestFromBufferNoRunRetainsCopyOnWrite(t *testing.T) {
 	for i, needsCopy := range got.highlowcontainer.needCopyOnWrite {
 		if !needsCopy {
 			t.Fatalf("container %d is not marked copy-on-write", i)
+		}
+	}
+}
+
+type readErrorReader struct {
+	data       []byte
+	offset, at int
+	err        error
+	zero       bool
+	step       int
+}
+
+func (r *readErrorReader) Read(p []byte) (int, error) {
+	if r.at >= 0 && r.offset == r.at {
+		r.at = -1
+		return 0, r.err
+	}
+	if r.at >= 0 && len(p) > r.at-r.offset {
+		p = p[:r.at-r.offset]
+	}
+	n := copy(p, r.data[r.offset:])
+	r.offset += n
+	if r.at >= 0 && r.offset == r.at && !r.zero {
+		if r.step > 0 {
+			r.at += r.step
+		} else {
+			r.at = -1
+		}
+		return n, r.err
+	}
+	if n == 0 {
+		return 0, io.EOF
+	}
+	return n, nil
+}
+
+func TestReadFromNoRunReaderErrors(t *testing.T) {
+	want := BitmapOf(7, 70000, 140000)
+	data := serializedBitmap(t, want)
+	fault := errors.New("read failure")
+	for _, tc := range []struct {
+		name      string
+		at, step  int
+		zero      bool
+		err       error
+		truncate  bool
+		wantRead  int64
+		wantError string
+	}{
+		{name: "boundary data", at: 34, err: fault, wantRead: 38},
+		{name: "repeated boundary data", at: 34, step: 2, err: fault, wantRead: 38},
+		{name: "boundary zero", at: 34, zero: true, err: fault, wantRead: 34, wantError: fault.Error()},
+		{name: "interior data", at: 35, err: fault, wantRead: 35, wantError: fault.Error()},
+		{name: "interior zero", at: 35, zero: true, err: fault, wantRead: 35, wantError: fault.Error()},
+		{name: "boundary EOF", at: 34, err: io.EOF, truncate: true, wantRead: 34, wantError: "EOF"},
+		{name: "interior EOF", at: 35, err: io.EOF, truncate: true, wantRead: 35, wantError: "unexpected EOF"},
+		{name: "final data", at: 38, err: fault, wantRead: 38},
+	} {
+		for name, read := range map[string]func(*Bitmap, io.Reader) (int64, error){
+			"ReadFrom":     func(b *Bitmap, r io.Reader) (int64, error) { return b.ReadFrom(r) },
+			"MustReadFrom": func(b *Bitmap, r io.Reader) (int64, error) { return b.MustReadFrom(r) },
+		} {
+			t.Run(tc.name+"/"+name, func(t *testing.T) {
+				input := data
+				if tc.truncate {
+					input = input[:tc.at]
+				}
+				r := &readErrorReader{data: input, at: tc.at, step: tc.step, zero: tc.zero, err: tc.err}
+				got := BitmapOf(1, 2, 3)
+				n, err := read(got, r)
+				if n != tc.wantRead || int64(r.offset) != tc.wantRead {
+					t.Fatalf("read=%d position=%d, want %d", n, r.offset, tc.wantRead)
+				}
+				if tc.wantError == "" {
+					if err != nil || !got.Equals(want) {
+						t.Fatalf("decode: bitmap=%v error=%v", got, err)
+					}
+				} else {
+					if err == nil || !strings.HasSuffix(err.Error(), ": "+tc.wantError) {
+						t.Fatalf("error=%v, want %q", err, tc.wantError)
+					}
+					if !got.IsEmpty() {
+						t.Fatal("failed decode left a nonempty bitmap")
+					}
+				}
+				if err := got.Validate(); err != nil {
+					t.Fatal(err)
+				}
+			})
 		}
 	}
 }

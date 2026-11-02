@@ -764,7 +764,7 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 		ra.needCopyOnWrite = make([]bool, size)
 	}
 
-	_, isByteInputAdapter := stream.(*internal.ByteInputAdapter)
+	adapter, isByteInputAdapter := stream.(*internal.ByteInputAdapter)
 	if isRunBitmap == nil && isByteInputAdapter {
 		for i := uint32(0); i < size; {
 			groupStart := i
@@ -780,8 +780,29 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 				i++
 			}
 
-			buf, err := stream.Next(groupSize)
-			if err != nil {
+			buf := make([]byte, groupSize)
+			read := 0
+			boundary := 0
+			nextContainer := groupStart
+			for read < groupSize {
+				n, err := adapter.ReadSome(buf[read:])
+				read += n
+				if err == nil || read == groupSize {
+					continue
+				}
+				for boundary < read {
+					card := int(keycard[2*nextContainer+1]) + 1
+					boundary += getSizeInBytesFromCardinality(card)
+					nextContainer++
+				}
+				// Like per-container ReadAtLeast, discard a data-bearing error
+				// only when it completes a container.
+				if n > 0 && read == boundary {
+					continue
+				}
+				if err == io.EOF && read < boundary {
+					err = io.ErrUnexpectedEOF
+				}
 				// leave the bitmap empty (and valid) rather than with nil containers
 				ra.resize(0)
 				return stream.GetReadBytes(), fmt.Errorf("failed to read no-run container group: %s", err)
