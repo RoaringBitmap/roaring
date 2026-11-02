@@ -186,3 +186,37 @@ func BenchmarkRealDataFastOr(b *testing.B) {
 		return FastOr(bitmaps...).GetCardinality()
 	})
 }
+
+func BenchmarkRealDataOrInPlace(b *testing.B) {
+	benchmarkRealDataAggregate(b, func(bitmaps []*Bitmap) uint64 {
+		tot := uint64(0)
+		for i := 1; i < len(bitmaps); i++ {
+			x := bitmaps[i-1].Clone()
+			x.Or(bitmaps[i])
+			tot += x.GetCardinality()
+		}
+		return tot
+	})
+}
+
+func BenchmarkRealDataOrFold(b *testing.B) {
+	benchmarkRealDataAggregate(b, func(bitmaps []*Bitmap) uint64 {
+		x := bitmaps[0].Clone()
+		for _, y := range bitmaps[1:] {
+			x.Or(y)
+		}
+		return x.GetCardinality()
+	})
+}
+
+func BenchmarkRealDataAndInPlace(b *testing.B) {
+	benchmarkRealDataAggregate(b, func(bitmaps []*Bitmap) uint64 {
+		tot := uint64(0)
+		for i := 1; i < len(bitmaps); i++ {
+			x := bitmaps[i-1].Clone()
+			x.And(bitmaps[i])
+			tot += x.GetCardinality()
+		}
+		return tot
+	})
+}
