@@ -764,6 +764,51 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 		ra.needCopyOnWrite = make([]bool, size)
 	}
 
+	_, isByteInputAdapter := stream.(*internal.ByteInputAdapter)
+	if isRunBitmap == nil && isByteInputAdapter {
+		for i := uint32(0); i < size; {
+			groupStart := i
+			groupSize := 0
+			for i < size {
+				card := int(keycard[2*i+1]) + 1
+				containerSize := getSizeInBytesFromCardinality(card)
+				if groupSize+containerSize > maxContainerGroupSize ||
+					(card > arrayDefaultMaxSize && groupSize%8 != 0) {
+					break
+				}
+				groupSize += containerSize
+				i++
+			}
+
+			buf, err := stream.Next(groupSize)
+			if err != nil {
+				// leave the bitmap empty (and valid) rather than with nil containers
+				ra.resize(0)
+				return stream.GetReadBytes(), fmt.Errorf("failed to read no-run container group: %s", err)
+			}
+			groupOffset := 0
+			for j := groupStart; j < i; j++ {
+				card := int(keycard[2*j+1]) + 1
+				containerSize := getSizeInBytesFromCardinality(card)
+				key := keycard[2*j]
+				ra.keys[j] = key
+				ra.needCopyOnWrite[j] = willNeedCopyOnWrite
+
+				containerBuf := buf[groupOffset : groupOffset+containerSize : groupOffset+containerSize]
+				if card > arrayDefaultMaxSize {
+					ra.containers[j] = &bitmapContainer{
+						cardinality: card,
+						bitmap:      byteSliceAsUint64Slice(containerBuf),
+					}
+				} else {
+					ra.containers[j] = &arrayContainer{byteSliceAsUint16Slice(containerBuf)}
+				}
+				groupOffset += containerSize
+			}
+		}
+		return stream.GetReadBytes(), nil
+	}
+
 	for i := uint32(0); i < size; i++ {
 		key := keycard[2*i]
 		card := int(keycard[2*i+1]) + 1
