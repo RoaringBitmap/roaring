@@ -72,6 +72,30 @@ func assertUsableAfterFailure(t *testing.T, rb *Bitmap, before []uint32) {
 	})
 }
 
+// MustReadFrom must surface a read error. A truncated body is left empty, and
+// an empty bitmap validates, so dropping the error looks like a successful load.
+func TestMustReadFromReportsReadError(t *testing.T) {
+	src, err := BitmapOf(7, 70000, 140000).ToBytes()
+	require.NoError(t, err)
+
+	rb := BitmapOf(1, 2, 3)
+	_, err = rb.MustReadFrom(bytes.NewReader(src[:len(src)-1]))
+	assert.Error(t, err)
+	assert.EqualValues(t, 0, rb.GetCardinality())
+	assert.NoError(t, rb.Validate())
+
+	n, err := rb.MustReadFrom(bytes.NewReader(src))
+	require.NoError(t, err)
+	assert.EqualValues(t, len(src), n)
+	assert.Equal(t, []uint32{7, 70000, 140000}, rb.ToArray())
+
+	// A bad cookie fails before the receiver is modified.
+	rb = BitmapOf(1, 2, 3)
+	_, err = rb.MustReadFrom(bytes.NewReader([]byte{0, 0, 0, 0}))
+	assert.Error(t, err)
+	assert.Equal(t, []uint32{1, 2, 3}, rb.ToArray())
+}
+
 // Gap 1 (serialization): a failed deserialization must not leave the receiver
 // with nil containers. Gap 10: every strict prefix of a valid buffer is rejected.
 func TestDeserializationFailureLeavesUsableBitmap(t *testing.T) {
