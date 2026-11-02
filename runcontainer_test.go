@@ -2771,3 +2771,16 @@ func getRandomSameThreeContainers(tr trial) (*arrayContainer, *runContainer16, *
 
 	return ac, rc, bc
 }
+
+// TestRunContainerToBitmapContainerCardinality checks that converting a run
+// container to a bitmap container yields the correct cardinality (it used to
+// be counted twice).
+func TestRunContainerToBitmapContainerCardinality(t *testing.T) {
+	rc := newRunContainer16Range(0, 9)
+	rc.iaddRange(100, 5000)
+	rc.iaddRange(65000, 65536)
+	bc := rc.toBitmapContainer()
+	assert.Equal(t, rc.getCardinality(), bc.getCardinality())
+	assert.Equal(t, int(popcntSlice(bc.bitmap)), bc.getCardinality())
+	assert.True(t, bc.equals(rc))
+}

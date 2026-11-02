@@ -347,14 +347,18 @@ func (rb *Bitmap) ReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err
 }
 
 // MustReadFrom calls ReadFrom internally.
-// After deserialization Validate will be called.
-// If the Bitmap fails to validate, a panic with the validation error will be thrown
+// A read error is returned and Validate is not called.
+// After a successful read, Validate is called.
+// If the bitmap fails to validate, a panic with the validation error is thrown.
 func (rb *Bitmap) MustReadFrom(reader io.Reader, cookieHeader ...byte) (p int64, err error) {
-	rb.ReadFrom(reader, cookieHeader...)
-	if err := rb.Validate(); err != nil {
+	p, err = rb.ReadFrom(reader, cookieHeader...)
+	if err != nil {
+		return p, err
+	}
+	if err = rb.Validate(); err != nil {
 		panic(err)
 	}
-	return
+	return p, nil
 }
 
 // FromBuffer creates a bitmap from its serialized version stored in buffer (E.g., as written by WriteTo).

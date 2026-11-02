@@ -1366,10 +1366,20 @@ func (bc *bitmapContainer) addOffset(x uint16) (container, container) {
 
 	// Ensure proper nil interface.
 	if low == nil {
-		return nil, high
+		return nil, high.minimizeAfterShift()
 	}
 
-	return low, high
+	return low.minimizeAfterShift(), high.minimizeAfterShift()
+}
+
+// minimizeAfterShift converts a bitmap container produced by addOffset into
+// an array container when it holds too few values to be a valid bitmap
+// container.
+func (bc *bitmapContainer) minimizeAfterShift() container {
+	if bc.cardinality <= arrayDefaultMaxSize {
+		return bc.toArrayContainer()
+	}
+	return bc
 }
 
 // nextValue returns either the `target` if found or the next largest value.

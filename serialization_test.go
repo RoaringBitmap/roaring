@@ -111,7 +111,7 @@ func TestSerializationReadRunsFromFile039(t *testing.T) {
 }
 
 func TestSerializationBasic4WriteAndReadFile040(t *testing.T) {
-	fname := "testdata/all3.classic"
+	fname := filepath.Join(t.TempDir(), "all3.classic")
 
 	rb := NewBitmap()
 	for k := uint32(0); k < 100000; k += 1000 {
@@ -496,7 +496,7 @@ func TestBitmap_FromBuffer(t *testing.T) {
 	})
 
 	t.Run("bitmap without runs", func(t *testing.T) {
-		fn := "testdata/bitmapwithruns.bin"
+		fn := "testdata/bitmapwithoutruns.bin"
 		buf, err := os.ReadFile(fn)
 
 		if err != nil {
@@ -508,22 +508,9 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		_, err = rb.FromBuffer(buf)
 
 		require.NoError(t, err)
-	})
-
-	// all3.classic somehow created by other tests.
-	t.Run("all3.classic bitmap", func(t *testing.T) {
-		file := "testdata/all3.classic"
-		buf, err := os.ReadFile(file)
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "\n\nIMPORTANT: For testing file IO, the roaring library requires disk access.\nWe omit some tests for now.\n\n")
-			return
-		}
-
-		rb := NewBitmap()
-		_, err = rb.FromBuffer(buf)
-
-		require.NoError(t, err)
+		assert.EqualValues(t, 0, rb.Stats().RunContainers)
+		assert.EqualValues(t, 11, rb.Stats().Containers)
+		assert.EqualValues(t, 200100, rb.GetCardinality())
 	})
 
 	t.Run("testdata/bitmapwithruns.bin bitmap Ops", func(t *testing.T) {

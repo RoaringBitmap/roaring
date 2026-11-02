@@ -16,13 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// portableFixtures are reference streams produced by CRoaring, shared with the
-// Java implementation.
+// portableFixtures are reference streams shared with CRoaring and the Java
+// implementation. All but 64maprunbitsetvals.bin were produced by CRoaring;
+// that one was written by the Java library.
 var portableFixtures = []string{
 	"64mapempty.bin",
 	"64map32bitvals.bin",
 	"64mapspreadvals.bin",
 	"64maphighvals.bin",
+	"64maprunbitsetvals.bin",
 }
 
 // testdataPath resolves a fixture relative to this source file: some CI jobs run
@@ -59,6 +61,45 @@ func TestPortableSerializationMatchesCRoaring(t *testing.T) {
 			assert.True(t, legacy.Equals(bm))
 		})
 	}
+}
+
+// 64maprunbitsetvals.bin holds run, bitset and array containers, and a bucket
+// with more than four containers, so its 32-bit bitmap carries the offset
+// header.
+func TestPortableFixtureWithRunAndBitsetContainers(t *testing.T) {
+	reference, err := os.ReadFile(testdataPath(t, "64maprunbitsetvals.bin"))
+	require.NoError(t, err)
+	bm := NewBitmap()
+	_, err = bm.ReadPortableFrom(bytes.NewReader(reference))
+	require.NoError(t, err)
+
+	const k = uint64(1) << 32
+	const h = uint64(1) << 63
+	const m = uint64(math.MaxUint64)
+	expected := NewBitmap()
+	expected.Add(5)
+	expected.AddRange(k, k+1000) // a run
+	expected.Add(k + 65536)
+	for i := uint64(0); i < 5000; i++ {
+		expected.Add(2*k + 2*i) // a bitset
+	}
+	for i := uint64(1); i <= 4; i++ {
+		expected.Add(2*k + i*65536)
+	}
+	expected.Add(h - 1)
+	expected.Add(h)
+	expected.AddRange(m-99, m)
+	expected.Add(m)
+
+	assert.Equal(t, uint64(6108), bm.GetCardinality())
+	assert.True(t, bm.Contains(m))
+	assert.True(t, expected.Equals(bm))
+
+	// Run-optimized, the expected bitmap serializes to the same bytes.
+	expected.RunOptimize()
+	written, err := expected.ToPortableBytes()
+	require.NoError(t, err)
+	assert.Equal(t, reference, written)
 }
 
 func TestPortableDeserializationRejectsInvalidBucketCount(t *testing.T) {

@@ -143,6 +143,25 @@ func (ra *roaringArray64) resize(newsize int) {
 	ra.needCopyOnWrite = ra.needCopyOnWrite[:newsize]
 }
 
+// reserveForRead empties ra before deserializing size buckets into it. The
+// preallocation is capped so that a corrupt header claiming billions of buckets
+// costs nothing until the buckets actually show up.
+func (ra *roaringArray64) reserveForRead(size uint64) {
+	ra.resize(0)
+	if size > 1024 {
+		size = 1024
+	}
+	if uint64(cap(ra.keys)) < size {
+		ra.keys = make([]uint32, 0, size)
+	}
+	if uint64(cap(ra.containers)) < size {
+		ra.containers = make([]*roaring.Bitmap, 0, size)
+	}
+	if uint64(cap(ra.needCopyOnWrite)) < size {
+		ra.needCopyOnWrite = make([]bool, 0, size)
+	}
+}
+
 func (ra *roaringArray64) clear() {
 	ra.resize(0)
 	ra.copyOnWrite = false

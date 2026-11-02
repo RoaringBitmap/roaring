@@ -2636,7 +2636,7 @@ func (rc *runContainer16) toBitmapContainer() *bitmapContainer {
 	bc := newBitmapContainer()
 	bc.cardinality = 0
 	for i := range rc.iv {
-		bc.cardinality += rc.iv[i].runlen()
+		// iaddRange updates bc.cardinality
 		bc.iaddRange(int(rc.iv[i].start), int(rc.iv[i].last())+1)
 	}
 	return bc
