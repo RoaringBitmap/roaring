@@ -9,49 +9,11 @@
 
 This is a go version of the Roaring bitmap data structure. 
 
-Roaring bitmaps are used by several major systems such as [Apache Lucene][lucene] and derivative systems such as [Solr][solr] and
-[Elasticsearch][elasticsearch], [Apache Druid (Incubating)][druid], [LinkedIn Pinot][pinot], [Netflix Atlas][atlas],  [Apache Spark][spark], [OpenSearchServer][opensearchserver], [anacrolix/torrent][anacrolix/torrent], [Whoosh][whoosh], [Redpanda](https://github.com/redpanda-data/redpanda), [Pilosa][pilosa],  [Microsoft Visual Studio Team Services (VSTS)][vsts], and eBay's [Apache Kylin][kylin]. The YouTube SQL Engine, [Google Procella](https://research.google/pubs/pub48388/), uses Roaring bitmaps for indexing.
-
-[lucene]: https://lucene.apache.org/
-[solr]: https://lucene.apache.org/solr/
-[elasticsearch]: https://www.elastic.co/products/elasticsearch
-[druid]: https://druid.apache.org/
-[spark]: https://spark.apache.org/
-[opensearchserver]: http://www.opensearchserver.com
-[anacrolix/torrent]: https://github.com/anacrolix/torrent
-[whoosh]: https://bitbucket.org/mchaput/whoosh/wiki/Home
-[pilosa]: https://www.pilosa.com/
-[kylin]: http://kylin.apache.org/
-[pinot]: http://github.com/linkedin/pinot/wiki
-[vsts]: https://www.visualstudio.com/team-services/
-[atlas]: https://github.com/Netflix/atlas
-[quanta]: https://github.com/disney/quanta
-
 Roaring bitmaps are found to work well in many important applications:
 
 > Use Roaring for bitmap compression whenever possible. Do not use other bitmap compression methods ([Wang et al., SIGMOD 2017](http://db.ucsd.edu/wp-content/uploads/2017/03/sidm338-wangA.pdf))
 
-
-The ``roaring`` Go library is used by
-* [anacrolix/torrent]
-* [InfluxDB](https://www.influxdata.com)
-* [Pilosa](https://www.pilosa.com/)
-* [Bleve](http://www.blevesearch.com)
-* [Weaviate](https://github.com/weaviate/weaviate)
-* [lindb](https://github.com/lindb/lindb)
-* [Elasticell](https://github.com/deepfabric/elasticell)
-* [SourceGraph](https://github.com/sourcegraph/sourcegraph)
-* [M3](https://github.com/m3db/m3)
-* [trident](https://github.com/NetApp/trident)
-* [Husky](https://www.datadoghq.com/blog/engineering/introducing-husky/)
-* [FrostDB](https://github.com/polarsignals/frostdb)
-* [Disney Quanta](https://github.com/disney/quanta)
-
-
-
-
-This library is used in production in several systems, it is part of the [Awesome Go collection](https://awesome-go.com).
-
+This library is used in production in several systems, and it is part of the [Awesome Go collection](https://awesome-go.com). See [Users](#users).
 
 There are also  [Java](https://github.com/RoaringBitmap/RoaringBitmap) and [C/C++](https://github.com/RoaringBitmap/CRoaring) versions.  The Java, C, C++ and Go version are binary compatible: e.g,  you can save bitmaps
 from a Java program and load them back in Go, and vice versa. We have a [format specification](https://github.com/RoaringBitmap/RoaringFormatSpec).
@@ -429,6 +391,49 @@ The two versions were written independently.
 ### Mailing list/discussion group
 
 https://groups.google.com/g/roaring-bitmaps
+
+
+### Users
+
+Roaring bitmaps are used by the systems below. An entry marked "this library" depends on this Go package. The others use the Java library, the C/C++ library, or an implementation of their own.
+
+#### Search
+
+* [Apache Lucene](https://lucene.apache.org/). High-performance full-text search library. Lucene ships its own Roaring implementation for sets of document identifiers.
+* [Apache Solr](https://solr.apache.org/). Search platform built on Lucene.
+* [Elasticsearch](https://www.elastic.co/elasticsearch). Distributed search and analytics engine built on Lucene.
+* [OpenSearchServer](http://www.opensearchserver.com). Open-source enterprise search engine.
+* [Whoosh](https://github.com/mchaput/whoosh). Pure-Python full-text search library, with its own Roaring implementation.
+* [Bleve](https://github.com/blevesearch/bleve) (this library). Full-text search library for Go.
+* [Sourcegraph](https://sourcegraph.com) (this library). Code search and code intelligence platform.
+
+#### Analytics and databases
+
+* [Apache Druid](https://druid.apache.org/). Real-time analytics database.
+* [Apache Pinot](https://pinot.apache.org/). Real-time distributed OLAP datastore, started at LinkedIn.
+* [Apache Spark](https://spark.apache.org/). Unified engine for large-scale data processing.
+* [Apache Kylin](https://kylin.apache.org/). Distributed OLAP engine for big data, started at eBay.
+* [Google Procella](https://research.google/pubs/pub48388/). YouTube's SQL engine. It uses Roaring bitmaps for indexing.
+* [Pilosa](https://github.com/pilosa/pilosa) (this library). Distributed bitmap index.
+* [Quanta](https://github.com/disney/quanta) (this library). Disney's HTAP database, built on Roaring bitmaps.
+* [Weaviate](https://weaviate.io) (this library). Open-source vector database.
+* [Elasticell](https://github.com/deepfabric/elasticell) (this library). Distributed key-value database with a Redis-compatible protocol.
+* [FrostDB](https://github.com/polarsignals/frostdb) (this library). Embeddable columnar database from Polar Signals, written for observability workloads.
+
+#### Time series and observability
+
+* [InfluxDB](https://www.influxdata.com) (this library). Time series database from InfluxData.
+* [LinDB](https://lindb.io) (this library). Distributed time series database.
+* [M3](https://m3db.io) (this library). Uber's metrics platform, including a distributed time series database and query engine.
+* [Netflix Atlas](https://github.com/Netflix/atlas). In-memory dimensional time series database.
+* [Husky](https://www.datadoghq.com/blog/engineering/introducing-husky/) (this library). Datadog's columnar event store for observability data.
+
+#### Streaming, storage, and other systems
+
+* [Redpanda](https://github.com/redpanda-data/redpanda). Streaming data platform with a Kafka-compatible API. It uses the C/C++ library.
+* [NetApp Trident](https://github.com/NetApp/trident) (this library). Storage provisioner for Kubernetes.
+* [anacrolix/torrent](https://github.com/anacrolix/torrent) (this library). BitTorrent client package and utilities in Go.
+* [Azure DevOps Services](https://azure.microsoft.com/products/devops). Microsoft's hosted DevOps service, formerly Visual Studio Team Services.
 
 
 ### Further reading
