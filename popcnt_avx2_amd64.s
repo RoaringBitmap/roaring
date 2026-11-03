@@ -358,3 +358,86 @@ TEXT ·_hasAVX2(SB), NOSPLIT, $0-1
 noavx2:
 	SETEQ ret+0(FP)          // ZF is still set by whichever TESTL ran last
 	RET
+
+// func _andStoreSliceAVX2(dst, a, b []uint64)
+// Writes a[i] & b[i] to dst[i]. The three slices must have equal lengths.
+// Four uint64 words are processed per AVX2 iteration; a scalar tail handles
+// any remaining words. dst may alias either input.
+TEXT ·_andStoreSliceAVX2(SB), NOSPLIT, $0-72
+	MOVQ dst_base+0(FP), DI
+	MOVQ a_base+24(FP), SI
+	MOVQ b_base+48(FP), DX
+	MOVQ dst_len+8(FP), CX
+
+	MOVQ CX, R8
+	SHRQ $2, R8
+	JZ andstoretail
+andstoreloop:
+	VMOVDQU (SI), Y0
+	VPAND (DX), Y0, Y0
+	VMOVDQU Y0, (DI)
+	ADDQ $32, DI
+	ADDQ $32, SI
+	ADDQ $32, DX
+	DECQ R8
+	JNZ andstoreloop
+andstoretail:
+	ANDL $3, CX
+	JZ andstoredone
+andstoretailloop:
+	MOVQ (SI), AX
+	ANDQ (DX), AX
+	MOVQ AX, (DI)
+	ADDQ $8, DI
+	ADDQ $8, SI
+	ADDQ $8, DX
+	DECL CX
+	JNZ andstoretailloop
+andstoredone:
+	VZEROUPPER
+	RET
+
+// func _andCardStoreSliceAVX2(dst, a, b []uint64) uint64
+// Writes a[i] & b[i] to dst[i] and returns the population count of the
+// result. Four uint64 words are processed per AVX2 iteration; a scalar tail
+// handles any remaining words. dst may alias either input.
+TEXT ·_andCardStoreSliceAVX2(SB), NOSPLIT, $0-80
+	MOVQ dst_base+0(FP), R10
+	MOVQ a_base+24(FP), SI
+	MOVQ b_base+48(FP), DI
+	MOVQ dst_len+8(FP), CX
+	XORL AX, AX
+
+	MOVQ CX, R8
+	SHRQ $2, R8
+	JZ andcardstoretail
+	SETUP
+andcardstoreloop:
+	VMOVDQU (SI), Ydata
+	VPAND (DI), Ydata, Ydata
+	VMOVDQU Ydata, (R10)
+	COUNTBLOCK
+	ADDQ $32, R10
+	ADDQ $32, SI
+	ADDQ $32, DI
+	DECQ R8
+	JNZ andcardstoreloop
+	HSUM
+andcardstoretail:
+	ANDL $3, CX
+	JZ andcardstoredone
+andcardstoretailloop:
+	MOVQ (SI), DX
+	ANDQ (DI), DX
+	MOVQ DX, (R10)
+	POPCNTQ DX, DX
+	ADDQ DX, AX
+	ADDQ $8, R10
+	ADDQ $8, SI
+	ADDQ $8, DI
+	DECL CX
+	JNZ andcardstoretailloop
+andcardstoredone:
+	VZEROUPPER
+	MOVQ AX, ret+72(FP)
+	RET

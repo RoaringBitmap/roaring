@@ -30,8 +30,10 @@ func andCardSliceAVX512(dst, a, b []uint64) uint64
 
 // useAVX512BitsetOps requires AVX512_VPOPCNTDQ because the fused kernels use
 // VPOPCNTQ; the plain writes only need AVX512F, but they are gated together so
-// a single flag governs the whole file. x/sys/cpu verifies operating-system
-// support for the ZMM state and honors GODEBUG=cpu.avx512vpopcntdq=off.
+// a single flag governs the whole file. When AVX-512 is unavailable, the AND
+// paths use the AVX2 store helpers before falling back to Go. x/sys/cpu verifies
+// operating-system support for the ZMM state and honors
+// GODEBUG=cpu.avx512vpopcntdq=off.
 var useAVX512BitsetOps = cpu.X86.HasAVX512VPOPCNTDQ
 
 func orSlice(dst, a, b []uint64) {
@@ -45,6 +47,10 @@ func orSlice(dst, a, b []uint64) {
 func andSlice(dst, a, b []uint64) {
 	if useAVX512BitsetOps {
 		andSliceAVX512(dst, a, b)
+		return
+	}
+	if useAVX2 {
+		_andStoreSliceAVX2(dst, a, b)
 		return
 	}
 	andSliceGo(dst, a, b)
@@ -79,6 +85,9 @@ func orCardSlice(dst, a, b []uint64) uint64 {
 func andCardSlice(dst, a, b []uint64) uint64 {
 	if useAVX512BitsetOps {
 		return andCardSliceAVX512(dst, a, b)
+	}
+	if useAVX2 {
+		return _andCardStoreSliceAVX2(dst, a, b)
 	}
 	andSliceGo(dst, a, b)
 	return popcntSlice(dst)

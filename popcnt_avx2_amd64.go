@@ -7,7 +7,8 @@ package roaring
 // They are only used when the CPU supports AVX2 (see useAVX2); otherwise the
 // pure-Go fallbacks in popcnt_slices.go are used. This keeps behavior identical
 // on every target: appengine and non-amd64 builds compile popcnt_generic.go
-// instead, and amd64 CPUs without AVX2 take the scalar path at runtime.
+// instead, and amd64 CPUs without AVX2 take the scalar path at runtime. The
+// AND store helpers are also selected by the bitmap word-operation dispatch.
 
 //go:noescape
 func _hasAVX2() bool
@@ -20,6 +21,12 @@ func _popcntMaskSliceAVX2(s, m []uint64) uint64
 
 //go:noescape
 func _popcntAndSliceAVX2(s, m []uint64) uint64
+
+//go:noescape
+func _andStoreSliceAVX2(dst, a, b []uint64)
+
+//go:noescape
+func _andCardStoreSliceAVX2(dst, a, b []uint64) uint64
 
 //go:noescape
 func _popcntOrSliceAVX2(s, m []uint64) uint64
