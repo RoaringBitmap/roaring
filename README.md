@@ -9,150 +9,11 @@
 
 This is a go version of the Roaring bitmap data structure. 
 
-Roaring bitmaps are used by several major systems such as [Apache Lucene][lucene] and derivative systems such as [Solr][solr] and
-[Elasticsearch][elasticsearch], [Apache Druid (Incubating)][druid], [LinkedIn Pinot][pinot], [Netflix Atlas][atlas],  [Apache Spark][spark], [OpenSearchServer][opensearchserver], [anacrolix/torrent][anacrolix/torrent], [Whoosh][whoosh], [Redpanda](https://github.com/redpanda-data/redpanda), [Pilosa][pilosa],  [Microsoft Visual Studio Team Services (VSTS)][vsts], and eBay's [Apache Kylin][kylin]. The YouTube SQL Engine, [Google Procella](https://research.google/pubs/pub48388/), uses Roaring bitmaps for indexing.
-
-[lucene]: https://lucene.apache.org/
-[solr]: https://lucene.apache.org/solr/
-[elasticsearch]: https://www.elastic.co/products/elasticsearch
-[druid]: https://druid.apache.org/
-[spark]: https://spark.apache.org/
-[opensearchserver]: http://www.opensearchserver.com
-[anacrolix/torrent]: https://github.com/anacrolix/torrent
-[whoosh]: https://bitbucket.org/mchaput/whoosh/wiki/Home
-[pilosa]: https://www.pilosa.com/
-[kylin]: http://kylin.apache.org/
-[pinot]: http://github.com/linkedin/pinot/wiki
-[vsts]: https://www.visualstudio.com/team-services/
-[atlas]: https://github.com/Netflix/atlas
-[quanta]: https://github.com/disney/quanta
-
 Roaring bitmaps are found to work well in many important applications:
 
 > Use Roaring for bitmap compression whenever possible. Do not use other bitmap compression methods ([Wang et al., SIGMOD 2017](http://db.ucsd.edu/wp-content/uploads/2017/03/sidm338-wangA.pdf))
 
-
-The ``roaring`` Go library is used by
-* [grafana/grafana](https://github.com/grafana/grafana)
-* [go-gitea/gitea](https://github.com/go-gitea/gitea)
-* [AlistGo/alist](https://github.com/AlistGo/alist)
-* [mudler/LocalAI](https://github.com/mudler/LocalAI)
-* [milvus-io/milvus](https://github.com/milvus-io/milvus)
-* [mattermost/mattermost](https://github.com/mattermost/mattermost)
-* [harness/harness](https://github.com/harness/harness)
-* [portainer/portainer](https://github.com/portainer/portainer)
-* [seaweedfs/seaweedfs](https://github.com/seaweedfs/seaweedfs)
-* [InfluxDB](https://www.influxdata.com)
-* [grafana/loki](https://github.com/grafana/loki)
-* [GopeedLab/gopeed](https://github.com/GopeedLab/gopeed)
-* [dapr/dapr](https://github.com/dapr/dapr)
-* [OpenListTeam/OpenList](https://github.com/OpenListTeam/OpenList)
-* [dgraph-io/dgraph](https://github.com/dgraph-io/dgraph)
-* [zincsearch/zincsearch](https://github.com/zincsearch/zincsearch)
-* [Weaviate](https://github.com/weaviate/weaviate)
-* [getlantern/lantern](https://github.com/getlantern/lantern)
-* [apache/doris](https://github.com/apache/doris)
-* [apache/pulsar](https://github.com/apache/pulsar)
-* [heroiclabs/nakama](https://github.com/heroiclabs/nakama)
-* [0xJacky/nginx-ui](https://github.com/0xJacky/nginx-ui)
-* [php/frankenphp](https://github.com/php/frankenphp)
-* [Bleve](http://www.blevesearch.com)
-* [git-bug/git-bug](https://github.com/git-bug/git-bug)
-* [velero-io/velero](https://github.com/velero-io/velero)
-* [gorse-io/gorse](https://github.com/gorse-io/gorse)
-* [nhost/nhost](https://github.com/nhost/nhost)
-* [keybase/client](https://github.com/keybase/client)
-* [redpanda-data/connect](https://github.com/redpanda-data/connect)
-* [roadrunner-server/roadrunner](https://github.com/roadrunner-server/roadrunner)
-* [fleetdm/fleet](https://github.com/fleetdm/fleet)
-* [cosmos/cosmos-sdk](https://github.com/cosmos/cosmos-sdk)
-* [opencloud-eu/opencloud](https://github.com/opencloud-eu/opencloud)
-* [jpillora/cloud-torrent](https://github.com/jpillora/cloud-torrent)
-* [anacrolix/torrent]
-* [vcaesar/riot](https://github.com/vcaesar/riot)
-* [inngest/inngest](https://github.com/inngest/inngest)
-* [dunglas/mercure](https://github.com/dunglas/mercure)
-* [darjun/go-daily-lib](https://github.com/darjun/go-daily-lib)
-* [hengyoush/kyanos](https://github.com/hengyoush/kyanos)
-* [open-telemetry/opentelemetry-collector-contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib)
-* [parca-dev/parca](https://github.com/parca-dev/parca)
-* [WuKongIM/WuKongIM](https://github.com/WuKongIM/WuKongIM)
-* [apache/dubbo-go](https://github.com/apache/dubbo-go)
-* [M3](https://github.com/m3db/m3)
-* [cerbos/cerbos](https://github.com/cerbos/cerbos)
-* [rudderlabs/rudder-server](https://github.com/rudderlabs/rudder-server)
-* [rocboss/paopao-ce](https://github.com/rocboss/paopao-ce)
-* [Velocidex/velociraptor](https://github.com/Velocidex/velociraptor)
-* [wal-g/wal-g](https://github.com/wal-g/wal-g)
-* [kodjodevf/mangayomi](https://github.com/kodjodevf/mangayomi)
-* [5rahim/seanime](https://github.com/5rahim/seanime)
-* [apache/dubbo-admin](https://github.com/apache/dubbo-admin)
-* [bruin-data/ingestr](https://github.com/bruin-data/ingestr)
-* [odigos-io/odigos](https://github.com/odigos-io/odigos)
-* [erigontech/erigon](https://github.com/erigontech/erigon)
-* [SpecterOps/BloodHound](https://github.com/SpecterOps/BloodHound)
-* [olric-data/olric](https://github.com/olric-data/olric)
-* [mlogclub/bbs-go](https://github.com/mlogclub/bbs-go)
-* [yandex/perforator](https://github.com/yandex/perforator)
-* [thomiceli/opengist](https://github.com/thomiceli/opengist)
-* [qltysh/qlty](https://github.com/qltysh/qlty)
-* [autobrr/autobrr](https://github.com/autobrr/autobrr)
-* [YouROK/TorrServer](https://github.com/YouROK/TorrServer)
-* [yunionio/cloudpods](https://github.com/yunionio/cloudpods)
-* [haierkeys/fast-note-sync-service](https://github.com/haierkeys/fast-note-sync-service)
-* [openmeterio/openmeter](https://github.com/openmeterio/openmeter)
-* [influxdata/kapacitor](https://github.com/influxdata/kapacitor)
-* [pydio/cells](https://github.com/pydio/cells)
-* [warpstreamlabs/bento](https://github.com/warpstreamlabs/bento)
-* [owncloud/ocis](https://github.com/owncloud/ocis)
-* [zuoyebang/bitalostored](https://github.com/zuoyebang/bitalostored)
-* [GoogleCloudPlatform/khi](https://github.com/GoogleCloudPlatform/khi)
-* [matrixorigin/matrixone](https://github.com/matrixorigin/matrixone)
-* [sourcegraph/zoekt](https://github.com/sourcegraph/zoekt)
-* [mudler/LocalAGI](https://github.com/mudler/LocalAGI)
-* [vinceanalytics/vince](https://github.com/vinceanalytics/vince)
-* [zzet/gortex](https://github.com/zzet/gortex)
-* [daptin/daptin](https://github.com/daptin/daptin)
-* [dreadl0ck/netcap](https://github.com/dreadl0ck/netcap)
-* [go-spring/go-spring](https://github.com/go-spring/go-spring)
-* [e2b-dev/runtime](https://github.com/e2b-dev/runtime)
-* [apache/incubator-seata-go](https://github.com/apache/incubator-seata-go)
-* [aculix/bitplay](https://github.com/aculix/bitplay)
-* [eolinker/apinto](https://github.com/eolinker/apinto)
-* [semaphoreio/semaphore](https://github.com/semaphoreio/semaphore)
-* [iotexproject/iotex-core](https://github.com/iotexproject/iotex-core)
-* [superdb/super](https://github.com/superdb/super)
-* [FrostDB](https://github.com/polarsignals/frostdb)
-* [harmony-one/harmony](https://github.com/harmony-one/harmony)
-* [LeoHaoVIP/AListLiteAndroid](https://github.com/LeoHaoVIP/AListLiteAndroid)
-* [ignite/cli](https://github.com/ignite/cli)
-* [picosh/pico](https://github.com/picosh/pico)
-* [stackrox/stackrox](https://github.com/stackrox/stackrox)
-* [aethereans/aether-app](https://github.com/aethereans/aether-app)
-* [alibaba/IOC-golang](https://github.com/alibaba/IOC-golang)
-* [openGemini/openGemini](https://github.com/openGemini/openGemini)
-* [TheThingsNetwork/lorawan-stack](https://github.com/TheThingsNetwork/lorawan-stack)
-* [obot-platform/obot](https://github.com/obot-platform/obot)
-* [AlchemillaHQ/Sylve](https://github.com/AlchemillaHQ/Sylve)
-* [alexballas/go2tv](https://github.com/alexballas/go2tv)
-* [distribyted/distribyted](https://github.com/distribyted/distribyted)
-* [DonTizi/rlama](https://github.com/DonTizi/rlama)
-* [mosuka/blast](https://github.com/mosuka/blast)
-* [cosmos/ibc](https://github.com/cosmos/ibc)
-* [darkweak/souin](https://github.com/darkweak/souin)
-* [NyaaPantsu/nyaa](https://github.com/NyaaPantsu/nyaa)
-* [Pilosa](https://www.pilosa.com/)
-* [lindb](https://github.com/lindb/lindb)
-* [Elasticell](https://github.com/deepfabric/elasticell)
-* [SourceGraph](https://github.com/sourcegraph/sourcegraph)
-* [trident](https://github.com/NetApp/trident)
-* [Husky](https://www.datadoghq.com/blog/engineering/introducing-husky/)
-* [Disney Quanta](https://github.com/disney/quanta)
-
-
-
-This library is used in production in several systems, it is part of the [Awesome Go collection](https://awesome-go.com).
-
+This library is used in production in several systems, and it is part of the [Awesome Go collection](https://awesome-go.com). See [Users](#users).
 
 There are also  [Java](https://github.com/RoaringBitmap/RoaringBitmap) and [C/C++](https://github.com/RoaringBitmap/CRoaring) versions.  The Java, C, C++ and Go version are binary compatible: e.g,  you can save bitmaps
 from a Java program and load them back in Go, and vice versa. We have a [format specification](https://github.com/RoaringBitmap/RoaringFormatSpec).
@@ -530,6 +391,175 @@ The two versions were written independently.
 ### Mailing list/discussion group
 
 https://groups.google.com/g/roaring-bitmaps
+
+
+### Users
+
+Projects that depend on this Go package are listed first. [Other Roaring users](#other-roaring-users) use the Java library, the C/C++ library, or an implementation of their own.
+
+#### Search
+
+* [Blast](https://github.com/mosuka/blast). Full-text search server built on Bleve.
+* [Bleve](https://github.com/blevesearch/bleve). Full-text search library for Go.
+* [Gortex](https://github.com/zzet/gortex). Local code-intelligence engine for agents and editors.
+* [Milvus](https://github.com/milvus-io/milvus). Cloud-native vector database.
+* [Riot](https://github.com/vcaesar/riot). Distributed text and vector search engine.
+* [rlama](https://github.com/DonTizi/rlama). Local document question answering on top of Ollama.
+* [Sourcegraph](https://sourcegraph.com). Code search and code intelligence platform.
+* [Weaviate](https://github.com/weaviate/weaviate). Open-source vector database.
+* [ZincSearch](https://github.com/zincsearch/zincsearch). Lightweight search engine.
+* [Zoekt](https://github.com/sourcegraph/zoekt). Trigram code search.
+
+#### Databases
+
+* [Apache Doris](https://github.com/apache/doris). Real-time analytics database.
+* [Bitalostored](https://github.com/zuoyebang/bitalostored). Redis-compatible distributed storage system.
+* [Dgraph](https://github.com/dgraph-io/dgraph). Graph database for real-time queries.
+* [Elasticell](https://github.com/deepfabric/elasticell). Distributed key-value database with a Redis-compatible protocol.
+* [FrostDB](https://github.com/polarsignals/frostdb). Embeddable columnar database, written for observability workloads.
+* [MatrixOne](https://github.com/matrixorigin/matrixone). HTAP database with vector search.
+* [Olric](https://github.com/olric-data/olric). Distributed in-memory key-value store and cache.
+* [Pilosa](https://github.com/pilosa/pilosa). Distributed bitmap index.
+* [Quanta](https://github.com/disney/quanta). Disney's database for mixed transactional and analytical queries, built on Roaring bitmaps.
+* [SuperDB](https://github.com/superdb/super). Analytics database for JSON and relational tables.
+
+#### Time series and observability
+
+* [Grafana](https://github.com/grafana/grafana). Observability platform for metrics, logs, and traces.
+* [Grafana Loki](https://github.com/grafana/loki). Log aggregation system.
+* [Husky](https://www.datadoghq.com/blog/engineering/introducing-husky/). Datadog's columnar event store for observability data.
+* [InfluxDB](https://www.influxdata.com). Time series database from InfluxData.
+* [Kapacitor](https://github.com/influxdata/kapacitor). Framework for processing, monitoring, and alerting on time series data.
+* [Kyanos](https://github.com/hengyoush/kyanos). eBPF tool for analyzing network latency.
+* [LinDB](https://github.com/lindb/lindb). Distributed time series database.
+* [M3](https://github.com/m3db/m3). Uber's metrics platform, including a distributed time series database and query engine.
+* [Netcap](https://github.com/dreadl0ck/netcap). Framework for network traffic analysis.
+* [Odigos](https://github.com/odigos-io/odigos). Distributed tracing without application code changes.
+* [OpenMeter](https://github.com/openmeterio/openmeter). Usage metering and billing.
+* [OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib). Community components for the OpenTelemetry Collector.
+* [openGemini](https://github.com/openGemini/openGemini). Distributed time series database.
+* [Parca](https://github.com/parca-dev/parca). Continuous profiling for CPU and memory.
+* [Perforator](https://github.com/yandex/perforator). Cluster-wide continuous profiling system from Yandex.
+* [Vince](https://github.com/vinceanalytics/vince). Self-hosted web analytics.
+
+#### Streaming and messaging
+
+* [Apache Pulsar](https://github.com/apache/pulsar). Distributed publish-subscribe messaging system.
+* [Bento](https://github.com/warpstreamlabs/bento). Stream processor.
+* [Dapr](https://github.com/dapr/dapr). Portable runtime for distributed applications.
+* [Mercure](https://github.com/dunglas/mercure). Hub for sending real-time updates to clients.
+* [Redpanda Connect](https://github.com/redpanda-data/connect). Stream processor.
+* [WuKongIM](https://github.com/WuKongIM/WuKongIM). Instant messaging server.
+
+#### Files, sync, and media
+
+* [AList](https://github.com/AlistGo/alist). File listing and WebDAV server for many storage backends.
+* [AList Lite Android](https://github.com/LeoHaoVIP/AListLiteAndroid). Android build of the OpenList file server.
+* [anacrolix/torrent](https://github.com/anacrolix/torrent). BitTorrent client package and utilities in Go.
+* [autobrr](https://github.com/autobrr/autobrr). Download automation for torrents and Usenet.
+* [Bitplay](https://github.com/aculix/bitplay). Browser player for video torrents.
+* [Cloud Torrent](https://github.com/jpillora/cloud-torrent). Self-hosted remote torrent client.
+* [Distribyted](https://github.com/distribyted/distribyted). Torrent client with HTTP, FUSE, and WebDAV interfaces.
+* [fast-note-sync-service](https://github.com/haierkeys/fast-note-sync-service). Note synchronization service.
+* [Go2TV](https://github.com/alexballas/go2tv). Casts local media to smart TVs and Chromecast devices.
+* [Gopeed](https://github.com/GopeedLab/gopeed). Download manager for HTTP, BitTorrent, and other protocols.
+* [Mangayomi](https://github.com/kodjodevf/mangayomi). Reader for manga, novels, and anime.
+* [Nyaa](https://github.com/NyaaPantsu/nyaa). Torrent index.
+* [OpenCloud](https://github.com/opencloud-eu/opencloud). File management, sharing, and collaboration platform.
+* [OpenList](https://github.com/OpenListTeam/OpenList). File listing server, forked from AList.
+* [ownCloud Infinite Scale](https://github.com/owncloud/ocis). ownCloud's file platform.
+* [Pydio Cells](https://github.com/pydio/cells). Content collaboration platform.
+* [Seanime](https://github.com/5rahim/seanime). Media server for anime and manga.
+* [SeaweedFS](https://github.com/seaweedfs/seaweedfs). Distributed object and file store.
+* [TorrServer](https://github.com/YouROK/TorrServer). Torrent streaming server.
+
+#### Kubernetes, cloud, and infrastructure
+
+* [Cloudpods](https://github.com/yunionio/cloudpods). Cloud platform for virtualization and Kubernetes.
+* [E2B](https://github.com/e2b-dev/runtime). Runtime for E2B code sandboxes.
+* [Fleet](https://github.com/fleetdm/fleet). Device management.
+* [Harness](https://github.com/harness/harness). Developer platform for source control, CI/CD, and artifacts.
+* [Kubernetes History Inspector](https://github.com/GoogleCloudPlatform/khi). Log viewer for Kubernetes troubleshooting.
+* [Nginx UI](https://github.com/0xJacky/nginx-ui). Web interface for Nginx.
+* [Portainer](https://github.com/portainer/portainer). Management interface for Docker and Kubernetes.
+* [Semaphore](https://github.com/semaphoreio/semaphore). CI/CD platform.
+* [StackRox](https://github.com/stackrox/stackrox). Kubernetes security platform.
+* [Sylve](https://github.com/AlchemillaHQ/Sylve). Web interface for Bhyve, jails, and ZFS on FreeBSD.
+* [Trident](https://github.com/NetApp/trident). NetApp storage provisioner for Kubernetes.
+* [Velero](https://github.com/velero-io/velero). Backup and migration for Kubernetes applications.
+
+#### AI and recommendations
+
+* [Gorse](https://github.com/gorse-io/gorse). Recommender system engine.
+* [LocalAGI](https://github.com/mudler/LocalAGI). Self-hosted agent platform.
+* [LocalAI](https://github.com/mudler/LocalAI). Local inference server for language, vision, and audio models.
+* [Obot](https://github.com/obot-platform/obot). Platform for governing AI agents.
+
+#### Security and networking
+
+* [Apinto](https://github.com/eolinker/apinto). API gateway.
+* [BloodHound](https://github.com/SpecterOps/BloodHound). Tool for mapping attack paths in Active Directory.
+* [Cerbos](https://github.com/cerbos/cerbos). Authorization for application requests.
+* [Keybase](https://github.com/keybase/client). Keybase client.
+* [Lantern](https://github.com/getlantern/lantern). VPN client for privacy and censorship circumvention.
+* [Souin](https://github.com/darkweak/souin). HTTP cache.
+* [The Things Stack](https://github.com/TheThingsNetwork/lorawan-stack). Open-source LoRaWAN network server.
+* [Velociraptor](https://github.com/Velocidex/velociraptor). Digital forensics and incident response platform.
+
+#### Blockchains
+
+* [Cosmos SDK](https://github.com/cosmos/cosmos-sdk). Framework for building blockchains.
+* [Erigon](https://github.com/erigontech/erigon). Ethereum execution client.
+* [Harmony](https://github.com/harmony-one/harmony). Harmony protocol implementation.
+* [IBC](https://github.com/cosmos/ibc). Inter-blockchain communication standards for Cosmos.
+* [Ignite CLI](https://github.com/ignite/cli). Tooling for building Cosmos SDK chains.
+* [IoTeX](https://github.com/iotexproject/iotex-core). IoTeX blockchain implementation.
+
+#### Collaboration and content
+
+* [bbs-go](https://github.com/mlogclub/bbs-go). Forum and question-and-answer platform.
+* [Gitea](https://github.com/go-gitea/gitea). Self-hosted Git service.
+* [git-bug](https://github.com/git-bug/git-bug). Distributed bug tracker stored in Git.
+* [Mattermost](https://github.com/mattermost/mattermost). Team messaging platform.
+* [OpenGist](https://github.com/thomiceli/opengist). Self-hosted pastebin.
+* [PaoPao](https://github.com/rocboss/paopao-ce). Social community platform.
+
+#### Runtimes, frameworks, and tools
+
+* [Aether](https://github.com/aethereans/aether-app). Peer-to-peer community client.
+* [Apache Dubbo Admin](https://github.com/apache/dubbo-admin). Operations console for Apache Dubbo.
+* [Apache Dubbo Go](https://github.com/apache/dubbo-go). Go implementation of the Dubbo RPC framework.
+* [Daptin](https://github.com/daptin/daptin). Self-hosted server for schema-driven APIs.
+* [FrankenPHP](https://github.com/php/frankenphp). PHP application server.
+* [go-daily-lib](https://github.com/darjun/go-daily-lib). Notes on one Go library a day.
+* [Go-Spring](https://github.com/go-spring/go-spring). Application framework for Go.
+* [ingestr](https://github.com/bruin-data/ingestr). Command-line tool for copying data between databases.
+* [Inngest](https://github.com/inngest/inngest). Workflow orchestration for step functions.
+* [IOC-golang](https://github.com/alibaba/IOC-golang). Dependency injection framework for Go.
+* [Nakama](https://github.com/heroiclabs/nakama). Game server for multiplayer, matchmaking, and social features.
+* [Nhost](https://github.com/nhost/nhost). Backend platform with GraphQL.
+* [pico](https://github.com/picosh/pico). SSH-based services for developers.
+* [Qlty](https://github.com/qltysh/qlty). Command-line tool for linting and code quality.
+* [RoadRunner](https://github.com/roadrunner-server/roadrunner). PHP application server and process manager.
+* [RudderStack](https://github.com/rudderlabs/rudder-server). Customer data pipeline.
+* [Seata-go](https://github.com/apache/incubator-seata-go). Go implementation of Seata for distributed transactions.
+* [WAL-G](https://github.com/wal-g/wal-g). Backup and restore for databases.
+
+#### Other Roaring users
+
+* [Apache Druid](https://druid.apache.org/). Real-time analytics database.
+* [Apache Kylin](https://kylin.apache.org/). Distributed OLAP engine for big data, started at eBay.
+* [Apache Lucene](https://lucene.apache.org/). High-performance full-text search library. Lucene ships its own Roaring implementation for sets of document identifiers.
+* [Apache Pinot](https://pinot.apache.org/). Real-time distributed OLAP datastore, started at LinkedIn.
+* [Apache Solr](https://solr.apache.org/). Search platform built on Lucene.
+* [Apache Spark](https://spark.apache.org/). Unified engine for large-scale data processing.
+* [Azure DevOps Services](https://azure.microsoft.com/products/devops). Microsoft's hosted DevOps service, formerly Visual Studio Team Services.
+* [Elasticsearch](https://www.elastic.co/elasticsearch). Distributed search and analytics engine built on Lucene.
+* [Google Procella](https://research.google/pubs/pub48388/). YouTube's SQL engine. It uses Roaring bitmaps for indexing.
+* [Netflix Atlas](https://github.com/Netflix/atlas). In-memory dimensional time series database.
+* [OpenSearchServer](http://www.opensearchserver.com). Open-source enterprise search engine.
+* [Redpanda](https://github.com/redpanda-data/redpanda). Streaming data platform with a Kafka-compatible API. It uses the C/C++ library.
+* [Whoosh](https://github.com/mchaput/whoosh). Pure-Python full-text search library, with its own Roaring implementation.
 
 
 ### Further reading
