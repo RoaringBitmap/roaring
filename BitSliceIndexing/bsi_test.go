@@ -601,6 +601,108 @@ func TestTransposeWithCountsNil(t *testing.T) {
 	assert.Equal(t, int64(2), a)
 }
 
+func TestBatchEqualCarry(t *testing.T) {
+	for _, operation := range []string{"IncrementAll", "Add"} {
+		t.Run(operation, func(t *testing.T) {
+			bsi := NewBSI(Max64BitSigned, Min64BitSigned)
+			bsi.SetValue(1, -1)
+			require.Equal(t, 64, bsi.BitCount())
+			require.Equal(t, []uint32{1}, bsi.BatchEqual(0, []int64{-1}).ToArray())
+
+			switch operation {
+			case "IncrementAll":
+				bsi.IncrementAll()
+			case "Add":
+				other := NewDefaultBSI()
+				other.SetValue(1, 1)
+				bsi.Add(other)
+			}
+
+			require.Equal(t, 65, bsi.BitCount())
+			value, exists := bsi.GetValue(1)
+			require.True(t, exists)
+			require.Equal(t, int64(0), value)
+			actual := bsi.BatchEqual(0, []int64{0}).ToArray()
+			if len(actual) != 1 || actual[0] != 1 {
+				t.Fatalf("BatchEqual([0]) = %v, want [1] after %s", actual, operation)
+			}
+		})
+	}
+}
+
+func TestBatchEqualSignedBoundaryCarries(t *testing.T) {
+	rg := rand.New(rand.NewSource(42))
+	bsi := NewDefaultBSI()
+	values := []int64{Min64BitSigned, Min64BitSigned + 1, -1, 0, 1, Max64BitSigned - 1, Max64BitSigned}
+	for i := 0; i < 256; i++ {
+		value := values[i%len(values)]
+		if i >= len(values) {
+			switch i % 3 {
+			case 0:
+				value = Min64BitSigned + rg.Int63n(256)
+			case 1:
+				value = Max64BitSigned - rg.Int63n(256)
+			case 2:
+				value = int64(rg.Uint64())
+			}
+		}
+		bsi.SetValue(uint64(i*3), value)
+	}
+
+	for step, operation := range []string{"SetValue", "IncrementAll", "Add"} {
+		t.Run(operation, func(t *testing.T) {
+			switch operation {
+			case "IncrementAll":
+				bsi.IncrementAll()
+			case "Add":
+				bsi.Add(bsi.Clone())
+			}
+			require.Equal(t, 64+step, bsi.BitCount())
+
+			queries := [][]int64{nil, {0}, {-1}, {Min64BitSigned}, {Max64BitSigned}, values}
+			present := make([]int64, 0, bsi.GetCardinality())
+			iter := bsi.GetExistenceBitmap().Iterator()
+			for iter.HasNext() {
+				value, exists := bsi.GetValue(uint64(iter.Next()))
+				require.True(t, exists)
+				present = append(present, value)
+			}
+			queries = append(queries, present)
+			query := make([]int64, 256)
+			for i := range query {
+				if i%2 == 0 {
+					query[i] = Min64BitSigned + rg.Int63n(512)
+				} else {
+					query[i] = Max64BitSigned - rg.Int63n(512)
+				}
+			}
+			queries = append(queries, query)
+
+			for _, query := range queries {
+				want := make(map[int64]bool, len(query))
+				for _, value := range query {
+					want[value] = true
+				}
+				expected := roaring.NewBitmap()
+				iter := bsi.GetExistenceBitmap().Iterator()
+				for iter.HasNext() {
+					column := iter.Next()
+					value, exists := bsi.GetValue(uint64(column))
+					if exists && want[value] {
+						expected.Add(column)
+					}
+				}
+				for _, parallelism := range []int{0, 1, 4} {
+					actual := bsi.BatchEqual(parallelism, query)
+					if !actual.Equals(expected) {
+						t.Fatalf("BatchEqual(%v), parallelism %d = %v, want %v", query, parallelism, actual.ToArray(), expected.ToArray())
+					}
+				}
+			}
+		})
+	}
+}
+
 // TestBatchEqualLargeQueryValues drives the scattered-query scan path: a large
 // existence bitmap and a 128+ value query push BatchEqual past the crossover, and
 // the result is pinned to the GetValue ground truth across parallelism levels, so
