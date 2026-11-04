@@ -12,8 +12,7 @@ import (
 func BenchmarkBatchEqualScattered(b *testing.B) {
 	for _, shape := range []string{"AgeRandom", "AgeNearCube", "Narrow14", "Wide200", "Wide1000", "WideStride2", "WideSharedPrefix", "Composite22", "CompositeWide"} {
 		b.Run(shape, func(b *testing.B) {
-			index, values := setupBatchEqualScattered(b, shape)
-			bsi := trieBenchmarkBSI{index}
+			bsi, values := setupBatchEqualScattered(b, shape)
 			for _, workers := range []struct {
 				name string
 				n    int
