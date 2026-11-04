@@ -602,7 +602,7 @@ func TestTransposeWithCountsNil(t *testing.T) {
 }
 
 func TestBatchEqualSmallIndex(t *testing.T) {
-	for _, storedValue := range []int64{42, 43, -1} {
+	for _, storedValue := range []int64{42, 43, 135, -1} {
 		bsi := NewBSI(255, min(storedValue, 0))
 		bsi.SetValue(1, storedValue)
 		// A stored plane bit need not belong to an existing column.
@@ -617,27 +617,36 @@ func TestBatchEqualSmallIndex(t *testing.T) {
 		rand.New(rand.NewSource(42)).Shuffle(len(query), func(i, j int) {
 			query[i], query[j] = query[j], query[i]
 		})
-		expected := roaring.NewBitmap()
-		iter := bsi.eBM.Iterator()
-		for iter.HasNext() {
-			col := iter.Next()
-			value, _ := bsi.GetValue(uint64(col))
-			for _, q := range query {
-				if value == q {
-					expected.Add(col)
-					break
-				}
-			}
+		contiguous := make([]int64, 128)
+		for i := range contiguous {
+			contiguous[i] = int64(i + 32)
 		}
+		rand.New(rand.NewSource(42)).Shuffle(len(contiguous), func(i, j int) {
+			contiguous[i], contiguous[j] = contiguous[j], contiguous[i]
+		})
 		for _, optimize := range []bool{false, true} {
 			if optimize {
 				bsi.RunOptimize()
 			}
-			for _, parallelism := range []int{-1, 0, 1, 2, 16} {
-				actual := bsi.BatchEqual(parallelism, query)
-				assert.True(t, actual.Equals(expected), "storedValue=%d optimize=%v parallelism=%d", storedValue, optimize, parallelism)
-				actual.Clear()
-				assert.True(t, bsi.eBM.Contains(1), "result must not alias the index")
+			for _, query := range [][]int64{query, contiguous} {
+				expected := roaring.NewBitmap()
+				iter := bsi.eBM.Iterator()
+				for iter.HasNext() {
+					col := iter.Next()
+					value, _ := bsi.GetValue(uint64(col))
+					for _, q := range query {
+						if value == q {
+							expected.Add(col)
+							break
+						}
+					}
+				}
+				for _, parallelism := range []int{-1, 0, 1, 2, 16} {
+					actual := bsi.BatchEqual(parallelism, query)
+					assert.True(t, actual.Equals(expected), "storedValue=%d optimize=%v parallelism=%d", storedValue, optimize, parallelism)
+					actual.Clear()
+					assert.True(t, bsi.eBM.Contains(1), "result must not alias the index")
+				}
 			}
 		}
 	}

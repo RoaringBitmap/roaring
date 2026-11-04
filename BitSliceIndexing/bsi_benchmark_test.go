@@ -26,6 +26,9 @@ func BenchmarkBatchEqualShuffled(b *testing.B) {
 	for _, size := range []struct{ columns, values int }{
 		{1, 1000},
 		{1, 100000},
+		{781, 100000},
+		{782, 100000},
+		{100, 12799},
 		{100000, 100},
 		{100000, 100000},
 	} {
