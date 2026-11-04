@@ -601,6 +601,95 @@ func TestTransposeWithCountsNil(t *testing.T) {
 	assert.Equal(t, int64(2), a)
 }
 
+func TestBatchEqualSmallIndex(t *testing.T) {
+	for _, storedValue := range []int64{42, 43, 135, -1} {
+		bsi := NewBSI(255, min(storedValue, 0))
+		bsi.SetValue(1, storedValue)
+		// A stored plane bit need not belong to an existing column.
+		bsi.SetValue(5, 42)
+		bsi.eBM.Remove(5)
+
+		query := make([]int64, 128)
+		for i := range query {
+			query[i] = int64(i * 2)
+		}
+		ordered := append([]int64(nil), query...)
+		query = append(query, 42, -1, -1, 100000)
+		rand.New(rand.NewSource(42)).Shuffle(len(query), func(i, j int) {
+			query[i], query[j] = query[j], query[i]
+		})
+		contiguous := make([]int64, 128)
+		for i := range contiguous {
+			contiguous[i] = int64(i + 32)
+		}
+		rand.New(rand.NewSource(42)).Shuffle(len(contiguous), func(i, j int) {
+			contiguous[i], contiguous[j] = contiguous[j], contiguous[i]
+		})
+		for _, optimize := range []bool{false, true} {
+			if optimize {
+				bsi.RunOptimize()
+			}
+			for _, query := range [][]int64{query, contiguous, ordered} {
+				expected := roaring.NewBitmap()
+				iter := bsi.eBM.Iterator()
+				for iter.HasNext() {
+					col := iter.Next()
+					value, _ := bsi.GetValue(uint64(col))
+					for _, q := range query {
+						if value == q {
+							expected.Add(col)
+							break
+						}
+					}
+				}
+				for _, parallelism := range []int{-1, 0, 1, 2, 16} {
+					actual := bsi.BatchEqual(parallelism, query)
+					assert.True(t, actual.Equals(expected), "storedValue=%d optimize=%v parallelism=%d", storedValue, optimize, parallelism)
+					actual.Clear()
+					assert.True(t, bsi.eBM.Contains(1), "result must not alias the index")
+				}
+			}
+		}
+	}
+}
+
+func TestBatchEqualSmallIndexOrdering(t *testing.T) {
+	contiguous := make([]int64, 128)
+	prefixRange := []int64{127, 0}
+	evens := make([]int64, 128)
+	for i := range contiguous {
+		contiguous[i] = int64(i + 32)
+		evens[i] = int64(i * 2)
+		if i > 0 && i <= 125 {
+			prefixRange = append(prefixRange, int64(i))
+		}
+	}
+	rand.New(rand.NewSource(42)).Shuffle(len(contiguous), func(i, j int) {
+		contiguous[i], contiguous[j] = contiguous[j], contiguous[i]
+	})
+	prefixRange = append(prefixRange, 300)
+	evens[0], evens[1] = evens[1], evens[0]
+
+	for _, tc := range []struct {
+		name   string
+		stored []int64
+		query  []int64
+		want   []uint32
+	}{
+		{"contiguous endpoints", []int64{32, 159}, contiguous, []uint32{0, 1}},
+		{"prefix spans range", []int64{126, 300}, prefixRange, []uint32{1}},
+		{"first pair descending", []int64{0, 2, 254, 1}, evens, []uint32{0, 1, 2}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bsi := NewBSI(511, 0)
+			for col, value := range tc.stored {
+				bsi.SetValue(uint64(col), value)
+			}
+			assert.Equal(t, tc.want, bsi.BatchEqual(0, tc.query).ToArray())
+		})
+	}
+}
+
 // TestBatchEqualLargeQueryValues drives the scattered-query scan path: a large
 // existence bitmap and a 128+ value query push BatchEqual past the crossover, and
 // the result is pinned to the GetValue ground truth across parallelism levels, so
