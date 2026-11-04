@@ -1068,9 +1068,21 @@ func (rb *Bitmap) Maximum() uint32 {
 
 // Contains returns true if the integer is contained in the bitmap
 func (rb *Bitmap) Contains(x uint32) bool {
-	hb := highbits(x)
-	c := rb.highlowcontainer.getContainer(hb)
-	return c != nil && c.contains(lowbits(x))
+	c := rb.highlowcontainer.getContainerForContains(highbits(x))
+	lb := lowbits(x)
+	// The type switch avoids a dynamic dispatch and lets the compiler
+	// inline the bitmap test.
+	switch t := c.(type) {
+	case *bitmapContainer:
+		return t.contains(lb)
+	case *arrayContainer:
+		return t.contains(lb)
+	case *runContainer16:
+		return t.contains(lb)
+	case nil:
+		return false
+	}
+	return c.contains(lb)
 }
 
 // ContainsInt returns true if the integer is contained in the bitmap (this is a convenience method, the parameter is casted to uint32 and Contains is called)

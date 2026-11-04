@@ -574,6 +574,29 @@ func binarySearch(array []uint16, ikey uint16) int {
 	return -(low + 1)
 }
 
+// searchUint16 returns the index of ikey in the sorted array, or -1 if
+// it is absent. It is meant for membership queries: it does a plain
+// lower-bound search (no early exit on equality, which is rarely taken
+// and costs an extra branch per step) and finishes with a linear scan.
+func searchUint16(array []uint16, ikey uint16) int {
+	low, high := 0, len(array)
+	for high-low > 16 {
+		middle := int(uint(low+high) >> 1)
+		if array[middle] < ikey {
+			low = middle + 1
+		} else {
+			high = middle
+		}
+	}
+	for low < high && array[low] < ikey {
+		low++
+	}
+	if low < len(array) && array[low] == ikey {
+		return low
+	}
+	return -1
+}
+
 // searchResult provides information about a search request.
 // The values will depend on the context of the search
 type searchResult struct {

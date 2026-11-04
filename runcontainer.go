@@ -803,8 +803,24 @@ toploop:
 
 // get returns true iff key is in the container.
 func (rc *runContainer16) contains(key uint16) bool {
-	_, in, _ := rc.search(int(key))
-	return in
+	iv := rc.iv
+	n := len(iv)
+	if n == 0 {
+		return false
+	}
+	// Branchless search for the last interval whose start is <= key
+	// (or interval 0 if there is none). The mask is all ones when
+	// iv[base+half].start <= key and zero otherwise.
+	base := 0
+	for n > 1 {
+		half := n >> 1
+		mask := ^((int(key) - int(iv[base+half].start)) >> 63)
+		base += half & mask
+		n -= half
+	}
+	// If key < iv[base].start, the difference is negative and becomes
+	// a huge unsigned value, so the comparison fails as it should.
+	return uint(int(key)-int(iv[base].start)) <= uint(iv[base].length)
 }
 
 // numIntervals returns the count of intervals in the container.
