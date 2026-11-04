@@ -1070,8 +1070,6 @@ func (rb *Bitmap) Maximum() uint32 {
 func (rb *Bitmap) Contains(x uint32) bool {
 	c := rb.highlowcontainer.getContainerForContains(highbits(x))
 	lb := lowbits(x)
-	// The type switch avoids a dynamic dispatch and lets the compiler
-	// inline the bitmap test.
 	switch t := c.(type) {
 	case *bitmapContainer:
 		return t.contains(lb)

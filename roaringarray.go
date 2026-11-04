@@ -314,8 +314,6 @@ func (ra *roaringArray) getContainer(x uint16) container {
 	return ra.containers[i]
 }
 
-// getContainerForContains is like getContainer, but uses a search
-// tuned for membership queries.
 func (ra *roaringArray) getContainerForContains(x uint16) container {
 	i := searchUint16(ra.keys, x)
 	if i < 0 {

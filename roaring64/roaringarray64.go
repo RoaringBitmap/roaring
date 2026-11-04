@@ -205,9 +205,6 @@ func (ra *roaringArray64) getContainer(x uint32) *roaring.Bitmap {
 	return ra.containers[i]
 }
 
-// getContainerForContains is like getContainer, but uses a search
-// tuned for membership queries: a plain lower-bound search (no early
-// exit on equality) finished by a linear scan.
 func (ra *roaringArray64) getContainerForContains(x uint32) *roaring.Bitmap {
 	keys := ra.keys
 	low, high := 0, len(keys)
