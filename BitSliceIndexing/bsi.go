@@ -729,17 +729,21 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	if len(vals) == 0 {
 		return roaring.NewBitmap()
 	}
-	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
-
-	if len(vals) >= 128 && b.shouldUseParallelScan(vals, bitCount) {
-		result := b.parallelBatchEqualScan(parallelism, vals)
-		if b.runOptimized {
-			result.RunOptimize()
-		}
-		return result
+	// With at least 128 distinct query values per existing column, scan the
+	// small index without sorting. Otherwise the trie and its branch estimate
+	// need sorted values.
+	useScan := len(vals) >= 128 && b.eBM.GetCardinality() <= uint64(len(vals)/128)
+	if !useScan {
+		sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+		useScan = len(vals) >= 128 && b.shouldUseParallelScan(vals, bitCount)
 	}
 
-	result := b.matchTrie(vals, bitCount-1, b.eBM, false)
+	var result *roaring.Bitmap
+	if useScan {
+		result = b.parallelBatchEqualScan(parallelism, seen)
+	} else {
+		result = b.matchTrie(vals, bitCount-1, b.eBM, false)
+	}
 	if b.runOptimized {
 		result.RunOptimize()
 	}
@@ -787,16 +791,11 @@ func estimateBranchCount(vals []uint64, p int, limit int) int {
 }
 
 // parallelBatchEqualScan computes BatchEqual by a flat membership scan: it reads
-// each existing column's value with GetValue and keeps the ones present in vals.
+// each existing column's value with GetValue and keeps the ones present in want.
 // The existence bitmap is authoritative, so the result is always a subset of it.
 // This trades the trie's intermediate-bitmap allocations for one pass over the
 // data, which wins when the query fans the trie out (see shouldUseParallelScan).
-func (b *BSI) parallelBatchEqualScan(parallelism int, vals []uint64) *roaring.Bitmap {
-	want := make(map[uint64]struct{}, len(vals))
-	for _, v := range vals {
-		want[v] = struct{}{}
-	}
-
+func (b *BSI) parallelBatchEqualScan(parallelism int, want map[uint64]struct{}) *roaring.Bitmap {
 	n := parallelism
 	if n <= 0 {
 		n = runtime.NumCPU()

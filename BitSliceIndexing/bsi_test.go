@@ -601,6 +601,48 @@ func TestTransposeWithCountsNil(t *testing.T) {
 	assert.Equal(t, int64(2), a)
 }
 
+func TestBatchEqualSmallIndex(t *testing.T) {
+	for _, storedValue := range []int64{42, 43, -1} {
+		bsi := NewBSI(255, min(storedValue, 0))
+		bsi.SetValue(1, storedValue)
+		// A stored plane bit need not belong to an existing column.
+		bsi.SetValue(5, 42)
+		bsi.eBM.Remove(5)
+
+		query := make([]int64, 128)
+		for i := range query {
+			query[i] = int64(i * 2)
+		}
+		query = append(query, 42, -1, -1, 100000)
+		rand.New(rand.NewSource(42)).Shuffle(len(query), func(i, j int) {
+			query[i], query[j] = query[j], query[i]
+		})
+		expected := roaring.NewBitmap()
+		iter := bsi.eBM.Iterator()
+		for iter.HasNext() {
+			col := iter.Next()
+			value, _ := bsi.GetValue(uint64(col))
+			for _, q := range query {
+				if value == q {
+					expected.Add(col)
+					break
+				}
+			}
+		}
+		for _, optimize := range []bool{false, true} {
+			if optimize {
+				bsi.RunOptimize()
+			}
+			for _, parallelism := range []int{-1, 0, 1, 2, 16} {
+				actual := bsi.BatchEqual(parallelism, query)
+				assert.True(t, actual.Equals(expected), "storedValue=%d optimize=%v parallelism=%d", storedValue, optimize, parallelism)
+				actual.Clear()
+				assert.True(t, bsi.eBM.Contains(1), "result must not alias the index")
+			}
+		}
+	}
+}
+
 // TestBatchEqualLargeQueryValues drives the scattered-query scan path: a large
 // existence bitmap and a 128+ value query push BatchEqual past the crossover, and
 // the result is pinned to the GetValue ground truth across parallelism levels, so
