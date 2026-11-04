@@ -1023,7 +1023,7 @@ func (ac *arrayContainer) clone() container {
 }
 
 func (ac *arrayContainer) contains(x uint16) bool {
-	return binarySearch(ac.content, x) >= 0
+	return searchUint16(ac.content, x) >= 0
 }
 
 func (ac *arrayContainer) loadData(bitmapContainer *bitmapContainer) {
