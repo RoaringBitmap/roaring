@@ -284,9 +284,16 @@ func benchmarkBatchEqualM(b *testing.B, m int, stride int64) {
 	for i := range vals {
 		vals[i] = int64(i)*stride + stride - 1
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		res := bsi.BatchEqual(0, vals)
-		_ = res
+	for _, workers := range []struct {
+		name string
+		n    int
+	}{{"Workers2", 2}, {"DefaultWorkers", 0}} {
+		b.Run(workers.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				res := bsi.BatchEqual(workers.n, vals)
+				_ = res
+			}
+		})
 	}
 }
