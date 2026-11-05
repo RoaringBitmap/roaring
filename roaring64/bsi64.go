@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sort"
 	"sync"
+	"sync/atomic"
 )
 
 // BSI is at its simplest is an array of bitmaps that represent an encoded
@@ -1133,22 +1134,51 @@ func (b *BSI) SumBigValues(foundSet *Bitmap) (sum *big.Int, count uint64) {
 	}
 	sum = new(big.Int)
 	count = foundSet.GetCardinality()
-	resultsChan := make(chan int64, b.BitCount())
-	var wg sync.WaitGroup
-	for i := 0; i < b.BitCount(); i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			resultsChan <- int64(foundSet.AndCardinality(&b.bA[j]) << uint(j))
-		}(i)
+	var cardinalities []uint64
+	// Intersections touch containers, even when the selected IDs are sparse.
+	parallelism := runtime.GOMAXPROCS(0)
+	if parallelism > 1 && uint64(len(b.bA))*foundSet.Stats().Containers >= 256 {
+		workers := parallelism
+		if workers > len(b.bA) {
+			workers = len(b.bA)
+		}
+		counts := make([]uint64, len(b.bA))
+		set := foundSet
+		var wg sync.WaitGroup
+		var next atomic.Uint64
+		wg.Add(workers)
+		for worker := 0; worker < workers; worker++ {
+			go func() {
+				defer wg.Done()
+				for {
+					i := int(next.Add(1) - 1)
+					if i >= len(b.bA) {
+						return
+					}
+					counts[i] = set.AndCardinality(&b.bA[i])
+				}
+			}()
+		}
+		wg.Wait()
+		cardinalities = counts
 	}
-	wg.Wait()
-	close(resultsChan)
 
-	for val := range resultsChan {
-		sum.Add(sum, big.NewInt(val))
+	var temp big.Int
+	for i := range b.bA {
+		var cardinality uint64
+		if cardinalities == nil {
+			cardinality = foundSet.AndCardinality(&b.bA[i])
+		} else {
+			cardinality = cardinalities[i]
+		}
+		temp.SetUint64(cardinality)
+		temp.Lsh(&temp, uint(i))
+		if i == b.BitCount() {
+			sum.Sub(sum, &temp)
+		} else {
+			sum.Add(sum, &temp)
+		}
 	}
-	sum.Sub(sum, big.NewInt(int64(foundSet.AndCardinality(&b.bA[b.BitCount()])<<uint(b.BitCount()))))
 
 	return sum, count
 }
