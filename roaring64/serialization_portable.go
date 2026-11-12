@@ -61,7 +61,7 @@ func (rb *Bitmap) ReadPortableFrom(stream io.Reader) (p int64, err error) {
 	if capHint > 0 {
 		hlc.keys = make([]uint32, 0, capHint)
 		hlc.containers = make([]*roaring.Bitmap, 0, capHint)
-		hlc.needCopyOnWrite = make([]bool, 0, capHint)
+		hlc.needCopyOnWrite = make([]uint32, 0, capHint)
 	}
 
 	keyBuf := buf[:4]

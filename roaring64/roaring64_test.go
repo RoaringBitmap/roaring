@@ -2089,7 +2089,7 @@ func TestRoaringArray64Validation(t *testing.T) {
 	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
 	a.containers = append(a.containers, roaring.NewBitmap(), roaring.NewBitmap(), roaring.NewBitmap())
 	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
-	a.needCopyOnWrite = append(a.needCopyOnWrite, true, false, true)
+	a.needCopyOnWrite = append(a.needCopyOnWrite, 1, 0, 1)
 	assert.Errorf(t, a.validate(), "zero intervals")
 }
 

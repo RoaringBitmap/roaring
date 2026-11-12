@@ -95,7 +95,7 @@ func iterForceContainerType(rb *Bitmap, kind string) {
 		case "run":
 			ra.containers[i] = newRunContainer16FromBitmapContainer(bc)
 		}
-		ra.needCopyOnWrite[i] = false
+		ra.needCopyOnWrite[i] = 0
 	}
 }
 

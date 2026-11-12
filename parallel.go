@@ -164,7 +164,7 @@ func appenderRoutine(bitmapChan chan<- *Bitmap, resultChan <-chan keyedContainer
 		roaringArray{
 			make([]uint16, 0, expectedKeys),
 			make([]container, 0, expectedKeys),
-			make([]bool, 0, expectedKeys),
+			make([]uint32, 0, expectedKeys),
 			false,
 		},
 	}
@@ -438,7 +438,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 		roaringArray{
 			containers:      make([]container, containerCount),
 			keys:            make([]uint16, containerCount),
-			needCopyOnWrite: make([]bool, containerCount),
+			needCopyOnWrite: make([]uint32, containerCount),
 		},
 	}
 
@@ -573,7 +573,7 @@ func lazyIOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 				key1 = ra1.getKeyAtIndex(idx1)
 			} else if key1 > key2 {
 				ra1.insertNewKeyValueAt(idx1, key2, ra2.getContainerAtIndex(idx2))
-				ra1.needCopyOnWrite[idx1] = true
+				ra1.needCopyOnWrite[idx1] = 1
 				idx2++
 				idx1++
 				length1++
@@ -585,7 +585,7 @@ func lazyIOrOnRange(ra1, ra2 *roaringArray, start, last uint16) *roaringArray {
 				c1 := ra1.getFastContainerAtIndex(idx1, true)
 
 				ra1.containers[idx1] = c1.lazyIOR(ra2.getContainerAtIndex(idx2))
-				ra1.needCopyOnWrite[idx1] = false
+				ra1.needCopyOnWrite[idx1] = 0
 				idx1++
 				idx2++
 				if idx1 >= length1 || idx2 >= length2 {

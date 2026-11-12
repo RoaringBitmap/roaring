@@ -274,7 +274,9 @@ func (rb *Bitmap) ManyIterator() ManyIntIterable64 {
 	return newManyIntIterator(rb)
 }
 
-// Clone creates a copy of the Bitmap
+// Clone creates a copy of the Bitmap.
+// Clone does not modify the values of rb, and it may be called from several
+// goroutines at once, also when rb uses copy-on-write (see SetCopyOnWrite).
 func (rb *Bitmap) Clone() *Bitmap {
 	ptr := new(Bitmap)
 	ptr.highlowcontainer = *rb.highlowcontainer.clone()
@@ -1177,9 +1179,16 @@ func Flip(rb *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 }
 
 // SetCopyOnWrite sets this bitmap to use copy-on-write so that copies are fast and memory conscious
-// if the parameter is true, otherwise we leave the default where hard copies are made
-// (copy-on-write requires extra care in a threaded context).
+// if the parameter is true, otherwise we leave the default where hard copies are made.
 // Calling SetCopyOnWrite(true) on a bitmap created with FromBuffer is unsafe.
+//
+// A copy-on-write bitmap shares containers with its copies and records this
+// sharing in internal flags, which Clone, and operations taking the bitmap as
+// an argument (such as x.Or(rb)), may update. These updates are atomic: as
+// long as no goroutine modifies rb, several goroutines may call rb.Clone() or
+// other read-only operations on rb concurrently, and each may then modify its
+// own clone. Modifying rb itself still requires that no other goroutine
+// accesses rb at the same time.
 func (rb *Bitmap) SetCopyOnWrite(val bool) {
 	rb.highlowcontainer.copyOnWrite = val
 }
@@ -1253,6 +1262,6 @@ func roaring32AsRoaring64(bm32 *roaring.Bitmap, key uint32) *Bitmap {
 	rb.highlowcontainer.resize(0)
 	rb.highlowcontainer.keys = append(rb.highlowcontainer.keys, key)
 	rb.highlowcontainer.containers = append(rb.highlowcontainer.containers, bm32)
-	rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, false)
+	rb.highlowcontainer.needCopyOnWrite = append(rb.highlowcontainer.needCopyOnWrite, 0)
 	return rb
 }

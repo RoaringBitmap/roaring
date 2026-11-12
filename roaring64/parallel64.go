@@ -118,7 +118,7 @@ func ParOr(parallelism int, bitmaps ...*Bitmap) *Bitmap {
 		roaringArray64{
 			containers:      make([]*roaring.Bitmap, containerCount),
 			keys:            make([]uint32, containerCount),
-			needCopyOnWrite: make([]bool, containerCount),
+			needCopyOnWrite: make([]uint32, containerCount),
 		},
 	}
 
@@ -255,7 +255,7 @@ func iorOnRange(ra1, ra2 *roaringArray64, start, last uint32) *roaringArray64 {
 				key1 = ra1.getKeyAtIndex(idx1)
 			} else if key1 > key2 {
 				ra1.insertNewKeyValueAt(idx1, key2, ra2.getContainerAtIndex(idx2))
-				ra1.needCopyOnWrite[idx1] = true
+				ra1.needCopyOnWrite[idx1] = 1
 				idx2++
 				idx1++
 				length1++
@@ -270,7 +270,7 @@ func iorOnRange(ra1, ra2 *roaringArray64, start, last uint32) *roaringArray64 {
 				c1.Or(ra2.getContainerAtIndex(idx2))
 				ra1.setContainerAtIndex(idx1, c1)
 
-				ra1.needCopyOnWrite[idx1] = false
+				ra1.needCopyOnWrite[idx1] = 0
 				idx1++
 				idx2++
 				if idx1 >= length1 || idx2 >= length2 {

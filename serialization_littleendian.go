@@ -148,16 +148,16 @@ func byteSliceAsRun16Slice(slice []byte) (result []runContainer16) {
 	return unsafe.Slice((*runContainer16)(unsafe.Pointer(ptr)), len(slice)/run16Size)
 }
 
-func byteSliceAsBoolSlice(slice []byte) (result []bool) {
-	const boolSize = int(unsafe.Sizeof(true))
+func byteSliceAsUint32Slice(slice []byte) (result []uint32) {
+	const sz = int(unsafe.Sizeof(uint32(0)))
 	if len(slice) == 0 {
 		return nil
 	}
-	if len(slice)%boolSize != 0 {
-		panic("Slice size should be divisible by unsafe.Sizeof(bool)")
+	if len(slice)%sz != 0 {
+		panic(fmt.Sprintf("Slice size should be divisible by %d", sz))
 	}
 	ptr := unsafe.SliceData(slice)
-	return unsafe.Slice((*bool)(unsafe.Pointer(ptr)), len(slice)/boolSize)
+	return unsafe.Slice((*uint32)(unsafe.Pointer(ptr)), len(slice)/sz)
 }
 
 // FrozenView creates a static view of a serialized bitmap stored in buf.
@@ -323,7 +323,7 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 	bitsetsSz := int(unsafe.Sizeof(bitmapContainer{})) * nBitmap
 	arraysSz := int(unsafe.Sizeof(arrayContainer{})) * nArray
 	runsSz := int(unsafe.Sizeof(runContainer16{})) * nRun
-	needCOWSz := int(unsafe.Sizeof(true)) * nCont
+	needCOWSz := int(unsafe.Sizeof(uint32(0))) * nCont
 
 	bitmapArenaSz := containersSz + bitsetsSz + arraysSz + runsSz + needCOWSz
 	bitmapArena := make([]byte, bitmapArenaSz)
@@ -340,11 +340,11 @@ func (ra *roaringArray) frozenView(buf []byte) error {
 	runs := byteSliceAsRun16Slice(bitmapArena[:runsSz])
 	bitmapArena = bitmapArena[runsSz:]
 
-	needCOW := byteSliceAsBoolSlice(bitmapArena)
+	needCOW := byteSliceAsUint32Slice(bitmapArena)
 
 	iBitset, iArray, iRun := 0, 0, 0
 	for i, t := range types {
-		needCOW[i] = true
+		needCOW[i] = 1
 
 		switch t {
 		case 1:

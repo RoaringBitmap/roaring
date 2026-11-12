@@ -89,7 +89,7 @@ main:
 					c1 = rc.toBitmapContainer()
 				}
 				x1.highlowcontainer.containers[pos1] = c1.lazyIOR(x2.highlowcontainer.getContainerAtIndex(pos2))
-				x1.highlowcontainer.needCopyOnWrite[pos1] = false
+				x1.highlowcontainer.needCopyOnWrite[pos1] = 0
 				pos1++
 				pos2++
 				if (pos1 == length1) || (pos2 == length2) {

@@ -2,15 +2,30 @@ package roaring64
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"github.com/RoaringBitmap/roaring/v2"
 )
 
+// needCopyOnWrite[i] is nonzero when containers[i] may be shared with
+// another bitmap and must be cloned before it is modified. Operations that
+// leave the bitmap unchanged (Clone, or using it as the argument of x.Or,
+// x.Xor, ...) may set these flags, and such operations may run concurrently.
+// Hence, the flags must be read with needsCopyOnWrite and set with
+// setNeedsCopyOnWrite on every path reachable from such operations.
 type roaringArray64 struct {
 	keys            []uint32
 	containers      []*roaring.Bitmap
-	needCopyOnWrite []bool
+	needCopyOnWrite []uint32
 	copyOnWrite     bool
+}
+
+// cowFlag converts a copy-on-write flag to its stored representation.
+func cowFlag(b bool) uint32 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 var (
@@ -36,11 +51,11 @@ func (ra *roaringArray64) runOptimize() {
 func (ra *roaringArray64) appendContainer(key uint32, value *roaring.Bitmap, mustCopyOnWrite bool) {
 	ra.keys = append(ra.keys, key)
 	ra.containers = append(ra.containers, value)
-	ra.needCopyOnWrite = append(ra.needCopyOnWrite, mustCopyOnWrite)
+	ra.needCopyOnWrite = append(ra.needCopyOnWrite, cowFlag(mustCopyOnWrite))
 }
 
 func (ra *roaringArray64) appendWithoutCopy(sa roaringArray64, startingindex int) {
-	mustCopyOnWrite := sa.needCopyOnWrite[startingindex]
+	mustCopyOnWrite := sa.needsCopyOnWrite(startingindex)
 	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex], mustCopyOnWrite)
 }
 
@@ -134,7 +149,7 @@ func (ra *roaringArray64) removeIndexRange(begin, end int) {
 func (ra *roaringArray64) resize(newsize int) {
 	for k := newsize; k < len(ra.containers); k++ {
 		ra.keys[k] = 0
-		ra.needCopyOnWrite[k] = false
+		ra.needCopyOnWrite[k] = 0
 		ra.containers[k] = nil
 	}
 
@@ -158,7 +173,7 @@ func (ra *roaringArray64) reserveForRead(size uint64) {
 		ra.containers = make([]*roaring.Bitmap, 0, size)
 	}
 	if uint64(cap(ra.needCopyOnWrite)) < size {
-		ra.needCopyOnWrite = make([]bool, 0, size)
+		ra.needCopyOnWrite = make([]uint32, 0, size)
 	}
 }
 
@@ -177,10 +192,13 @@ func (ra *roaringArray64) clone() *roaringArray64 {
 		copy(sa.keys, ra.keys)
 		sa.containers = make([]*roaring.Bitmap, len(ra.containers))
 		copy(sa.containers, ra.containers)
-		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
+		sa.needCopyOnWrite = make([]uint32, len(ra.needCopyOnWrite))
 
 		ra.markAllAsNeedingCopyOnWrite()
-		sa.markAllAsNeedingCopyOnWrite()
+		// sa is not visible to other goroutines yet: plain stores suffice.
+		for i := range sa.needCopyOnWrite {
+			sa.needCopyOnWrite[i] = 1
+		}
 
 		// sa.needCopyOnWrite is shared
 	} else {
@@ -194,7 +212,7 @@ func (ra *roaringArray64) clone() *roaringArray64 {
 			sa.containers[i] = ra.containers[i].Clone()
 		}
 
-		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
+		sa.needCopyOnWrite = make([]uint32, len(ra.needCopyOnWrite))
 	}
 	return &sa
 }
@@ -204,9 +222,9 @@ func (ra *roaringArray64) clone() *roaringArray64 {
 // that the roaring array may still have a reference to.
 func (ra *roaringArray64) cloneCopyOnWriteContainers() {
 	for i, needCopyOnWrite := range ra.needCopyOnWrite {
-		if needCopyOnWrite {
+		if needCopyOnWrite != 0 {
 			ra.containers[i] = ra.containers[i].Clone()
-			ra.needCopyOnWrite[i] = false
+			ra.needCopyOnWrite[i] = 0
 		}
 	}
 }
@@ -249,9 +267,9 @@ func (ra *roaringArray64) getContainerAtIndex(i int) *roaring.Bitmap {
 }
 
 func (ra *roaringArray64) getWritableContainerAtIndex(i int) *roaring.Bitmap {
-	if ra.needCopyOnWrite[i] {
+	if ra.needsCopyOnWrite(i) {
 		ra.containers[i] = ra.containers[i].Clone()
-		ra.needCopyOnWrite[i] = false
+		ra.needCopyOnWrite[i] = 0
 	}
 	return ra.containers[i]
 }
@@ -279,9 +297,9 @@ func (ra *roaringArray64) insertNewKeyValueAt(i int, key uint32, value *roaring.
 	ra.keys[i] = key
 	ra.containers[i] = value
 
-	ra.needCopyOnWrite = append(ra.needCopyOnWrite, false)
+	ra.needCopyOnWrite = append(ra.needCopyOnWrite, 0)
 	copy(ra.needCopyOnWrite[i+1:], ra.needCopyOnWrite[i:])
-	ra.needCopyOnWrite[i] = false
+	ra.needCopyOnWrite[i] = 0
 }
 
 func (ra *roaringArray64) remove(key uint32) bool {
@@ -309,7 +327,7 @@ func (ra *roaringArray64) setContainerAtIndex(i int, c *roaring.Bitmap) {
 func (ra *roaringArray64) replaceKeyAndContainerAtIndex(i int, key uint32, c *roaring.Bitmap, mustCopyOnWrite bool) {
 	ra.keys[i] = key
 	ra.containers[i] = c
-	ra.needCopyOnWrite[i] = mustCopyOnWrite
+	ra.needCopyOnWrite[i] = cowFlag(mustCopyOnWrite)
 }
 
 func (ra *roaringArray64) size() int {
@@ -434,18 +452,30 @@ func (ra *roaringArray64) advanceUntil(min uint32, pos int) int {
 	return upper
 }
 
+// markAllAsNeedingCopyOnWrite flags every container as shared. It may be
+// called on a bitmap that other goroutines are reading or cloning.
 func (ra *roaringArray64) markAllAsNeedingCopyOnWrite() {
 	for i := range ra.needCopyOnWrite {
-		ra.needCopyOnWrite[i] = true
+		ra.setNeedsCopyOnWrite(i)
 	}
 }
 
+// needsCopyOnWrite reports whether containers[i] may be shared. The load is
+// atomic because another goroutine may concurrently call setNeedsCopyOnWrite
+// on the same bitmap (e.g., two goroutines cloning it).
 func (ra *roaringArray64) needsCopyOnWrite(i int) bool {
-	return ra.needCopyOnWrite[i]
+	return atomic.LoadUint32(&ra.needCopyOnWrite[i]) != 0
 }
 
+// setNeedsCopyOnWrite flags containers[i] as shared. Flags only ever go from
+// zero to one on paths that leave the bitmap unchanged, so concurrent callers
+// agree on the result. Only store when needed: once a container is flagged,
+// later calls are plain loads and do not write to the shared cache line.
 func (ra *roaringArray64) setNeedsCopyOnWrite(i int) {
-	ra.needCopyOnWrite[i] = true
+	p := &ra.needCopyOnWrite[i]
+	if atomic.LoadUint32(p) == 0 {
+		atomic.StoreUint32(p, 1)
+	}
 }
 
 // should be dirt cheap

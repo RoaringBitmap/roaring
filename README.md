@@ -326,6 +326,14 @@ provide synchronization. Typically this is done by using channels to pass
 the *Bitmap around (in Go style; so there is only ever one owner),
 or by using `sync.Mutex` to serialize operations on Bitmaps.
 
+Read-only operations (e.g., `Contains`, `GetCardinality`, iteration,
+`Clone`, or using a bitmap as the argument of `x.Or(rb)` or `Or(x1, x2)`)
+may run concurrently on the same bitmap as long as no goroutine modifies it.
+This holds for copy-on-write bitmaps too (see `SetCopyOnWrite`): even though
+`Clone()` and some operations update internal copy-on-write flags, these
+updates are atomic. A common pattern is to share one immutable copy-on-write
+bitmap and let each goroutine call `Clone()` and modify its own copy.
+
 ### Coverage
 
 We test our software. For a report on our test coverage, see

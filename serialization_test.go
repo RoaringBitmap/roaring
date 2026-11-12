@@ -562,7 +562,7 @@ func TestBitmap_FromBuffer(t *testing.T) {
 		require.NoError(t, err)
 
 		for i, cow := range rb.highlowcontainer.needCopyOnWrite {
-			assert.Truef(t, cow, "Container at pos %d was not marked as needs-copy-on-write", i)
+			assert.Truef(t, cow != 0, "Container at pos %d was not marked as needs-copy-on-write", i)
 		}
 	})
 }

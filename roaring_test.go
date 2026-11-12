@@ -3333,7 +3333,7 @@ func TestRoaringArrayValidation(t *testing.T) {
 	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
 	a.containers = append(a.containers, &runContainer16{}, &runContainer16{}, &runContainer16{})
 	assert.ErrorIs(t, a.validate(), ErrCardinalityConstraint)
-	a.needCopyOnWrite = append(a.needCopyOnWrite, true, false, true)
+	a.needCopyOnWrite = append(a.needCopyOnWrite, 1, 0, 1)
 	assert.ErrorIs(t, a.validate(), ErrRunIntervalsEmpty)
 }
 

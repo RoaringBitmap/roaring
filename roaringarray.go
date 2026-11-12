@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	"github.com/RoaringBitmap/roaring/v2/internal"
 )
@@ -118,11 +119,25 @@ func rangeOfOnes(start, last int) container {
 	return newRunContainer16Range(uint16(start), uint16(last)).toEfficientContainer()
 }
 
+// needCopyOnWrite[i] is nonzero when containers[i] may be shared with
+// another bitmap and must be cloned before it is modified. Operations that
+// leave the bitmap unchanged (Clone, or using it as the argument of x.Or,
+// x.Xor, ...) may set these flags, and such operations may run concurrently.
+// Hence, the flags must be read with needsCopyOnWrite and set with
+// setNeedsCopyOnWrite on every path reachable from such operations.
 type roaringArray struct {
 	keys            []uint16
 	containers      []container `msg:"-"` // don't try to serialize directly.
-	needCopyOnWrite []bool
+	needCopyOnWrite []uint32
 	copyOnWrite     bool
+}
+
+// cowFlag converts a copy-on-write flag to its stored representation.
+func cowFlag(b bool) uint32 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func newRoaringArray() *roaringArray {
@@ -145,11 +160,11 @@ func (ra *roaringArray) runOptimize() {
 func (ra *roaringArray) appendContainer(key uint16, value container, mustCopyOnWrite bool) {
 	ra.keys = append(ra.keys, key)
 	ra.containers = append(ra.containers, value)
-	ra.needCopyOnWrite = append(ra.needCopyOnWrite, mustCopyOnWrite)
+	ra.needCopyOnWrite = append(ra.needCopyOnWrite, cowFlag(mustCopyOnWrite))
 }
 
 func (ra *roaringArray) appendWithoutCopy(sa roaringArray, startingindex int) {
-	mustCopyOnWrite := sa.needCopyOnWrite[startingindex]
+	mustCopyOnWrite := sa.needsCopyOnWrite(startingindex)
 	ra.appendContainer(sa.keys[startingindex], sa.containers[startingindex], mustCopyOnWrite)
 }
 
@@ -265,10 +280,13 @@ func (ra *roaringArray) clone() *roaringArray {
 		copy(sa.keys, ra.keys)
 		sa.containers = make([]container, len(ra.containers))
 		copy(sa.containers, ra.containers)
-		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
+		sa.needCopyOnWrite = make([]uint32, len(ra.needCopyOnWrite))
 
 		ra.markAllAsNeedingCopyOnWrite()
-		sa.markAllAsNeedingCopyOnWrite()
+		// sa is not visible to other goroutines yet: plain stores suffice.
+		for i := range sa.needCopyOnWrite {
+			sa.needCopyOnWrite[i] = 1
+		}
 
 		// sa.needCopyOnWrite is shared
 	} else {
@@ -282,7 +300,7 @@ func (ra *roaringArray) clone() *roaringArray {
 			sa.containers[i] = ra.containers[i].clone()
 		}
 
-		sa.needCopyOnWrite = make([]bool, len(ra.needCopyOnWrite))
+		sa.needCopyOnWrite = make([]uint32, len(ra.needCopyOnWrite))
 	}
 	return &sa
 }
@@ -292,9 +310,9 @@ func (ra *roaringArray) clone() *roaringArray {
 // that the roaring array may still have a reference to.
 func (ra *roaringArray) cloneCopyOnWriteContainers() {
 	for i, needCopyOnWrite := range ra.needCopyOnWrite {
-		if needCopyOnWrite {
+		if needCopyOnWrite != 0 {
 			ra.containers[i] = ra.containers[i].clone()
-			ra.needCopyOnWrite[i] = false
+			ra.needCopyOnWrite[i] = 0
 		}
 	}
 }
@@ -336,7 +354,7 @@ func (ra *roaringArray) getFastContainerAtIndex(i int, needsWriteable bool) cont
 			c = t.toBitmapContainer()
 		}
 	case *bitmapContainer:
-		if needsWriteable && ra.needCopyOnWrite[i] {
+		if needsWriteable && ra.needsCopyOnWrite(i) {
 			c = ra.containers[i].clone()
 		}
 	}
@@ -347,16 +365,16 @@ func (ra *roaringArray) getFastContainerAtIndex(i int, needsWriteable bool) cont
 // depending on whether the container requires a copy on write.
 // If it does using the non-inplace or() method leads to fewer allocations.
 func (ra *roaringArray) getUnionedWritableContainer(pos int, other container) container {
-	if ra.needCopyOnWrite[pos] {
+	if ra.needsCopyOnWrite(pos) {
 		return ra.getContainerAtIndex(pos).or(other)
 	}
 	return ra.getContainerAtIndex(pos).ior(other)
 }
 
 func (ra *roaringArray) getWritableContainerAtIndex(i int) container {
-	if ra.needCopyOnWrite[i] {
+	if ra.needsCopyOnWrite(i) {
 		ra.containers[i] = ra.containers[i].clone()
-		ra.needCopyOnWrite[i] = false
+		ra.needCopyOnWrite[i] = 0
 	}
 	return ra.containers[i]
 }
@@ -387,9 +405,9 @@ func (ra *roaringArray) insertNewKeyValueAt(i int, key uint16, value container) 
 	ra.keys[i] = key
 	ra.containers[i] = value
 
-	ra.needCopyOnWrite = append(ra.needCopyOnWrite, false)
+	ra.needCopyOnWrite = append(ra.needCopyOnWrite, 0)
 	copy(ra.needCopyOnWrite[i+1:], ra.needCopyOnWrite[i:])
-	ra.needCopyOnWrite[i] = false
+	ra.needCopyOnWrite[i] = 0
 }
 
 // copyOrSourceContainerAt returns the container (and its copy-on-write flag) to
@@ -454,7 +472,7 @@ func (ra *roaringArray) mergeBulk(other *roaringArray, dst, left, right int, xor
 	total := dst + distinct
 	keys := make([]uint16, dst, total)
 	containers := make([]container, dst, total)
-	needCopyOnWrite := make([]bool, dst, total)
+	needCopyOnWrite := make([]uint32, dst, total)
 	copy(keys, ra.keys[:dst])
 	copy(containers, ra.containers[:dst])
 	copy(needCopyOnWrite, ra.needCopyOnWrite[:dst])
@@ -471,7 +489,7 @@ func (ra *roaringArray) mergeBulk(other *roaringArray, dst, left, right int, xor
 			c, cow := ra.copyOrSourceContainerAt(other, right, receiverLastKey)
 			keys = append(keys, s2)
 			containers = append(containers, c)
-			needCopyOnWrite = append(needCopyOnWrite, cow)
+			needCopyOnWrite = append(needCopyOnWrite, cowFlag(cow))
 			right++
 		} else {
 			// Union of two non-empty containers is never empty, so the
@@ -485,7 +503,7 @@ func (ra *roaringArray) mergeBulk(other *roaringArray, dst, left, right int, xor
 			if !c.isEmpty() {
 				keys = append(keys, s1)
 				containers = append(containers, c)
-				needCopyOnWrite = append(needCopyOnWrite, false)
+				needCopyOnWrite = append(needCopyOnWrite, 0)
 			}
 			left++
 			right++
@@ -500,7 +518,7 @@ func (ra *roaringArray) mergeBulk(other *roaringArray, dst, left, right int, xor
 		c, cow := ra.copyOrSourceContainerAt(other, right, receiverLastKey)
 		keys = append(keys, other.keys[right])
 		containers = append(containers, c)
-		needCopyOnWrite = append(needCopyOnWrite, cow)
+		needCopyOnWrite = append(needCopyOnWrite, cowFlag(cow))
 	}
 
 	ra.keys = keys
@@ -533,7 +551,7 @@ func (ra *roaringArray) setContainerAtIndex(i int, c container) {
 func (ra *roaringArray) replaceKeyAndContainerAtIndex(i int, key uint16, c container, mustCopyOnWrite bool) {
 	ra.keys[i] = key
 	ra.containers[i] = c
-	ra.needCopyOnWrite[i] = mustCopyOnWrite
+	ra.needCopyOnWrite[i] = cowFlag(mustCopyOnWrite)
 }
 
 func (ra *roaringArray) size() int {
@@ -769,14 +787,14 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 	if cap(ra.needCopyOnWrite) >= int(size) {
 		ra.needCopyOnWrite = ra.needCopyOnWrite[:size]
 	} else {
-		ra.needCopyOnWrite = make([]bool, size)
+		ra.needCopyOnWrite = make([]uint32, size)
 	}
 
 	for i := uint32(0); i < size; i++ {
 		key := keycard[2*i]
 		card := int(keycard[2*i+1]) + 1
 		ra.keys[i] = key
-		ra.needCopyOnWrite[i] = willNeedCopyOnWrite
+		ra.needCopyOnWrite[i] = cowFlag(willNeedCopyOnWrite)
 
 		if isRunBitmap != nil && isRunBitmap[i/8]&(1<<(i%8)) != 0 {
 			// run container
@@ -903,18 +921,30 @@ func (ra *roaringArray) advanceUntil(min uint16, pos int) int {
 	return upper
 }
 
+// markAllAsNeedingCopyOnWrite flags every container as shared. It may be
+// called on a bitmap that other goroutines are reading or cloning.
 func (ra *roaringArray) markAllAsNeedingCopyOnWrite() {
 	for i := range ra.needCopyOnWrite {
-		ra.needCopyOnWrite[i] = true
+		ra.setNeedsCopyOnWrite(i)
 	}
 }
 
+// needsCopyOnWrite reports whether containers[i] may be shared. The load is
+// atomic because another goroutine may concurrently call setNeedsCopyOnWrite
+// on the same bitmap (e.g., two goroutines cloning it).
 func (ra *roaringArray) needsCopyOnWrite(i int) bool {
-	return ra.needCopyOnWrite[i]
+	return atomic.LoadUint32(&ra.needCopyOnWrite[i]) != 0
 }
 
+// setNeedsCopyOnWrite flags containers[i] as shared. Flags only ever go from
+// zero to one on paths that leave the bitmap unchanged, so concurrent callers
+// agree on the result. Only store when needed: once a container is flagged,
+// later calls are plain loads and do not write to the shared cache line.
 func (ra *roaringArray) setNeedsCopyOnWrite(i int) {
-	ra.needCopyOnWrite[i] = true
+	p := &ra.needCopyOnWrite[i]
+	if atomic.LoadUint32(p) == 0 {
+		atomic.StoreUint32(p, 1)
+	}
 }
 
 func (ra *roaringArray) checkKeysSorted() bool {
