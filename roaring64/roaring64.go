@@ -274,7 +274,10 @@ func (rb *Bitmap) ManyIterator() ManyIntIterable64 {
 	return newManyIntIterator(rb)
 }
 
-// Clone creates a copy of the Bitmap
+// Clone creates a copy of the Bitmap.
+// If rb uses copy-on-write (see SetCopyOnWrite), Clone also updates internal
+// state of rb, so concurrent calls to Clone on the same bitmap require
+// synchronization.
 func (rb *Bitmap) Clone() *Bitmap {
 	ptr := new(Bitmap)
 	ptr.highlowcontainer = *rb.highlowcontainer.clone()
@@ -1177,9 +1180,17 @@ func Flip(rb *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 }
 
 // SetCopyOnWrite sets this bitmap to use copy-on-write so that copies are fast and memory conscious
-// if the parameter is true, otherwise we leave the default where hard copies are made
-// (copy-on-write requires extra care in a threaded context).
+// if the parameter is true, otherwise we leave the default where hard copies are made.
 // Calling SetCopyOnWrite(true) on a bitmap created with FromBuffer is unsafe.
+//
+// Copy-on-write requires extra care in a threaded context. A copy-on-write
+// bitmap shares containers with its copies and records this sharing in
+// internal flags. Some operations that leave the values of a bitmap unchanged
+// still update these flags: rb.Clone() marks the containers of rb as shared,
+// and so do x.Or(rb) and x.Xor(rb) when x also uses copy-on-write. Hence a
+// copy-on-write bitmap must not be used from several goroutines at once, even
+// if every goroutine only calls Clone on it, unless the caller provides
+// synchronization (e.g., a sync.Mutex).
 func (rb *Bitmap) SetCopyOnWrite(val bool) {
 	rb.highlowcontainer.copyOnWrite = val
 }

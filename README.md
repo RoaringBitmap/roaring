@@ -326,6 +326,13 @@ provide synchronization. Typically this is done by using channels to pass
 the *Bitmap around (in Go style; so there is only ever one owner),
 or by using `sync.Mutex` to serialize operations on Bitmaps.
 
+This applies even to operations that appear to be read-only when
+copy-on-write is enabled (see `SetCopyOnWrite`). Calling `rb.Clone()`
+updates internal bookkeeping in `rb`, and so do `x.Or(rb)` and `x.Xor(rb)`
+when `x` also uses copy-on-write. Thus, several goroutines must not call
+`Clone()` on the same copy-on-write bitmap at the same time without
+synchronization.
+
 ### Coverage
 
 We test our software. For a report on our test coverage, see
