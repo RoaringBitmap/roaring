@@ -1,6 +1,7 @@
 package roaring
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -18,6 +19,45 @@ func BenchmarkBatchEqual(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		res := bsi.BatchEqual(0, []int64{55, 57})
 		_ = res
+	}
+}
+
+func BenchmarkBatchEqualShuffled(b *testing.B) {
+	for _, size := range []struct{ columns, values int }{
+		{1, 1000},
+		{1, 100000},
+		{781, 100000},
+		{782, 100000},
+		{100, 12799},
+		{100000, 100},
+		{100000, 100000},
+	} {
+		b.Run(fmt.Sprintf("Columns%d/Values%d", size.columns, size.values), func(b *testing.B) {
+			bsi := NewBSI(Max64BitSigned, Min64BitSigned)
+			values := make([]int64, size.values)
+			for i := 0; i < max(size.columns, size.values); i++ {
+				// Odd multiplication gives distinct, scattered 64-bit values.
+				value := int64(uint64(i) * 0x9e3779b97f4a7c15)
+				if i < size.columns {
+					bsi.SetValue(uint64(i), value)
+				}
+				if i < len(values) {
+					values[i] = value
+				}
+			}
+			rand.New(rand.NewSource(42)).Shuffle(len(values), func(i, j int) {
+				values[i], values[j] = values[j], values[i]
+			})
+			var result *roaring.Bitmap
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				result = bsi.BatchEqual(0, values)
+			}
+			if result.GetCardinality() != uint64(min(size.columns, size.values)) {
+				b.Fatal("unexpected BatchEqual cardinality")
+			}
+		})
 	}
 }
 

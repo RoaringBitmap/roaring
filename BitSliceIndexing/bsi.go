@@ -701,9 +701,10 @@ func (b *BSI) MarshalBinary() ([][]byte, error) {
 }
 
 // BatchEqual returns a bitmap containing the column IDs where the values are contained
-// within the list of values provided. The trie path shares work across values and runs
-// on the calling goroutine; on scattered queries that would fan the trie out it falls
-// back to a linear existence-bitmap scan, which parallelism splits across goroutines.
+// within the list of values provided. Large queries over small indexes use the trie
+// for ordered or contiguous values, or scan existing columns without sorting. Other
+// queries use a trie, with a scan fallback for scattered queries that fan it out.
+// The parallelism parameter controls the scan's goroutines.
 func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	if b.eBM.IsEmpty() || len(values) == 0 {
 		return roaring.NewBitmap()
@@ -729,28 +730,57 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 	if len(vals) == 0 {
 		return roaring.NewBitmap()
 	}
-	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
-
-	if len(vals) >= 128 && b.shouldUseParallelScan(vals, bitCount) {
-		result := b.parallelBatchEqualScan(parallelism, vals)
-		if b.runOptimized {
-			result.RunOptimize()
+	// Prefer a scan for large unordered queries with at least four values per
+	// existing column. Keep the minimum query size to amortize workers.
+	useScan := len(vals) >= 128 && b.eBM.GetCardinality() <= uint64(len(vals)/4)
+	ordered := false
+	if useScan {
+		// Ordered and contiguous queries can be cheap for the trie. A contiguous
+		// set can be put in order directly, even when its input was shuffled.
+		minValue, maxValue := vals[0], vals[0]
+		ordered = true
+		for i, v := range vals {
+			minValue = min(minValue, v)
+			maxValue = max(maxValue, v)
+			if i > 0 && vals[i-1] > v {
+				ordered = false
+			}
+			// Such a prefix proves the whole set is neither ordered nor contiguous.
+			if !ordered && maxValue-minValue > uint64(len(vals)-1) {
+				break
+			}
 		}
-		return result
+		if !ordered && maxValue-minValue == uint64(len(vals)-1) {
+			for i := range vals {
+				vals[i] = minValue + uint64(i)
+			}
+			ordered = true
+		}
+		useScan = !ordered
+	}
+	if !useScan {
+		if !ordered {
+			sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+		}
+		useScan = len(vals) >= 128 && b.shouldUseParallelScan(vals, bitCount)
 	}
 
-	result := b.matchTrie(vals, bitCount-1, b.eBM, false)
+	var result *roaring.Bitmap
+	if useScan {
+		result = b.parallelBatchEqualScan(parallelism, seen)
+	} else {
+		result = b.matchTrie(vals, bitCount-1, b.eBM, false)
+	}
 	if b.runOptimized {
 		result.RunOptimize()
 	}
 	return result
 }
 
-// shouldUseParallelScan reports whether BatchEqual should skip the match trie in
-// favor of a linear existence-bitmap scan. estimateBranchCount caps the trie's
-// branch fan-out; past the crossover the trie degenerates into an intermediate-
-// bitmap blowup, and only then is the scan's goroutine cost worth paying. The
-// scan also needs a large existence bitmap for the parallelism to earn its keep.
+// shouldUseParallelScan selects the large-index scan fallback from ordered values.
+// estimateBranchCount caps the trie's fan-out to avoid an intermediate-bitmap
+// blowup. BatchEqual also selects scans before sorting large unordered queries
+// over small indexes.
 func (b *BSI) shouldUseParallelScan(vals []uint64, bitCount int) bool {
 	return estimateBranchCount(vals, bitCount-1, 64) >= 64 && b.eBM.GetCardinality() >= 100000
 }
@@ -787,16 +817,11 @@ func estimateBranchCount(vals []uint64, p int, limit int) int {
 }
 
 // parallelBatchEqualScan computes BatchEqual by a flat membership scan: it reads
-// each existing column's value with GetValue and keeps the ones present in vals.
+// each existing column's value with GetValue and keeps the ones present in want.
 // The existence bitmap is authoritative, so the result is always a subset of it.
-// This trades the trie's intermediate-bitmap allocations for one pass over the
-// data, which wins when the query fans the trie out (see shouldUseParallelScan).
-func (b *BSI) parallelBatchEqualScan(parallelism int, vals []uint64) *roaring.Bitmap {
-	want := make(map[uint64]struct{}, len(vals))
-	for _, v := range vals {
-		want[v] = struct{}{}
-	}
-
+// This trades the trie's intermediate bitmaps, or sorting a much larger unordered
+// query, for one pass over the existing columns.
+func (b *BSI) parallelBatchEqualScan(parallelism int, want map[uint64]struct{}) *roaring.Bitmap {
 	n := parallelism
 	if n <= 0 {
 		n = runtime.NumCPU()
