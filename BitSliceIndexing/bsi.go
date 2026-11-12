@@ -709,7 +709,8 @@ func (b *BSI) BatchEqual(parallelism int, values []int64) *roaring.Bitmap {
 		return roaring.NewBitmap()
 	}
 
-	bitCount := b.BitCount()
+	// GetValue returns an int64, so carry planes above bit 63 do not contribute.
+	bitCount := min(b.BitCount(), 64)
 
 	// Deduplicate, and drop values that cannot be represented in bitCount
 	// planes: GetValue can never observe such a value, so it matches no column.
