@@ -441,7 +441,12 @@ func New() *Bitmap {
 }
 
 // Clear resets the Bitmap to be logically empty, but may retain
-// some memory allocations that may speed up future operations
+// some memory allocations that may speed up future operations.
+//
+// Clear also turns copy-on-write off: after Clear, the bitmap behaves like
+// a new Bitmap and GetCopyOnWrite returns false, whether copy-on-write was
+// enabled with SetCopyOnWrite or set internally by FromBuffer. Call
+// SetCopyOnWrite(true) after Clear to keep using copy-on-write.
 func (rb *Bitmap) Clear() {
 	rb.highlowcontainer.clear()
 }
@@ -1608,7 +1613,8 @@ main:
 // Xor computes the symmetric difference between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) Xor(x2 *Bitmap) {
 	if rb == x2 {
-		rb.Clear()
+		// the result is empty; keep the copy-on-write setting, unlike Clear
+		rb.highlowcontainer.resize(0)
 		return
 	}
 	pos1 := 0
@@ -1702,7 +1708,8 @@ main:
 // AndNot computes the difference between two bitmaps and stores the result in the current bitmap
 func (rb *Bitmap) AndNot(x2 *Bitmap) {
 	if rb == x2 {
-		rb.Clear()
+		// the result is empty; keep the copy-on-write setting, unlike Clear
+		rb.highlowcontainer.resize(0)
 		return
 	}
 	pos1 := 0

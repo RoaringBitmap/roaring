@@ -199,7 +199,11 @@ func New() *Bitmap {
 }
 
 // Clear resets the Bitmap to be logically empty, but may retain
-// some memory allocations that may speed up future operations
+// some memory allocations that may speed up future operations.
+//
+// Clear also turns copy-on-write off: after Clear, the bitmap behaves like
+// a new Bitmap and GetCopyOnWrite returns false. Call SetCopyOnWrite(true)
+// after Clear to keep using copy-on-write.
 func (rb *Bitmap) Clear() {
 	rb.highlowcontainer.clear()
 }
