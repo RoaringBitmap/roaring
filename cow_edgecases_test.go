@@ -398,3 +398,28 @@ func TestCOWAndNotResultReusedByXor(t *testing.T) {
 	require.True(t, c.Equals(BitmapOf(939524096, 939524097, 939524098, 939524099)))
 	require.NoError(t, c.Validate())
 }
+
+// Clear resets the bitmap to a new one, so copy-on-write is turned off.
+// Xor and AndNot of a bitmap with itself also empty it, but keep the setting.
+func TestClearResetsCopyOnWrite(t *testing.T) {
+	rb := BitmapOf(1, 2, 3)
+	rb.SetCopyOnWrite(true)
+	rb.Clear()
+	require.False(t, rb.GetCopyOnWrite())
+	rb.Add(4)
+	require.NoError(t, rb.Validate())
+
+	for _, op := range []func(*Bitmap){
+		func(b *Bitmap) { b.Xor(b) },
+		func(b *Bitmap) { b.AndNot(b) },
+	} {
+		b := BitmapOf(1, 2, 3, 100000)
+		b.SetCopyOnWrite(true)
+		op(b)
+		require.True(t, b.IsEmpty())
+		require.True(t, b.GetCopyOnWrite())
+		b.Add(5)
+		require.NoError(t, b.Validate())
+		require.True(t, b.Contains(5))
+	}
+}

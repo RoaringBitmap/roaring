@@ -1797,3 +1797,24 @@ func TestOrCOWSharedContainer(t *testing.T) {
 	assert.False(t, rb2.Contains(1500),
 		"rb2 was corrupted: contains a value that was only added to rb1")
 }
+
+// Clear resets the bitmap to a new one, so copy-on-write is turned off.
+func TestClearResetsCopyOnWrite64(t *testing.T) {
+	rb := BitmapOf(1, 2, 3, 1<<40)
+	rb.SetCopyOnWrite(true)
+	rb.Clear()
+	assert.False(t, rb.GetCopyOnWrite())
+	rb.Add(4)
+	assert.NoError(t, rb.Validate())
+
+	for _, op := range []func(*Bitmap){
+		func(b *Bitmap) { b.Xor(b) },
+		func(b *Bitmap) { b.AndNot(b) },
+	} {
+		b := BitmapOf(1, 2, 3, 1<<40)
+		b.SetCopyOnWrite(true)
+		op(b)
+		assert.True(t, b.IsEmpty())
+		assert.True(t, b.GetCopyOnWrite())
+	}
+}
