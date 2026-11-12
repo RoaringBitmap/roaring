@@ -224,6 +224,26 @@ func (ra *roaringArray64) getContainer(x uint32) *roaring.Bitmap {
 	return ra.containers[i]
 }
 
+func (ra *roaringArray64) getContainerForContains(x uint32) *roaring.Bitmap {
+	keys := ra.keys
+	low, high := 0, len(keys)
+	for high-low > 16 {
+		middle := int(uint(low+high) >> 1)
+		if keys[middle] < x {
+			low = middle + 1
+		} else {
+			high = middle
+		}
+	}
+	for low < high && keys[low] < x {
+		low++
+	}
+	if low < len(keys) && keys[low] == x {
+		return ra.containers[low]
+	}
+	return nil
+}
+
 func (ra *roaringArray64) getContainerAtIndex(i int) *roaring.Bitmap {
 	return ra.containers[i]
 }
