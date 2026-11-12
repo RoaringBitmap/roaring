@@ -51,6 +51,62 @@ func TestBitmapContainerNextManyBufferSizes(t *testing.T) {
 	}
 }
 
+func TestBitmapContainerNextMany64BufferSizes(t *testing.T) {
+	const high = uint64(0x1234500000000)
+	r := rand.New(rand.NewSource(13))
+	for _, cardinality := range []int{1, 63, 64, 65, 4096, 30000, 65535, 65536} {
+		bc := newBitmapContainer()
+		for bc.cardinality < cardinality {
+			bc.iadd(uint16(r.Intn(65536)))
+		}
+
+		want := make([]uint64, 0, cardinality)
+		for k, w := range bc.bitmap {
+			for w != 0 {
+				want = append(want, high|uint64(k*64+bits.TrailingZeros64(w)))
+				w &= w - 1
+			}
+		}
+
+		for _, bufSize := range []int{1, 2, 63, 64, 65, 100, 127, 128, 129, 1000, 4096, 65536} {
+			it := bc.getManyIterator()
+			buf := make([]uint64, bufSize)
+			got := make([]uint64, 0, cardinality)
+			for {
+				n := it.nextMany64(high, buf)
+				if n == 0 {
+					break
+				}
+				if n > bufSize {
+					t.Fatalf("card=%d buf=%d: returned %d, more than the buffer holds", cardinality, bufSize, n)
+				}
+				got = append(got, buf[:n]...)
+			}
+			if len(got) != len(want) {
+				t.Fatalf("card=%d buf=%d: got %d values, want %d", cardinality, bufSize, len(got), len(want))
+			}
+			for i := range want {
+				if got[i] != want[i] {
+					t.Fatalf("card=%d buf=%d: at %d got %d want %d", cardinality, bufSize, i, got[i], want[i])
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkBitmapContainerNextMany64(b *testing.B) {
+	bc := fillArrayTestBitmap(32768, 32769)
+	buf := make([]uint64, 4096)
+	var sink int
+	for b.Loop() {
+		it := bc.getManyIterator()
+		for n := it.nextMany64(0x50000, buf); n != 0; n = it.nextMany64(0x50000, buf) {
+			sink += n
+		}
+	}
+	_ = sink
+}
+
 func benchBitmapNextMany(b *testing.B, cardinality, bufSize int) {
 	r := rand.New(rand.NewSource(12))
 	bc := newBitmapContainer()
