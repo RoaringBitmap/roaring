@@ -398,3 +398,20 @@ func TestCOWAndNotResultReusedByXor(t *testing.T) {
 	require.True(t, c.Equals(BitmapOf(939524096, 939524097, 939524098, 939524099)))
 	require.NoError(t, c.Validate())
 }
+
+// Clear empties the bitmap but must not switch copy-on-write off: the flag is
+// a mode the user selects (SetCopyOnWrite), and the next mutation still
+// follows it.
+func TestClearKeepsCopyOnWrite(t *testing.T) {
+	rb := BitmapOf(1, 2, 3)
+	rb.SetCopyOnWrite(true)
+	require.True(t, rb.GetCopyOnWrite())
+	rb.Clear()
+	require.True(t, rb.GetCopyOnWrite(), "GetCopyOnWrite() is false after Clear on a bitmap with copy-on-write set")
+	rb.Add(4)
+	require.NoError(t, rb.Validate())
+	require.True(t, rb.Contains(4))
+	rb.SetCopyOnWrite(false)
+	rb.Clear()
+	require.False(t, rb.GetCopyOnWrite(), "GetCopyOnWrite() is true after Clear on a bitmap with copy-on-write unset")
+}

@@ -252,7 +252,8 @@ func (ra *roaringArray) resize(newsize int) {
 
 func (ra *roaringArray) clear() {
 	ra.resize(0)
-	ra.copyOnWrite = false
+	// copyOnWrite is a mode the user selects (SetCopyOnWrite), not part of the
+	// contents: Clear empties the bitmap but the mode survives it.
 }
 
 func (ra *roaringArray) clone() *roaringArray {
