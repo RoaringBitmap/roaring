@@ -1198,9 +1198,7 @@ func (bc *bitmapContainer) NextUnsetBit(i uint) int {
 	if x >= length {
 		return int(i)
 	}
-	w := bc.bitmap[x]
-	w = w >> (i % 64)
-	w = ^w
+	w := (^bc.bitmap[x]) >> (i % 64)
 	if w != 0 {
 		return int(i) + bits.TrailingZeros64(w)
 	}

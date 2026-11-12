@@ -441,6 +441,29 @@ func TestBitmapContainerAbsentValueAcrossWords(t *testing.T) {
 	})
 }
 
+func TestBitmapContainerNextUnsetBitAcrossWords(t *testing.T) {
+	t.Run("Next unset bit after a run of ones that reaches the end of a word", func(t *testing.T) {
+		bc := newBitmapContainer()
+		for i := 0; i < 5000; i++ {
+			bc.iadd(uint16(i))
+		}
+		assert.Equal(t, 5000, bc.NextUnsetBit(0))
+		assert.Equal(t, 5000, bc.NextUnsetBit(10))
+		assert.Equal(t, 5000, bc.NextUnsetBit(70))
+		assert.Equal(t, 5001, bc.NextUnsetBit(5001))
+	})
+
+	t.Run("Next unset bit of a full container", func(t *testing.T) {
+		bc := newBitmapContainer()
+		for i := 0; i < 1<<16; i++ {
+			bc.iadd(uint16(i))
+		}
+		assert.Equal(t, 1<<16, bc.NextUnsetBit(0))
+		assert.Equal(t, 1<<16, bc.NextUnsetBit(64))
+		assert.Equal(t, 1<<16, bc.NextUnsetBit(65535))
+	})
+}
+
 func TestBitMapContainerValidate(t *testing.T) {
 	bc := newBitmapContainer()
 

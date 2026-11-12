@@ -1138,3 +1138,51 @@ func TestRangesEarlyTermination(t *testing.T) {
 		breakAfter(t, b, 2)
 	})
 }
+
+// Issue #592: the unset iterator of a bitmap container yielded values that
+// were present in the bitmap when the rest of a word was all ones.
+func TestUnsetBitmapContainer(t *testing.T) {
+	d := NewBitmap()
+	d.AddMany([]uint32{0})
+	d.AddRange(2, 4098)
+	_, isBitmap := d.highlowcontainer.containers[0].(*bitmapContainer)
+	assert.True(t, isBitmap)
+
+	var got []uint32
+	for v := range Unset(d, 2, 4099) {
+		got = append(got, v)
+	}
+	assert.Equal(t, []uint32{4098, 4099}, got)
+
+	b := NewBitmap()
+	values := make([]uint32, 0, 65534-100)
+	for v := uint32(100); v < 65534; v++ {
+		values = append(values, v)
+	}
+	b.AddMany(values)
+	b.Remove(6011)
+	b.Remove(23000)
+	_, isBitmap = b.highlowcontainer.containers[0].(*bitmapContainer)
+	assert.True(t, isBitmap)
+
+	for _, r := range [][2]uint32{{0, 65535}, {50, 200}, {6000, 30000}, {23814, 65535}} {
+		var expected []uint32
+		for v := r[0]; v <= r[1]; v++ {
+			if !b.Contains(v) {
+				expected = append(expected, v)
+			}
+		}
+		got = got[:0]
+		for v := range Unset(b, r[0], r[1]) {
+			got = append(got, v)
+		}
+		assert.Equal(t, expected, got, "range [%d, %d]", r[0], r[1])
+	}
+
+	// AdvanceIfNeeded goes through NextUnsetBit as well.
+	it := b.UnsetIterator(0, 65536)
+	it.AdvanceIfNeeded(6001)
+	assert.Equal(t, uint32(6011), it.Next())
+	assert.Equal(t, uint32(23000), it.Next())
+	assert.Equal(t, uint32(65534), it.Next())
+}
