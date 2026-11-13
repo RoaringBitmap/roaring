@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"math/rand"
 	"os"
@@ -973,4 +974,61 @@ func TestGetValueNegativeAfterGrowth(t *testing.T) {
 	val, exists = bsi.GetValue(0)
 	require.True(t, exists)
 	assert.Equal(t, int64(-15), val, "after growth")
+}
+
+// CompareValue must agree with a plain comparison of the stored values, for
+// every operation, with and without a foundSet that has columns holding no value.
+func TestBSICompareValueMatchesNaive(t *testing.T) {
+	ops := []struct {
+		name  string
+		op    Operation
+		naive func(v, start, end int64) bool
+	}{
+		{"LT", LT, func(v, start, _ int64) bool { return v < start }},
+		{"LE", LE, func(v, start, _ int64) bool { return v <= start }},
+		{"EQ", EQ, func(v, start, _ int64) bool { return v == start }},
+		{"GE", GE, func(v, start, _ int64) bool { return v >= start }},
+		{"GT", GT, func(v, start, _ int64) bool { return v > start }},
+		{"RANGE", RANGE, func(v, start, end int64) bool { return v >= start && v <= end }},
+	}
+	sets := [][]int64{
+		{-100, -10, -5, -3, -1, 0, 1, 3, 5, 10, 100, math.MinInt64, math.MaxInt64},
+		{-100, -10, -5, -3, -1, 0, 1, 3, 5, 10, 100},
+		{0, 1, 3, 5, 10, 100},
+	}
+	bounds := []int64{math.MinInt64, -200, -100, -11, -10, -5, -3, -1, 0, 1, 3, 5, 10, 11, 100, 200, math.MaxInt64}
+
+	for _, values := range sets {
+		bsi := NewDefaultBSI()
+		foundSet := BitmapOf(500, 501) // these two columns hold no value
+		for i, v := range values {
+			bsi.SetValue(uint64(i+1), v)
+			foundSet.Add(uint64(i + 1))
+		}
+		// CompareValue documents that a bound outside of the range of the
+		// stored values may give a wrong result, so only bounds in range are used.
+		lo, hi := slices.Min(values), slices.Max(values)
+		inRange := slices.DeleteFunc(slices.Clone(bounds), func(b int64) bool { return b < lo || b > hi })
+		for _, o := range ops {
+			ends := inRange
+			if o.op != RANGE {
+				ends = inRange[:1] // the end bound is only read by RANGE
+			}
+			for _, start := range inRange {
+				for _, end := range ends {
+					want := NewBitmap()
+					for i, v := range values {
+						if o.naive(v, start, end) {
+							want.Add(uint64(i + 1))
+						}
+					}
+					for _, fs := range []*Bitmap{nil, foundSet} {
+						got := bsi.CompareValue(0, o.op, start, end, fs)
+						require.Truef(t, want.Equals(got), "%s(%d, %d) on %v, foundSet=%v: got %v, want %v",
+							o.name, start, end, values, fs != nil, got.ToArray(), want.ToArray())
+					}
+				}
+			}
+		}
+	}
 }

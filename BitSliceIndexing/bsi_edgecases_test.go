@@ -182,3 +182,82 @@ func TestBSISumSemantics(t *testing.T) {
 	assert.EqualValues(t, 7, sum)
 	assert.EqualValues(t, 2, count)
 }
+
+// Issue 583: RANGE with negative values, and foundSet columns that hold no value.
+func TestBSICompareValueIssue583(t *testing.T) {
+	bsi := NewDefaultBSI()
+	bsi.SetValue(1, -5)
+	bsi.SetValue(2, 3)
+	bsi.SetValue(3, -100)
+	assert.Equal(t, []uint32{1}, bsi.CompareValue(0, RANGE, -10, 0, nil).ToArray())
+
+	bsi = NewDefaultBSI()
+	bsi.SetValue(1, 10)
+	bsi.SetValue(2, 20)
+	foundSet := roaring.BitmapOf(1, 2, 99)
+	assert.Equal(t, []uint32{1, 2}, bsi.CompareValue(0, GE, 0, 0, foundSet).ToArray())
+	assert.Equal(t, []uint32{1}, bsi.CompareValue(0, LT, 15, 0, foundSet).ToArray())
+	assert.Equal(t, []uint32{1, 2}, bsi.CompareValue(0, RANGE, 0, 100, foundSet).ToArray())
+	assert.Equal(t, []uint32{1}, bsi.CompareValue(0, EQ, 10, 0, foundSet).ToArray())
+
+	// A value and a bound of opposite signs and equal magnitude are not equal.
+	bsi = NewDefaultBSI()
+	bsi.SetValue(1, 100)
+	bsi.SetValue(2, -100)
+	assert.Equal(t, []uint32{2}, bsi.CompareValue(0, EQ, -100, 0, nil).ToArray())
+	assert.Equal(t, []uint32{1}, bsi.CompareValue(0, GT, -100, 0, nil).ToArray())
+	assert.Equal(t, []uint32{2}, bsi.CompareValue(0, LT, 100, 0, nil).ToArray())
+}
+
+// CompareValue must agree with a plain comparison of the stored values, for
+// every operation, with and without a foundSet that has columns holding no value.
+func TestBSICompareValueMatchesNaive(t *testing.T) {
+	ops := []struct {
+		name  string
+		op    Operation
+		naive func(v, start, end int64) bool
+	}{
+		{"LT", LT, func(v, start, _ int64) bool { return v < start }},
+		{"LE", LE, func(v, start, _ int64) bool { return v <= start }},
+		{"EQ", EQ, func(v, start, _ int64) bool { return v == start }},
+		{"GE", GE, func(v, start, _ int64) bool { return v >= start }},
+		{"GT", GT, func(v, start, _ int64) bool { return v > start }},
+		{"RANGE", RANGE, func(v, start, end int64) bool { return v >= start && v <= end }},
+	}
+	sets := [][]int64{
+		{-100, -10, -5, -3, -1, 0, 1, 3, 5, 10, 100, math.MinInt64, math.MaxInt64},
+		{0, 1, 3, 5, 10, 100},
+		{0, 1, 2, 3},
+	}
+	bounds := []int64{math.MinInt64, -200, -100, -11, -10, -5, -3, -1, 0, 1, 3, 5, 10, 11, 100, 200, math.MaxInt64}
+
+	for _, values := range sets {
+		bsi := NewDefaultBSI()
+		foundSet := roaring.BitmapOf(500, 501) // these two columns hold no value
+		for i, v := range values {
+			bsi.SetValue(uint64(i+1), v)
+			foundSet.Add(uint32(i + 1))
+		}
+		for _, o := range ops {
+			ends := bounds
+			if o.op != RANGE {
+				ends = bounds[:1] // the end bound is only read by RANGE
+			}
+			for _, start := range bounds {
+				for _, end := range ends {
+					want := roaring.New()
+					for i, v := range values {
+						if o.naive(v, start, end) {
+							want.Add(uint32(i + 1))
+						}
+					}
+					for _, fs := range []*roaring.Bitmap{nil, foundSet} {
+						got := bsi.CompareValue(0, o.op, start, end, fs)
+						require.Truef(t, want.Equals(got), "%s(%d, %d) on %v, foundSet=%v: got %v, want %v",
+							o.name, start, end, values, fs != nil, got.ToArray(), want.ToArray())
+					}
+				}
+			}
+		}
+	}
+}
