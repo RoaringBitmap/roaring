@@ -1196,6 +1196,9 @@ func Flip(rb *Bitmap, rangeStart, rangeEnd uint64) *Bitmap {
 // if every goroutine only calls Clone on it, unless the caller provides
 // synchronization (e.g., a sync.Mutex).
 func (rb *Bitmap) SetCopyOnWrite(val bool) {
+	if val {
+		rb.highlowcontainer.ensureCowMu()
+	}
 	rb.highlowcontainer.copyOnWrite = val
 }
 

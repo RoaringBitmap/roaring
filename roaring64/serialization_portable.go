@@ -95,6 +95,9 @@ func (rb *Bitmap) ReadPortableFrom(stream io.Reader) (p int64, err error) {
 		hlc.appendContainer(key, c, false)
 	}
 	hlc.copyOnWrite = rb.highlowcontainer.copyOnWrite
+	if hlc.copyOnWrite {
+		hlc.ensureCowMu()
+	}
 	rb.highlowcontainer = hlc
 	return p, nil
 }
