@@ -765,7 +765,9 @@ func (b *BSI) CompareBigValue(parallelism int, op Operation, valueOrStart, end *
 	if foundSet == nil {
 		return parallelExecutor(parallelism, comp, compareValue, &b.eBM)
 	}
-	return parallelExecutor(parallelism, comp, compareValue, foundSet)
+	// A column of foundSet that holds no value cannot match: without the
+	// intersection it would be compared as if it held zero.
+	return parallelExecutor(parallelism, comp, compareValue, And(foundSet, &b.eBM))
 }
 
 func (b *BSI) compareBigValueAsInt64(parallelism int, op Operation, valueOrStart, end *big.Int, foundSet *Bitmap) (*Bitmap, bool) {

@@ -317,7 +317,9 @@ func (b *BSI) CompareValue(parallelism int, op Operation, valueOrStart, end int6
 	if foundSet == nil {
 		return parallelExecutor(parallelism, comp, compareValue, b.eBM)
 	}
-	return parallelExecutor(parallelism, comp, compareValue, foundSet)
+	// A column of foundSet that holds no value cannot match: without the
+	// intersection it would be compared as if it held zero.
+	return parallelExecutor(parallelism, comp, compareValue, roaring.And(foundSet, b.eBM))
 }
 
 func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg *sync.WaitGroup) {
@@ -329,148 +331,84 @@ func compareValue(e *task, batch []uint32, resultsChan chan *roaring.Bitmap, wg 
 		resultsChan <- results
 		return
 	}
-	//The following code solves the problem of inaccurate results returned by the function when bsi is not set to max or the value of compare exceeds max
-	var x int
+	// x is the number of bit slices to compare: enough to cover the BSI and
+	// the bound(s), since either may be wider than the other.
+	x := e.bsi.BitCount()
+	if n := bits.Len64(uint64(e.valueOrStart)); n > x {
+		x = n
+	}
 	if e.op == RANGE {
-		//If the operation is range and the number of bits in end is greater than the length of ba, then x is set to the number of bits in end
-		if bits.Len64(uint64(e.end)) > e.bsi.BitCount() {
-			x = bits.Len64(uint64(e.end))
-		} else {
-			x = e.bsi.BitCount()
-		}
-	} else {
-		//If the operation is not range and the number of value bits is greater than the length of ba, then x is set to the number of value bits
-		if bits.Len64(uint64(e.valueOrStart)) > e.bsi.BitCount() {
-			x = bits.Len64(uint64(e.valueOrStart))
-		} else {
-			x = e.bsi.BitCount()
+		if n := bits.Len64(uint64(e.end)); n > x {
+			x = n
 		}
 	}
-	startIsNegative := x == 64 && uint64(e.valueOrStart)&(1<<uint64(x-1)) > 0
-	endIsNegative := x == 64 && uint64(e.end)&(1<<uint64(x-1)) > 0
+	// With 64 slices the values are two's complement and slice 63 is the sign.
+	startIsNegative := x == 64 && e.valueOrStart < 0
+	endIsNegative := x == 64 && e.end < 0
+	bitCount := e.bsi.BitCount()
 
 	for i := 0; i < len(batch); i++ {
 		cID := batch[i]
-		eq1, eq2 := true, true
-		lt1, lt2, gt1 := false, false, false
+		// cmpStart and cmpEnd are the sign of (column value - bound). They stay
+		// at zero for as long as the bits compared so far are equal.
+		cmpStart, cmpEnd := 0, 0
 		j := x - 1
-		isNegative := false
 		if x == 64 {
-			if j < e.bsi.BitCount() {
-				isNegative = e.bsi.bA[j].Contains(cID)
+			// Values of opposite signs are ordered by their signs alone. Values
+			// of the same sign are ordered by their remaining 63 bits, compared
+			// as unsigned, so the bounds are never negated.
+			isNegative := j < bitCount && e.bsi.bA[j].Contains(cID)
+			cmpStart = compareBit(startIsNegative, isNegative)
+			if e.op == RANGE {
+				cmpEnd = compareBit(endIsNegative, isNegative)
 			}
 			j--
 		}
-		compStartValue := e.valueOrStart
-		compEndValue := e.end
-		if isNegative != startIsNegative {
-			compStartValue = ^e.valueOrStart + 1
-		}
-		if isNegative != endIsNegative {
-			compEndValue = ^e.end + 1
-		}
-		for ; j >= 0; j-- {
-			var sliceContainsBit bool
-			//The value of j may be larger than the length of ba, so the following judgment has been added
-			if e.bsi.BitCount() <= j {
-				sliceContainsBit = false
-			} else {
-				sliceContainsBit = e.bsi.bA[j].Contains(cID)
+		for ; j >= 0 && (cmpStart == 0 || (e.op == RANGE && cmpEnd == 0)); j-- {
+			// j may exceed the number of slices when a bound is wider than the BSI.
+			sliceContainsBit := j < bitCount && e.bsi.bA[j].Contains(cID)
+			if cmpStart == 0 {
+				cmpStart = compareBit(sliceContainsBit, uint64(e.valueOrStart)&(1<<uint64(j)) > 0)
 			}
-			if uint64(compStartValue)&(1<<uint64(j)) > 0 {
-				// BIT in value is SET
-				if !sliceContainsBit {
-					if eq1 {
-						if (e.op == GT || e.op == GE || e.op == RANGE) && startIsNegative && !isNegative {
-							gt1 = true
-						}
-						if e.op == LT || e.op == LE {
-							if !startIsNegative || (startIsNegative == isNegative) {
-								lt1 = true
-							}
-						}
-						eq1 = false
-						break
-					}
-				}
-			} else {
-				// BIT in value is CLEAR
-				if sliceContainsBit {
-					if eq1 {
-						if (e.op == LT || e.op == LE) && isNegative && !startIsNegative {
-							lt1 = true
-						}
-						if e.op == GT || e.op == GE || e.op == RANGE {
-							if startIsNegative || (startIsNegative == isNegative) {
-								gt1 = true
-							}
-						}
-						eq1 = false
-						if e.op != RANGE {
-							break
-						}
-					}
-				}
-			}
-
-			if e.op == RANGE && uint64(compEndValue)&(1<<uint64(j)) > 0 {
-				// BIT in value is SET
-				if !sliceContainsBit {
-					if eq2 {
-						if !endIsNegative || (endIsNegative == isNegative) {
-							lt2 = true
-						}
-						eq2 = false
-						if startIsNegative && !endIsNegative {
-							break
-						}
-					}
-				}
-			} else if e.op == RANGE {
-				// BIT in value is CLEAR
-				if sliceContainsBit {
-					if eq2 {
-						if isNegative && !endIsNegative {
-							lt2 = true
-						}
-						eq2 = false
-						break
-					}
-				}
+			if e.op == RANGE && cmpEnd == 0 {
+				cmpEnd = compareBit(sliceContainsBit, uint64(e.end)&(1<<uint64(j)) > 0)
 			}
 		}
 
+		var match bool
 		switch e.op {
 		case LT:
-			if lt1 {
-				results.Add(cID)
-			}
+			match = cmpStart < 0
 		case LE:
-			if lt1 || (eq1 && (!startIsNegative || (startIsNegative && isNegative))) {
-				results.Add(cID)
-			}
+			match = cmpStart <= 0
 		case EQ:
-			if eq1 {
-				results.Add(cID)
-			}
+			match = cmpStart == 0
 		case GE:
-			if gt1 || (eq1 && (startIsNegative || (!startIsNegative && !isNegative))) {
-				results.Add(cID)
-			}
+			match = cmpStart >= 0
 		case GT:
-			if gt1 {
-				results.Add(cID)
-			}
+			match = cmpStart > 0
 		case RANGE:
-			if (eq1 || gt1) && (eq2 || lt2) {
-				results.Add(cID)
-			}
+			match = cmpStart >= 0 && cmpEnd <= 0
 		default:
 			panic(fmt.Sprintf("Unknown operation [%v]", e.op))
+		}
+		if match {
+			results.Add(cID)
 		}
 	}
 
 	resultsChan <- results
+}
+
+// compareBit returns the sign of (a - b), reading the two bits as 0 or 1.
+func compareBit(a, b bool) int {
+	if a == b {
+		return 0
+	}
+	if a {
+		return 1
+	}
+	return -1
 }
 
 // MinMax - Find minimum or maximum value. The parallelism argument is
