@@ -765,15 +765,17 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 	}
 
 	adapter, isByteInputAdapter := stream.(*internal.ByteInputAdapter)
-	if isRunBitmap == nil && isByteInputAdapter {
+	if isRunBitmap == nil && isByteInputAdapter && size > 1 {
 		for i := uint32(0); i < size; {
 			groupStart := i
 			groupSize := 0
+			// Keep bitmap allocations aligned and avoid padding them with small arrays.
+			isBitmapGroup := int(keycard[2*i+1])+1 > arrayDefaultMaxSize
 			for i < size {
 				card := int(keycard[2*i+1]) + 1
 				containerSize := getSizeInBytesFromCardinality(card)
 				if groupSize+containerSize > maxContainerGroupSize ||
-					(card > arrayDefaultMaxSize && groupSize%8 != 0) {
+					(card > arrayDefaultMaxSize) != isBitmapGroup {
 					break
 				}
 				groupSize += containerSize
