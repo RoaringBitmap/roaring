@@ -156,11 +156,15 @@ func (b *ByteInputAdapter) Read(buf []byte) (int, error) {
 	return m, nil
 }
 
-// ReadSome reads up to len(buf) bytes, preserving the reader's byte count and error.
-func (b *ByteInputAdapter) ReadSome(buf []byte) (int, error) {
-	n, err := b.r.Read(buf)
+// ReadUntilError fills buf or stops at the first error, returning the total
+// bytes read and the byte count of the last read along with its error.
+func (b *ByteInputAdapter) ReadUntilError(buf []byte) (n, last int, err error) {
+	for n < len(buf) && err == nil {
+		last, err = b.r.Read(buf[n:])
+		n += last
+	}
 	b.readBytes += n
-	return n, err
+	return
 }
 
 // Next returns a slice containing the next n bytes from the buffer,

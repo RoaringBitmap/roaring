@@ -787,7 +787,7 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 			boundary := 0
 			nextContainer := groupStart
 			for read < groupSize {
-				n, err := adapter.ReadSome(buf[read:])
+				n, last, err := adapter.ReadUntilError(buf[read:])
 				read += n
 				if err == nil || read == groupSize {
 					continue
@@ -799,7 +799,7 @@ func (ra *roaringArray) readFrom(stream internal.ByteInput, cookieHeader ...byte
 				}
 				// Like per-container ReadAtLeast, discard a data-bearing error
 				// only when it completes a container.
-				if n > 0 && read == boundary {
+				if last > 0 && read == boundary {
 					continue
 				}
 				if err == io.EOF && read < boundary {
