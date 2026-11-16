@@ -187,6 +187,12 @@ func BenchmarkRealDataFastOr(b *testing.B) {
 	})
 }
 
+func BenchmarkRealDataFastAnd(b *testing.B) {
+	benchmarkRealDataAggregate(b, func(bitmaps []*Bitmap) uint64 {
+		return FastAnd(bitmaps...).GetCardinality()
+	})
+}
+
 func BenchmarkRealDataOrInPlace(b *testing.B) {
 	benchmarkRealDataAggregate(b, func(bitmaps []*Bitmap) uint64 {
 		tot := uint64(0)
