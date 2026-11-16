@@ -2155,3 +2155,36 @@ func TestRunOptimizeRecoversSpaceAfterRemoveRange(t *testing.T) {
 	assert.False(t, bm.HasRunCompression())
 	assert.True(t, expected.Equals(bm))
 }
+
+// TestOrPartsInKeyOrder builds a union one part at a time, mostly appending in
+// key order. Some parts repeat the last key or go back to an earlier one, so Or
+// also skips to keys in the middle of the receiver.
+func TestOrPartsInKeyOrder(t *testing.T) {
+	r := rand.New(rand.NewSource(1))
+	var parts []*Bitmap
+	var values []uint64
+	key := 0
+	for len(parts) < 2000 {
+		switch r.Intn(10) {
+		case 0:
+			key = r.Intn(key + 1)
+		case 1: // repeat the last key
+		default:
+			key += 1 + r.Intn(30)
+		}
+		part := NewBitmap()
+		for n := 1 + r.Intn(4); n > 0; n-- {
+			v := uint64(key)<<32 | uint64(r.Uint32())
+			part.Add(v)
+			values = append(values, v)
+		}
+		parts = append(parts, part)
+	}
+	want := BitmapOf(values...)
+
+	got := NewBitmap()
+	for _, part := range parts {
+		got.Or(part)
+	}
+	assert.True(t, got.Equals(want))
+}
