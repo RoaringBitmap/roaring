@@ -1434,6 +1434,8 @@ func BenchmarkBitmapOrBulkMerge(b *testing.B) {
 		{"fresh-overlap-4096", bitmapOrBulkMergeOverlapFixture(4096)},
 		{"fresh-copy-on-write-interleaved-4096", bitmapOrBulkMergeInterleavedFixture(4096, true)},
 		{"fresh-single-interior-4096", bitmapOrBulkMergeSingleInteriorFixture(4096)},
+		{"fresh-superset-every-2nd-4096", bitmapOrBulkMergeSupersetFixture(4096, 2)},
+		{"fresh-superset-every-64th-4096", bitmapOrBulkMergeSupersetFixture(4096, 64)},
 	}
 	for _, benchmark := range fixtures {
 		b.Run(benchmark.name, func(b *testing.B) {
@@ -1449,6 +1451,32 @@ func BenchmarkBitmapOrBulkMerge(b *testing.B) {
 			b.StopTimer()
 			if cardinality != benchmark.fixture.cardinality*uint64(b.N) {
 				b.Fatalf("unexpected total cardinality: got %d, want %d", cardinality, benchmark.fixture.cardinality*uint64(b.N))
+			}
+		})
+	}
+}
+
+// BenchmarkOrAscendingParts unions parts of one container each, in ascending
+// key order, one Or per part, as when a bitmap is assembled slab by slab.
+func BenchmarkOrAscendingParts(b *testing.B) {
+	for _, n := range []int{4096, 32768} {
+		parts := make([]*Bitmap, n)
+		for i := range parts {
+			parts[i] = BitmapOf(uint32(i)<<16, uint32(i)<<16|7, uint32(i)<<16|99, uint32(i)<<16|1000, uint32(i)<<16|40000)
+		}
+		b.Run(fmt.Sprintf("Or/parts=%d", n), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				union := NewBitmap()
+				for _, part := range parts {
+					union.Or(part)
+				}
+			}
+		})
+		b.Run(fmt.Sprintf("FastOr/parts=%d", n), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				FastOr(parts...)
 			}
 		})
 	}

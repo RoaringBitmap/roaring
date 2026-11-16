@@ -165,3 +165,19 @@ func BenchmarkAndNotArrayArray(b *testing.B) {
 		AndNot(left, right)
 	}
 }
+
+// BenchmarkOrAscendingParts unions parts of one container each, in ascending
+// key order, one Or per part.
+func BenchmarkOrAscendingParts(b *testing.B) {
+	parts := make([]*Bitmap, 32768)
+	for i := range parts {
+		parts[i] = BitmapOf(uint64(i)<<32, uint64(i)<<32|7, uint64(i)<<32|99, uint64(i)<<32|1000, uint64(i)<<32|40000)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		union := NewBitmap()
+		for _, part := range parts {
+			union.Or(part)
+		}
+	}
+}

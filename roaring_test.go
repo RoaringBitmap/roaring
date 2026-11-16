@@ -4095,6 +4095,16 @@ func bitmapOrBulkMergeOverlapFixture(containers int) bitmapOrBulkMergeFixture {
 	return newBitmapOrBulkMergeFixture(keys, keys, false)
 }
 
+// bitmapOrBulkMergeSupersetFixture unions a source holding every step-th key
+// into a receiver holding all of them, so Or skips step-1 receiver keys each time.
+func bitmapOrBulkMergeSupersetFixture(containers, step int) bitmapOrBulkMergeFixture {
+	return newBitmapOrBulkMergeFixture(
+		bitmapOrBulkMergeKeys(0, containers, 1),
+		bitmapOrBulkMergeKeys(0, containers/step, step),
+		false,
+	)
+}
+
 func bitmapOrBulkMergeSingleInteriorFixture(containers int) bitmapOrBulkMergeFixture {
 	leftKeys := make([]uint16, 0, containers-1)
 	middle := containers / 2
@@ -4144,6 +4154,40 @@ func TestBitmapOrBulkMergeFixtures(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestOrPartsInKeyOrder builds a union one part at a time, mostly appending in
+// key order. Some parts repeat the last key or go back to an earlier one, so Or
+// and FastOr also skip to keys in the middle of the receiver.
+func TestOrPartsInKeyOrder(t *testing.T) {
+	r := rand.New(rand.NewSource(1))
+	var parts []*Bitmap
+	var values []uint32
+	key := 0
+	for len(parts) < 2000 {
+		switch r.Intn(10) {
+		case 0:
+			key = r.Intn(key + 1)
+		case 1: // repeat the last key
+		default:
+			key += 1 + r.Intn(30)
+		}
+		part := NewBitmap()
+		for n := 1 + r.Intn(4); n > 0; n-- {
+			v := uint32(key)<<16 | uint32(r.Intn(1<<16))
+			part.Add(v)
+			values = append(values, v)
+		}
+		parts = append(parts, part)
+	}
+	want := BitmapOf(values...)
+
+	got := NewBitmap()
+	for _, part := range parts {
+		got.Or(part)
+	}
+	assert.True(t, got.Equals(want))
+	assert.True(t, FastOr(parts...).Equals(want))
 }
 
 func TestBitmapOrBulkMergeCopyOnWriteOwnership(t *testing.T) {

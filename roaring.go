@@ -1677,7 +1677,7 @@ main:
 
 		for {
 			if s1 < s2 {
-				pos1++
+				pos1 = rb.highlowcontainer.advanceUntil(s2, pos1)
 				if pos1 == length1 {
 					break main
 				}
