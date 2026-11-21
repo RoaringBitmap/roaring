@@ -1213,6 +1213,26 @@ func TestCardinalityInRangeFullUint32Range(t *testing.T) {
 	assert.EqualValues(t, 2, rb.CardinalityInRange(0x80000000, 1<<32))
 }
 
+func TestCardinalityInRangeClampedEnd(t *testing.T) {
+	const limit = uint64(1) << 32
+	rb := BitmapOf(0, 7, 0xFFFFFFFF)
+	for _, tt := range []struct {
+		name       string
+		start, end uint64
+		want       uint64
+	}{
+		{"start at limit", limit, limit + 1, 0},
+		{"start above limit", limit + 7, limit + 8, 0},
+		{"last representable element", limit - 1, limit + 1, 1},
+		{"very large end", 0, ^uint64(0), 3},
+		{"empty range at limit", limit, limit, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, rb.CardinalityInRange(tt.start, tt.end))
+		})
+	}
+}
+
 func TestBitmapRank(t *testing.T) {
 	for N := uint32(1); N <= 1048576; N *= 2 {
 		t.Run("rank tests"+strconv.Itoa(int(N)), func(t *testing.T) {

@@ -1311,11 +1311,11 @@ func (rb *Bitmap) Rank(x uint32) uint64 {
 // in total containers. The parameter type is uint64 to allow end = 1<<32
 // (the full 32-bit range).
 func (rb *Bitmap) CardinalityInRange(start, end uint64) uint64 {
-	if start >= end {
-		return 0
-	}
 	if end > MaxUint32+1 {
 		end = MaxUint32 + 1
+	}
+	if start >= end {
+		return 0
 	}
 
 	hbStart := highbits(uint32(start))
