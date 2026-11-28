@@ -156,6 +156,17 @@ func (b *ByteInputAdapter) Read(buf []byte) (int, error) {
 	return m, nil
 }
 
+// ReadUntilError fills buf or stops at the first error, returning the total
+// bytes read and the byte count of the last read along with its error.
+func (b *ByteInputAdapter) ReadUntilError(buf []byte) (n, last int, err error) {
+	for n < len(buf) && err == nil {
+		last, err = b.r.Read(buf[n:])
+		n += last
+	}
+	b.readBytes += n
+	return
+}
+
 // Next returns a slice containing the next n bytes from the buffer,
 // advancing the buffer as if the bytes had been returned by Read.
 func (b *ByteInputAdapter) Next(n int) ([]byte, error) {
